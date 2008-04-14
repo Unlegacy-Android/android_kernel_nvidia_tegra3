@@ -83,6 +83,7 @@ struct mmci_platform_data {
 	void *dma_rx_param;
 	void *dma_tx_param;
 	unsigned int status_irq;
+	struct embedded_sdio_data *embedded_sdio;
 	int (*register_status_notify)(void (*callback)(int card_present, void *dev_id), void *dev_id);
 };
 
