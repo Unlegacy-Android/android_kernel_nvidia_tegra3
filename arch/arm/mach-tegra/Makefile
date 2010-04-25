@@ -6,6 +6,7 @@ obj-y                                   += irq.o
 obj-y                                   += clock.o
 obj-y                                   += timer.o
 obj-y                                   += pinmux.o
+obj-y                                   += delay.o
 obj-$(CONFIG_PM_SLEEP)			+= pm.o
 obj-$(CONFIG_PM_SLEEP)			+= pm-irq.o
 obj-$(CONFIG_PM_SLEEP)			+= sleep.o
