@@ -17,6 +17,7 @@
 #include <linux/kernel.h>
 #include <linux/gpio.h>
 #include <linux/of.h>
+#include <linux/init.h>
 
 #include <mach/pinmux.h>
 #include <mach/pinmux-tegra20.h>
@@ -25,7 +26,7 @@
 #include "board-harmony.h"
 #include "board-pinmux.h"
 
-static struct tegra_pingroup_config harmony_pinmux[] = {
+static __initdata struct tegra_pingroup_config harmony_pinmux[] = {
 	{TEGRA_PINGROUP_ATA,   TEGRA_MUX_IDE,           TEGRA_PUPD_NORMAL,    TEGRA_TRI_NORMAL},
 	{TEGRA_PINGROUP_ATB,   TEGRA_MUX_SDIO4,         TEGRA_PUPD_NORMAL,    TEGRA_TRI_NORMAL},
 	{TEGRA_PINGROUP_ATC,   TEGRA_MUX_NAND,          TEGRA_PUPD_NORMAL,    TEGRA_TRI_NORMAL},
@@ -164,7 +165,7 @@ static struct tegra_board_pinmux_conf conf = {
 	.gpio_count = ARRAY_SIZE(gpio_table),
 };
 
-void harmony_pinmux_init(void)
+void __init harmony_pinmux_init(void)
 {
 	tegra_board_pinmux_init(&conf, NULL);
 }
