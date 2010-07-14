@@ -52,3 +52,7 @@ obj-$(CONFIG_MACH_TEGRA_DT)             += board-trimslice-pinmux.o
 
 obj-$(CONFIG_MACH_TRIMSLICE)            += board-trimslice.o
 obj-$(CONFIG_MACH_TRIMSLICE)            += board-trimslice-pinmux.o
+
+obj-$(CONFIG_MACH_VENTANA)              += board-ventana.o
+obj-$(CONFIG_MACH_VENTANA)              += board-ventana-pinmux.o
+obj-$(CONFIG_MACH_VENTANA)              += board-ventana-sdhci.o
