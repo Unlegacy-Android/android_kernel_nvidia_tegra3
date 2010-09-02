@@ -78,6 +78,10 @@ static __initdata struct tegra_clk_init_table tegra20_clk_init_table[] = {
 	{ "emc",	NULL,		0,		true },
 	{ "cpu",	NULL,		0,		true },
 	{ "pll_u",	"clk_m",	480000000,	false },
+	{ "sdmmc1",	"pll_p",	48000000,	false},
+	{ "sdmmc2",	"pll_p",	48000000,	false},
+	{ "sdmmc3",	"pll_p",	48000000,	false},
+	{ "sdmmc4",	"pll_p",	48000000,	false},
 	{ NULL,		NULL,		0,		0},
 };
 #endif
