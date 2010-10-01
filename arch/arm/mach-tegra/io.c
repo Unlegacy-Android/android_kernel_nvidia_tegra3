@@ -77,4 +77,6 @@ static struct map_desc tegra_io_desc[] __initdata = {
 void __init tegra_map_common_io(void)
 {
 	iotable_init(tegra_io_desc, ARRAY_SIZE(tegra_io_desc));
+
+	init_consistent_dma_size(14 * SZ_1M);
 }
