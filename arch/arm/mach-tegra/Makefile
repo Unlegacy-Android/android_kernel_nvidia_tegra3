@@ -39,6 +39,7 @@ obj-y                                   += mc.o
 obj-$(CONFIG_TEGRA_STAT_MON)            += tegra2_statmon.o
 obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
 obj-$(CONFIG_FIQ)                       += fiq.o
+obj-$(CONFIG_TEGRA_FIQ_DEBUGGER)        += tegra_fiq_debugger.o
 obj-$(CONFIG_TEGRA_PWM)                 += pwm.o
 obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)       += arb_sema.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += powergate.o
