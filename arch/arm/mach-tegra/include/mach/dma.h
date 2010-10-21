@@ -51,6 +51,8 @@
 #define TEGRA_DMA_REQ_SEL_OWR			25
 #define TEGRA_DMA_REQ_SEL_INVALID		31
 
+#define TEGRA_DMA_MAX_TRANSFER_SIZE		0x10000
+
 #if defined(CONFIG_TEGRA_SYSTEM_DMA)
 
 struct tegra_dma_req;
