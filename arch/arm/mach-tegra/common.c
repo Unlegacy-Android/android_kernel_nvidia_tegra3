@@ -17,6 +17,7 @@
  *
  */
 
+#include <linux/console.h>
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/clk.h>
@@ -27,6 +28,7 @@
 
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/hardware/gic.h>
+#include <asm/system.h>
 
 #include <mach/iomap.h>
 #include <mach/powergate.h>
@@ -123,9 +125,41 @@ static void __init tegra_init_power(void)
 	tegra_powergate_power_off(TEGRA_POWERGATE_3D);
 }
 
+static bool console_flushed;
+
+static void tegra_pm_flush_console(void)
+{
+	if (console_flushed)
+		return;
+	console_flushed = true;
+
+	printk("\n");
+	pr_emerg("Restarting %s\n", linux_banner);
+	if (!try_acquire_console_sem()) {
+		release_console_sem();
+		return;
+	}
+
+	mdelay(50);
+
+	local_irq_disable();
+	if (try_acquire_console_sem())
+		pr_emerg("tegra_restart: Console was locked! Busting\n");
+	else
+		pr_emerg("tegra_restart: Console was locked!\n");
+	release_console_sem();
+}
+
+static void tegra_pm_restart(char mode, const char *cmd)
+{
+	tegra_pm_flush_console();
+}
+
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 void __init tegra20_init_early(void)
 {
+	arm_pm_restart = tegra_pm_restart;
+
 	tegra_init_fuse();
 	tegra2_init_clocks();
 	tegra_clk_init_from_table(tegra20_clk_init_table);
@@ -136,6 +170,8 @@ void __init tegra20_init_early(void)
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 void __init tegra30_init_early(void)
 {
+	arm_pm_restart = tegra_pm_restart;
+
 	tegra_init_cache(0x441, 0x551);
 }
 #endif
