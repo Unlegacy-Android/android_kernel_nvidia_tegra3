@@ -159,14 +159,13 @@ static void tegra_pm_restart(char mode, const char *cmd)
 void __init tegra20_init_early(void)
 {
 	arm_pm_restart = tegra_pm_restart;
-#ifdef CONFIG_TEGRA_SYSTEM_DMA
-	tegra_dma_init();
-#endif
 	tegra_init_fuse();
 	tegra2_init_clocks();
 	tegra_clk_init_from_table(tegra20_clk_init_table);
 	tegra_init_power();
 	tegra_init_cache(0x331, 0x441);
+	tegra_dma_init();
+	tegra_init_fuse_dma();
 }
 #endif
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
