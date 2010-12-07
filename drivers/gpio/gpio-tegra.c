@@ -25,6 +25,7 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/module.h>
+#include <linux/delay.h>
 
 #include <asm/mach/irq.h>
 
@@ -37,8 +38,6 @@
 #define GPIO_PORT(x)		(((x) >> 3) & 0x3)
 #define GPIO_BIT(x)		((x) & 0x7)
 
-#define GPIO_REG(x)		(GPIO_BANK(x) * 0x80 + GPIO_PORT(x) * 4)
-
 #define GPIO_CNF(x)		(GPIO_REG(x) + 0x00)
 #define GPIO_OE(x)		(GPIO_REG(x) + 0x10)
 #define GPIO_OUT(x)		(GPIO_REG(x) + 0X20)
@@ -48,12 +47,25 @@
 #define GPIO_INT_LVL(x)		(GPIO_REG(x) + 0x60)
 #define GPIO_INT_CLR(x)		(GPIO_REG(x) + 0x70)
 
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
+#define GPIO_REG(x)		(GPIO_BANK(x) * 0x80 + GPIO_PORT(x) * 4)
+
 #define GPIO_MSK_CNF(x)		(GPIO_REG(x) + 0x800)
 #define GPIO_MSK_OE(x)		(GPIO_REG(x) + 0x810)
 #define GPIO_MSK_OUT(x)		(GPIO_REG(x) + 0X820)
 #define GPIO_MSK_INT_STA(x)	(GPIO_REG(x) + 0x840)
 #define GPIO_MSK_INT_ENB(x)	(GPIO_REG(x) + 0x850)
 #define GPIO_MSK_INT_LVL(x)	(GPIO_REG(x) + 0x860)
+#else
+#define GPIO_REG(x)		(GPIO_BANK(x) * 0x100 + GPIO_PORT(x) * 4)
+
+#define GPIO_MSK_CNF(x)		(GPIO_REG(x) + 0x80)
+#define GPIO_MSK_OE(x)		(GPIO_REG(x) + 0x90)
+#define GPIO_MSK_OUT(x)		(GPIO_REG(x) + 0XA0)
+#define GPIO_MSK_INT_STA(x)	(GPIO_REG(x) + 0xC0)
+#define GPIO_MSK_INT_ENB(x)	(GPIO_REG(x) + 0xD0)
+#define GPIO_MSK_INT_LVL(x)	(GPIO_REG(x) + 0xE0)
+#endif
 
 #define GPIO_INT_LVL_MASK		0x010101
 #define GPIO_INT_LVL_EDGE_RISING	0x000101
@@ -77,7 +89,11 @@ struct tegra_gpio_bank {
 
 
 static void __iomem *regs;
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 static struct tegra_gpio_bank tegra_gpio_banks[7];
+#else
+static struct tegra_gpio_bank tegra_gpio_banks[8];
+#endif
 
 static inline void tegra_gpio_writel(u32 val, u32 reg)
 {
@@ -159,6 +175,15 @@ static void tegra_gpio_irq_ack(struct irq_data *d)
 	int gpio = d->irq - INT_GPIO_BASE;
 
 	tegra_gpio_writel(1 << GPIO_BIT(gpio), GPIO_INT_CLR(gpio));
+
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+	/* FPGA platforms have a serializer between the GPIO
+	   block and interrupt controller. Allow time for
+	   clearing of the GPIO interrupt to propagate to the
+	   interrupt controller before re-enabling the IRQ
+	   to prevent double interrupts. */
+	udelay(15);
+#endif
 }
 
 static void tegra_gpio_irq_mask(struct irq_data *d)

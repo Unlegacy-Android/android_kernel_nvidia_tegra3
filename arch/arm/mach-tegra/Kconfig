@@ -23,6 +23,7 @@ config ARCH_TEGRA_3x_SOC
 	select CPU_V7
 	select ARM_GIC
 	select ARCH_REQUIRE_GPIOLIB
+	select TEGRA_IOVMM
 	select USB_ARCH_HAS_EHCI if USB_SUPPORT
 	select USB_ULPI if USB_SUPPORT
 	select USB_ULPI_VIEWPORT if USB_SUPPORT
@@ -109,6 +110,9 @@ config MACH_VENTANA
 
 # Enterprise
 
+config TEGRA_FPGA_PLATFORM
+	bool
+
 choice
         prompt "Low-level debug console UART"
         default TEGRA_DEBUG_UART_NONE
@@ -174,6 +178,16 @@ config TEGRA_IOVMM_GART
 	  Enables support for remapping discontiguous physical memory
 	  shared with the operating system into contiguous I/O virtual
 	  space through the GART hardware included on Tegra SoCs
+
+config TEGRA_IOVMM_SMMU
+	bool "Enable I/O virtual memory manager for SMMU"
+	depends on ARCH_TEGRA_3x_SOC
+	default y
+	select TEGRA_IOVMM
+	help
+	  Enables support for remapping discontiguous physical memory
+	  shared with the operating system into contiguous I/O virtual
+	  space through the SMMU hardware included on Tegra SoCs
 
 config TEGRA_IOVMM
 	bool
