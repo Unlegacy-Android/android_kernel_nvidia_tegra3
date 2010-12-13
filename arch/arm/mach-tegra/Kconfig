@@ -135,6 +135,10 @@ config MACH_VENTANA
          Support for the nVidia Ventana development platform
 
 # Whistler
+config MACH_WHISTLER
+       bool "Whistler board"
+       help
+         Support for NVIDIA Whistler development platform
 
 # Aruba
 
