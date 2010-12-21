@@ -1,6 +1,7 @@
 obj-y                                   += board-pinmux.o
 obj-y                                   += common.o
 obj-y                                   += devices.o
+obj-y                                   += apbio.o
 obj-y                                   += io.o
 obj-y                                   += irq.o
 obj-y                                   += clock.o
