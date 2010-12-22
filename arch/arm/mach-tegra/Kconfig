@@ -140,6 +140,11 @@ config MACH_VENTANA
 
 # Cardhu
 
+config MACH_CARDHU
+       bool "Cardhu board"
+       help
+         Support for NVIDIA Cardhu development platform
+
 # Enterprise
 
 choice
