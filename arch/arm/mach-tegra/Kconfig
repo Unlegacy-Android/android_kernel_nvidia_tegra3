@@ -48,6 +48,7 @@ config MACH_HARMONY
 
 config MACH_VENTANA
        bool "Ventana board"
+       depends on ARCH_TEGRA_2x_SOC
        help
          Support for NVIDIA Ventana development platform
 
