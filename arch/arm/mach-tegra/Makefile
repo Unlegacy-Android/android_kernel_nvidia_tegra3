@@ -31,7 +31,7 @@ obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_fuse.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_save.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= tegra2_emc.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_emc.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= wakeups-t2.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= wakeups-t3.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= pm-t2.o
@@ -52,6 +52,7 @@ obj-$(CONFIG_CPU_IDLE)			+= cpuidle.o
 obj-$(CONFIG_TEGRA_IOVMM)               += iovmm.o
 obj-$(CONFIG_TEGRA_IOVMM_GART)          += iovmm-gart.o
 obj-$(CONFIG_TEGRA_IOVMM_SMMU)          += iovmm-smmu.o
+obj-$(CONFIG_DEBUG_ICEDCC)              += sysfs-dcc.o
 obj-$(CONFIG_TEGRA_MC_PROFILE)          += tegra2_mc.o
 
 obj-${CONFIG_TEGRA_SPI_SLAVE}		+= spi_tegra_slave.o
