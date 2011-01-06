@@ -544,7 +544,10 @@ static int __init tegra_init_disable_boot_clocks(void)
 }
 late_initcall(tegra_init_disable_boot_clocks);
 
-int tegra_periph_clk_cfg_ex(struct clk *c, u32 setting)
+/* Several extended clock configuration bits (e.g., clock routing, clock
+ * phase control) are included in PLL and peripheral clock source
+ * registers. */
+int tegra_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
 {
 	int ret = 0;
 	unsigned long flags;
@@ -555,7 +558,7 @@ int tegra_periph_clk_cfg_ex(struct clk *c, u32 setting)
 		ret = -ENOSYS;
 		goto out;
 	}
-	c->ops->clk_cfg_ex(c, setting);
+	ret = c->ops->clk_cfg_ex(c, p, setting);
 
 out:
 	clk_unlock_restore(c, flags);
