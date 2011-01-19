@@ -232,6 +232,7 @@ void __init tegra20_init_early(void)
 	tegra_clk_init_from_table(tegra20_clk_init_table);
 	tegra_init_power();
 	tegra_init_cache();
+	tegra20_mc_init(); /* !!!FIXME!!! Change Tegra3 behavior to match Tegra2 */
 }
 #endif
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
@@ -244,6 +245,7 @@ void __init tegra30_init_early(void)
 	tegra_clk_init_from_table(tegra30_clk_init_table);
 	tegra_init_power();
 	tegra_init_cache();
+	tegra30_mc_init();
 }
 #endif
 
