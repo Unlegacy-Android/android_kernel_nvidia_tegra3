@@ -35,6 +35,7 @@
 #include <linux/input.h>
 #include <linux/tegra_usb.h>
 #include <linux/mfd/tps6586x.h>
+#include <linux/memblock.h>
 
 #include <mach/clk.h>
 #include <mach/gpio-tegra.h>
@@ -446,11 +447,27 @@ static void __init tegra_ventana_init(void)
 	ventana_emc_init();
 }
 
+int __init tegra_ventana_protected_aperture_init(void)
+{
+	tegra_protected_aperture_init(tegra_grhost_aperture);
+	return 0;
+}
+late_initcall(tegra_ventana_protected_aperture_init);
+
+void __init tegra_ventana_reserve(void)
+{
+	if (memblock_reserve(0x0, 4096) < 0)
+		pr_warn("Cannot reserve first 4K of memory for safety\n");
+
+	tegra_reserve(SZ_256M, SZ_8M, SZ_16M);
+}
+
 MACHINE_START(VENTANA, "ventana")
 	.map_io         = tegra_map_common_io,
 	.init_early	= tegra20_init_early,
 	.init_irq       = tegra_init_irq,
 	.handle_irq	= gic_handle_irq,
+	.reserve        = tegra_ventana_reserve,
 	.timer          = &tegra_timer,
 	.init_machine   = tegra_ventana_init,
 	.restart	= tegra_assert_system_reset,
