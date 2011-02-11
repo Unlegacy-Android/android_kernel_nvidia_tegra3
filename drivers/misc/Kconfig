@@ -506,6 +506,12 @@ config MAX8997_MUIC
 	  Maxim MAX8997 PMIC.
 	  The MAX8997 MUIC is a USB port accessory detector and switch.
 
+config BCM4329_RFKILL
+	bool "Enable BCM4329 RFKILL driver"
+	default n
+	---help---
+	Adds BCM4329 RFKILL driver for Broadcom BCM4329 chipset
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
