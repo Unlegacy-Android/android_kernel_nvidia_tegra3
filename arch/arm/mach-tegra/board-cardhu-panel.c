@@ -24,6 +24,7 @@
 #include <linux/resource.h>
 #include <asm/mach-types.h>
 #include <linux/platform_device.h>
+#include <linux/earlysuspend.h>
 #include <linux/pwm_backlight.h>
 #include <asm/atomic.h>
 #include <linux/nvhost.h>
@@ -1041,6 +1042,25 @@ static struct platform_device *cardhu_gfx_devices[] __initdata = {
 };
 
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+/* put early_suspend/late_resume handlers here for the display in order
+ * to keep the code out of the display driver, keeping it closer to upstream
+ */
+struct early_suspend cardhu_panel_early_suspender;
+
+static void cardhu_panel_early_suspend(struct early_suspend *h)
+{
+	if (num_registered_fb > 0)
+		fb_blank(registered_fb[0], FB_BLANK_POWERDOWN);
+}
+
+static void cardhu_panel_late_resume(struct early_suspend *h)
+{
+	if (num_registered_fb > 0)
+		fb_blank(registered_fb[0], FB_BLANK_UNBLANK);
+}
+#endif
+
 int __init cardhu_panel_init(void)
 {
 	int err;
@@ -1128,6 +1148,13 @@ int __init cardhu_panel_init(void)
 	tegra_gpio_enable(cardhu_hdmi_hpd);
 	gpio_request(cardhu_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(cardhu_hdmi_hpd);
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	cardhu_panel_early_suspender.suspend = cardhu_panel_early_suspend;
+	cardhu_panel_early_suspender.resume = cardhu_panel_late_resume;
+	cardhu_panel_early_suspender.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
+	register_early_suspend(&cardhu_panel_early_suspender);
+#endif
 
 #ifdef CONFIG_TEGRA_GRHOST
 	err = nvhost_device_register(&tegra_grhost_device);
