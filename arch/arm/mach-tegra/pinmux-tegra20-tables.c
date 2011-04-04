@@ -30,7 +30,6 @@
 #include <mach/iomap.h>
 #include <mach/pinmux.h>
 #include <mach/pinmux-tegra20.h>
-#include <mach/suspend.h>
 
 #define TRISTATE_REG_A		0x14
 #define PIN_MUX_CTL_REG_A	0x80

@@ -30,7 +30,6 @@
 
 #include <mach/gpio-tegra.h>
 #include <mach/iomap.h>
-#include <mach/suspend.h>
 
 #define GPIO_BANK(x)		((x) >> 5)
 #define GPIO_PORT(x)		(((x) >> 3) & 0x3)
