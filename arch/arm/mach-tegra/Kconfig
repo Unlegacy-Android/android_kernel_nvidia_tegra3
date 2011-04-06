@@ -141,6 +141,11 @@ config MACH_VENTANA
 # Cardhu
 
 # Enterprise
+config MACH_TEGRA_ENTERPRISE
+       bool "Tegra_enterprise board"
+       depends on ARCH_TEGRA_3x_SOC
+       help
+         Support for NVIDIA Tegra_enterprise development platform
 
 choice
        prompt "Tegra platform type"
