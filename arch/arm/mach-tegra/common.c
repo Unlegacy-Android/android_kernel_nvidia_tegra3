@@ -37,6 +37,7 @@
 #include "apbio.h"
 #include "board.h"
 #include "clock.h"
+#include "dvfs.h"
 #include "fuse.h"
 #include "pm.h"
 
@@ -163,6 +164,7 @@ void __init tegra20_init_early(void)
 	arm_pm_restart = tegra_pm_restart;
 	tegra_init_fuse();
 	tegra2_init_clocks();
+	tegra2_init_dvfs();
 	tegra_clk_init_from_table(tegra20_clk_init_table);
 	tegra_init_power();
 	tegra_init_cache(0x331, 0x441);
