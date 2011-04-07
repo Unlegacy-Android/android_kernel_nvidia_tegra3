@@ -1376,11 +1376,6 @@ static long tegra_clk_shared_bus_round_rate(struct clk *c, unsigned long rate)
 	return clk_round_rate(c->parent, rate);
 }
 
-static long tegra_clk_shared_bus_round_rate(struct clk *c, unsigned long rate)
-{
-	return clk_round_rate(c->parent, rate);
-}
-
 static int tegra_clk_shared_bus_enable(struct clk *c)
 {
 	unsigned long flags;
