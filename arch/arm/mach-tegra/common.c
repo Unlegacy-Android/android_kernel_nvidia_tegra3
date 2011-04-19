@@ -26,6 +26,9 @@
 #include <linux/of_irq.h>
 #include <linux/highmem.h>
 #include <linux/memblock.h>
+#include <linux/notifier.h>
+#include <linux/reboot.h>
+#include <linux/mqueue.h>
 
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/hardware/gic.h>
@@ -204,17 +207,19 @@ static void __init tegra_init_power(void)
 
 static bool console_flushed;
 
-static void tegra_pm_flush_console(void)
+static int tegra_pm_flush_console(struct notifier_block *this,
+	unsigned long code,
+	void *unused)
 {
 	if (console_flushed)
-		return;
+		return NOTIFY_NONE;
 	console_flushed = true;
 
 	printk("\n");
 	pr_emerg("Restarting %s\n", linux_banner);
 	if (console_trylock()) {
 		console_unlock();
-		return;
+		return NOTIFY_NONE;
 	}
 
 	mdelay(50);
@@ -225,17 +230,22 @@ static void tegra_pm_flush_console(void)
 	else
 		pr_emerg("tegra_restart: Console was locked!\n");
 	console_unlock();
+	return NOTIFY_NONE;
 }
+
+static struct notifier_block tegra_reboot_notifier = {
+	.notifier_call = tegra_pm_flush_console,
+};
 
 static void tegra_pm_restart(char mode, const char *cmd)
 {
-	tegra_pm_flush_console();
 }
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 void __init tegra20_init_early(void)
 {
 	arm_pm_restart = tegra_pm_restart;
+	register_reboot_notifier(&tegra_reboot_notifier);
 	tegra_init_fuse();
 	tegra2_init_clocks();
 	tegra2_init_dvfs();
