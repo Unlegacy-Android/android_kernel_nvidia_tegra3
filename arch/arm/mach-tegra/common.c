@@ -83,6 +83,9 @@ void tegra_assert_system_reset(char mode, const char *cmd)
 	writel_relaxed(reg, reset);
 }
 
+/* WARNING: There is implicit client of pllp_out3 like i2c, uart, dsi
+ * and so this clock (pllp_out3) should never be disabled.
+ */
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 static __initdata struct tegra_clk_init_table tegra20_clk_init_table[] = {
 	/* name		parent		rate		enabled */
