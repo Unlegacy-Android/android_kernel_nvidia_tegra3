@@ -101,6 +101,14 @@ config MACH_VENTANA
        help
          Support for the nVidia Ventana development platform
 
+# Whistler
+
+# Aruba
+
+# Cardhu
+
+# Enterprise
+
 choice
         prompt "Low-level debug console UART"
         default TEGRA_DEBUG_UART_NONE
