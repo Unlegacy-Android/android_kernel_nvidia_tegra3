@@ -87,6 +87,7 @@ struct dvfs {
 	struct list_head reg_node;
 };
 
+#ifndef CONFIG_TEGRA_FPGA_PLATFORM
 void tegra2_init_dvfs(void);
 void tegra3_init_dvfs(void);
 int tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d);
@@ -97,5 +98,27 @@ void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n);
 void tegra_dvfs_rail_enable(struct dvfs_rail *rail);
 void tegra_dvfs_rail_disable(struct dvfs_rail *rail);
 bool tegra_dvfs_rail_updating(struct clk *clk);
+#else
+static inline void tegra2_init_dvfs(void)
+{}
+static inline void tegra3_init_dvfs(void)
+{}
+static inline int tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d)
+{ return 0; }
+static inline int dvfs_debugfs_init(struct dentry *clk_debugfs_root)
+{ return 0; }
+static inline int tegra_dvfs_late_init(void)
+{ return 0; }
+static inline int tegra_dvfs_init_rails(struct dvfs_rail *dvfs_rails[], int n)
+{ return 0; }
+static inline void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n)
+{}
+static inline void tegra_dvfs_rail_enable(struct dvfs_rail *rail)
+{}
+static inline void tegra_dvfs_rail_disable(struct dvfs_rail *rail)
+{}
+static inline bool tegra_dvfs_rail_updating(struct clk *clk)
+{ return false; }
+#endif
 
 #endif
