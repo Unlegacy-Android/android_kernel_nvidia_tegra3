@@ -1153,6 +1153,10 @@ static int do_test(int m)
 		ret += tcrypt_test("rfc4309(ccm(aes))");
 		break;
 
+	case 46:
+		ret += tcrypt_test("ofb(aes)");
+		break;
+
 	case 100:
 		ret += tcrypt_test("hmac(md5)");
 		break;
@@ -1191,6 +1195,10 @@ static int do_test(int m)
 
 	case 109:
 		ret += tcrypt_test("vmac(aes)");
+		break;
+
+	case 110:
+		ret += tcrypt_test("cmac(aes)");
 		break;
 
 	case 150:
