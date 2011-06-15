@@ -74,6 +74,7 @@ static void tegra_sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 
 	writel(val, host->ioaddr + reg);
 
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	if (unlikely(reg == SDHCI_INT_ENABLE)) {
 		/* Erratum: Must enable block gap interrupt detection */
 		u8 gap_ctrl = readb(host->ioaddr + SDHCI_BLOCK_GAP_CONTROL);
@@ -83,6 +84,7 @@ static void tegra_sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 			gap_ctrl &= ~0x8;
 		writeb(gap_ctrl, host->ioaddr + SDHCI_BLOCK_GAP_CONTROL);
 	}
+#endif
 }
 
 static unsigned int tegra_sdhci_get_ro(struct sdhci_host *sdhci)
