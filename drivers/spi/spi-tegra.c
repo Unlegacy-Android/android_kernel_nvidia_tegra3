@@ -382,7 +382,7 @@ static unsigned int spi_tegra_read_rx_fifo_to_client_rxbuf(
 	u8 *rx_buf = (u8 *)t->rx_buf + tspi->cur_rx_pos;
 	unsigned i, count;
 	unsigned long x;
-	unsigned int read_words;
+	unsigned int read_words = 0;
 	unsigned len;
 
 	fifo_status = spi_tegra_readl(tspi, SLINK_STATUS2);
@@ -1038,7 +1038,7 @@ static int __devinit spi_tegra_probe(struct platform_device *pdev)
 	struct spi_tegra_data	*tspi;
 	struct resource		*r;
 	struct tegra_spi_platform_data *pdata = pdev->dev.platform_data;
-	int ret;
+	int ret, spi_irq;
 
 	master = spi_alloc_master(&pdev->dev, sizeof *tspi);
 	if (master == NULL) {
@@ -1082,12 +1082,13 @@ static int __devinit spi_tegra_probe(struct platform_device *pdev)
 		goto fail_io_map;
 	}
 
-	tspi->irq = platform_get_irq(pdev, 0);
-	if (unlikely(tspi->irq < 0)) {
+	spi_irq = platform_get_irq(pdev, 0);
+	if (unlikely(spi_irq < 0)) {
 		dev_err(&pdev->dev, "can't find irq resource\n");
 		ret = -ENXIO;
 		goto fail_irq_req;
 	}
+	tspi->irq = spi_irq;
 
 	sprintf(tspi->port_name, "tegra_spi_%d", pdev->id);
 	ret = request_threaded_irq(tspi->irq, spi_tegra_isr,
