@@ -1146,7 +1146,9 @@ static int ulpi_phy_power_on(struct tegra_usb_phy *phy, bool is_dpd)
 	struct tegra_ulpi_config *config = phy->config;
 #endif
 
-	clk_enable(phy->clk);
+	if (phy->clk)
+		clk_enable(phy->clk);
+
 	msleep(1);
 
 	if (!phy->initialized) {
@@ -1258,7 +1260,8 @@ static int ulpi_phy_power_off(struct tegra_usb_phy *phy, bool is_dpd)
 	writel(val, base + HOSTPC1_DEVLC);
 #endif
 
-	clk_disable(phy->clk);
+	if(phy->clk)
+		clk_disable(phy->clk);
 
 	return 0;
 }
@@ -1614,11 +1617,16 @@ struct tegra_usb_phy *tegra_usb_phy_open(int instance, void __iomem *regs,
 	} else if (phy->usb_phy_type == TEGRA_USB_PHY_TYPE_LINK_ULPI) {
 		ulpi_config = config;
 
-		phy->clk = clk_get_sys(NULL, ulpi_config->clk);
-		if (IS_ERR(phy->clk)) {
-			pr_err("%s: can't get ulpi clock\n", __func__);
-			err = -ENXIO;
-			goto err1;
+		if (ulpi_config->clk) {
+			phy->clk = clk_get_sys(NULL, ulpi_config->clk);
+			if (IS_ERR(phy->clk)) {
+				pr_err("%s: can't get ulpi clock\n", __func__);
+				err = -ENXIO;
+				goto err1;
+			}
+		} else {
+			/* Some USB ULPI chips are not driven by Tegra clocks or PLL */
+			phy->clk = NULL;
 		}
 		tegra_gpio_enable(ulpi_config->reset_gpio);
 		gpio_request(ulpi_config->reset_gpio, "ulpi_phy_reset_b");
@@ -1823,7 +1831,7 @@ void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 {
 	if (phy->usb_phy_type == TEGRA_USB_PHY_TYPE_UTMIP)
 		utmip_pad_close(phy);
-	else if (phy->usb_phy_type == TEGRA_USB_PHY_TYPE_LINK_ULPI)
+	else if (phy->usb_phy_type == TEGRA_USB_PHY_TYPE_LINK_ULPI && phy->clk)
 		clk_put(phy->clk);
 	if (phy->mode == TEGRA_USB_PHY_MODE_HOST) {
 		vbus_disable(phy);
