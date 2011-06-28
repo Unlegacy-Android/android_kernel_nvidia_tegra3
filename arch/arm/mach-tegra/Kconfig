@@ -187,3 +187,7 @@ config WIFI_CONTROL_FUNC
 	bool "Enable WiFi control function abstraction"
 	help
 	  Enables Power/Reset/Carddetect function abstraction
+
+config USB_HOTPLUG
+	bool "Enabling the USB hotplug"
+	default n
