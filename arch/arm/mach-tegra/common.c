@@ -123,7 +123,7 @@ void tegra_assert_system_reset(char mode, const char *cmd)
 static __initdata struct tegra_clk_init_table tegra20_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "clk_m",	NULL,		0,		true },
-#ifndef CONFIG_TEGRA_FPGA_PLATFORM
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	{ "pll_p",	NULL,		216000000,	true },
 	{ "pll_p_out1",	"pll_p",	28800000,	true },
@@ -212,10 +212,7 @@ void tegra_init_cache(u32 tag_latency, u32 data_latency)
 	tag_latency = 0x331;
 	data_latency = 0x441;
 #elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
-	tag_latency = 0x770;
-	data_latency = 0x770;
-#else
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	if (is_lp_cluster()) {
 		tag_latency = 0x221;
 		data_latency = 0x221;
@@ -223,6 +220,9 @@ void tegra_init_cache(u32 tag_latency, u32 data_latency)
 		tag_latency = 0x331;
 		data_latency = 0x441;
 	}
+#else
+	writel(0x770, p + L2X0_TAG_LATENCY_CTRL);
+	writel(0x770, p + L2X0_DATA_LATENCY_CTRL);
 #endif
 #endif
 	writel_relaxed(tag_latency, p + L2X0_TAG_LATENCY_CTRL);
