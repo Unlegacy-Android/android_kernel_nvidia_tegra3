@@ -1,4 +1,5 @@
 obj-y                                   += board-pinmux.o
+obj-y                                   += ahb.o
 obj-y                                   += common.o
 obj-y                                   += devices.o
 obj-y                                   += apbio.o
