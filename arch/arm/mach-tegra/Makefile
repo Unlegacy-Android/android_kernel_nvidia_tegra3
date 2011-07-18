@@ -38,8 +38,8 @@ obj-$(CONFIG_TEGRA_STAT_MON)            += tegra2_statmon.o
 obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
 obj-$(CONFIG_FIQ)                       += fiq.o
 obj-$(CONFIG_TEGRA_PWM)                 += pwm.o
-obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)	+= arb_sema.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= powergate.o
+obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)       += arb_sema.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += powergate.o
 ifeq ($(CONFIG_TEGRA_SILICON_PLATFORM),y)
 obj-y                                   += dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_dvfs.o
@@ -54,14 +54,14 @@ obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_actmon.o
 endif
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_emc.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_emc.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= wakeups-t2.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= wakeups-t3.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= pm-t2.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += wakeups-t2.o
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += wakeups-t3.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += pm-t2.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pm-t3.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= pinmux-tegra20-tables.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= pinmux-tegra30-tables.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= board-dt-tegra30.o
-obj-$(CONFIG_LOCAL_TIMERS)		+= localtimer.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += pinmux-tegra20-tables.o
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pinmux-tegra30-tables.o
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += board-dt-tegra30.o
+obj-$(CONFIG_LOCAL_TIMERS)              += localtimer.o
 obj-$(CONFIG_SMP)                       += platsmp.o
 obj-$(CONFIG_HOTPLUG_CPU)               += hotplug.o
 obj-y                                   += headsmp.o
@@ -71,8 +71,8 @@ obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
 ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpu-tegra3.o
 endif
-obj-$(CONFIG_TEGRA_PCI)			+= pcie.o
-obj-$(CONFIG_USB_SUPPORT)		+= usb_phy.o
+obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
+obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
 ifeq ($(CONFIG_CPU_IDLE),y)
 obj-y                                   += cpuidle.o
 ifeq ($(CONFIG_PM_SLEEP),y)
@@ -105,8 +105,8 @@ obj-$(CONFIG_MACH_HARMONY)              += board-harmony-pinmux.o
 obj-$(CONFIG_MACH_HARMONY)              += board-harmony-pcie.o
 obj-$(CONFIG_MACH_HARMONY)              += board-harmony-power.o
 
-obj-$(CONFIG_MACH_PAZ00)		+= board-paz00.o
-obj-$(CONFIG_MACH_PAZ00)		+= board-paz00-pinmux.o
+obj-$(CONFIG_MACH_PAZ00)                += board-paz00.o
+obj-$(CONFIG_MACH_PAZ00)                += board-paz00-pinmux.o
 
 obj-$(CONFIG_MACH_SEABOARD)             += board-seaboard.o
 obj-$(CONFIG_MACH_SEABOARD)             += board-seaboard-pinmux.o
