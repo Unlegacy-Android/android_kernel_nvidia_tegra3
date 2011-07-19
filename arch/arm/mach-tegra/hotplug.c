@@ -1,7 +1,7 @@
 /*
- *  linux/arch/arm/mach-tegra/hotplug.c
+ *  arch/arm/mach-tegra/hotplug.c
  *
- *  Copyright (C) 2010 NVIDIA Corporation
+ *  Copyright (C) 2010-2011 NVIDIA Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -11,6 +11,8 @@
 #include <linux/io.h>
 #include <linux/smp.h>
 #include <linux/cpu_pm.h>
+
+#include <asm/cacheflush.h>
 
 #include <mach/iomap.h>
 
@@ -50,7 +52,11 @@ int platform_cpu_kill(unsigned int cpu)
 
 void platform_cpu_die(unsigned int cpu)
 {
+	/* Flush the L1 data cache. */
+	flush_cache_all();
+
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	/* Place the current CPU in reset. */
 	tegra2_sleep_reset();
 #endif
 
