@@ -312,4 +312,14 @@ config TEGRA_STAT_MON
         help
           Enables support for hardware statistics monitor for AVP.
 
+config TEGRA_DYNAMIC_PWRDET
+	bool "Enable dynamic activation of IO level auto-detection"
+	depends on TEGRA_SILICON_PLATFORM
+	default n
+	help
+	  This option allows turning off tegra IO level auto-detection
+	  when IO power is stable. If set auto-detection cells are active
+	  only during power transitions, otherwise, the cells are active
+	  always
+
 endif
