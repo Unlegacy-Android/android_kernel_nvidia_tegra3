@@ -113,6 +113,8 @@
 #define SL_ADDR1(addr) (addr & 0xff)
 #define SL_ADDR2(addr) ((addr >> 8) & 0xff)
 
+
+
 struct tegra_i2c_dev;
 
 struct tegra_i2c_bus {
@@ -174,6 +176,9 @@ struct tegra_i2c_dev {
 	u16 slave_addr;
 	bool is_clkon_always;
 	struct tegra_i2c_bus busses[1];
+	int scl_gpio;
+	int sda_gpio;
+	int (*arb_recovery)(int scl_gpio, int sda_gpio);
 };
 
 static void dvc_writel(struct tegra_i2c_dev *i2c_dev, u32 val, unsigned long reg)
@@ -584,6 +589,7 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_bus *i2c_bus,
 	u32 int_mask;
 	int ret;
 	unsigned long flags;
+	int arb_stat;
 
 	tegra_i2c_flush_fifos(i2c_dev);
 
@@ -652,6 +658,15 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_bus *i2c_bus,
 
 	if (likely(i2c_dev->msg_err == I2C_ERR_NONE))
 		return 0;
+
+	/* Arbitration Lost occurs, Start recovery */
+	if (i2c_dev->msg_err == I2C_ERR_ARBITRATION_LOST) {
+		if (i2c_dev->arb_recovery) {
+			arb_stat = i2c_dev->arb_recovery(i2c_dev->scl_gpio, i2c_dev->sda_gpio);
+			if (!arb_stat)
+				return -EAGAIN;
+		}
+	}
 
 	spin_lock_irqsave(&i2c_dev->clk_lock, flags);
 	i2c_dev->controller_enabled = false;
@@ -838,6 +853,9 @@ static int __devinit tegra_i2c_probe(struct platform_device *pdev)
 	else
 		i2c_dev->is_dvc = plat->is_dvc;
 	i2c_dev->slave_addr = plat->slave_addr;
+	i2c_dev->scl_gpio = plat->scl_gpio;
+	i2c_dev->sda_gpio = plat->sda_gpio;
+	i2c_dev->arb_recovery = plat->arb_recovery;
 	init_completion(&i2c_dev->msg_complete);
 
 	if (irq == INT_I2C || irq == INT_I2C2 || irq == INT_I2C3)
