@@ -373,6 +373,7 @@ void __init tegra20_init_early(void)
 	tegra_init_fuse();
 	tegra2_init_clocks();
 	tegra2_init_dvfs();
+	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra20_clk_init_table);
 	tegra_init_power();
 	tegra_init_cache();
@@ -386,6 +387,7 @@ void __init tegra30_init_early(void)
 
 	tegra3_init_clocks();
 	tegra3_init_dvfs();
+	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra30_clk_init_table);
 	tegra_init_power();
 	tegra_init_cache();

@@ -204,6 +204,7 @@ struct tegra_sku_rate_limit {
 
 void tegra2_init_clocks(void);
 void tegra3_init_clocks(void);
+void tegra_common_init_clock(void);
 void tegra_init_max_rate(struct clk *c, unsigned long max_rate);
 void clk_init(struct clk *clk);
 struct clk *tegra_get_clock_by_name(const char *name);
