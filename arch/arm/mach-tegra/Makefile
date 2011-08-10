@@ -161,8 +161,6 @@ obj-${CONFIG_MACH_CARDHU}               += board-cardhu-sdhci.o
 obj-${CONFIG_MACH_CARDHU}               += board-cardhu-sensors.o
 obj-${CONFIG_MACH_CARDHU}               += board-cardhu-memory.o
 obj-${CONFIG_MACH_CARDHU}               += board-cardhu-powermon.o
-obj-${CONFIG_MACH_CARDHU}               += baseband-xmm-power.o
-obj-m += baseband-xmm-power2.o
 
 obj-${CONFIG_MACH_KAI}                  += board-touch-kai-synaptics-spi.o
 obj-y                                   += board-touch-raydium_spi.o
@@ -191,3 +189,7 @@ obj-${CONFIG_MACH_KAI}                  += board-kai-power.o
 obj-${CONFIG_MACH_KAI}                  += board-kai-sdhci.o
 obj-${CONFIG_MACH_KAI}                  += board-kai-sensors.o
 obj-y                                   += eeprom-wifi-mac.o
+
+obj-${CONFIG_TEGRA_BB_XMM_POWER}        += baseband-xmm-power.o
+obj-${CONFIG_TEGRA_BB_XMM_POWER2}       += baseband-xmm-power2.o
+
