@@ -47,6 +47,10 @@
 
 struct clk;
 
+int tegra_powergate_mc_disable(int id);
+int tegra_powergate_mc_enable(int id);
+int tegra_powergate_mc_flush(int id);
+int tegra_powergate_mc_flush_done(int id);
 int tegra_powergate_remove_clamping(int id);
 const char *tegra_powergate_get_name(int id);
 
