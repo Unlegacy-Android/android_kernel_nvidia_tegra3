@@ -45,6 +45,7 @@
 #include "dvfs.h"
 #include "fuse.h"
 #include "pm.h"
+#include "reset.h"
 
 #define MC_SECURITY_CFG2	0x7c
 
