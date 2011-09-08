@@ -69,9 +69,6 @@
 #include "baseband-xmm-power.h"
 #include "wdt-recovery.h"
 
-static unsigned long ramconsole_start;
-static unsigned long ramconsole_size;
-
 /* All units are in millicelsius */
 static struct tegra_thermal_data thermal_data = {
 	.temp_throttle = 85000,
@@ -1141,14 +1138,6 @@ static void cardhu_sata_init(void)
 static void cardhu_sata_init(void) { }
 #endif
 
-static void cardhu_ramconsole_init(void)
-{
-	struct resource *res;
-	res = platform_get_resource(&ram_console_device, IORESOURCE_MEM, 0);
-	res->start = ramconsole_start;
-	res->end = res->start + ramconsole_size - 1;
-}
-
 static void __init tegra_cardhu_init(void)
 {
 	tegra_thermal_init(&thermal_data);
@@ -1161,7 +1150,6 @@ static void __init tegra_cardhu_init(void)
 	cardhu_edp_init();
 #endif
 	cardhu_uart_init();
-	cardhu_ramconsole_init();
 	platform_add_devices(cardhu_devices, ARRAY_SIZE(cardhu_devices));
 	cardhu_sdhci_init();
 	cardhu_regulator_init();
@@ -1190,23 +1178,35 @@ static void __init tegra_cardhu_init(void)
 #endif
 }
 
-static void __init tegra_cardhu_reserve(void)
+static void __init cardhu_ramconsole_reserve(unsigned long size)
 {
+	struct resource *res;
 	long ret;
-	ramconsole_size = SZ_1M;
-	ramconsole_start = memblock_end_of_DRAM() - ramconsole_size;
-	ret = memblock_remove(ramconsole_start, ramconsole_size);
+
+	res = platform_get_resource(&ram_console_device, IORESOURCE_MEM, 0);
+	if (!res) {
+		pr_err("Failed to find memory resource for ram console\n");
+		return;
+	}
+	res->start = memblock_end_of_DRAM() - size;
+	res->end = res->start + size - 1;
+	ret = memblock_remove(res->start, size);
 	if (ret) {
-		ramconsole_size = 0;
+		ram_console_device.resource = NULL;
+		ram_console_device.num_resources = 0;
 		pr_err("Failed to reserve memory block for ram console\n");
 	}
+}
 
+static void __init tegra_cardhu_reserve(void)
+{
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
 	/* support 1920X1200 with 24bpp */
 	tegra_reserve(0, SZ_8M + SZ_1M, SZ_8M + SZ_1M);
 #else
 	tegra_reserve(SZ_128M, SZ_8M, SZ_8M);
 #endif
+	cardhu_ramconsole_reserve(SZ_1M);
 }
 
 MACHINE_START(CARDHU, "cardhu")
