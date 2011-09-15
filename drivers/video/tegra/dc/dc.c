@@ -33,9 +33,12 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/backlight.h>
-#include <linux/switch.h>
 #include <video/tegrafb.h>
 #include <drm/drm_fixed.h>
+#ifdef CONFIG_SWITCH
+#include <linux/switch.h>
+#endif
+
 
 #include <mach/clk.h>
 #include <mach/dc.h>
@@ -1715,8 +1718,10 @@ static int tegra_dc_program_mode(struct tegra_dc *dc, struct tegra_dc_mode *mode
 	tegra_dc_writel(dc, PIXEL_CLK_DIVIDER_PCD1 | SHIFT_CLK_DIVIDER(div),
 			DC_DISP_DISP_CLOCK_CONTROL);
 
+#ifdef CONFIG_SWITCH
 	switch_set_state(&dc->modeset_switch,
 			 (mode->h_active << 16) | mode->v_active);
+#endif
 
 	tegra_dc_writel(dc, GENERAL_UPDATE, DC_CMD_STATE_CONTROL);
 	tegra_dc_writel(dc, GENERAL_ACT_REQ, DC_CMD_STATE_CONTROL);
@@ -2659,7 +2664,9 @@ void tegra_dc_disable(struct tegra_dc *dc)
 			_tegra_dc_disable(dc);
 	}
 
+#ifdef CONFIG_SWITCH
 	switch_set_state(&dc->modeset_switch, 0);
+#endif
 
 	mutex_unlock(&dc->lock);
 	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_MODE)
@@ -2725,6 +2732,7 @@ static void tegra_dc_underflow_worker(struct work_struct *work)
 	mutex_unlock(&dc->lock);
 }
 
+#ifdef CONFIG_SWITCH
 static ssize_t switch_modeset_print_mode(struct switch_dev *sdev, char *buf)
 {
 	struct tegra_dc *dc =
@@ -2735,6 +2743,7 @@ static ssize_t switch_modeset_print_mode(struct switch_dev *sdev, char *buf)
 
 	return sprintf(buf, "%dx%d\n", dc->mode.h_active, dc->mode.v_active);
 }
+#endif
 
 static int tegra_dc_probe(struct nvhost_device *ndev)
 {
@@ -2856,10 +2865,12 @@ static int tegra_dc_probe(struct nvhost_device *ndev)
 
 	nvhost_set_drvdata(ndev, dc);
 
+#ifdef CONFIG_SWITCH
 	dc->modeset_switch.name = dev_name(&ndev->dev);
 	dc->modeset_switch.state = 0;
 	dc->modeset_switch.print_state = switch_modeset_print_mode;
 	switch_dev_register(&dc->modeset_switch);
+#endif
 
 	if (dc->pdata->default_out)
 		tegra_dc_set_out(dc, dc->pdata->default_out);
@@ -2973,7 +2984,9 @@ static int tegra_dc_remove(struct nvhost_device *ndev)
 	if (dc->enabled)
 		_tegra_dc_disable(dc);
 
+#ifdef CONFIG_SWITCH
 	switch_dev_unregister(&dc->modeset_switch);
+#endif
 	free_irq(dc->irq, dc);
 	clk_put(dc->emc_clk);
 	clk_put(dc->clk);
