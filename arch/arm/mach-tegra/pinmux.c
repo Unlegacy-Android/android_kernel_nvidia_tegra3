@@ -37,8 +37,10 @@
 
 static const struct tegra_pingroup_desc *pingroups;
 static const struct tegra_drive_pingroup_desc *drive_pingroups;
+static const int *gpio_to_pingroups_map;
 static int pingroup_max;
 static int drive_max;
+static int gpio_to_pingroups_map_max;
 
 static char *tegra_mux_names[TEGRA_MAX_MUX] = {
 	[TEGRA_MUX_AHB_CLK] = "AHB_CLK",
@@ -223,7 +225,7 @@ static const char *pupd_name(unsigned long val)
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 static const char *lock_name(unsigned long val)
 {
-	switch(val) {
+	switch (val) {
 	case TEGRA_PIN_LOCK_DEFAULT:
 		return "LOCK_DEFUALT";
 
@@ -239,7 +241,7 @@ static const char *lock_name(unsigned long val)
 
 static const char *od_name(unsigned long val)
 {
-	switch(val) {
+	switch (val) {
 	case TEGRA_PIN_OD_DEFAULT:
 		return "OD_DEFAULT";
 
@@ -255,7 +257,7 @@ static const char *od_name(unsigned long val)
 
 static const char *ioreset_name(unsigned long val)
 {
-	switch(val) {
+	switch (val) {
 	case TEGRA_PIN_IO_RESET_DEFAULT:
 		return "IO_RESET_DEFAULT";
 
@@ -297,6 +299,11 @@ static inline u32 pg_readl(u32 bank, u32 reg)
 static inline void pg_writel(u32 val, u32 bank, u32 reg)
 {
 	writel(val, regs[bank] + reg);
+}
+
+int tegra_pinmux_get_pingroup(int gpio_nr)
+{
+	return gpio_to_pingroups_map[gpio_nr];
 }
 
 static int tegra_pinmux_set_func(const struct tegra_pingroup_config *config)
@@ -970,7 +977,8 @@ static int __devinit tegra_pinmux_probe(struct platform_device *pdev)
 
 	if (match)
 		((pinmux_init)(match->data))(&pingroups, &pingroup_max,
-			&drive_pingroups, &drive_max);
+			&drive_pingroups, &drive_max, &gpio_to_pingroups_map,
+			&gpio_to_pingroups_max);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	else
 		/* no device tree available, so we must be on tegra20 */

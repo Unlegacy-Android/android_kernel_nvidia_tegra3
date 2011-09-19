@@ -22,6 +22,7 @@
 
 #include <linux/types.h>
 #include <mach/irqs.h>
+#include <mach/pinmux.h>
 
 #define TEGRA_NR_GPIOS		INT_GPIO_NR
 
@@ -44,5 +45,6 @@ void tegra_gpio_config(struct tegra_gpio_table *table, int num);
 void tegra_gpio_enable(int gpio);
 void tegra_gpio_disable(int gpio);
 void tegra_gpio_init_configure(unsigned gpio, bool is_input, int value);
+void tegra_gpio_set_tristate(int gpio, enum tegra_tristate ts);
 
 #endif
