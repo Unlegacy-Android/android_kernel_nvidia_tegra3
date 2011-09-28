@@ -28,6 +28,7 @@
 #include <linux/platform_device.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
+#include <linux/mfd/core.h>
 #include <linux/mfd/aat2870.h>
 
 struct aat2870_regulator {
@@ -188,7 +189,7 @@ static int aat2870_regulator_probe(struct platform_device *pdev)
 	ri->pdev = pdev;
 
 	rdev = regulator_register(&ri->desc, &pdev->dev,
-				  pdev->dev.platform_data, ri, NULL);
+				  mfd_get_data(pdev), ri, NULL);
 	if (IS_ERR(rdev)) {
 		dev_err(&pdev->dev, "Failed to register regulator %s\n",
 			ri->desc.name);
