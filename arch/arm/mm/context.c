@@ -114,8 +114,7 @@ static void reset_context(void *info)
 	set_mm_context(mm, asid);
 
 	/* set the new ASID */
-	cpu_set_asid(mm->context.id);
-	isb();
+	cpu_switch_mm(mm->pgd, mm);
 }
 
 #else
