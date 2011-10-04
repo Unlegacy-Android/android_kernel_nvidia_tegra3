@@ -32,6 +32,14 @@ struct tegra_gpio_table {
 	bool	enable;	/* Enable for GPIO at init? */
 };
 
+struct gpio_init_pin_info {
+	char name[16];
+	int gpio_nr;
+	bool is_gpio;
+	bool is_input;
+	int value; /* Value if it is output*/
+};
+
 void tegra_gpio_config(struct tegra_gpio_table *table, int num);
 void tegra_gpio_enable(int gpio);
 void tegra_gpio_disable(int gpio);
