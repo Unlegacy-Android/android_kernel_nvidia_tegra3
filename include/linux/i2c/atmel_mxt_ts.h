@@ -40,6 +40,7 @@ struct mxt_platform_data {
 	unsigned char orient;
 	unsigned long irqflags;
 	u8(*read_chg) (void);
+	u32 config_crc;
 };
 
 #endif /* __LINUX_ATMEL_MXT_TS_H */
