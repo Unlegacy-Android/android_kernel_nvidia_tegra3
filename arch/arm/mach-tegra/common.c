@@ -241,7 +241,7 @@ void tegra_init_cache(u32 tag_latency, u32 data_latency)
 
 	cache_type = readl(p + L2X0_CACHE_TYPE);
 	aux_ctrl = (cache_type & 0x700) << (17-8);
-	aux_ctrl |= 0x6C400001;
+	aux_ctrl |= 0x7C400001;
 
 	l2x0_init(p, aux_ctrl, 0x8200c3fe);
 #endif
