@@ -240,6 +240,9 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 	unsigned int shift = (gic_irq(d) % 4) * 8;
 	unsigned int cpu = cpumask_any_and(mask_val, cpu_online_mask);
 	u32 val, mask, bit;
+#ifdef CONFIG_GIC_SET_MULTIPLE_CPUS
+	struct irq_desc *desc = irq_to_desc(d->irq);
+#endif
 
 	if (cpu >= 8 || cpu >= nr_cpu_ids)
 		return -EINVAL;
@@ -249,7 +252,15 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 
 	raw_spin_lock(&irq_controller_lock);
 	val = readl_relaxed(reg) & ~mask;
-	writel_relaxed(val | bit, reg);
+	val |= bit;
+#ifdef CONFIG_GIC_SET_MULTIPLE_CPUS
+	if (desc && desc->affinity_hint) {
+		struct cpumask mask_hint;
+		if (cpumask_and(&mask_hint, desc->affinity_hint, mask_val))
+			val |= (*cpumask_bits(&mask_hint) << shift) & mask;
+	}
+#endif
+	writel_relaxed(val, reg);
 	raw_spin_unlock(&irq_controller_lock);
 
 	return IRQ_SET_MASK_OK;
