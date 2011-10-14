@@ -114,6 +114,15 @@ void enterprise_bpc_mgmt_init(void);
 
 /* Baseband GPIO addresses */
 
+#define GPIO_BB_RESET		TEGRA_GPIO_PE1
+#define GPIO_BB_PWRON		TEGRA_GPIO_PE0
+#define GPIO_BB_APACK		TEGRA_GPIO_PE3
+#define GPIO_BB_APACK2		TEGRA_GPIO_PE2
+#define GPIO_BB_CPACK		TEGRA_GPIO_PU5
+#define GPIO_BB_CPACK2		TEGRA_GPIO_PV0
+#define GPIO_BB_RSVD1		TEGRA_GPIO_PV1
+#define GPIO_BB_RSVD2		TEGRA_GPIO_PU4
+
 #define BB_GPIO_MDM_PWRON_AP2BB		TEGRA_GPIO_PE0 /* LCD_D0 */
 #define BB_GPIO_RESET_AP2BB		TEGRA_GPIO_PE1 /* LCD_D1 */
 #define BB_GPIO_LCD_PWR1		TEGRA_GPIO_PC1
@@ -138,5 +147,13 @@ void enterprise_bpc_mgmt_init(void);
 #define TEGRA_CUR_MON_THRESHOLD		-2000
 #define TEGRA_CUR_MON_RESISTOR		20
 #define TEGRA_CUR_MON_MIN_CORES		2
+
+/* Baseband IDs */
+
+enum tegra_bb_type {
+	TEGRA_BB_PH450 = 1,
+	TEGRA_BB_XMM6260,
+	TEGRA_BB_M7400,
+};
 
 #endif /*_MACH_TEGRA_BOARD_ENTERPRISE_H */
