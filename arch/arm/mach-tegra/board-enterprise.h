@@ -93,4 +93,6 @@ void __init enterprise_tsensor_init(void);
 /* Audio-related GPIOs */
 #define TEGRA_GPIO_HP_DET	TEGRA_GPIO_PW3
 
+#define TDIODE_OFFSET	(9000)	/* in millicelsius */
+
 #endif
