@@ -27,6 +27,7 @@
 #include <linux/io.h>
 #include <linux/gpio.h>
 #include <linux/i2c.h>
+#include <linux/memblock.h>
 
 #include <sound/wm8903.h>
 
@@ -400,10 +401,19 @@ static void __init tegra_harmony_init(void)
 #endif
 }
 
+void __init tegra_harmony_reserve(void)
+{
+	if (memblock_reserve(0x0, 4096) < 0)
+		pr_warn("Cannot reserve first 4K of memory for safety\n");
+
+	tegra_reserve(SZ_128M, SZ_8M, 0);
+}
+
 MACHINE_START(HARMONY, "harmony")
 	.atag_offset	= 0x100,
 	.fixup		= tegra_harmony_fixup,
 	.map_io         = tegra_map_common_io,
+	.reserve        = tegra_harmony_reserve,
 	.init_early	= tegra20_init_early,
 	.init_irq       = tegra_init_irq,
 	.handle_irq	= gic_handle_irq,
