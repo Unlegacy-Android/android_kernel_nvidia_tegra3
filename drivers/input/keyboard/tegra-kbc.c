@@ -65,6 +65,8 @@
 #define KBC_ROW0_MASK_0	0x38
 
 #define KBC_ROW_SHIFT	3
+#define DEFAULT_SCAN_COUNT 2
+#define DEFAULT_INIT_DLY   5
 
 struct tegra_kbc {
 	void __iomem *mmio;
@@ -86,6 +88,8 @@ struct tegra_kbc {
 	u32 wakeup_key;
 	struct timer_list timer;
 	struct clk *clk;
+	unsigned long scan_timeout_count;
+	unsigned long one_scan_time;
 };
 
 static const u32 tegra_kbc_default_keymap[] __devinitdata = {
@@ -507,6 +511,9 @@ static int tegra_kbc_start(struct tegra_kbc *kbc)
 	val |= KBC_CONTROL_KBC_EN;     /* enable */
 	writel(val, kbc->mmio + KBC_CONTROL_0);
 
+	writel(DEFAULT_INIT_DLY, kbc->mmio + KBC_INIT_DLY_0);
+	writel(kbc->scan_timeout_count, kbc->mmio + KBC_TO_CNT_0);
+
 	/*
 	 * Compute the delay(ns) from interrupt mode to continuous polling
 	 * mode so the timer routine is scheduled appropriately.
@@ -662,6 +669,9 @@ static int __devinit tegra_kbc_probe(struct platform_device *pdev)
 	int num_rows = 0;
 	unsigned int debounce_cnt;
 	unsigned int scan_time_rows;
+	unsigned long scan_tc;
+
+	dev_dbg(&pdev->dev, "KBC: tegra_kbc_probe\n");
 
 	if (!pdata)
 		pdata = tegra_kbc_dt_parse_pdata(pdev);
@@ -739,6 +749,17 @@ static int __devinit tegra_kbc_probe(struct platform_device *pdev)
 	scan_time_rows = (KBC_ROW_SCAN_TIME + debounce_cnt) * num_rows;
 	kbc->repoll_dly = KBC_ROW_SCAN_DLY + scan_time_rows + pdata->repeat_cnt;
 	kbc->repoll_dly = DIV_ROUND_UP(kbc->repoll_dly, KBC_CYCLE_MS);
+
+	if (pdata->scan_count)
+		scan_tc = DEFAULT_INIT_DLY + (scan_time_rows +
+				pdata->repeat_cnt) * pdata->scan_count;
+	else
+		scan_tc = DEFAULT_INIT_DLY + (scan_time_rows +
+				pdata->repeat_cnt) * DEFAULT_SCAN_COUNT;
+
+	kbc->one_scan_time = scan_time_rows + pdata->repeat_cnt;
+	/* Bit 19:0 is for scan timeout count */
+	kbc->scan_timeout_count = scan_tc & 0xFFFFF;
 
 	input_dev->name = pdev->name;
 	input_dev->id.bustype = BUS_HOST;
@@ -834,6 +855,8 @@ static int tegra_kbc_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_kbc *kbc = platform_get_drvdata(pdev);
+	int timeout;
+	unsigned long int_st;
 
 	mutex_lock(&kbc->idev->mutex);
 	if (device_may_wakeup(&pdev->dev)) {
