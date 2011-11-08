@@ -1,3 +1,5 @@
+GCOV_PROFILE := y
+
 obj-y                                   += board-pinmux.o
 obj-y                                   += ahb.o
 obj-y                                   += apbio.o
