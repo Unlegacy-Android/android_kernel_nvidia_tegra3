@@ -828,11 +828,18 @@ static int sbs_suspend(struct i2c_client *client,
 
 	return 0;
 }
+
+static int sbs_resume(struct i2c_client *client)
+{
+	struct sbs_info *chip = i2c_get_clientdata(client);
+
+	schedule_delayed_work(&chip->work, HZ);
+	return 0;
+}
 #else
 #define sbs_suspend		NULL
-#endif
-/* any smbus transaction will wake up sbs */
 #define sbs_resume		NULL
+#endif
 
 static const struct i2c_device_id sbs_id[] = {
 	{ "bq20z75", 0 },
