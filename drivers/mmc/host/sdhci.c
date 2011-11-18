@@ -2456,6 +2456,10 @@ int sdhci_suspend_host(struct sdhci_host *host)
 		return ret;
 	}
 
+	if (host->flags & MMC_PM_KEEP_POWER)
+		host->card_int_set = sdhci_readl(host, SDHCI_INT_ENABLE) &
+			SDHCI_INT_CARD_INT;
+
 	sdhci_mask_irqs(host, SDHCI_INT_ALL_MASK);
 
 	if (host->irq)
@@ -2489,7 +2493,8 @@ int sdhci_resume_host(struct sdhci_host *host)
 			/* Enable card interrupt as it is overwritten in sdhci_init */
 			if ((mmc->caps & MMC_CAP_SDIO_IRQ) &&
 				(mmc->pm_flags & MMC_PM_KEEP_POWER))
-					mmc->ops->enable_sdio_irq(mmc, true);
+					if (host->card_int_set)
+						mmc->ops->enable_sdio_irq(mmc, true);
 		}
 	}
 
