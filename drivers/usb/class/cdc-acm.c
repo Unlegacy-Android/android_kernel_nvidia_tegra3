@@ -912,7 +912,7 @@ static int acm_probe(struct usb_interface *intf,
 	num_rx_buf = (quirks == SINGLE_RX_URB) ? 1 : ACM_NR;
 
 	/* not a real CDC ACM device */
-	if (quirks == NOT_REAL_ACM)
+	if (quirks & NOT_REAL_ACM)
 		return -ENODEV;
 
 	/* handle quirks deadly to normal probing*/
@@ -1134,6 +1134,8 @@ made_compressed_probe:
 	acm->is_int_ep = usb_endpoint_xfer_int(epread);
 	if (acm->is_int_ep)
 		acm->bInterval = epread->bInterval;
+	if (quirks & NO_HANGUP_IN_RESET_RESUME)
+		acm->no_hangup_in_reset_resume = 1;
 	tty_port_init(&acm->port);
 	acm->port.ops = &acm_port_ops;
 
@@ -1439,7 +1441,8 @@ static int acm_reset_resume(struct usb_interface *intf)
 	if (test_bit(ASYNCB_INITIALIZED, &acm->port.flags)) {
 		tty = tty_port_tty_get(&acm->port);
 		if (tty) {
-			tty_hangup(tty);
+			if (!acm->no_hangup_in_reset_resume)
+				tty_hangup(tty);
 			tty_kref_put(tty);
 		}
 	}
@@ -1530,7 +1533,7 @@ static const struct usb_device_id acm_ids[] = {
 	.driver_info = NO_UNION_NORMAL, /* reports zero length descriptor */
 	},
 	{ USB_DEVICE(0x1519, 0x0020),
-	.driver_info = NO_UNION_NORMAL, /* has no union descriptor */
+	.driver_info = NO_UNION_NORMAL | NO_HANGUP_IN_RESET_RESUME, /* has no union descriptor */
 	},
 
 	/* Nokia S60 phones expose two ACM channels. The first is
@@ -1615,6 +1618,11 @@ static const struct usb_device_id acm_ids[] = {
 	/* Exclude XMM6260 boot rom (not running modem software yet) */
 	{ USB_DEVICE(0x058b, 0x0041),
 	.driver_info = NOT_REAL_ACM,
+	},
+
+	/* Icera 450 */
+	{ USB_DEVICE(0x1983, 0x0321),
+	.driver_info = NO_HANGUP_IN_RESET_RESUME,
 	},
 
 	/* control interfaces without any protocol set */
