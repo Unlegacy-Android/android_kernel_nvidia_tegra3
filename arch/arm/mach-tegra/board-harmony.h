@@ -35,6 +35,16 @@
 #define TEGRA_GPIO_EXT_MIC_EN		TEGRA_GPIO_PX1
 #define TEGRA_GPIO_EN_VDD_1V05_GPIO	HARMONY_GPIO_TPS6586X(2)
 
+/* fixed voltage regulator enable/mode gpios */
+#define TPS_GPIO_EN_1V5                 (HARMONY_GPIO_TPS6586X(0))
+#define TPS_GPIO_EN_1V2                 (HARMONY_GPIO_TPS6586X(1))
+#define TPS_GPIO_EN_1V05                (HARMONY_GPIO_TPS6586X(2))
+#define TPS_GPIO_MODE_1V05              (HARMONY_GPIO_TPS6586X(3))
+
+/* WLAN pwr and reset gpio */
+#define TEGRA_GPIO_WLAN_PWR_LOW         TEGRA_GPIO_PK5
+#define TEGRA_GPIO_WLAN_RST_LOW         TEGRA_GPIO_PK6
+
 #define TEGRA_GPIO_POWERKEY		TEGRA_GPIO_PV2
 
 void harmony_pinmux_init(void);
