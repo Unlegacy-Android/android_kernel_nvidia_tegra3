@@ -1610,6 +1610,12 @@ static int sdhci_do_start_signal_voltage_switch(struct sdhci_host *host,
 	if (host->version < SDHCI_SPEC_300)
 		return 0;
 
+	if (host->quirks & SDHCI_QUIRK_NON_STD_VOLTAGE_SWITCHING) {
+		if (host->ops->switch_signal_voltage)
+			return host->ops->switch_signal_voltage(
+				host, ios->signal_voltage);
+	}
+
 	/*
 	 * We first check whether the request is to set signalling voltage
 	 * to 3.3V. If so, we change the voltage to 3.3V and return quickly.
@@ -1652,7 +1658,6 @@ static int sdhci_do_start_signal_voltage_switch(struct sdhci_host *host,
 
 			/* Wait for 5ms */
 			usleep_range(5000, 5500);
-
 			ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
 			if (ctrl & SDHCI_CTRL_VDD_180) {
 				/* Provide SDCLK again and wait for 1ms*/
