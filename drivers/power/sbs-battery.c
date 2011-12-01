@@ -141,7 +141,7 @@ static enum power_supply_property sbs_properties[] = {
 struct sbs_info {
 	struct i2c_client		*client;
 	struct power_supply		power_supply;
-	struct sbs_platform_data	*pdata;
+	struct sbs_platform_data	plat_data;
 	bool				is_present;
 	bool				gpio_detect;
 	bool				enable_detection;
@@ -158,8 +158,7 @@ static int sbs_read_word_data(struct i2c_client *client, u8 address)
 	s32 ret = 0;
 	int retries = 1;
 
-	if (chip->pdata)
-		retries = max(chip->pdata->i2c_retry_count + 1, 1);
+	retries = max(chip->plat_data.i2c_retry_count + 1, 1);
 
 	while (retries > 0) {
 		ret = i2c_smbus_read_word_data(client, address);
@@ -185,8 +184,7 @@ static int sbs_write_word_data(struct i2c_client *client, u8 address,
 	s32 ret = 0;
 	int retries = 1;
 
-	if (chip->pdata)
-		retries = max(chip->pdata->i2c_retry_count + 1, 1);
+	retries = max(chip->plat_data.i2c_retry_count + 1, 1);
 
 	while (retries > 0) {
 		ret = i2c_smbus_write_word_data(client, address,
@@ -215,8 +213,8 @@ static int sbs_get_battery_presence_and_health(
 
 	if (psp == POWER_SUPPLY_PROP_PRESENT &&
 		chip->gpio_detect) {
-		ret = gpio_get_value(chip->pdata->battery_detect);
-		if (ret == chip->pdata->battery_detect_present)
+		ret = gpio_get_value(chip->plat_data.battery_detect);
+		if (ret == chip->plat_data.battery_detect_present)
 			val->intval = 1;
 		else
 			val->intval = 0;
@@ -562,7 +560,7 @@ static void sbs_external_power_changed(struct power_supply *psy)
 	cancel_delayed_work_sync(&chip->work);
 
 	schedule_delayed_work(&chip->work, HZ);
-	chip->poll_time = chip->pdata->poll_retry_count;
+	chip->poll_time = chip->plat_data.poll_retry_count;
 }
 
 static void sbs_delayed_work(struct work_struct *work)
@@ -715,7 +713,7 @@ static int __devinit sbs_probe(struct i2c_client *client,
 
 	if (pdata) {
 		chip->gpio_detect = gpio_is_valid(pdata->battery_detect);
-		chip->pdata = pdata;
+		memcpy(&chip->plat_data, pdata, sizeof(struct sbs_platform_data));
 	}
 
 	i2c_set_clientdata(client, chip);
@@ -797,7 +795,7 @@ static int __devexit sbs_remove(struct i2c_client *client)
 	if (chip->irq)
 		free_irq(chip->irq, &chip->power_supply);
 	if (chip->gpio_detect)
-		gpio_free(chip->pdata->battery_detect);
+		gpio_free(chip->plat_data.battery_detect);
 
 	power_supply_unregister(&chip->power_supply);
 
