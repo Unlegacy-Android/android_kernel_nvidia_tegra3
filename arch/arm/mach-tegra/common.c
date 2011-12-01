@@ -217,7 +217,7 @@ static __initdata struct tegra_clk_init_table tegra30_clk_init_table[] = {
 };
 #endif
 
-void tegra_init_cache(u32 tag_latency, u32 data_latency)
+void tegra_init_cache(bool init)
 {
 #ifdef CONFIG_CACHE_L2X0
 	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PERIF_BASE) + 0x3000;
@@ -233,8 +233,8 @@ void tegra_init_cache(u32 tag_latency, u32 data_latency)
 		tag_latency = 0x221;
 		data_latency = 0x221;
 	} else {
-		tag_latency = 0x441;
-		data_latency = 0x551;
+		tag_latency = 0x442;
+		data_latency = 0x552;
 	}
 #else
 	writel(0x770, p + L2X0_TAG_LATENCY_CTRL);
@@ -251,11 +251,13 @@ void tegra_init_cache(u32 tag_latency, u32 data_latency)
 #endif	
 #endif
 
-	cache_type = readl(p + L2X0_CACHE_TYPE);
-	aux_ctrl = (cache_type & 0x700) << (17-8);
-	aux_ctrl |= 0x7C400001;
+	if (init) {
+		cache_type = readl(p + L2X0_CACHE_TYPE);
+		aux_ctrl = (cache_type & 0x700) << (17-8);
+		aux_ctrl |= 0x7C400001;
 
-	l2x0_init(p, aux_ctrl, 0x8200c3fe);
+		l2x0_init(p, aux_ctrl, 0x8200c3fe);
+	}
 #endif
 }
 
@@ -371,7 +373,7 @@ void __init tegra20_init_early(void)
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra20_clk_init_table);
 	tegra_init_power();
-	tegra_init_cache();
+	tegra_init_cache(true);
 	tegra_init_ahb_gizmo_settings();
 }
 #endif
