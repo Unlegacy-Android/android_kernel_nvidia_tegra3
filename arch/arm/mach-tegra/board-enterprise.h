@@ -101,4 +101,8 @@ void enterprise_bpc_mgmt_init(void);
 #define TEGRA_BPC_TIMEOUT		100 /* ms */
 #define TEGRA_BPC_CPU_PWR_LIMIT	0 /* in mW, (0 disables) */
 
+#define TEGRA_CUR_MON_THRESHOLD		-2000
+#define TEGRA_CUR_MON_RESISTOR		20
+#define TEGRA_CUR_MON_MIN_CORES		2
+
 #endif /*_MACH_TEGRA_BOARD_ENTERPRISE_H */
