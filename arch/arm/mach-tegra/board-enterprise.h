@@ -51,6 +51,7 @@ int enterprise_modem_init(void);
 int enterprise_suspend_init(void);
 int enterprise_edp_init(void);
 void __init enterprise_tsensor_init(void);
+void enterprise_bpc_mgmt_init(void);
 
 /* PCA954x I2C bus expander bus addresses */
 #define PCA954x_I2C_BUS_BASE	6
@@ -95,4 +96,8 @@ void __init enterprise_tsensor_init(void);
 
 #define TDIODE_OFFSET	(9000)	/* in millicelsius */
 
-#endif
+/* Battery Peak Current Management */
+#define TEGRA_BPC_TRIGGER		TEGRA_GPIO_PR3
+#define TEGRA_BPC_TIMEOUT		100 /* ms */
+
+#endif /*_MACH_TEGRA_BOARD_ENTERPRISE_H */
