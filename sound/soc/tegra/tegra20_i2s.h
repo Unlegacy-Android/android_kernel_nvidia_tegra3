@@ -177,6 +177,12 @@
 
 #define TEGRA20_I2S_PCM_CTRL_RCV_MODE_EN                (1 << 0)
 
+#ifdef CONFIG_PM
+/* unused cache locations for i2s reg cache */
+#define TEGRA20_I2S_CACHE_RSVD_6			((TEGRA20_I2S_NW_CTRL>>2) + 1)
+#define TEGRA20_I2S_CACHE_RSVD_7			(TEGRA20_I2S_CACHE_RSVD_6 + 1)
+#endif
+
 struct tegra20_i2s {
 	struct snd_soc_dai_driver dai;
 	struct clk *clk_i2s;
@@ -185,6 +191,9 @@ struct tegra20_i2s {
 	void __iomem *regs;
 	struct dentry *debug;
 	u32 reg_ctrl;
+#ifdef CONFIG_PM
+	u32  reg_cache[(TEGRA20_I2S_TDM_TX_RX_CTRL >> 2) + 1];
+#endif
 };
 
 #endif
