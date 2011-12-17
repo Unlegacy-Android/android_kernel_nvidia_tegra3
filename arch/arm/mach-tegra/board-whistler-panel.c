@@ -268,6 +268,7 @@ static struct nvhost_device whistler_disp2_device = {
 };
 #endif
 
+#if defined(CONFIG_TEGRA_NVMAP)
 static struct nvmap_platform_carveout whistler_carveouts[] = {
 	[0] = NVMAP_HEAP_CARVEOUT_IRAM_INIT,
 	[1] = {
@@ -291,9 +292,12 @@ static struct platform_device whistler_nvmap_device = {
 		.platform_data = &whistler_nvmap_data,
 	},
 };
+#endif
 
 static struct platform_device *whistler_gfx_devices[] __initdata = {
+#if defined(CONFIG_TEGRA_NVMAP)
 	&whistler_nvmap_device,
+#endif
 #ifdef CONFIG_TEGRA_GRHOST
 	&tegra_grhost_device,
 #endif
@@ -309,8 +313,10 @@ int __init whistler_panel_init(void)
 	gpio_request(whistler_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(whistler_hdmi_hpd);
 
+#if defined(CONFIG_TEGRA_NVMAP)
 	whistler_carveouts[1].base = tegra_carveout_start;
 	whistler_carveouts[1].size = tegra_carveout_size;
+#endif
 
 	err = platform_add_devices(whistler_gfx_devices,
 				   ARRAY_SIZE(whistler_gfx_devices));
