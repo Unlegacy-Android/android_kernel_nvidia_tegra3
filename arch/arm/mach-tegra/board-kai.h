@@ -66,6 +66,9 @@
 #define MAX77663_IRQ_END	(MAX77663_IRQ_BASE + MAX77663_IRQ_NR)
 #define MAX77663_IRQ_ACOK_RISING MAX77663_IRQ_ONOFF_ACOK_RISING
 
+/* UART port which is used by bluetooth*/
+#define BLUETOOTH_UART_DEV_NAME "/dev/ttyHS2"
+
 int kai_charge_init(void);
 int kai_regulator_init(void);
 int kai_suspend_init(void);
