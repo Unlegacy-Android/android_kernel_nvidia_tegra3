@@ -48,4 +48,13 @@ enum tegra_revision {
 extern enum tegra_revision tegra_revision;
 enum tegra_chipid tegra_get_chipid(void);
 
+#ifndef CONFIG_TEGRA_SILICON_PLATFORM
+void tegra_get_netlist_revision(u32 *netlist, u32* patchid);
+#else
+static inline void tegra_get_netlist_revision(u32 *netlist, u32* patchid)
+{
+	BUG();
+}
+#endif
+
 #endif
