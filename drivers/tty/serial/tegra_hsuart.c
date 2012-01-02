@@ -1420,6 +1420,7 @@ static int __init tegra_uart_probe(struct platform_device *pdev)
 	struct tegra_uart_port *t;
 	struct uart_port *u;
 	struct resource *resource;
+	struct resource *iomem;
 	int ret;
 	char name[64];
 	if (pdev->id < 0 || pdev->id > tegra_uart_driver.nr) {
@@ -1447,8 +1448,17 @@ static int __init tegra_uart_probe(struct platform_device *pdev)
 	}
 
 	u->mapbase = resource->start;
-	u->membase = IO_ADDRESS(u->mapbase);
+	iomem = request_mem_region(u->mapbase, resource_size(resource),
+			pdev->name);
+	if (!iomem) {
+		dev_err(&pdev->dev, "UART region already claimed\n");
+		ret = -EBUSY;
+		goto fail;
+	}
+
+	u->membase = ioremap(iomem->start, resource_size(iomem));
 	if (unlikely(!u->membase)) {
+		dev_err(&pdev->dev, "Cannot ioremap UART region\n");
 		ret = -ENOMEM;
 		goto fail;
 	}
