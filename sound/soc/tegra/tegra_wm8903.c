@@ -774,8 +774,17 @@ static __devinit int tegra_wm8903_driver_probe(struct platform_device *pdev)
 		goto err_fini_utils;
 	}
 
+	if (!card->instantiated) {
+		ret = -ENODEV;
+		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
+			ret);
+		goto err_unregister_card;
+	}
+
 	return 0;
 
+err_unregister_card:
+	snd_soc_unregister_card(card);
 err_fini_utils:
 	tegra_asoc_utils_fini(&machine->util_data);
 err_unregister:
