@@ -5,7 +5,7 @@
  *	Colin Cross <ccross@android.com>
  *	Erik Gilling <ccross@android.com>
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation.
+ * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -33,10 +33,10 @@
 #include <mach/iomap.h>
 #include <mach/dma.h>
 #include <mach/usb_phy.h>
+#include <mach/tegra_smmu.h>
 
 #include "gpio-names.h"
 #include "devices.h"
-#include "tegra_smmu.h"
 
 static struct resource gpio_resource[] = {
 	[0] = {
