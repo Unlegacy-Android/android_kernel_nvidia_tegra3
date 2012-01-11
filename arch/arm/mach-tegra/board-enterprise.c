@@ -653,6 +653,7 @@ static struct tegra_ehci_platform_data tegra_ehci_uhsic_pdata = {
 	.phy_config = &uhsic_phy_config,
 	.operating_mode = TEGRA_USB_HOST,
 	.power_down_on_bus_suspend = 1,
+	.default_enable = true,
 };
 
 static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
