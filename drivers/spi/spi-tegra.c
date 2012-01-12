@@ -35,6 +35,7 @@
 #include <linux/delay.h>
 #include <linux/completion.h>
 #include <linux/kthread.h>
+#include <linux/pm_runtime.h>
 
 #include <linux/spi/spi.h>
 #include <linux/spi-tegra.h>
@@ -725,7 +726,7 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 	if (is_first_of_msg) {
 		if (!tspi->is_clkon_always) {
 			if (!tspi->clk_state) {
-				clk_enable(tspi->clk);
+				pm_runtime_get_sync(&tspi->pdev->dev);
 				tspi->clk_state = 1;
 			}
 		}
@@ -850,7 +851,7 @@ static int spi_tegra_setup(struct spi_device *spi)
 
 	if (!tspi->is_clkon_always && !tspi->clk_state) {
 		spin_unlock_irqrestore(&tspi->lock, flags);
-		clk_enable(tspi->clk);
+		pm_runtime_get_sync(&tspi->pdev->dev);
 		spin_lock_irqsave(&tspi->lock, flags);
 		tspi->clk_state = 1;
 	}
@@ -858,7 +859,7 @@ static int spi_tegra_setup(struct spi_device *spi)
 	if (!tspi->is_clkon_always && tspi->clk_state) {
 		tspi->clk_state = 0;
 		spin_unlock_irqrestore(&tspi->lock, flags);
-		clk_disable(tspi->clk);
+		pm_runtime_put_sync(&tspi->pdev->dev);
 	} else
 		spin_unlock_irqrestore(&tspi->lock, flags);
 	return 0;
@@ -1009,7 +1010,7 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 					spin_unlock_irqrestore(&tspi->lock,
 							*irq_flags);
 					udelay(10);
-					clk_disable(tspi->clk);
+					pm_runtime_put_sync(&tspi->pdev->dev);
 					spin_lock_irqsave(&tspi->lock,
 							*irq_flags);
 					tspi->clk_state = 0;
@@ -1382,7 +1383,8 @@ static int __devinit spi_tegra_probe(struct platform_device *pdev)
 	tspi->def_command2_reg = SLINK_CS_ACTIVE_BETWEEN;
 
 skip_dma_alloc:
-	clk_enable(tspi->clk);
+	pm_runtime_enable(&pdev->dev);
+	pm_runtime_get_sync(&pdev->dev);
 	tspi->clk_state = 1;
 	master->dev.of_node = pdev->dev.of_node;
 	ret = spi_register_master(master);
@@ -1429,7 +1431,7 @@ fail_rx_buf_alloc:
 	if (tspi->rx_dma)
 		tegra_dma_free_channel(tspi->rx_dma);
 fail_rx_dma_alloc:
-	clk_put(tspi->clk);
+	pm_runtime_disable(&pdev->dev);
 fail_clk_get:
 	free_irq(tspi->irq, tspi);
 fail_irq_req:
@@ -1463,10 +1465,11 @@ static int __devexit spi_tegra_remove(struct platform_device *pdev)
 		tegra_dma_free_channel(tspi->rx_dma);
 
 	if (tspi->is_clkon_always) {
-		clk_disable(tspi->clk);
+		pm_runtime_put_sync(&pdev->dev);
 		tspi->clk_state = 0;
 	}
 
+	pm_runtime_disable(&pdev->dev);
 	clk_put(tspi->clk);
 	iounmap(tspi->base);
 
@@ -1526,7 +1529,7 @@ static int spi_tegra_suspend(struct platform_device *pdev, pm_message_t state)
 
 	spin_unlock_irqrestore(&tspi->lock, flags);
 	if (tspi->is_clkon_always) {
-		clk_disable(tspi->clk);
+		pm_runtime_put_sync(&pdev->dev);
 		tspi->clk_state = 0;
 	}
 	return 0;
@@ -1545,11 +1548,11 @@ static int spi_tegra_resume(struct platform_device *pdev)
 	master = dev_get_drvdata(&pdev->dev);
 	tspi = spi_master_get_devdata(master);
 
-	clk_enable(tspi->clk);
+	pm_runtime_get_sync(&pdev->dev);
 	tspi->clk_state = 1;
 	spi_tegra_writel(tspi, tspi->command_reg, SLINK_COMMAND);
 	if (!tspi->is_clkon_always) {
-		clk_disable(tspi->clk);
+		pm_runtime_put_sync(&pdev->dev);
 		tspi->clk_state = 0;
 	}
 	spin_lock_irqsave(&tspi->lock, flags);
@@ -1573,6 +1576,37 @@ static int spi_tegra_resume(struct platform_device *pdev)
 }
 #endif
 
+#if defined(CONFIG_PM_RUNTIME)
+
+static int tegra_spi_runtime_idle(struct device *dev)
+{
+	struct spi_master       *master;
+	struct spi_tegra_data   *tspi;
+	master = dev_get_drvdata(dev);
+	tspi = spi_master_get_devdata(master);
+
+	clk_disable(tspi->clk);
+	return 0;
+}
+
+static int tegra_spi_runtime_resume(struct device *dev)
+{
+	struct spi_master       *master;
+	struct spi_tegra_data   *tspi;
+	master = dev_get_drvdata(dev);
+	tspi = spi_master_get_devdata(master);
+
+	clk_enable(tspi->clk);
+	return 0;
+}
+
+static const struct dev_pm_ops tegra_spi_dev_pm_ops = {
+	.runtime_idle = tegra_spi_runtime_idle,
+	.runtime_resume = tegra_spi_runtime_resume,
+};
+
+#endif
+
 MODULE_ALIAS("platform:spi_tegra");
 
 #ifdef CONFIG_OF
@@ -1589,6 +1623,9 @@ static struct platform_driver spi_tegra_driver = {
 	.driver = {
 		.name =		"spi_tegra",
 		.owner =	THIS_MODULE,
+#if defined(CONFIG_PM_RUNTIME)
+		.pm =		&tegra_spi_dev_pm_ops,
+#endif
 		.of_match_table = spi_tegra_of_match_table,
 	},
 	.probe =	spi_tegra_probe,
