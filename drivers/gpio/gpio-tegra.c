@@ -203,6 +203,12 @@ static int tegra_gpio_direction_output(struct gpio_chip *chip, unsigned offset,
 	return 0;
 }
 
+static int tegra_gpio_set_debounce(struct gpio_chip *chip, unsigned offset,
+					int value)
+{
+	return -ENOSYS;
+}
+
 static int tegra_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
 {
 	return TEGRA_GPIO_TO_IRQ(offset);
@@ -214,6 +220,7 @@ static struct gpio_chip tegra_gpio_chip = {
 	.get			= tegra_gpio_get,
 	.direction_output	= tegra_gpio_direction_output,
 	.set			= tegra_gpio_set,
+	.set_debounce		= tegra_gpio_set_debounce,
 	.to_irq			= tegra_gpio_to_irq,
 	.base			= 0,
 	.ngpio			= TEGRA_NR_GPIOS,
