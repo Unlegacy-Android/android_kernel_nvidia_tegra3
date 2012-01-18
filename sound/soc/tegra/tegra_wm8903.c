@@ -30,6 +30,7 @@
 
 #include <asm/mach-types.h>
 
+#include <linux/clk.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
@@ -69,6 +70,7 @@ struct tegra_wm8903 {
 	struct regulator *spk_reg;
 	struct regulator *dmic_reg;
 	int gpio_requested;
+	enum snd_soc_bias_level bias_level;
 };
 
 static int tegra_wm8903_hw_params(struct snd_pcm_substream *substream,
@@ -82,6 +84,8 @@ static int tegra_wm8903_hw_params(struct snd_pcm_substream *substream,
 	struct tegra_wm8903 *machine = snd_soc_card_get_drvdata(card);
 	int srate, mclk, i2s_daifmt;
 	int err;
+	struct clk *clk_m;
+	int rate;
 
 	srate = params_rate(params);
 	switch (srate) {
@@ -94,9 +98,32 @@ static int tegra_wm8903_hw_params(struct snd_pcm_substream *substream,
 		mclk = 256 * srate;
 		break;
 	}
+
+
+
+	clk_m = clk_get_sys(NULL, "clk_m");
+	if (IS_ERR(clk_m)) {
+		dev_err(card->dev, "Can't retrieve clk clk_m\n");
+		err = PTR_ERR(clk_m);
+		return err;
+	}
+	rate = clk_get_rate(clk_m);
+	printk("extern1 rate=%d\n",rate);
+
+#if TEGRA30_I2S_MASTER_PLAYBACK
 	/* FIXME: Codec only requires >= 3MHz if OSR==0 */
 	while (mclk < 6000000)
 		mclk *= 2;
+
+	i2s_daifmt = SND_SOC_DAIFMT_NB_NF |
+		     SND_SOC_DAIFMT_CBS_CFS;
+#else
+	mclk = rate;
+
+	i2s_daifmt = SND_SOC_DAIFMT_NB_NF |
+		     SND_SOC_DAIFMT_CBM_CFM;
+#endif
+
 
 	err = tegra_asoc_utils_set_rate(&machine->util_data, srate, mclk);
 	if (err < 0) {
@@ -109,9 +136,6 @@ static int tegra_wm8903_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	tegra_asoc_utils_lock_clk_rate(&machine->util_data, 1);
-
-	i2s_daifmt = SND_SOC_DAIFMT_NB_NF |
-		     SND_SOC_DAIFMT_CBS_CFS;
 
 	/* Use DSP mode for mono on Tegra20 */
 	if ((params_channels(params) != 2) &&
@@ -529,6 +553,8 @@ static int tegra_wm8903_init(struct snd_soc_pcm_runtime *rtd)
 		return -EINVAL;
 	}
 
+	machine->bias_level = SND_SOC_BIAS_STANDBY;
+
 	if (gpio_is_valid(pdata->gpio_spkr_en)) {
 		ret = gpio_request(pdata->gpio_spkr_en, "spkr_en");
 		if (ret) {
@@ -601,6 +627,32 @@ static int tegra_wm8903_init(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
+static int tegra30_soc_set_bias_level(struct snd_soc_card *card,
+					enum snd_soc_bias_level level)
+{
+	struct tegra_wm8903 *machine = snd_soc_card_get_drvdata(card);
+
+	if (machine->bias_level == SND_SOC_BIAS_OFF &&
+		level != SND_SOC_BIAS_OFF)
+		tegra_asoc_utils_clk_enable(&machine->util_data);
+
+	return 0;
+}
+
+static int tegra30_soc_set_bias_level_post(struct snd_soc_card *card,
+					enum snd_soc_bias_level level)
+{
+	struct tegra_wm8903 *machine = snd_soc_card_get_drvdata(card);
+
+	if (machine->bias_level != SND_SOC_BIAS_OFF &&
+		level == SND_SOC_BIAS_OFF)
+		tegra_asoc_utils_clk_disable(&machine->util_data);
+
+	machine->bias_level = level;
+
+	return 0 ;
+}
+
 static struct snd_soc_dai_link tegra_wm8903_dai[] = {
 	{
 		.name = "WM8903",
@@ -639,6 +691,8 @@ static struct snd_soc_card snd_soc_tegra_wm8903 = {
 	.num_links = ARRAY_SIZE(tegra_wm8903_dai),
 
 	.fully_routed = true,
+	//.set_bias_level = tegra30_soc_set_bias_level,
+	//.set_bias_level_post = tegra30_soc_set_bias_level_post,
 };
 
 static __devinit int tegra_wm8903_driver_probe(struct platform_device *pdev)
