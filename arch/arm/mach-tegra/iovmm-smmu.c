@@ -1039,8 +1039,11 @@ static int smmu_probe(struct platform_device *pdev)
 	smmu->num_ases = MC_SMMU_NUM_ASIDS;
 	smmu->iovmm_base = (tegra_iovmm_addr_t)window->start;
 	smmu->page_count = (window->end + 1 - window->start) >> SMMU_PAGE_SHIFT;
-	for (i = _MC; i < _REGS; i++)
-		smmu->regs[i] = ioremap(tegra_reg[i].base, tegra_reg[i].size);
+	for (i = _MC; i < _REGS; i++) {
+		if (tegra_reg[i].base != 0)
+			smmu->regs[i] = ioremap(tegra_reg[i].base,
+				tegra_reg[i].size);
+	}
 
 	smmu->config_0        = MC_SMMU_CONFIG_0_SMMU_ENABLE_ENABLE;
 	smmu->tlb_config_0    = MC_SMMU_TLB_CONFIG_0_RESET_VAL;
