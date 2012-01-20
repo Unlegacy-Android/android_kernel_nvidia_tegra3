@@ -23,6 +23,7 @@
 #include <mach/gpio.h>
 #include <mach/irqs.h>
 #include <linux/mfd/max77663-core.h>
+#include "gpio-names.h"
 
 /* Processor Board  ID */
 #define BOARD_E1565	0xF41
@@ -57,6 +58,11 @@ int kai_pins_state_init(void);
 int kai_power_off_init(void);
 int kai_edp_init(void);
 void __init kai_tsensor_init(void);
+
+#define KAI_TS_ID1      TEGRA_GPIO_PI7
+#define KAI_TS_ID2      TEGRA_GPIO_PC7
+#define KAI_TS_ID1_PG   TEGRA_PINGROUP_GMI_WAIT
+#define KAI_TS_ID2_PG   TEGRA_PINGROUP_GMI_WP_N
 
 #define TDIODE_OFFSET	(10000) /* in millicelsius */
 

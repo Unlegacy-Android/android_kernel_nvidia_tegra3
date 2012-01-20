@@ -446,6 +446,39 @@ static struct platform_device *kai_devices[] __initdata = {
 #endif
 };
 
+static int __init kai_touch_init(void)
+{
+	int touch_id;
+
+	tegra_gpio_enable(KAI_TS_ID1);
+	tegra_gpio_enable(KAI_TS_ID2);
+
+	gpio_request(KAI_TS_ID1, "touch-id1");
+	gpio_direction_input(KAI_TS_ID1);
+
+	gpio_request(KAI_TS_ID2, "touch-id2");
+	gpio_direction_input(KAI_TS_ID2);
+
+	touch_id = gpio_get_value(KAI_TS_ID1) << 1;
+	touch_id |= gpio_get_value(KAI_TS_ID2);
+
+	pr_info("touch-id %d\n", touch_id);
+
+	/* Disable TS_ID GPIO to save power */
+	gpio_direction_output(KAI_TS_ID1, 0);
+	tegra_pinmux_set_pullupdown(KAI_TS_ID1_PG, TEGRA_PUPD_NORMAL);
+	tegra_pinmux_set_tristate(KAI_TS_ID1_PG, TEGRA_TRI_TRISTATE);
+	gpio_direction_output(KAI_TS_ID2, 0);
+	tegra_pinmux_set_pullupdown(KAI_TS_ID2_PG, TEGRA_PUPD_NORMAL);
+	tegra_pinmux_set_tristate(KAI_TS_ID2_PG, TEGRA_TRI_TRISTATE);
+
+	switch (touch_id) {
+	default:
+		pr_err("touch_id error, no touch %d\n", touch_id);
+	}
+	return 0;
+}
+
 static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
 	[0] = {
 			.phy_config = &utmi_phy_config[0],
@@ -510,6 +543,7 @@ static void __init tegra_kai_init(void)
 	kai_regulator_init();
 	kai_suspend_init();
 	kai_power_off_init();
+	kai_touch_init();
 	kai_keys_init();
 	kai_panel_init();
 	kai_pins_state_init();
