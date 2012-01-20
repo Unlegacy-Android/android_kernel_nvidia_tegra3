@@ -571,6 +571,19 @@ static struct platform_device *kai_devices[] __initdata = {
 #endif
 };
 
+static __initdata struct tegra_clk_init_table spi_clk_init_table[] = {
+	/* name         parent          rate            enabled */
+	{ "sbc1",       "pll_p",        72000000,       true},
+	{ NULL,         NULL,           0,              0},
+};
+
+static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
+	/* name         parent          rate            enabled */
+	{ "extern3",    "pll_p",        41000000,       true},
+	{ "clk_out_3",  "extern3",      40800000,       true},
+	{ NULL,         NULL,           0,              0},
+};
+
 static int __init kai_touch_init(void)
 {
 	int touch_id;
@@ -598,6 +611,19 @@ static int __init kai_touch_init(void)
 	tegra_pinmux_set_tristate(KAI_TS_ID2_PG, TEGRA_TRI_TRISTATE);
 
 	switch (touch_id) {
+	case 0:
+		pr_info("Raydium PCB based touch init\n");
+		tegra_clk_init_from_table(spi_clk_init_table);
+		touch_init_raydium();
+		break;
+	case 1:
+		pr_info("Raydium On-Board touch init\n");
+		tegra_clk_init_from_table(spi_clk_init_table);
+		tegra_clk_init_from_table(touch_clk_init_table);
+		clk_enable(tegra_get_clock_by_name("clk_out_3"));
+
+		touch_init_raydium();
+		break;
 	default:
 		pr_err("touch_id error, no touch %d\n", touch_id);
 	}
