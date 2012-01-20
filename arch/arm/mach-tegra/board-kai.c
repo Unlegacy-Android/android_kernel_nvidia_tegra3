@@ -598,6 +598,10 @@ static int __init kai_touch_init(void)
 	tegra_pinmux_set_tristate(KAI_TS_ID2_PG, TEGRA_TRI_TRISTATE);
 
 	switch (touch_id) {
+	case 3:
+		pr_info("Synaptics PCB based touch init\n");
+		touch_init_synaptics_kai();
+		break;
 	default:
 		pr_err("touch_id error, no touch %d\n", touch_id);
 	}
