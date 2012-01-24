@@ -43,8 +43,12 @@
 #include <mach/tegra_smmu.h>
 
 /*
- * ALL-CAP macros copied from armc.h
+ * Macros without __ copied from armc.h
  */
+#define MC_INTSTATUS_0					0x0
+#define MC_ERR_STATUS_0					0x8
+#define MC_ERR_ADR_0					0xc
+
 #define MC_SMMU_CONFIG_0				0x10
 #define MC_SMMU_CONFIG_0_SMMU_ENABLE_DISABLE		0
 #define MC_SMMU_CONFIG_0_SMMU_ENABLE_ENABLE		1
@@ -92,6 +96,11 @@
 #define MC_SMMU_PTC_FLUSH_0_PTC_FLUSH_ADR_SHIFT		4
 
 #define MC_SMMU_ASID_SECURITY_0				0x38
+#define MC_EMEM_CFG_0					0x50
+#define MC_SECURITY_CFG0_0				0x70
+#define MC_SECURITY_CFG1_0				0x74
+#define MC_SECURITY_CFG2_0				0x78
+#define MC_SECURITY_RSV_0				0x7c
 
 #define MC_SMMU_STATS_TLB_HIT_COUNT_0			0x1f0
 #define MC_SMMU_STATS_TLB_MISS_COUNT_0			0x1f4
@@ -129,6 +138,7 @@
  * Tegra11x
  */
 #define MC_STAT_CONTROL_0			0x100
+#define MC_STAT_EMC_CLOCKS_0			0x110
 #define MC_STAT_EMC_FILTER_SET0_ADR_LIMIT_LO_0	0x118
 #define MC_STAT_EMC_FILTER_SET0_ADR_LIMIT_HI_0	0x11c
 #define MC_STAT_EMC_FILTER_SET0_CLIENT_0_0	0x128
@@ -261,7 +271,6 @@
 	op(XUSB_HOST)
 #endif
 
-
 /* Keep this as a "natural" enumeration (no assignments) */
 enum smmu_hwclient {
 #define op(c)	HWC_##c,
@@ -326,8 +335,7 @@ struct smmu_as {
 };
 
 /*
- * Register bank index - must be #define's and no more than 4 banks
- * because index is encoded to the 2 LSBs in offset
+ * Register bank index - must be #define's
  */
 #define _MC	0
 #define _AHBARB	1
@@ -789,7 +797,7 @@ static void smmu_unmap(struct tegra_iovmm_domain *domain,
 }
 
 static void smmu_map_pfn(struct tegra_iovmm_domain *domain,
-	struct tegra_iovmm_area *iovma, unsigned long addr,
+	struct tegra_iovmm_area *iovma, tegra_iovmm_addr_t addr,
 	unsigned long pfn)
 {
 	struct smmu_as *as = container_of(domain, struct smmu_as, domain);
@@ -1168,6 +1176,10 @@ struct _reg_name_map {
 	unsigned regbase;
 	struct device_attribute	dev_attr;
 } _smmu_reg_name_map[] = {
+	_NAME_MAP(MC_INTSTATUS, _MC),
+	_NAME_MAP(MC_ERR_STATUS, _MC),
+	_NAME_MAP(MC_ERR_ADR, _MC),
+
 	_NAME_MAP(MC_SMMU_CONFIG, _MC),
 	_NAME_MAP(MC_SMMU_TLB_CONFIG, _MC),
 	_NAME_MAP(MC_SMMU_PTC_CONFIG, _MC),
@@ -1176,6 +1188,11 @@ struct _reg_name_map {
 	_NAME_MAP(MC_SMMU_TLB_FLUSH, _MC),
 	_NAME_MAP(MC_SMMU_PTC_FLUSH, _MC),
 	_NAME_MAP(MC_SMMU_ASID_SECURITY, _MC),
+	_NAME_MAP(MC_EMEM_CFG, _MC),
+	_NAME_MAP(MC_SECURITY_CFG0, _MC),
+	_NAME_MAP(MC_SECURITY_CFG1, _MC),
+	_NAME_MAP(MC_SECURITY_CFG2, _MC),
+	_NAME_MAP(MC_SECURITY_RSV, _MC),
 	_NAME_MAP(MC_SMMU_STATS_TLB_HIT_COUNT, _MC),
 	_NAME_MAP(MC_SMMU_STATS_TLB_MISS_COUNT, _MC),
 	_NAME_MAP(MC_SMMU_STATS_PTC_HIT_COUNT, _MC),
@@ -1197,6 +1214,7 @@ struct _reg_name_map {
 	_NAME_MAP(MC_SMMU_TRANSLATION_ENABLE_2, _MC),
 
 	_NAME_MAP(MC_STAT_CONTROL, _MC),
+	_NAME_MAP(MC_STAT_EMC_CLOCKS, _MC),
 	_NAME_MAP(MC_STAT_EMC_FILTER_SET0_ADR_LIMIT_LO, _MC),
 	_NAME_MAP(MC_STAT_EMC_FILTER_SET0_ADR_LIMIT_HI, _MC),
 	_NAME_MAP(MC_STAT_EMC_FILTER_SET0_CLIENT_0, _MC),
@@ -1223,32 +1241,28 @@ struct _reg_name_map {
 	_NAME_MAP(AHB_ARBITRATION_XBAR_CTRL, _AHBARB),
 };
 
-static ssize_t lookup_reg(struct device_attribute *da)
+static struct _reg_name_map *lookup_reg(struct device_attribute *da)
 {
 	int i;
 	for (i = 0; i < ARRAY_SIZE(_smmu_reg_name_map); i++) {
 		if (!strcmp(_smmu_reg_name_map[i].name, da->attr.name))
-			return _smmu_reg_name_map[i].offset +
-				_smmu_reg_name_map[i].regbase;
+			return &_smmu_reg_name_map[i];
 	}
-	return -ENODEV;
+	return NULL;
 }
-
-#define _SMMU_REG_ADDR(smmu, offset)	\
-	((smmu)->regs[(offset) & 0x3] + ((offset) & ~0x3))
 
 static ssize_t _sysfs_show_reg(struct device *d,
 					struct device_attribute *da, char *buf)
 {
 	struct smmu_device *smmu =
 		container_of(d, struct smmu_device, sysfs_dev);
-	ssize_t offset = lookup_reg(da);
+	struct _reg_name_map *reg = lookup_reg(da);
 
-	if (offset < 0)
-		return offset;
+	if (!reg)
+		return -ENODEV;
 	return sprintf(buf, "%08lx @%08lx\n",
-		(unsigned long)readl(_SMMU_REG_ADDR(smmu, offset)),
-		tegra_reg[offset & 0x3].base + (offset & ~0x3));
+		(unsigned long)readl(smmu->regs[reg->regbase] + reg->offset),
+		tegra_reg[reg->regbase].base + reg->offset);
 }
 
 #ifdef CONFIG_TEGRA_IOVMM_SMMU_SYSFS
@@ -1268,18 +1282,18 @@ static ssize_t _sysfs_store_reg(struct device *d,
 {
 	struct smmu_device *smmu =
 		container_of(d, struct smmu_device, sysfs_dev);
-	ssize_t offset = lookup_reg(da);
+	struct _reg_name_map *reg = lookup_reg(da);
 	unsigned long value;
 
-	if (offset < 0)
-		return offset;
+	if (!reg)
+		return -ENODEV;
 	if (kstrtoul(buf, 16, &value))
 		return count;
 	if (good_challenge(smmu))
-		writel(value, _SMMU_REG_ADDR(smmu, offset));
-	else {
+		writel(value, smmu->regs[reg->regbase] + reg->offset);
+	else if (reg->regbase == _MC) {
 		unsigned long mask = 0;
-		switch (offset & ~0x3) {
+		switch (reg->offset) {
 		case MC_SMMU_TLB_CONFIG_0:
 			mask = MC_SMMU_TLB_CONFIG_0_TLB_STATS__MASK;
 			break;
@@ -1292,11 +1306,12 @@ static ssize_t _sysfs_store_reg(struct device *d,
 
 		if (mask) {
 			unsigned long currval =
-				readl(_SMMU_REG_ADDR(smmu, offset));
+				(unsigned long)readl(smmu->regs[reg->regbase] +
+						reg->offset);
 			currval &= ~mask;
 			value &= mask;
 			value |= currval;
-			writel(value, _SMMU_REG_ADDR(smmu, offset));
+			writel(value, smmu->regs[reg->regbase] + reg->offset);
 		}
 	}
 	return count;
@@ -1310,17 +1325,33 @@ static ssize_t _sysfs_show_smmu(struct device *d,
 	ssize_t	rv = 0;
 	int asid;
 
-	rv += sprintf(buf + rv , "    regs_mc: %p\n", smmu->regs_mc);
-	rv += sprintf(buf + rv , "regs_ahbarb: %p\n", smmu->regs_ahbarb);
+	rv += sprintf(buf + rv , "    regs_mc: %p @%8lx\n",
+				smmu->regs_mc, tegra_reg[_MC].base);
+#ifdef TEGRA_MC0_BASE
+	rv += sprintf(buf + rv , "   regs_mc0: %p @%8lx\n",
+				smmu->regs_mc0, tegra_reg[_MC0].base);
+#endif
+#ifdef TEGRA_MC1_BASE
+	rv += sprintf(buf + rv , "   regs_mc1: %p @%8lx\n",
+				smmu->regs_mc1, tegra_reg[_MC1].base);
+#endif
+	rv += sprintf(buf + rv , "regs_ahbarb: %p @%8lx\n",
+				smmu->regs_ahbarb, tegra_reg[_AHBARB].base);
 	rv += sprintf(buf + rv , " iovmm_base: %p\n", (void *)smmu->iovmm_base);
-	rv += sprintf(buf + rv , " page_count: %lx\n", smmu->page_count);
+	rv += sprintf(buf + rv , " page_count: %8lx\n", smmu->page_count);
 	rv += sprintf(buf + rv , "   num_ases: %d\n", smmu->num_ases);
 	rv += sprintf(buf + rv , "         as: %p\n", smmu->as);
 	for (asid = 0; asid < smmu->num_ases; asid++) {
 		rv +=
 	      sprintf(buf + rv , " ----- asid: %d\n", smmu->as[asid].asid);
 		rv +=
-	      sprintf(buf + rv , "  pdir_page: %p\n", smmu->as[asid].pdir_page);
+	      sprintf(buf + rv , "  pdir_page: %p", smmu->as[asid].pdir_page);
+		if (smmu->as[asid].pdir_page)
+			rv +=
+	      sprintf(buf + rv , " @%8lx\n",
+				page_to_phys(smmu->as[asid].pdir_page));
+			else
+			rv += sprintf(buf + rv , "\n");
 	}
 	rv += sprintf(buf + rv , "     enable: %s\n",
 			smmu->enable ? "yes" : "no");
