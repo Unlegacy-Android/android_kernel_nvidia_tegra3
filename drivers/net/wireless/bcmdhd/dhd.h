@@ -388,7 +388,7 @@ void dhd_osl_detach(osl_t *osh);
  * Returned structure should have bus and prot pointers filled in.
  * bus_hdrlen specifies required headroom for bus module header.
  */
-extern dhd_pub_t *dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen);
+extern dhd_pub_t *dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen, void *dev);
 #if defined(WLP2P) && defined(WL_CFG80211)
 /* To allow attach/detach calls corresponding to p2p0 interface  */
 extern int dhd_attach_p2p(dhd_pub_t *);
