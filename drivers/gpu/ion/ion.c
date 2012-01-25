@@ -400,6 +400,7 @@ struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 
 	return handle;
 }
+EXPORT_SYMBOL(ion_alloc);
 
 void ion_free(struct ion_client *client, struct ion_handle *handle)
 {
@@ -417,6 +418,7 @@ void ion_free(struct ion_client *client, struct ion_handle *handle)
 	}
 	ion_handle_put(handle);
 }
+EXPORT_SYMBOL(ion_free);
 
 int ion_phys(struct ion_client *client, struct ion_handle *handle,
 	     ion_phys_addr_t *addr, size_t *len)
@@ -441,6 +443,7 @@ int ion_phys(struct ion_client *client, struct ion_handle *handle,
 	ret = buffer->heap->ops->phys(buffer->heap, buffer, addr, len);
 	return ret;
 }
+EXPORT_SYMBOL(ion_phys);
 
 static void *ion_buffer_kmap_get(struct ion_buffer *buffer)
 {
@@ -519,6 +522,7 @@ void *ion_map_kernel(struct ion_client *client, struct ion_handle *handle)
 	mutex_unlock(&client->lock);
 	return vaddr;
 }
+EXPORT_SYMBOL(ion_map_kernel);
 
 void ion_unmap_kernel(struct ion_client *client, struct ion_handle *handle)
 {
@@ -531,6 +535,7 @@ void ion_unmap_kernel(struct ion_client *client, struct ion_handle *handle)
 	mutex_unlock(&buffer->lock);
 	mutex_unlock(&client->lock);
 }
+EXPORT_SYMBOL(ion_unmap_kernel);
 
 struct scatterlist *iommu_heap_remap_dma(struct ion_heap *heap,
 					      struct ion_buffer *buf,
@@ -682,6 +687,7 @@ void ion_client_destroy(struct ion_client *client)
 
 	kfree(client);
 }
+EXPORT_SYMBOL(ion_client_destroy);
 
 struct sg_table *ion_sg_table(struct ion_client *client,
 			      struct ion_handle *handle)
@@ -701,6 +707,7 @@ struct sg_table *ion_sg_table(struct ion_client *client,
 	mutex_unlock(&client->lock);
 	return table;
 }
+EXPORT_SYMBOL(ion_sg_table);
 
 static void ion_buffer_sync_for_device(struct ion_buffer *buffer,
 				       struct device *dev,
@@ -952,6 +959,7 @@ int ion_share_dma_buf(struct ion_client *client, struct ion_handle *handle)
 	}
 	return fd;
 }
+EXPORT_SYMBOL(ion_share_dma_buf);
 
 struct ion_handle *ion_import_dma_buf(struct ion_client *client, int fd)
 {
@@ -988,6 +996,7 @@ end:
 	dma_buf_put(dmabuf);
 	return handle;
 }
+EXPORT_SYMBOL(ion_import_dma_buf);
 
 static int ion_sync_for_device(struct ion_client *client, int fd)
 {
