@@ -66,7 +66,7 @@
 #define IO_PPSB_SIZE		SZ_1M
 
 #define IO_APB_PHYS		0x70000000
-#define IO_APB_SIZE		SZ_2M
+#define IO_APB_SIZE		SZ_1M
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define IO_USB_PHYS		0xC5000000
@@ -85,20 +85,6 @@
 #define IO_HOST1X_PHYS		0x54000000
 #define IO_HOST1X_SIZE		SZ_8M
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-#define IO_PPCS_PHYS		0xC4000000
-#else
-#define IO_PPCS_PHYS		0x7C000000
-#endif
-#define IO_PPCS_SIZE		SZ_1M
-
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-#define IO_PCIE_PHYS	0x80000000
-#else
-#define IO_PCIE_PHYS	0x00000000
-#endif
-#define IO_PCIE_SIZE	(SZ_16M * 3)
-
 /* Virtual aperture limits are packed into the I/O space from the higest
    address to lowest with each aperture base address adjusted as necessary
    for proper section mapping boundary (2 MB) rounding. */
@@ -111,10 +97,8 @@
 #define IO_PPSB_VIRT		(IO_APB_VIRT - IO_VIRT_ROUND_UP(IO_PPSB_SIZE))
 #define IO_CPU_VIRT		(IO_PPSB_VIRT - IO_VIRT_ROUND_UP(IO_CPU_SIZE))
 #define IO_IRAM_VIRT		(IO_CPU_VIRT - IO_VIRT_ROUND_UP(IO_IRAM_SIZE))
-#define IO_PPCS_VIRT		(IO_IRAM_VIRT - IO_VIRT_ROUND_UP(IO_PPCS_SIZE))
-#define IO_PCIE_VIRT		(IO_PPCS_VIRT - IO_VIRT_ROUND_UP(IO_PCIE_SIZE))
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-#define IO_SIM_ESCAPE_VIRT	(IO_PCIE_VIRT - IO_VIRT_ROUND_UP(IO_SIM_ESCAPE_SIZE))
+#define IO_SIM_ESCAPE_VIRT	(IO_IRAM_VIRT - IO_VIRT_ROUND_UP(IO_SIM_ESCAPE_SIZE))
 #define IO_SMC_VIRT		(IO_SIM_ESCAPE_VIRT - IO_VIRT_ROUND_UP(IO_SMC_SIZE))
 #endif
 
