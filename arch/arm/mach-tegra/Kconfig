@@ -187,6 +187,13 @@ config MACH_ARUBA
        help
          Support for NVIDIA Aruba2 FPGA development platform
 
+config MACH_CURACAO
+       bool "Curacao board"
+       depends on ARCH_TEGRA_11x_SOC
+       select TEGRA_FPGA_PLATFORM
+       help
+         Support for NVIDIA Curacao FPGA development platform
+
 config MACH_CARDHU
        bool "Cardhu board"
        depends on ARCH_TEGRA_3x_SOC
