@@ -71,6 +71,8 @@ struct mmc_ext_csd {
 	bool			hpi_en;			/* HPI enablebit */
 	bool			hpi;			/* HPI support bit */
 	unsigned int		hpi_cmd;		/* cmd used as HPI */
+	bool			bk_ops;			/* BK ops support bit */
+	bool			bk_ops_en;		/* BK ops enable bit */
 	unsigned int		boot_ro_lock;		/* ro lock support */
 	bool			boot_ro_lockable;
 	u8			raw_partition_support;	/* 160 */
@@ -214,6 +216,8 @@ struct mmc_card {
 #define MMC_STATE_BLOCKADDR	(1<<3)		/* card uses block-addressing */
 #define MMC_STATE_HIGHSPEED_DDR (1<<4)		/* card is in high speed mode */
 #define MMC_STATE_ULTRAHIGHSPEED (1<<5)		/* card is in ultra high speed mode */
+#define MMC_STATE_DOING_BKOPS	(1<<6)		/* Card doing bkops */
+#define MMC_STATE_NEED_BKOPS	(1<<7)		/* Card needs to do bkops */
 #define MMC_CARD_SDXC		(1<<6)		/* card is SDXC */
 #define MMC_CARD_REMOVED	(1<<7)		/* card has been removed */
 #define MMC_STATE_HIGHSPEED_200	(1<<8)		/* card is in HS200 mode */
@@ -383,6 +387,8 @@ static inline void __maybe_unused remove_quirk(struct mmc_card *card, int data)
 #define mmc_card_ext_capacity(c) ((c)->state & MMC_CARD_SDXC)
 #define mmc_card_removed(c)	((c) && ((c)->state & MMC_CARD_REMOVED))
 #define mmc_card_is_sleep(c)	((c)->state & MMC_STATE_SLEEP)
+#define mmc_card_doing_bkops(c) ((c)->state & MMC_STATE_DOING_BKOPS)
+#define mmc_card_need_bkops(c) ((c)->state & MMC_STATE_NEED_BKOPS)
 
 #define mmc_card_set_present(c)	((c)->state |= MMC_STATE_PRESENT)
 #define mmc_card_set_readonly(c) ((c)->state |= MMC_STATE_READONLY)
@@ -429,6 +435,11 @@ static inline void __maybe_unused remove_quirk_sd(struct mmc_card *card,
 	if (mmc_card_sd(card))
 		card->quirks &= ~data;
 }
+#define mmc_card_set_doing_bkops(c) ((c)->state |= MMC_STATE_DOING_BKOPS)
+#define mmc_card_set_need_bkops(c) ((c)->state |= MMC_STATE_NEED_BKOPS)
+
+#define mmc_card_clr_doing_bkops(c) ((c)->state &= ~MMC_STATE_DOING_BKOPS)
+#define mmc_card_clr_need_bkops(c) ((c)->state &= ~MMC_STATE_NEED_BKOPS)
 
 static inline int mmc_card_lenient_fn0(const struct mmc_card *c)
 {
