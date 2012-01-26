@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/iovmm-smmu.c
  *
  * Tegra I/O VMM implementation for SMMU devices for Tegra 3 series
- * systems-on-a-chip.
+ * SoCs and later.
  *
  * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -32,6 +32,8 @@
 #include <linux/device.h>
 #include <linux/sched.h>
 #include <linux/io.h>
+#include <linux/random.h>
+#include <linux/ctype.h>
 
 #include <asm/page.h>
 #include <asm/cacheflush.h>
@@ -40,7 +42,6 @@
 #include <mach/iomap.h>
 #include <mach/tegra_smmu.h>
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 /*
  * ALL-CAP macros copied from armc.h
  */
@@ -52,8 +53,13 @@
 #define MC_SMMU_TLB_CONFIG_0_TLB_STATS__MASK		(1 << 31)
 #define MC_SMMU_TLB_CONFIG_0_TLB_STATS__ENABLE		(1 << 31)
 #define MC_SMMU_TLB_CONFIG_0_TLB_HIT_UNDER_MISS__ENABLE	(1 << 29)
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 #define MC_SMMU_TLB_CONFIG_0_TLB_ACTIVE_LINES__VALUE	0x10
 #define MC_SMMU_TLB_CONFIG_0_RESET_VAL			0x20000010
+#else
+#define MC_SMMU_TLB_CONFIG_0_TLB_ACTIVE_LINES__VALUE	0x20
+#define MC_SMMU_TLB_CONFIG_0_RESET_VAL			0x20000020
+#endif
 
 #define MC_SMMU_PTC_CONFIG_0				0x18
 #define MC_SMMU_PTC_CONFIG_0_PTC_STATS__MASK		(1 << 31)
@@ -96,7 +102,7 @@
 #define MC_SMMU_TRANSLATION_ENABLE_1_0			0x22c
 #define MC_SMMU_TRANSLATION_ENABLE_2_0			0x230
 
-#define MC_SMMU_AFI_ASID_0              0x238   /* PCIE */
+#define MC_SMMU_AFI_ASID_0              0x238   /* PCIE (T30) */
 #define MC_SMMU_AVPC_ASID_0             0x23c   /* AVP */
 #define MC_SMMU_DC_ASID_0               0x240   /* Display controller */
 #define MC_SMMU_DCB_ASID_0              0x244   /* Display controller B */
@@ -105,22 +111,51 @@
 #define MC_SMMU_HC_ASID_0               0x250   /* Host1x */
 #define MC_SMMU_HDA_ASID_0              0x254   /* High-def audio */
 #define MC_SMMU_ISP_ASID_0              0x258   /* Image signal processor */
-#define MC_SMMU_MPE_ASID_0              0x264   /* MPEG encoder */
-#define MC_SMMU_NV_ASID_0               0x268   /* (3D) */
-#define MC_SMMU_NV2_ASID_0              0x26c   /* (3D) */
+#define MC_SMMU_MPE_ASID_0              0x264   /* MPEG encoder (T30) */
+#define MC_SMMU_MSENC_ASID_0            0x264   /* MPEG encoder (T11x) */
+#define MC_SMMU_NV_ASID_0               0x268   /* 3D */
+#define MC_SMMU_NV2_ASID_0              0x26c   /* 3D (T30) */
 #define MC_SMMU_PPCS_ASID_0             0x270   /* AHB */
-#define MC_SMMU_SATA_ASID_0             0x278   /* SATA */
+#define MC_SMMU_SATA_ASID_0             0x278   /* SATA (T30) */
 #define MC_SMMU_VDE_ASID_0              0x27c   /* Video decoder */
 #define MC_SMMU_VI_ASID_0               0x280   /* Video input */
+#define MC_SMMU_XUSB_HOST_ASID_0        0x288   /* USB host (T11x) */
+#define MC_SMMU_XUSB_DEV_ASID_0         0x28c   /* USB dev (T11x) */
+#define MC_SMMU_TSEC_ASID_0             0x294   /* TSEC (T11x) */
 
 #define SMMU_PDE_NEXT_SHIFT		28
 
-/* Copied from arahb_arbc.h */
-#define AHB_ARBITRATION_XBAR_CTRL_0     0xe0
+/*
+ * Tegra11x
+ */
+#define MC_STAT_CONTROL_0			0x100
+#define MC_STAT_EMC_FILTER_SET0_ADR_LIMIT_LO_0	0x118
+#define MC_STAT_EMC_FILTER_SET0_ADR_LIMIT_HI_0	0x11c
+#define MC_STAT_EMC_FILTER_SET0_CLIENT_0_0	0x128
+#define MC_STAT_EMC_FILTER_SET0_CLIENT_1_0	0x12c
+#define MC_STAT_EMC_FILTER_SET0_CLIENT_2_0	0x130
+#define MC_STAT_EMC_SET0_COUNT_0		0x138
+#define MC_STAT_EMC_SET0_COUNT_MSBS_0		0x13c
+#define MC_STAT_EMC_FILTER_SET1_ADR_LIMIT_LO_0	0x118
+#define MC_STAT_EMC_FILTER_SET1_ADR_LIMIT_HI_0	0x15c
+#define MC_STAT_EMC_FILTER_SET1_CLIENT_0_0	0x168
+#define MC_STAT_EMC_FILTER_SET1_CLIENT_1_0	0x16c
+#define MC_STAT_EMC_FILTER_SET1_CLIENT_2_0	0x170
+#define MC_STAT_EMC_SET1_COUNT_0		0x178
+#define MC_STAT_EMC_SET1_COUNT_MSBS_0		0x180
+#define MC_STAT_EMC_FILTER_SET0_VIRTUAL_ADR_LIMIT_LO_0	0x198
+#define MC_STAT_EMC_FILTER_SET0_VIRTUAL_ADR_LIMIT_HI_0	0x19c
+#define MC_STAT_EMC_FILTER_SET0_ASID_0		0x1a0
+#define MC_STAT_EMC_FILTER_SET1_VIRTUAL_ADR_LIMIT_LO_0	0x1a8
+#define MC_STAT_EMC_FILTER_SET1_VIRTUAL_ADR_LIMIT_HI_0	0x1ac
+#define MC_STAT_EMC_FILTER_SET1_ASID_0		0x1b0
+
+/*
+ * Copied from arahb_arbc.h
+ */
+#define AHB_ARBITRATION_XBAR_CTRL_0	0xe0
 #define AHB_ARBITRATION_XBAR_CTRL_0_SMMU_INIT_DONE_DONE		1
 #define AHB_ARBITRATION_XBAR_CTRL_0_SMMU_INIT_DONE_SHIFT	17
-
-#endif
 
 #define MC_SMMU_NUM_ASIDS	4
 #define MC_SMMU_TLB_FLUSH_0_TLB_FLUSH_VA_SECTION__MASK		0xffc00000
@@ -157,7 +192,7 @@
 
 #define SMMU_ADDR_TO_PFN(addr)	((addr) >> 12)
 #define SMMU_ADDR_TO_PDN(addr)	((addr) >> 22)
-#define SMMU_PDN_TO_ADDR(addr)	((pdn) << 22)
+#define SMMU_PDN_TO_ADDR(pdn)	((pdn) << 22)
 
 #define _READABLE	(1 << MC_SMMU_PTB_DATA_0_ASID_READABLE_SHIFT)
 #define _WRITABLE	(1 << MC_SMMU_PTB_DATA_0_ASID_WRITABLE_SHIFT)
@@ -186,25 +221,52 @@
 #define SMMU_ASID_DISABLE	0
 #define SMMU_ASID_ASID(n)	((n) & ~SMMU_ASID_ENABLE(0))
 
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#define SMMU_HWC	\
+	op(AFI)		\
+	op(AVPC)	\
+	op(DC)		\
+	op(DCB)		\
+	op(EPP)		\
+	op(G2)		\
+	op(HC)		\
+	op(HDA)		\
+	op(ISP)		\
+	op(MPE)		\
+	op(NV)		\
+	op(NV2)		\
+	op(PPCS)	\
+	op(SATA)	\
+	op(VDE)		\
+	op(VI)
+#endif
+
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#define SMMU_HWC	\
+	op(AVPC)	\
+	op(DC)		\
+	op(DCB)		\
+	op(EPP)		\
+	op(G2)		\
+	op(HC)		\
+	op(HDA)		\
+	op(ISP)		\
+	op(MSENC)	\
+	op(NV)		\
+	op(PPCS)	\
+	op(TSEC)	\
+	op(VDE)		\
+	op(VI)		\
+	op(XUSB_DEV)	\
+	op(XUSB_HOST)
+#endif
+
+
 /* Keep this as a "natural" enumeration (no assignments) */
 enum smmu_hwclient {
-	HWC_AFI,
-	HWC_AVPC,
-	HWC_DC,
-	HWC_DCB,
-	HWC_EPP,
-	HWC_G2,
-	HWC_HC,
-	HWC_HDA,
-	HWC_ISP,
-	HWC_MPE,
-	HWC_NV,
-	HWC_NV2,
-	HWC_PPCS,
-	HWC_SATA,
-	HWC_VDE,
-	HWC_VI,
-
+#define op(c)	HWC_##c,
+	SMMU_HWC
+#undef op
 	HWC_COUNT
 };
 
@@ -218,22 +280,9 @@ struct smmu_hwc_state {
 	[HWC_##client] = {MC_SMMU_##client##_ASID_0, SMMU_ASID_DISABLE},
 
 static const struct smmu_hwc_state smmu_hwc_state_init[] = {
-	HWC_INIT(AFI)
-	HWC_INIT(AVPC)
-	HWC_INIT(DC)
-	HWC_INIT(DCB)
-	HWC_INIT(EPP)
-	HWC_INIT(G2)
-	HWC_INIT(HC)
-	HWC_INIT(HDA)
-	HWC_INIT(ISP)
-	HWC_INIT(MPE)
-	HWC_INIT(NV)
-	HWC_INIT(NV2)
-	HWC_INIT(PPCS)
-	HWC_INIT(SATA)
-	HWC_INIT(VDE)
-	HWC_INIT(VI)
+#define op(c)	HWC_INIT(c)
+	SMMU_HWC
+#undef op
 };
 
 
@@ -245,22 +294,9 @@ struct domain_hwc_map {
 
 /* Enable all hardware clients for SMMU translation */
 static const enum smmu_hwclient nvmap_hwcs[] = {
-	HWC_AFI,
-	HWC_AVPC,
-	HWC_DC,
-	HWC_DCB,
-	HWC_EPP,
-	HWC_G2,
-	HWC_HC,
-	HWC_HDA,
-	HWC_ISP,
-	HWC_MPE,
-	HWC_NV,
-	HWC_NV2,
-	HWC_PPCS,
-	HWC_SATA,
-	HWC_VDE,
-	HWC_VI
+#define op(c)	HWC_##c,
+	SMMU_HWC
+#undef op
 };
 
 static const struct domain_hwc_map smmu_hwc_map[] = {
@@ -290,10 +326,50 @@ struct smmu_as {
 };
 
 /*
+ * Register bank index - must be #define's and no more than 4 banks
+ * because index is encoded to the 2 LSBs in offset
+ */
+#define _MC	0
+#define _AHBARB	1
+#ifdef TEGRA_MC0_BASE
+#define _MC0	2
+#else
+#define _MC0	_MC
+#endif
+#ifdef TEGRA_MC1_BASE
+#define _MC1	3
+#else
+#define _MC1	_MC
+#endif
+
+#define _REGS	4
+static const struct {
+	unsigned long base;
+	size_t size;
+} tegra_reg[_REGS] = {
+	[_MC]	= {TEGRA_MC_BASE, TEGRA_MC_SIZE},
+	[_AHBARB]	= {TEGRA_AHB_ARB_BASE, TEGRA_AHB_ARB_SIZE},
+#ifdef TEGRA_MC0_BASE
+	[_MC0]	= {TEGRA_MC0_BASE, TEGRA_MC0_SIZE},
+#endif
+#ifdef TEGRA_MC1_BASE
+	[_MC1]	= {TEGRA_MC1_BASE, TEGRA_MC1_SIZE},
+#endif
+};
+
+/*
+ * Aliases for register bank base addres holders (remapped)
+ */
+#define regs_mc		regs[_MC]
+#define regs_mc0	regs[_MC0]
+#define regs_mc1	regs[_MC1]
+#define regs_ahbarb	regs[_AHBARB]
+
+/*
  * Per SMMU device
  */
 struct smmu_device {
-	void __iomem	*regs, *regs_ahbarb;
+	void __iomem	*regs[_REGS];
 	tegra_iovmm_addr_t	iovmm_base;	/* remappable base address */
 	unsigned long	page_count;		/* total remappable size */
 	spinlock_t	lock;
@@ -322,24 +398,30 @@ struct smmu_device {
 	unsigned long lowest_asid;	/* Variables for hardware testing */
 	unsigned long debug_asid;
 	unsigned long signature_pid;	/* For debugging aid */
+	unsigned long challenge_code;	/* For debugging aid */
+	unsigned long challenge_pid;	/* For debugging aid */
 };
 
 #define VA_PAGE_TO_PA(va, page)	\
 	(page_to_phys(page) + ((unsigned long)(va) & ~PAGE_MASK))
 
-#define FLUSH_CPU_DCACHE(va, page, size)	\
-	do {	\
-		unsigned long _pa_ = VA_PAGE_TO_PA(va, page);		\
-		__cpuc_flush_dcache_area((void *)(va), (size_t)(size));	\
-		outer_flush_range(_pa_, _pa_+(size_t)(size));		\
-	} while (0)
+static inline void
+flush_cpu_dcache(void *va, struct page *page, size_t size)
+{
+	unsigned long _pa_ = VA_PAGE_TO_PA((unsigned long)va, page);
+	__cpuc_flush_dcache_area((void *)(va), (size_t)(size));
+	outer_flush_range(_pa_, _pa_+(size_t)(size));
+}
 
 /*
  * Any interaction between any block on PPSB and a block on APB or AHB
  * must have these read-back to ensure the APB/AHB bus transaction is
  * complete before initiating activity on the PPSB block.
  */
-#define FLUSH_SMMU_REGS(smmu) (void)readl((smmu)->regs + MC_SMMU_PTB_DATA_0)
+static inline void flush_smmu_regs(struct smmu_device *smmu)
+{
+	(void)readl((smmu)->regs_mc + MC_SMMU_CONFIG_0);
+}
 
 /*
  * Flush all TLB entries and all PTC entries
@@ -348,12 +430,12 @@ struct smmu_device {
 static void smmu_flush_regs(struct smmu_device *smmu)
 {
 	writel(MC_SMMU_PTC_FLUSH_0_PTC_FLUSH_TYPE_ALL,
-		smmu->regs + MC_SMMU_PTC_FLUSH_0);
-	FLUSH_SMMU_REGS(smmu);
+		smmu->regs_mc + MC_SMMU_PTC_FLUSH_0);
+	flush_smmu_regs(smmu);
 	writel(MC_SMMU_TLB_FLUSH_0_TLB_FLUSH_VA_MATCH_ALL |
-			MC_SMMU_TLB_FLUSH_0_TLB_FLUSH_ASID_MATCH_disable,
-		smmu->regs + MC_SMMU_TLB_FLUSH_0);
-	FLUSH_SMMU_REGS(smmu);
+		MC_SMMU_TLB_FLUSH_0_TLB_FLUSH_ASID_MATCH_disable,
+		smmu->regs_mc + MC_SMMU_TLB_FLUSH_0);
+	flush_smmu_regs(smmu);
 }
 
 static void smmu_setup_regs(struct smmu_device *smmu)
@@ -368,31 +450,31 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 			struct smmu_as *as = &smmu->as[asid];
 
 			writel(MC_SMMU_PTB_ASID_0_CURRENT_ASID(as->asid),
-				as->smmu->regs + MC_SMMU_PTB_ASID_0);
+				smmu->regs_mc + MC_SMMU_PTB_ASID_0);
 			writel(as->pdir_page
 				? SMMU_MK_PDIR(as->pdir_page, as->pdir_attr)
 				: MC_SMMU_PTB_DATA_0_RESET_VAL,
-				as->smmu->regs + MC_SMMU_PTB_DATA_0);
+				smmu->regs_mc + MC_SMMU_PTB_DATA_0);
 		}
 	}
 
 	/* Set/restore ASID for each hardware client */
 	for (i = 0; i < HWC_COUNT; i++) {
 		struct smmu_hwc_state *hwcst = &smmu->hwc_state[i];
-		writel(hwcst->enable_disable, smmu->regs + hwcst->reg);
+		writel(hwcst->enable_disable, smmu->regs_mc + hwcst->reg);
 	}
 
 	writel(smmu->translation_enable_0_0,
-		smmu->regs + MC_SMMU_TRANSLATION_ENABLE_0_0);
+		smmu->regs_mc + MC_SMMU_TRANSLATION_ENABLE_0_0);
 	writel(smmu->translation_enable_1_0,
-		smmu->regs + MC_SMMU_TRANSLATION_ENABLE_1_0);
+		smmu->regs_mc + MC_SMMU_TRANSLATION_ENABLE_1_0);
 	writel(smmu->translation_enable_2_0,
-		smmu->regs + MC_SMMU_TRANSLATION_ENABLE_2_0);
-	writel(smmu->asid_security_0, smmu->regs + MC_SMMU_ASID_SECURITY_0);
-	writel(smmu->ptb_asid_0,      smmu->regs + MC_SMMU_PTB_ASID_0);
-	writel(smmu->ptc_config_0,    smmu->regs + MC_SMMU_PTC_CONFIG_0);
-	writel(smmu->tlb_config_0,    smmu->regs + MC_SMMU_TLB_CONFIG_0);
-	writel(smmu->config_0,        smmu->regs + MC_SMMU_CONFIG_0);
+		smmu->regs_mc + MC_SMMU_TRANSLATION_ENABLE_2_0);
+	writel(smmu->asid_security_0, smmu->regs_mc + MC_SMMU_ASID_SECURITY_0);
+	writel(smmu->ptb_asid_0, smmu->regs_mc + MC_SMMU_PTB_ASID_0);
+	writel(MC_SMMU_PTC_CONFIG_0_RESET_VAL, smmu->regs_mc + MC_SMMU_PTC_CONFIG_0);
+	writel(MC_SMMU_TLB_CONFIG_0_RESET_VAL, smmu->regs_mc + MC_SMMU_TLB_CONFIG_0);
+	writel(smmu->config_0, smmu->regs_mc + MC_SMMU_CONFIG_0);
 
 	smmu_flush_regs(smmu);
 
@@ -413,13 +495,13 @@ static int smmu_suspend(struct tegra_iovmm_device *dev)
 	smmu->ptc_config_0 = readl(smmu->regs + MC_SMMU_PTC_CONFIG_0);
 	smmu->ptb_asid_0   = readl(smmu->regs + MC_SMMU_PTB_ASID_0);
 	smmu->translation_enable_0_0 =
-		readl(smmu->regs + MC_SMMU_TRANSLATION_ENABLE_0_0);
+		readl(smmu->regs_mc + MC_SMMU_TRANSLATION_ENABLE_0_0);
 	smmu->translation_enable_1_0 =
-		readl(smmu->regs + MC_SMMU_TRANSLATION_ENABLE_1_0);
+		readl(smmu->regs_mc + MC_SMMU_TRANSLATION_ENABLE_1_0);
 	smmu->translation_enable_2_0 =
-		readl(smmu->regs + MC_SMMU_TRANSLATION_ENABLE_2_0);
+		readl(smmu->regs_mc + MC_SMMU_TRANSLATION_ENABLE_2_0);
 	smmu->asid_security_0 =
-		readl(smmu->regs + MC_SMMU_ASID_SECURITY_0);
+		readl(smmu->regs_mc + MC_SMMU_ASID_SECURITY_0);
 	return 0;
 }
 
@@ -446,13 +528,13 @@ static void flush_ptc_and_tlb(struct smmu_device *smmu,
 
 	writel(MC_SMMU_PTC_FLUSH_0_PTC_FLUSH_TYPE_ADR |
 		VA_PAGE_TO_PA(pte, ptpage),
-		smmu->regs + MC_SMMU_PTC_FLUSH_0);
-	FLUSH_SMMU_REGS(smmu);
+		smmu->regs_mc + MC_SMMU_PTC_FLUSH_0);
+	flush_smmu_regs(smmu);
 	writel(tlb_flush_va |
 		MC_SMMU_TLB_FLUSH_0_TLB_FLUSH_ASID_MATCH__ENABLE |
 		(as->asid << MC_SMMU_TLB_FLUSH_0_TLB_FLUSH_ASID_SHIFT),
-		smmu->regs + MC_SMMU_TLB_FLUSH_0);
-	FLUSH_SMMU_REGS(smmu);
+		smmu->regs_mc + MC_SMMU_TLB_FLUSH_0);
+	flush_smmu_regs(smmu);
 }
 
 static void free_ptbl(struct smmu_as *as, unsigned long iova)
@@ -466,7 +548,7 @@ static void free_ptbl(struct smmu_as *as, unsigned long iova)
 		ClearPageReserved(SMMU_EX_PTBL_PAGE(pdir[pdn]));
 		__free_page(SMMU_EX_PTBL_PAGE(pdir[pdn]));
 		pdir[pdn] = _PDE_VACANT(pdn);
-		FLUSH_CPU_DCACHE(&pdir[pdn], as->pdir_page, sizeof pdir[pdn]);
+		flush_cpu_dcache(&pdir[pdn], as->pdir_page, sizeof pdir[pdn]);
 		flush_ptc_and_tlb(as->smmu, as, iova, &pdir[pdn],
 				as->pdir_page, 1);
 	}
@@ -494,13 +576,14 @@ static void free_pdir(struct smmu_as *as)
 static int smmu_remove(struct platform_device *pdev)
 {
 	struct smmu_device *smmu = platform_get_drvdata(pdev);
+	int i;
 
 	if (!smmu)
 		return 0;
 
 	if (smmu->enable) {
 		writel(MC_SMMU_CONFIG_0_SMMU_ENABLE_DISABLE,
-			smmu->regs + MC_SMMU_CONFIG_0);
+			smmu->regs_mc + MC_SMMU_CONFIG_0);
 		smmu->enable = 0;
 	}
 	platform_set_drvdata(pdev, NULL);
@@ -515,11 +598,13 @@ static int smmu_remove(struct platform_device *pdev)
 
 	if (smmu->avp_vector_page)
 		__free_page(smmu->avp_vector_page);
-	if (smmu->regs)
-		iounmap(smmu->regs);
-	if (smmu->regs_ahbarb)
-		iounmap(smmu->regs_ahbarb);
 	tegra_iovmm_unregister(&smmu->iovmm_dev);
+	for (i = 0; i < _REGS; i++) {
+		if (smmu->regs[i]) {
+			iounmap(smmu->regs[i]);
+			smmu->regs[i] = NULL;
+		}
+	}
 	kfree(smmu);
 	return 0;
 }
@@ -566,10 +651,10 @@ static unsigned long *locate_pte(struct smmu_as *as,
 				ptbl[pn] = _PTE_VACANT(addr);
 			}
 		}
-		FLUSH_CPU_DCACHE(ptbl, *ptbl_page_p, SMMU_PTBL_SIZE);
+		flush_cpu_dcache(ptbl, *ptbl_page_p, SMMU_PTBL_SIZE);
 		pdir[pdn] = SMMU_MK_PDE(*ptbl_page_p,
 				as->pde_attr | _PDE_NEXT);
-		FLUSH_CPU_DCACHE(&pdir[pdn], as->pdir_page, sizeof pdir[pdn]);
+		flush_cpu_dcache(&pdir[pdn], as->pdir_page, sizeof pdir[pdn]);
 		flush_ptc_and_tlb(as->smmu, as, iova, &pdir[pdn],
 				as->pdir_page, 1);
 	}
@@ -588,7 +673,7 @@ static void put_signature(struct smmu_as *as,
 		if (vaddr) {
 			vaddr[0] = addr;
 			vaddr[1] = pfn << PAGE_SHIFT;
-			FLUSH_CPU_DCACHE(vaddr, page, sizeof(vaddr[0]) * 2);
+			flush_cpu_dcache(vaddr, page, sizeof(vaddr[0]) * 2);
 			kunmap(page);
 		}
 	}
@@ -629,7 +714,7 @@ static int smmu_map(struct tegra_iovmm_domain *domain,
 		*pte = SMMU_PFN_TO_PTE(pfn, as->pte_attr);
 		if (unlikely((*pte == _PTE_VACANT(addr))))
 			(*pte_counter)--;
-		FLUSH_CPU_DCACHE(pte, ptpage, sizeof *pte);
+		flush_cpu_dcache(pte, ptpage, sizeof *pte);
 		flush_ptc_and_tlb(as->smmu, as, addr, pte, ptpage, 0);
 		kunmap(ptpage);
 		mutex_unlock(&as->lock);
@@ -641,7 +726,6 @@ static int smmu_map(struct tegra_iovmm_domain *domain,
 fail:
 	mutex_lock(&as->lock);
 fail2:
-
 	while (i-- > 0) {
 		unsigned long *pte;
 		unsigned int *pte_counter;
@@ -653,7 +737,7 @@ fail2:
 		if (pte) {
 			if (*pte != _PTE_VACANT(addr)) {
 				*pte = _PTE_VACANT(addr);
-				FLUSH_CPU_DCACHE(pte, page, sizeof *pte);
+				flush_cpu_dcache(pte, page, sizeof *pte);
 				flush_ptc_and_tlb(as->smmu, as, addr, pte,
 						page, 0);
 				kunmap(page);
@@ -691,7 +775,7 @@ static void smmu_unmap(struct tegra_iovmm_domain *domain,
 		if (pte) {
 			if (*pte != _PTE_VACANT(addr)) {
 				*pte = _PTE_VACANT(addr);
-				FLUSH_CPU_DCACHE(pte, page, sizeof *pte);
+				flush_cpu_dcache(pte, page, sizeof *pte);
 				flush_ptc_and_tlb(as->smmu, as, addr, pte,
 						page, 0);
 				kunmap(page);
@@ -726,7 +810,7 @@ static void smmu_map_pfn(struct tegra_iovmm_domain *domain,
 		*pte = SMMU_PFN_TO_PTE(pfn, as->pte_attr);
 		if (unlikely((*pte == _PTE_VACANT(addr))))
 			(*pte_counter)--;
-		FLUSH_CPU_DCACHE(pte, ptpage, sizeof *pte);
+		flush_cpu_dcache(pte, ptpage, sizeof *pte);
 		flush_ptc_and_tlb(smmu, as, addr, pte, ptpage, 0);
 		kunmap(ptpage);
 		put_signature(as, addr, pfn);
@@ -765,16 +849,16 @@ static int alloc_pdir(struct smmu_as *as)
 
 	for (pdn = 0; pdn < SMMU_PDIR_COUNT; pdn++)
 		pdir[pdn] = _PDE_VACANT(pdn);
-	FLUSH_CPU_DCACHE(pdir, as->pdir_page, SMMU_PDIR_SIZE);
+	flush_cpu_dcache(pdir, as->pdir_page, SMMU_PDIR_SIZE);
 	writel(MC_SMMU_PTC_FLUSH_0_PTC_FLUSH_TYPE_ADR |
 		VA_PAGE_TO_PA(pdir, as->pdir_page),
-		as->smmu->regs + MC_SMMU_PTC_FLUSH_0);
-	FLUSH_SMMU_REGS(as->smmu);
+		as->smmu->regs_mc + MC_SMMU_PTC_FLUSH_0);
+	flush_smmu_regs(as->smmu);
 	writel(MC_SMMU_TLB_FLUSH_0_TLB_FLUSH_VA_MATCH_ALL |
 		MC_SMMU_TLB_FLUSH_0_TLB_FLUSH_ASID_MATCH__ENABLE |
 		(as->asid << MC_SMMU_TLB_FLUSH_0_TLB_FLUSH_ASID_SHIFT),
-		as->smmu->regs + MC_SMMU_TLB_FLUSH_0);
-	FLUSH_SMMU_REGS(as->smmu);
+		as->smmu->regs_mc + MC_SMMU_TLB_FLUSH_0);
+	flush_smmu_regs(as->smmu);
 	kunmap(as->pdir_page);
 
 	return 0;
@@ -814,7 +898,7 @@ static struct tegra_iovmm_domain *smmu_alloc_domain(
 		goto bad3;
 
 	/* Look for a matching hardware client group */
-	for (i = 0; ARRAY_SIZE(smmu_hwc_map); i++) {
+	for (i = 0; i < ARRAY_SIZE(smmu_hwc_map); i++) {
 		if (!strcmp(smmu_hwc_map[i].dev_name, client->misc_dev->name)) {
 			map = &smmu_hwc_map[i];
 			break;
@@ -830,10 +914,10 @@ static struct tegra_iovmm_domain *smmu_alloc_domain(
 	spin_lock(&smmu->lock);
 	/* Update PDIR register */
 	writel(MC_SMMU_PTB_ASID_0_CURRENT_ASID(as->asid),
-		as->smmu->regs + MC_SMMU_PTB_ASID_0);
+		as->smmu->regs_mc + MC_SMMU_PTB_ASID_0);
 	writel(SMMU_MK_PDIR(as->pdir_page, as->pdir_attr),
-		as->smmu->regs + MC_SMMU_PTB_DATA_0);
-	FLUSH_SMMU_REGS(smmu);
+		as->smmu->regs_mc + MC_SMMU_PTB_DATA_0);
+	flush_smmu_regs(smmu);
 
 	/* Put each hardware client in the group into the address space */
 	for (i = 0; i < map->nr_hwcs; i++) {
@@ -850,9 +934,9 @@ static struct tegra_iovmm_domain *smmu_alloc_domain(
 			goto bad;
 		}
 		hwcst->enable_disable = SMMU_ASID_ENABLE(as->asid);
-		writel(hwcst->enable_disable, smmu->regs + hwcst->reg);
+		writel(hwcst->enable_disable, smmu->regs_mc + hwcst->reg);
 	}
-	FLUSH_SMMU_REGS(smmu);
+	flush_smmu_regs(smmu);
 	spin_unlock(&smmu->lock);
 	as->hwclients = map;
 	_sysfs_create(as, client->misc_dev->this_device);
@@ -869,9 +953,9 @@ bad:
 		struct smmu_hwc_state *hwcst = &smmu->hwc_state[map->hwcs[i]];
 
 		hwcst->enable_disable = SMMU_ASID_DISABLE;
-		writel(hwcst->enable_disable, smmu->regs + hwcst->reg);
+		writel(hwcst->enable_disable, smmu->regs_mc + hwcst->reg);
 	}
-	FLUSH_SMMU_REGS(smmu);
+	flush_smmu_regs(smmu);
 	spin_unlock(&as->smmu->lock);
 bad2:
 	free_pdir(as);
@@ -901,19 +985,19 @@ static void smmu_free_domain(
 		struct smmu_hwc_state *hwcst = &smmu->hwc_state[map->hwcs[i]];
 
 		hwcst->enable_disable = SMMU_ASID_DISABLE;
-		writel(SMMU_ASID_DISABLE, smmu->regs + hwcst->reg);
+		writel(SMMU_ASID_DISABLE, smmu->regs_mc + hwcst->reg);
 	}
-	FLUSH_SMMU_REGS(smmu);
+	flush_smmu_regs(smmu);
 	spin_unlock(&smmu->lock);
 
 	as->hwclients = NULL;
 	if (as->pdir_page) {
 		spin_lock(&smmu->lock);
 		writel(MC_SMMU_PTB_ASID_0_CURRENT_ASID(as->asid),
-			smmu->regs + MC_SMMU_PTB_ASID_0);
+			smmu->regs_mc + MC_SMMU_PTB_ASID_0);
 		writel(MC_SMMU_PTB_DATA_0_RESET_VAL,
-			smmu->regs + MC_SMMU_PTB_DATA_0);
-		FLUSH_SMMU_REGS(smmu);
+			smmu->regs_mc + MC_SMMU_PTB_DATA_0);
+		flush_smmu_regs(smmu);
 		spin_unlock(&smmu->lock);
 
 		free_pdir(as);
@@ -933,19 +1017,15 @@ static struct tegra_iovmm_device_ops tegra_iovmm_smmu_ops = {
 
 static int smmu_probe(struct platform_device *pdev)
 {
-	struct smmu_device *smmu;
-	struct resource *regs, *regs2;
-	struct tegra_smmu_window *window;
-	int e, asid;
+	struct smmu_device *smmu = NULL;
+	struct resource *window = NULL;
+	int e, i, asid;
 
 	BUILD_BUG_ON(PAGE_SHIFT != SMMU_PAGE_SHIFT);
 	BUILD_BUG_ON(ARRAY_SIZE(smmu_hwc_state_init) != HWC_COUNT);
 
-	regs = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mc");
-	regs2 = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ahbarb");
 	window = tegra_smmu_window(0);
-
-	if (!regs || !regs2 || !window) {
+	if (!window) {
 		pr_err(DRIVER_NAME ": No SMMU resources\n");
 		return -ENODEV;
 	}
@@ -959,14 +1039,8 @@ static int smmu_probe(struct platform_device *pdev)
 	smmu->num_ases = MC_SMMU_NUM_ASIDS;
 	smmu->iovmm_base = (tegra_iovmm_addr_t)window->start;
 	smmu->page_count = (window->end + 1 - window->start) >> SMMU_PAGE_SHIFT;
-	smmu->regs = ioremap(regs->start, regs->end + 1 - regs->start);
-	smmu->regs_ahbarb =
-		ioremap(regs2->start, regs2->end + 1 - regs2->start);
-	if (!smmu->regs || !smmu->regs_ahbarb) {
-		pr_err(DRIVER_NAME ": failed to remap SMMU registers\n");
-		e = -ENXIO;
-		goto fail;
-	}
+	for (i = _MC; i < _REGS; i++)
+		smmu->regs[i] = ioremap(tegra_reg[i].base, tegra_reg[i].size);
 
 	smmu->config_0        = MC_SMMU_CONFIG_0_SMMU_ENABLE_ENABLE;
 	smmu->tlb_config_0    = MC_SMMU_TLB_CONFIG_0_RESET_VAL;
@@ -1026,10 +1100,6 @@ static int smmu_probe(struct platform_device *pdev)
 fail:
 	if (smmu->avp_vector_page)
 		__free_page(smmu->avp_vector_page);
-	if (smmu->regs)
-		iounmap(smmu->regs);
-	if (smmu->regs_ahbarb)
-		iounmap(smmu->regs_ahbarb);
 	if (smmu && smmu->as) {
 		for (asid = 0; asid < smmu->num_ases; asid++) {
 			if (smmu->as[asid].pdir_page) {
@@ -1038,6 +1108,12 @@ fail:
 			}
 		}
 		kfree(smmu->as);
+	}
+	for (i = 0; i < _REGS; i++) {
+		if (smmu->regs[i]) {
+			iounmap(smmu->regs[i]);
+			smmu->regs[i] = NULL;
+		}
 	}
 	kfree(smmu);
 	return e;
@@ -1073,50 +1149,75 @@ static ssize_t _sysfs_store_reg(struct device *d,
 				struct device_attribute *da, const char *buf,
 				size_t count);
 
-#define _NAME_MAP(_name)	{	\
-	.name = __stringify(_name),	\
+#define _NAME_MAP_SUFFIX(_name, base, suffix)	{	\
+	.name = __stringify(_name) suffix,	\
 	.offset = _name##_0,		\
+	.regbase = (base),		\
 	.dev_attr = __ATTR(_name, S_IRUGO | S_IWUSR,	\
 			_sysfs_show_reg, _sysfs_store_reg)	\
 }
+#define _NAME_MAP(_name, base)	_NAME_MAP_SUFFIX(_name, base, "")
 
 static
 struct _reg_name_map {
 	const char *name;
-	unsigned	offset;
+	size_t	offset;
+	unsigned regbase;
 	struct device_attribute	dev_attr;
 } _smmu_reg_name_map[] = {
-	_NAME_MAP(MC_SMMU_CONFIG),
-	_NAME_MAP(MC_SMMU_TLB_CONFIG),
-	_NAME_MAP(MC_SMMU_PTC_CONFIG),
-	_NAME_MAP(MC_SMMU_PTB_ASID),
-	_NAME_MAP(MC_SMMU_PTB_DATA),
-	_NAME_MAP(MC_SMMU_TLB_FLUSH),
-	_NAME_MAP(MC_SMMU_PTC_FLUSH),
-	_NAME_MAP(MC_SMMU_ASID_SECURITY),
-	_NAME_MAP(MC_SMMU_STATS_TLB_HIT_COUNT),
-	_NAME_MAP(MC_SMMU_STATS_TLB_MISS_COUNT),
-	_NAME_MAP(MC_SMMU_STATS_PTC_HIT_COUNT),
-	_NAME_MAP(MC_SMMU_STATS_PTC_MISS_COUNT),
-	_NAME_MAP(MC_SMMU_TRANSLATION_ENABLE_0),
-	_NAME_MAP(MC_SMMU_TRANSLATION_ENABLE_1),
-	_NAME_MAP(MC_SMMU_TRANSLATION_ENABLE_2),
-	_NAME_MAP(MC_SMMU_AFI_ASID),
-	_NAME_MAP(MC_SMMU_AVPC_ASID),
-	_NAME_MAP(MC_SMMU_DC_ASID),
-	_NAME_MAP(MC_SMMU_DCB_ASID),
-	_NAME_MAP(MC_SMMU_EPP_ASID),
-	_NAME_MAP(MC_SMMU_G2_ASID),
-	_NAME_MAP(MC_SMMU_HC_ASID),
-	_NAME_MAP(MC_SMMU_HDA_ASID),
-	_NAME_MAP(MC_SMMU_ISP_ASID),
-	_NAME_MAP(MC_SMMU_MPE_ASID),
-	_NAME_MAP(MC_SMMU_NV_ASID),
-	_NAME_MAP(MC_SMMU_NV2_ASID),
-	_NAME_MAP(MC_SMMU_PPCS_ASID),
-	_NAME_MAP(MC_SMMU_SATA_ASID),
-	_NAME_MAP(MC_SMMU_VDE_ASID),
-	_NAME_MAP(MC_SMMU_VI_ASID),
+	_NAME_MAP(MC_SMMU_CONFIG, _MC),
+	_NAME_MAP(MC_SMMU_TLB_CONFIG, _MC),
+	_NAME_MAP(MC_SMMU_PTC_CONFIG, _MC),
+	_NAME_MAP(MC_SMMU_PTB_ASID, _MC),
+	_NAME_MAP(MC_SMMU_PTB_DATA, _MC),
+	_NAME_MAP(MC_SMMU_TLB_FLUSH, _MC),
+	_NAME_MAP(MC_SMMU_PTC_FLUSH, _MC),
+	_NAME_MAP(MC_SMMU_ASID_SECURITY, _MC),
+	_NAME_MAP(MC_SMMU_STATS_TLB_HIT_COUNT, _MC),
+	_NAME_MAP(MC_SMMU_STATS_TLB_MISS_COUNT, _MC),
+	_NAME_MAP(MC_SMMU_STATS_PTC_HIT_COUNT, _MC),
+	_NAME_MAP(MC_SMMU_STATS_PTC_MISS_COUNT, _MC),
+#ifdef TEGRA_MC0_BASE
+	_NAME_MAP_SUFFIX(MC_SMMU_STATS_TLB_HIT_COUNT, _MC0, ".0"),
+	_NAME_MAP_SUFFIX(MC_SMMU_STATS_TLB_MISS_COUNT, _MC0, ".0"),
+	_NAME_MAP_SUFFIX(MC_SMMU_STATS_PTC_HIT_COUNT, _MC0, ".0"),
+	_NAME_MAP_SUFFIX(MC_SMMU_STATS_PTC_MISS_COUNT, _MC0, ".0"),
+#endif
+#ifdef TEGRA_MC1_BASE
+	_NAME_MAP_SUFFIX(MC_SMMU_STATS_TLB_HIT_COUNT, _MC1, ".1"),
+	_NAME_MAP_SUFFIX(MC_SMMU_STATS_TLB_MISS_COUNT, _MC1, ".1"),
+	_NAME_MAP_SUFFIX(MC_SMMU_STATS_PTC_HIT_COUNT, _MC1, ".1"),
+	_NAME_MAP_SUFFIX(MC_SMMU_STATS_PTC_MISS_COUNT, _MC1, ".1"),
+#endif
+	_NAME_MAP(MC_SMMU_TRANSLATION_ENABLE_0, _MC),
+	_NAME_MAP(MC_SMMU_TRANSLATION_ENABLE_1, _MC),
+	_NAME_MAP(MC_SMMU_TRANSLATION_ENABLE_2, _MC),
+
+	_NAME_MAP(MC_STAT_CONTROL, _MC),
+	_NAME_MAP(MC_STAT_EMC_FILTER_SET0_ADR_LIMIT_LO, _MC),
+	_NAME_MAP(MC_STAT_EMC_FILTER_SET0_ADR_LIMIT_HI, _MC),
+	_NAME_MAP(MC_STAT_EMC_FILTER_SET0_CLIENT_0, _MC),
+	_NAME_MAP(MC_STAT_EMC_FILTER_SET0_CLIENT_1, _MC),
+	_NAME_MAP(MC_STAT_EMC_FILTER_SET0_CLIENT_2, _MC),
+	_NAME_MAP(MC_STAT_EMC_SET0_COUNT, _MC),
+	_NAME_MAP(MC_STAT_EMC_SET0_COUNT_MSBS, _MC),
+	_NAME_MAP(MC_STAT_EMC_FILTER_SET1_ADR_LIMIT_LO, _MC),
+	_NAME_MAP(MC_STAT_EMC_FILTER_SET1_ADR_LIMIT_HI, _MC),
+	_NAME_MAP(MC_STAT_EMC_FILTER_SET1_CLIENT_0, _MC),
+	_NAME_MAP(MC_STAT_EMC_FILTER_SET1_CLIENT_1, _MC),
+	_NAME_MAP(MC_STAT_EMC_FILTER_SET1_CLIENT_2, _MC),
+	_NAME_MAP(MC_STAT_EMC_SET1_COUNT, _MC),
+	_NAME_MAP(MC_STAT_EMC_SET1_COUNT_MSBS, _MC),
+	_NAME_MAP(MC_STAT_EMC_FILTER_SET0_VIRTUAL_ADR_LIMIT_LO, _MC),
+	_NAME_MAP(MC_STAT_EMC_FILTER_SET0_VIRTUAL_ADR_LIMIT_HI, _MC),
+	_NAME_MAP(MC_STAT_EMC_FILTER_SET0_ASID, _MC),
+	_NAME_MAP(MC_STAT_EMC_FILTER_SET1_VIRTUAL_ADR_LIMIT_LO, _MC),
+	_NAME_MAP(MC_STAT_EMC_FILTER_SET1_VIRTUAL_ADR_LIMIT_HI, _MC),
+	_NAME_MAP(MC_STAT_EMC_FILTER_SET1_ASID, _MC),
+#define op(c)	_NAME_MAP(MC_SMMU_##c##_ASID, _MC),
+	SMMU_HWC
+#undef op
+	_NAME_MAP(AHB_ARBITRATION_XBAR_CTRL, _AHBARB),
 };
 
 static ssize_t lookup_reg(struct device_attribute *da)
@@ -1124,10 +1225,14 @@ static ssize_t lookup_reg(struct device_attribute *da)
 	int i;
 	for (i = 0; i < ARRAY_SIZE(_smmu_reg_name_map); i++) {
 		if (!strcmp(_smmu_reg_name_map[i].name, da->attr.name))
-			return _smmu_reg_name_map[i].offset;
+			return _smmu_reg_name_map[i].offset +
+				_smmu_reg_name_map[i].regbase;
 	}
 	return -ENODEV;
 }
+
+#define _SMMU_REG_ADDR(smmu, offset)	\
+	((smmu)->regs[(offset) & 0x3] + ((offset) & ~0x3))
 
 static ssize_t _sysfs_show_reg(struct device *d,
 					struct device_attribute *da, char *buf)
@@ -1138,9 +1243,21 @@ static ssize_t _sysfs_show_reg(struct device *d,
 
 	if (offset < 0)
 		return offset;
-	return sprintf(buf, "%08lx\n",
-		(unsigned long)readl(smmu->regs + offset));
+	return sprintf(buf, "%08lx @%08lx\n",
+		(unsigned long)readl(_SMMU_REG_ADDR(smmu, offset)),
+		tegra_reg[offset & 0x3].base + (offset & ~0x3));
 }
+
+#ifdef CONFIG_TEGRA_IOVMM_SMMU_SYSFS
+#define good_challenge(smmu)	((smmu->challenge_pid = 0), 1)
+#else
+static inline int good_challenge(struct smmu_device *smmu)
+{
+	int ok = (smmu->challenge_pid == current->pid);
+	smmu->challenge_pid = 0;
+	return ok;
+}
+#endif
 
 static ssize_t _sysfs_store_reg(struct device *d,
 			struct device_attribute *da,
@@ -1149,23 +1266,17 @@ static ssize_t _sysfs_store_reg(struct device *d,
 	struct smmu_device *smmu =
 		container_of(d, struct smmu_device, sysfs_dev);
 	ssize_t offset = lookup_reg(da);
-	u32 value;
-	int err;
+	unsigned long value;
 
 	if (offset < 0)
 		return offset;
-
-	err = kstrtou32(buf, 16, &value);
-	if (err)
-		return err;
-
-#ifdef CONFIG_TEGRA_IOVMM_SMMU_SYSFS
-	writel(value, smmu->regs + offset);
-#else
-	/* Allow writing to reg only for TLB/PTC stats enabling/disabling */
-	{
+	if (kstrtoul(buf, 16, &value))
+		return count;
+	if (good_challenge(smmu))
+		writel(value, _SMMU_REG_ADDR(smmu, offset));
+	else {
 		unsigned long mask = 0;
-		switch (offset) {
+		switch (offset & ~0x3) {
 		case MC_SMMU_TLB_CONFIG_0:
 			mask = MC_SMMU_TLB_CONFIG_0_TLB_STATS__MASK;
 			break;
@@ -1177,14 +1288,14 @@ static ssize_t _sysfs_store_reg(struct device *d,
 		}
 
 		if (mask) {
-			unsigned long currval = readl(smmu->regs + offset);
+			unsigned long currval =
+				readl(_SMMU_REG_ADDR(smmu, offset));
 			currval &= ~mask;
 			value &= mask;
 			value |= currval;
-			writel(value, smmu->regs + offset);
+			writel(value, _SMMU_REG_ADDR(smmu, offset));
 		}
 	}
-#endif
 	return count;
 }
 
@@ -1194,13 +1305,21 @@ static ssize_t _sysfs_show_smmu(struct device *d,
 	struct smmu_device *smmu =
 		container_of(d, struct smmu_device, sysfs_dev);
 	ssize_t	rv = 0;
+	int asid;
 
-	rv += sprintf(buf + rv , "      regs: %p\n", smmu->regs);
-	rv += sprintf(buf + rv , "iovmm_base: %p\n", (void *)smmu->iovmm_base);
-	rv += sprintf(buf + rv , "page_count: %lx\n", smmu->page_count);
-	rv += sprintf(buf + rv , "  num_ases: %d\n", smmu->num_ases);
-	rv += sprintf(buf + rv , "        as: %p\n", smmu->as);
-	rv += sprintf(buf + rv , "    enable: %s\n",
+	rv += sprintf(buf + rv , "    regs_mc: %p\n", smmu->regs_mc);
+	rv += sprintf(buf + rv , "regs_ahbarb: %p\n", smmu->regs_ahbarb);
+	rv += sprintf(buf + rv , " iovmm_base: %p\n", (void *)smmu->iovmm_base);
+	rv += sprintf(buf + rv , " page_count: %lx\n", smmu->page_count);
+	rv += sprintf(buf + rv , "   num_ases: %d\n", smmu->num_ases);
+	rv += sprintf(buf + rv , "         as: %p\n", smmu->as);
+	for (asid = 0; asid < smmu->num_ases; asid++) {
+		rv +=
+	      sprintf(buf + rv , " ----- asid: %d\n", smmu->as[asid].asid);
+		rv +=
+	      sprintf(buf + rv , "  pdir_page: %p\n", smmu->as[asid].pdir_page);
+	}
+	rv += sprintf(buf + rv , "     enable: %s\n",
 			smmu->enable ? "yes" : "no");
 	return rv;
 }
@@ -1214,41 +1333,36 @@ static ssize_t _sysfs_show_##name(struct device *d,	\
 {							\
 	struct smmu_device *smmu =			\
 		container_of(d, struct smmu_device, sysfs_dev);	\
-	ssize_t rv = 0;					\
-	rv += sprintf(buf + rv, fmt "\n", smmu->field);	\
-	return rv;					\
+	return sprintf(buf, fmt "\n", smmu->field);	\
 }
 
 static void (*_sysfs_null_callback)(struct smmu_device *, unsigned long *) =
 	NULL;
 
-#define _SYSFS_SET_VALUE_DO(name, field, base, ceil, callback)	\
+#define _SYSFS_SET_VALUE_DO(name, field, base, ceil, callback, challenge) \
 static ssize_t _sysfs_set_##name(struct device *d,		\
 		struct device_attribute *da, const char *buf, size_t count) \
 {								\
-	int err;						\
-	u32 value;						\
+	unsigned long value;					\
 	struct smmu_device *smmu =				\
 		container_of(d, struct smmu_device, sysfs_dev);	\
-	err = kstrtou32(buf, base, &value);			\
-	if (err)						\
-		return err;					\
-	if (0 <= value && value < ceil) {			\
+	if (kstrtoul(buf, base, &value))			\
+		return count;					\
+	if (challenge && 0 <= value && value < ceil) {		\
 		smmu->field = value;				\
 		if (callback)					\
 			callback(smmu, &smmu->field);		\
 	}							\
+	smmu->challenge_pid = 0;				\
 	return count;						\
 }
 #ifdef CONFIG_TEGRA_IOVMM_SMMU_SYSFS
-#define _SYSFS_SET_VALUE	_SYSFS_SET_VALUE_DO
+#define _SYSFS_SET_VALUE(name, field, base, ceil, callback)	\
+	_SYSFS_SET_VALUE_DO(name, field, base, ceil, callback, 1)
 #else
 #define _SYSFS_SET_VALUE(name, field, base, ceil, callback)	\
-static ssize_t _sysfs_set_##name(struct device *d,		\
-		struct device_attribute *da, const char *buf, size_t count) \
-{								\
-	return count;						\
-}
+	_SYSFS_SET_VALUE_DO(name, field, base, ceil, callback,	\
+		(smmu->challenge_pid == current->pid))
 #endif
 
 _SYSFS_SHOW_VALUE(lowest_asid, lowest_asid, "%lu")
@@ -1258,10 +1372,74 @@ _SYSFS_SHOW_VALUE(debug_asid, debug_asid, "%lu")
 _SYSFS_SET_VALUE(debug_asid, debug_asid, 10,
 		MC_SMMU_NUM_ASIDS, _sysfs_null_callback)
 _SYSFS_SHOW_VALUE(signature_pid, signature_pid, "%lu")
-_SYSFS_SET_VALUE_DO(signature_pid, signature_pid, 10, PID_MAX_LIMIT + 1,
-		_sysfs_null_callback)
+_SYSFS_SET_VALUE_DO(signature_pid, signature_pid, 10, PID_MAX_LIMIT+1,
+		_sysfs_null_callback, 1)
 
-#ifdef CONFIG_TEGRA_IOVMM_SMMU_SYSFS
+/*
+ * Protection for sysfs entries from accidental writing
+ *   /sys/devices/smmu/chanllenge_code returns a random number.
+ *   The process writes back pid^challenge to /sys/devices/smmu/challenge_code.
+ *   The process will be able to alter a protected entry.
+ *   The challenge code is reset.
+ */
+static ssize_t _sysfs_show_challenge_code(struct device *d,
+	struct device_attribute *da, char *buf)
+{
+	struct smmu_device *smmu =
+		container_of(d, struct smmu_device, sysfs_dev);
+	smmu->challenge_pid = 0;
+	smmu->challenge_code = random32();
+	return sprintf(buf, "%lx\n", smmu->challenge_code);
+}
+
+static ssize_t _sysfs_set_challenge_code(struct device *d,
+		struct device_attribute *da, const char *buf, size_t count)
+{
+	struct smmu_device *smmu =
+		container_of(d, struct smmu_device, sysfs_dev);
+	unsigned long value;
+	if (!kstrtoul(buf, 16, &value)) {
+		smmu->challenge_pid = smmu->challenge_code ^ value;
+		smmu->challenge_code = random32();
+	}
+	return count;
+}
+
+/*
+ * "echo 's d' > /sys/devices/smmu/copy_pdir" copies ASID s's pdir pointer
+ * to ASID d. -1 as s resets d's pdir to null.
+ */
+static ssize_t _sysfs_copy_pdir(struct device *d,
+		struct device_attribute *da, const char *buf, size_t count)
+{
+	struct smmu_device *smmu =
+		container_of(d, struct smmu_device, sysfs_dev);
+	long fr, to;
+
+	if (kstrtol(buf, 16, &fr))
+		return count;
+	while (isxdigit(*buf))
+		buf++;
+	while (isspace(*buf))
+		buf++;
+	if (kstrtol(buf, 16, &to))
+		return count;
+
+	if (good_challenge(smmu) && fr != to &&
+		fr < smmu->num_ases && 0 <= to && to < smmu->num_ases) {
+		spin_lock(&smmu->lock);
+		writel(MC_SMMU_PTB_ASID_0_CURRENT_ASID(to),
+			smmu->regs_mc + MC_SMMU_PTB_ASID_0);
+		writel((fr >= 0)
+		? SMMU_MK_PDIR(smmu->as[fr].pdir_page, smmu->as[fr].pdir_attr)
+		: MC_SMMU_PTB_DATA_0_RESET_VAL,
+			smmu->regs_mc + MC_SMMU_PTB_DATA_0);
+		smmu->as[to].pdir_page = (fr >= 0) ? smmu->as[fr].pdir_page : 0;
+		spin_unlock(&smmu->lock);
+	}
+	return count;
+}
+
 static void _sysfs_mask_attr(struct smmu_device *smmu, unsigned long *field)
 {
 	*field &= _MASK_ATTR;
@@ -1273,20 +1451,21 @@ static void _sysfs_mask_pdir_attr(struct smmu_device *smmu,
 	unsigned long pdir;
 
 	_sysfs_mask_attr(smmu, field);
+	spin_lock(&smmu->lock);
 	writel(MC_SMMU_PTB_ASID_0_CURRENT_ASID(smmu->debug_asid),
-		smmu->regs + MC_SMMU_PTB_ASID_0);
-	pdir = readl(smmu->regs + MC_SMMU_PTB_DATA_0);
+		smmu->regs_mc + MC_SMMU_PTB_ASID_0);
+	pdir = readl(smmu->regs_mc + MC_SMMU_PTB_DATA_0);
 	pdir &= ~_MASK_ATTR;
 	pdir |= *field;
-	writel(pdir, smmu->regs + MC_SMMU_PTB_DATA_0);
-	FLUSH_SMMU_REGS(smmu);
+	writel(pdir, smmu->regs_mc + MC_SMMU_PTB_DATA_0);
+	spin_unlock(&smmu->lock);
+	flush_smmu_regs(smmu);
 }
 
 static void (*_sysfs_mask_attr_callback)(struct smmu_device *,
 				unsigned long *field) = &_sysfs_mask_attr;
 static void (*_sysfs_mask_pdir_attr_callback)(struct smmu_device *,
 				unsigned long *field) = &_sysfs_mask_pdir_attr;
-#endif
 
 _SYSFS_SHOW_VALUE(pdir_attr, as[smmu->debug_asid].pdir_attr, "%lx")
 _SYSFS_SET_VALUE(pdir_attr, as[smmu->debug_asid].pdir_attr, 16,
@@ -1305,6 +1484,9 @@ static struct device_attribute _attr_values[] = {
 		_sysfs_show_debug_asid, _sysfs_set_debug_asid),
 	__ATTR(signature_pid, S_IRUGO | S_IWUSR,
 		_sysfs_show_signature_pid, _sysfs_set_signature_pid),
+	__ATTR(challenge_code, S_IRUGO | S_IWUSR,
+		_sysfs_show_challenge_code, _sysfs_set_challenge_code),
+	__ATTR(copy_pdir, S_IWUSR, NULL, _sysfs_copy_pdir),
 
 	__ATTR(pdir_attr, S_IRUGO | S_IWUSR,
 		_sysfs_show_pdir_attr, _sysfs_set_pdir_attr),
@@ -1326,8 +1508,11 @@ static void _sysfs_smmu(struct smmu_device *smmu, struct device *parent)
 
 	if (smmu->sysfs_use_count++ > 0)
 		return;
-	for (i = 0; i < ARRAY_SIZE(_smmu_reg_name_map); i++)
+	for (i = 0; i < ARRAY_SIZE(_smmu_reg_name_map); i++) {
+		attr_name(_smmu_reg_name_map[i].dev_attr) =
+			_smmu_reg_name_map[i].name;
 		_smmu_attrs[i] = &_smmu_reg_name_map[i].dev_attr.attr;
+	}
 	for (j = 0; j < ARRAY_SIZE(_attr_values); j++)
 		_smmu_attrs[i++] = &_attr_values[j].attr;
 	_smmu_attrs[i++] = &_attr_show_smmu.attr;
