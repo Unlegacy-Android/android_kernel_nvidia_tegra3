@@ -43,6 +43,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_MAX9877 if I2C
 	select SND_SOC_PCM3008
 	select SND_SOC_RT5631 if I2C
+	select SND_SOC_RT5639 if I2C
 	select SND_SOC_RT5640 if I2C
 	select SND_SOC_SGTL5000 if I2C
 	select SND_SOC_SN95031 if INTEL_SCU_IPC
@@ -230,6 +231,9 @@ config SND_SOC_PCM3008
        tristate
 
 config SND_SOC_RT5631
+	tristate
+
+config SND_SOC_RT5639
 	tristate
 
 config SND_SOC_RT5640
