@@ -133,4 +133,9 @@ obj-$(CONFIG_MACH_VENTANA)              += board-ventana-panel.o
 
 # Cardhu
 
+obj-${CONFIG_MACH_P1852}               += board-p1852.o
+obj-${CONFIG_MACH_P1852}               += board-p1852-panel.o
+obj-${CONFIG_MACH_P1852}               += board-p1852-pinmux.o
+obj-${CONFIG_MACH_P1852}               += board-p1852-sdhci.o
+
 # Enterprise

@@ -140,6 +140,12 @@ config MACH_VENTANA
 
 # Cardhu
 
+config MACH_P1852
+       bool "P1852 board"
+       depends on ARCH_TEGRA_3x_SOC
+       help
+         Support for NVIDIA P1852 development platform
+
 # Enterprise
 
 choice
