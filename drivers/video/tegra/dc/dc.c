@@ -968,7 +968,7 @@ static void tegra_dc_set_scaling_filter(struct tegra_dc *dc)
 	}
 }
 
-#ifdef TEGRA_DC_CMU
+#ifdef CONFIG_TEGRA_DC_CMU
 static void tegra_dc_init_cmu_defaults(struct tegra_dc_cmu *dst_cmu,
 						struct tegra_dc_cmu *src_cmu)
 {
