@@ -389,7 +389,6 @@ bool regcache_set_val(void *base, unsigned int idx,
 	default:
 		BUG();
 	}
-	/* unreachable */
 	return false;
 }
 
