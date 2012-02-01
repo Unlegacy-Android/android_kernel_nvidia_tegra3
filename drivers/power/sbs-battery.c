@@ -718,6 +718,16 @@ static int __devinit sbs_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, chip);
 
+	/* Probing for the presence of the sbs */
+	rc = sbs_read_word_data(client, sbs_data[REG_SERIAL_NUMBER].addr);
+
+	if (rc < 0) {
+		dev_err(&client->dev,
+			"%s: not responding\n", __func__);
+		rc = -ENODEV;
+		goto exit_mem_free;
+	}
+
 	if (!chip->gpio_detect)
 		goto skip_gpio;
 
@@ -757,7 +767,6 @@ static int __devinit sbs_probe(struct i2c_client *client,
 	chip->irq = irq;
 
 skip_gpio:
-
 	rc = power_supply_register(&client->dev, &chip->power_supply);
 	if (rc) {
 		dev_err(&client->dev,
@@ -780,6 +789,7 @@ exit_psupply:
 	if (chip->gpio_detect)
 		gpio_free(pdata->battery_detect);
 
+exit_mem_free:
 	kfree(chip);
 
 exit_free_name:
