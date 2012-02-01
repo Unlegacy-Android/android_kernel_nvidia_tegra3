@@ -78,7 +78,7 @@ int kai_pins_state_init(void);
 int kai_emc_init(void);
 int kai_edp_init(void);
 void __init kai_tsensor_init(void);
-int __init touch_init_raydium(void);
+int __init touch_init_raydium(int irq_gpio, int reset_gpio, int platform);
 
 #define KAI_TS_ID1      TEGRA_GPIO_PI7
 #define KAI_TS_ID2      TEGRA_GPIO_PC7
