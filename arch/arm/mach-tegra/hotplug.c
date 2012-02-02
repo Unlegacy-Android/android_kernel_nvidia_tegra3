@@ -1,7 +1,7 @@
 /*
  *  arch/arm/mach-tegra/hotplug.c
  *
- *  Copyright (C) 2010-2011 NVIDIA Corporation
+ *  Copyright (C) 2010-2012 NVIDIA Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -67,13 +67,7 @@ void tegra_cpu_die(unsigned int cpu)
 	tegra2_hotplug_shutdown();
 #else
 	/* Disable GIC CPU interface for this CPU. */
-	tegra_gic_cpu_disable();
-
-	/* Tegra3 enters LPx states via WFI - do not propagate legacy IRQs
-	   to CPU core to avoid fall through WFI; then GIC output will be
-	   enabled, however at this time - CPU is dying - no interrupt should
-	   have affinity to this CPU. */
-	tegra_gic_pass_through_disable();
+	tegra_gic_cpu_disable(false);
 
 	/* Flush the L1 data cache. */
 	flush_cache_all();
