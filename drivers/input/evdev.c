@@ -50,6 +50,7 @@ struct evdev_client {
 	struct fasync_struct *fasync;
 	struct evdev *evdev;
 	struct list_head node;
+	int clkid;
 	unsigned int bufsize;
 	struct input_event buffer[];
 };
@@ -58,8 +59,12 @@ static struct evdev *evdev_table[EVDEV_MINORS];
 static DEFINE_MUTEX(evdev_table_mutex);
 
 static void evdev_pass_event(struct evdev_client *client,
-			     struct input_event *event)
+			     struct input_event *event,
+			     ktime_t mono, ktime_t real)
 {
+	event->time = ktime_to_timeval(client->clkid == CLOCK_MONOTONIC ?
+					mono : real);
+
 	/* Interrupts are disabled, just acquire the lock. */
 	spin_lock(&client->buffer_lock);
 
@@ -107,6 +112,11 @@ static void evdev_event(struct input_handle *handle,
 	ktime_get_ts(&ts);
 	event.time.tv_sec = ts.tv_sec;
 	event.time.tv_usec = ts.tv_nsec / NSEC_PER_USEC;
+	ktime_t time_mono, time_real;
+
+	time_mono = ktime_get();
+	time_real = ktime_sub(time_mono, ktime_get_monotonic_offset());
+
 	event.type = type;
 	event.code = code;
 	event.value = value;
@@ -114,11 +124,12 @@ static void evdev_event(struct input_handle *handle,
 	rcu_read_lock();
 
 	client = rcu_dereference(evdev->grab);
+
 	if (client)
-		evdev_pass_event(client, &event);
+		evdev_pass_event(client, &event, time_mono, time_real);
 	else
 		list_for_each_entry_rcu(client, &evdev->client_list, node)
-			evdev_pass_event(client, &event);
+			evdev_pass_event(client, &event, time_mono, time_real);
 
 	rcu_read_unlock();
 
@@ -752,6 +763,14 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
 			return evdev_grab(evdev, client);
 		else
 			return evdev_ungrab(evdev, client);
+
+	case EVIOCSCLOCKID:
+		if (copy_from_user(&i, p, sizeof(unsigned int)))
+			return -EFAULT;
+		if (i != CLOCK_MONOTONIC && i != CLOCK_REALTIME)
+			return -EINVAL;
+		client->clkid = i;
+		return 0;
 
 	case EVIOCGKEYCODE:
 		return evdev_handle_get_keycode(dev, p);
