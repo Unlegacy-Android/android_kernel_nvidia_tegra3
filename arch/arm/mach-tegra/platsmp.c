@@ -86,7 +86,7 @@ static inline unsigned int get_core_count(void)
 
 	__asm__("mrc p15, 1, %0, c9, c0, 2\n" : "=r" (l2ctlr));
 
-	return ((l2cltr >> 24) & 3) + 1;
+	return ((l2ctlr >> 24) & 3) + 1;
 }
 #endif
 
