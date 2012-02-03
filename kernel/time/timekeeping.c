@@ -1375,6 +1375,8 @@ ktime_t ktime_get_monotonic_offset(void)
 
 	return timespec_to_ktime(wtom);
 }
+EXPORT_SYMBOL_GPL(ktime_get_monotonic_offset);
+
 
 /*
  * do_adjtimex() - Accessor function to NTP __do_adjtimex function
