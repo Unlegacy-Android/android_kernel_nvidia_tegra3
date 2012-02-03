@@ -7,6 +7,7 @@ config ARCH_TEGRA_2x_SOC
 	depends on !ARCH_TEGRA_3x_SOC
 	depends on !ARCH_TEGRA_11x_SOC
 	select ARM_CPU_SUSPEND if PM
+	select ARCH_TEGRA_HAS_ARM_SCU
 	select ARCH_TEGRA_HAS_PCIE
 	select CPU_V7
 	select ARM_GIC
@@ -40,6 +41,7 @@ config ARCH_TEGRA_3x_SOC
 	bool "Enable support for Tegra30 family"
 	select ARM_CPU_SUSPEND if PM
 	depends on !ARCH_TEGRA_11x_SOC
+	select ARCH_TEGRA_HAS_ARM_SCU
 	select ARCH_TEGRA_HAS_PCIE
 	select ARCH_TEGRA_HAS_SATA
 	select ARCH_TEGRA_HAS_DUAL_3D
@@ -85,6 +87,9 @@ config ARCH_TEGRA_11x_SOC
 	help
 	  Support for NVIDIA Tegra 11x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
+
+config ARCH_TEGRA_HAS_ARM_SCU
+	bool
 
 config ARCH_TEGRA_HAS_DUAL_3D
 	bool
