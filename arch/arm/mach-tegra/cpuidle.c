@@ -149,18 +149,6 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 }
 #endif
 
-static int tegra_idle_prepare(struct cpuidle_device *dev)
-{
-#ifdef CONFIG_PM_SLEEP
-	if (lp2_in_idle)
-		dev->states[1].flags &= ~CPUIDLE_FLAG_IGNORE;
-	else
-		dev->states[1].flags |= CPUIDLE_FLAG_IGNORE;
-#endif
-
-	return 0;
-}
-
 static int tegra_cpuidle_register_device(unsigned int cpu)
 {
 	struct cpuidle_device *dev;
@@ -201,8 +189,6 @@ static int tegra_cpuidle_register_device(unsigned int cpu)
 	dev->power_specified = 1;
 	dev->state_count++;
 #endif
-
-	dev->prepare = tegra_idle_prepare;
 
 	if (cpuidle_register_device(dev)) {
 		pr_err("CPU%u: failed to register idle device\n", cpu);
