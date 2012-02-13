@@ -487,6 +487,12 @@ static void dr_controller_run(struct fsl_udc *udc)
 	temp |= USB_MODE_CTRL_MODE_DEVICE;
 	fsl_writel(temp, &dr_regs->usbmode);
 
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	temp = fsl_readl(&dr_regs->hostpc1devlc);
+	temp &= ~HOSTPC1_DEVLC_ASUS;
+	fsl_writel(temp, &dr_regs->hostpc1devlc);
+#endif
+
 	/* Set controller to Run */
 	temp = fsl_readl(&dr_regs->usbcmd);
 	if (can_pullup(udc))
