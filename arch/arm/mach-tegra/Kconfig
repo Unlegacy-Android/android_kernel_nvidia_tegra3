@@ -77,6 +77,7 @@ config ARCH_TEGRA_11x_SOC
 	bool "Tegra 11x family SOC"
 	select ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
 	select CPU_V7
+	select ARM_ARCH_TIMER
 	select ARM_GIC
 	select ARCH_REQUIRE_GPIOLIB
 	select USB_ARCH_HAS_EHCI if USB_SUPPORT
