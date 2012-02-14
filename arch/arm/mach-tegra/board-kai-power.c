@@ -46,8 +46,6 @@
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
 
-static bool is_kai_machine = false;
-
 static struct regulator_consumer_supply max77663_sd0_supply[] = {
 	REGULATOR_SUPPLY("vdd_cpu", NULL),
 };
@@ -559,7 +557,7 @@ static int __init kai_fixed_regulator_init(void)
 		nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_a01);
 	}
 
-	if (!is_kai_machine)
+	if (!machine_is_kai())
 		return 0;
 
 	for (i = 0; i < nfixreg_devs; ++i) {
@@ -592,7 +590,6 @@ int __init kai_regulator_init(void)
 	if (ret < 0)
 		return ret;
 
-	is_kai_machine = true;
 	return 0;
 }
 
