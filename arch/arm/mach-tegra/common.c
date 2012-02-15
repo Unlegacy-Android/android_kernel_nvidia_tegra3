@@ -161,7 +161,6 @@ static __initdata struct tegra_clk_init_table tegra20_clk_init_table[] = {
 	{ "sclk",	"pll_p_out4",	102000000,	true },
 	{ "hclk",	"sclk",		102000000,	true },
 	{ "pclk",	"hclk",		51000000,	true },
-	{ "wake.sclk",	NULL,		40000000,	true },
 #endif
 #else
 	{ "pll_p",	NULL,		216000000,	true },
