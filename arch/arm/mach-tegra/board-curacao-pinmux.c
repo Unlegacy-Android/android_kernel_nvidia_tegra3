@@ -79,7 +79,7 @@ static __initdata struct tegra_pingroup_config curacao_pinmux[] = {
 	DEFAULT_PINMUX(UART3_RXD,       UARTC,           NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(UART3_CTS_N,     UARTC,           NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(UART3_RTS_N,     UARTC,           NORMAL,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(GPIO_PU0,        RSVD2,           NORMAL,    NORMAL,     INPUT),
+	DEFAULT_PINMUX(GPIO_PU0,        OWR,             NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(GPIO_PU1,        RSVD2,           NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(GPIO_PU2,        RSVD2,           NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(GPIO_PU3,        PWM0,            NORMAL,    NORMAL,     INPUT),
@@ -214,9 +214,10 @@ static __initdata struct tegra_pingroup_config curacao_pinmux[] = {
 	DEFAULT_PINMUX(SDMMC3_DAT3,     SDMMC3,          NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(HDMI_CEC,        CEC,             NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(SDMMC1_WP_N,     SDMMC1,          NORMAL,    NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC3_CD_N,     RSVD2,           NORMAL,    NORMAL,     INPUT),
+	DEFAULT_PINMUX(SDMMC3_CD_N,     OWR,             NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(SPI1_CS1_N,      RSVD1,           NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(SPI1_CS2_N,      SPI1,            NORMAL,    NORMAL,     INPUT),
+	DEFAULT_PINMUX(OWR,             OWR,             NORMAL,    NORMAL,     INPUT),
 };
 
 void __init curacao_pinmux_init(void)

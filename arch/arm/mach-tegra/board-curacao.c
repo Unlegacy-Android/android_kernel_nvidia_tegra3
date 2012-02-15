@@ -418,6 +418,7 @@ static struct platform_device *curacao_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_SIMULATION_PLATFORM) && defined(CONFIG_SMC91X)
 	&tegra_sim_smc91x_device,
 #endif
+	&tegra_w1_device,
 };
 
 static void curacao_keys_init(void)
