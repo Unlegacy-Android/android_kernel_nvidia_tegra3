@@ -815,7 +815,7 @@ static int __devinit tegra_i2c_probe(struct platform_device *pdev)
 	}
 	irq = res->start;
 
-	clk = clk_get(&pdev->dev, NULL);
+	clk = clk_get(&pdev->dev, "i2c-div");
 	if (IS_ERR(clk)) {
 		dev_err(&pdev->dev, "missing controller clock");
 		ret = PTR_ERR(clk);
