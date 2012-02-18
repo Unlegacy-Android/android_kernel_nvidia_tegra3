@@ -145,7 +145,7 @@ void __init tegra_dt_init_irq(void)
 void tegra_assert_system_reset(char mode, const char *cmd)
 {
 #if defined(CONFIG_TEGRA_FPGA_PLATFORM) || NEVER_RESET
-	printk("tegra_assert_system_reset() ignored.....");
+	pr_info("tegra_assert_system_reset() ignored.....");
 	do { } while (1);
 #else
 	void __iomem *reset = IO_ADDRESS(TEGRA_PMC_BASE + 0);
@@ -274,7 +274,7 @@ static __initdata struct tegra_clk_init_table tegra30_clk_init_table[] = {
 	{ "sbc3.sclk",	NULL,		40000000,	false},
 	{ "sbc4.sclk",	NULL,		40000000,	false},
 #ifdef CONFIG_TEGRA_SLOW_CSITE
-	{ "csite",	"clk_m",	1000000, 	true },
+	{ "csite",	"clk_m",	1000000,	true },
 #else
 	{ "csite",      NULL,           0,              true },
 #endif
@@ -450,7 +450,7 @@ void tegra_init_cache(bool init)
 static void __init tegra_init_power(void)
 {
 #ifdef CONFIG_ARCH_TEGRA_HAS_SATA
-        tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_SATA);
+	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_SATA);
 #endif
 #ifdef CONFIG_ARCH_TEGRA_HAS_PCIE
 	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
@@ -494,22 +494,26 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG1);
 	val &= ~MST_ID(~0);
-	val |= PREFETCH_ENB | AHBDMA_MST_ID | ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
+	val |= PREFETCH_ENB | AHBDMA_MST_ID |
+		ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
 	gizmo_writel(val, AHB_MEM_PREFETCH_CFG1);
 
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG2);
 	val &= ~MST_ID(~0);
-	val |= PREFETCH_ENB | USB_MST_ID | ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
+	val |= PREFETCH_ENB | USB_MST_ID | ADDR_BNDRY(0xc) |
+		INACTIVITY_TIMEOUT(0x1000);
 	gizmo_writel(val, AHB_MEM_PREFETCH_CFG2);
 
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG3);
 	val &= ~MST_ID(~0);
-	val |= PREFETCH_ENB | USB3_MST_ID | ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
+	val |= PREFETCH_ENB | USB3_MST_ID | ADDR_BNDRY(0xc) |
+		INACTIVITY_TIMEOUT(0x1000);
 	gizmo_writel(val, AHB_MEM_PREFETCH_CFG3);
 
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG4);
 	val &= ~MST_ID(~0);
-	val |= PREFETCH_ENB | USB2_MST_ID | ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
+	val |= PREFETCH_ENB | USB2_MST_ID | ADDR_BNDRY(0xc) |
+		INACTIVITY_TIMEOUT(0x1000);
 	gizmo_writel(val, AHB_MEM_PREFETCH_CFG4);
 }
 
@@ -979,7 +983,8 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 			tegra_lp0_vec_start + tegra_lp0_vec_size - 1 : 0,
 		tegra_bootloader_fb_start,
 		tegra_bootloader_fb_size ?
-			tegra_bootloader_fb_start + tegra_bootloader_fb_size - 1 : 0,
+			tegra_bootloader_fb_start + tegra_bootloader_fb_size - 1
+			: 0,
 		tegra_fb_start,
 		tegra_fb_size ?
 			tegra_fb_start + tegra_fb_size - 1 : 0,
@@ -990,8 +995,7 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 		tegra_carveout_size ?
 			tegra_carveout_start + tegra_carveout_size - 1 : 0,
 		tegra_vpr_start,
-		tegra_vpr_size ?
-			tegra_vpr_start + tegra_vpr_size - 1 : 0);
+		tegra_vpr_size ? tegra_vpr_start + tegra_vpr_size - 1 : 0);
 }
 
 static struct resource ram_console_resources[] = {
@@ -1001,8 +1005,8 @@ static struct resource ram_console_resources[] = {
 };
 
 static struct platform_device ram_console_device = {
-	.name 		= "ram_console",
-	.id 		= -1,
+	.name		= "ram_console",
+	.id		= -1,
 	.num_resources	= ARRAY_SIZE(ram_console_resources),
 	.resource	= ram_console_resources,
 };
@@ -1034,9 +1038,9 @@ void __init tegra_ram_console_debug_init(void)
 	int err;
 
 	err = platform_device_register(&ram_console_device);
-	if (err) {
-		pr_err("%s: ram console registration failed (%d)!\n", __func__, err);
-	}
+	if (err)
+		pr_err("%s: ram console registration failed (%d)!\n",
+			__func__, err);
 }
 
 void __init tegra_release_bootloader_fb(void)
@@ -1051,6 +1055,10 @@ void __init tegra_release_bootloader_fb(void)
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
 char cpufreq_default_gov[CONFIG_NR_CPUS][MAX_GOV_NAME_LEN];
 char *cpufreq_conservative_gov = "conservative";
+static char *cpufreq_sysfs_place_holder =
+		"/sys/devices/system/cpu/cpu%i/cpufreq/scaling_governor";
+static char *cpufreq_gov_conservative_param =
+		"/sys/devices/system/cpu/cpufreq/conservative/%s";
 
 void cpufreq_store_default_gov(void)
 {
