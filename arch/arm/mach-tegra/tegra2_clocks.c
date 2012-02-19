@@ -1042,6 +1042,8 @@ static void tegra2_periph_clk_init(struct clk *c)
 	}
 
 	c->state = ON;
+	if (c->flags & PERIPH_NO_ENB)
+		return;
 
 	if (!c->u.periph.clk_num)
 		return;
@@ -1062,6 +1064,9 @@ static int tegra2_periph_clk_enable(struct clk *c)
 	unsigned long flags;
 	int refcount;
 	pr_debug("%s on clock %s\n", __func__, c->name);
+
+	if (c->flags & PERIPH_NO_ENB)
+		return 0;
 
 	if (!c->u.periph.clk_num)
 		return 0;
@@ -1099,6 +1104,9 @@ static void tegra2_periph_clk_disable(struct clk *c)
 
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
+	if (c->flags & PERIPH_NO_ENB)
+		return;
+
 	if (!c->u.periph.clk_num)
 		return;
 
@@ -1128,6 +1136,9 @@ static void tegra2_periph_clk_reset(struct clk *c, bool assert)
 
 	pr_debug("%s %s on clock %s\n", __func__,
 		 assert ? "assert" : "deassert", c->name);
+
+	if (c->flags & PERIPH_NO_ENB)
+		return;
 
 	BUG_ON(!c->u.periph.clk_num);
 
