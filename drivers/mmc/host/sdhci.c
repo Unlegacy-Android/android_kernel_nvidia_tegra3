@@ -1926,6 +1926,16 @@ static void sdhci_do_enable_preset_value(struct sdhci_host *host, bool enable)
 	if (host->version < SDHCI_SPEC_300)
 		return;
 
+	/*
+	 * Enabling preset value would make programming clock
+	 * divider ineffective. The controller would use the
+	 * values present in the preset value registers. In
+	 * case of non-standard clock, let the platform driver
+	 * decide whether to enable preset or not.
+	 */
+	if (host->quirks & SDHCI_QUIRK_NONSTANDARD_CLOCK)
+		return;
+
 	spin_lock_irqsave(&host->lock, flags);
 
 	ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
