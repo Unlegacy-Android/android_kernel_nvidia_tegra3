@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu-panel.c
  *
- * Copyright (c) 2010-2011, NVIDIA Corporation.
+ * Copyright (c) 2010-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1035,9 +1035,6 @@ static struct platform_device cardhu_nvmap_device = {
 static struct platform_device *cardhu_gfx_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_NVMAP)
 	&cardhu_nvmap_device,
-#endif
-#ifdef CONFIG_TEGRA_GRHOST
-	&tegra_grhost_device,
 #endif
 	&tegra_pwfm0_device,
 	&cardhu_backlight_device,
