@@ -379,9 +379,6 @@ static struct platform_device curacao_nvmap_device = {
 
 static struct platform_device *curacao_gfx_devices[] __initdata = {
 	&curacao_nvmap_device,
-#ifdef CONFIG_TEGRA_GRHOST
-	&tegra_grhost_device,
-#endif
 	&tegra_pwfm2_device,
 	&curacao_backlight_device,
 };
