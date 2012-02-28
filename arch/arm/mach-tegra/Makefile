@@ -163,6 +163,7 @@ obj-${CONFIG_MACH_CURACAO}              += board-curacao-panel.o
 obj-${CONFIG_MACH_CURACAO}              += board-curacao-pinmux.o
 obj-${CONFIG_MACH_CURACAO}              += board-curacao-power.o
 obj-${CONFIG_MACH_CURACAO}              += board-curacao-sdhci.o
+obj-${CONFIG_MACH_CURACAO}              += board-curacao-sensors.o
 
 obj-${CONFIG_MACH_WHISTLER}             += board-whistler.o
 obj-${CONFIG_MACH_WHISTLER}             += board-whistler-pinmux.o
