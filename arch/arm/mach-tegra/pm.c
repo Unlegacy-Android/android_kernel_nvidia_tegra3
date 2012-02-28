@@ -52,6 +52,7 @@
 #include <asm/pgalloc.h>
 #include <asm/pgtable.h>
 #include <asm/tlbflush.h>
+#include <asm/suspend.h>
 
 #include <mach/clk.h>
 #include <mach/iomap.h>
@@ -501,9 +502,9 @@ static void tegra_sleep_core(enum tegra_suspend_mode mode,
 	}
 #endif
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	tegra2_sleep_core(v2p);
+	cpu_suspend(v2p, tegra2_sleep_core_finish);
 #else
-	tegra3_sleep_core(v2p);
+	cpu_suspend(v2p, tegra3_sleep_core_finish);
 #endif
 }
 
@@ -514,7 +515,6 @@ static inline void tegra_sleep_cpu(unsigned long v2p)
 			  (TEGRA_RESET_HANDLER_BASE +
 			   tegra_cpu_reset_handler_offset));
 #endif
-	tegra_sleep_cpu_save(v2p);
 }
 
 unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
@@ -566,7 +566,7 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 			  __pa(pgd + PTRS_PER_PGD));
 	outer_disable();
 
-	tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
+	cpu_suspend(PHYS_OFFSET - PAGE_OFFSET, tegra_sleep_cpu_finish);
 
 	tegra_init_cache(false);
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_switch);
@@ -836,7 +836,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	outer_disable();
 
 	if (mode == TEGRA_SUSPEND_LP2)
-		tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
+		cpu_suspend(PHYS_OFFSET - PAGE_OFFSET, tegra_sleep_cpu_finish);
 	else
 		tegra_sleep_core(mode, PHYS_OFFSET - PAGE_OFFSET);
 
