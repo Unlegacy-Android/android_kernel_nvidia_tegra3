@@ -12,6 +12,7 @@ obj-y                                   += irq.o
 obj-$(CONFIG_TEGRA_GRHOST)              += syncpt.o
 obj-y                                   += clock.o
 obj-y                                   += timer.o
+obj-y                                   += timerinfo.o
 ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
 obj-y                                   += timer-t2.o
 else
