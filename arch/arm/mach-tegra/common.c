@@ -217,6 +217,7 @@ static __initdata struct tegra_clk_init_table common_clk_init_table[] = {
 	{ "sbc5.sclk",	NULL,		40000000,	false},
 	{ "sbc6.sclk",	NULL,		40000000,	false},
 	{ "wake.sclk",	NULL,		40000000,	true },
+	{ "cpu_mode.sclk", NULL,	80000000,	false },
 	{ "cbus",	"pll_c",	416000000,	false },
 	{ "pll_c_out1",	"pll_c",	208000000,	false },
 	{ "mselect",	"pll_p",	102000000,	true },

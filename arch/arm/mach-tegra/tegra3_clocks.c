@@ -319,6 +319,7 @@ static int tegra3_emc_relock_set_rate(struct clk *emc, unsigned long old_rate,
 
 static unsigned long cpu_stay_on_backup_max;
 static struct clk *emc_bridge;
+static struct clk *cpu_mode_sclk;
 
 static bool detach_shared_bus;
 module_param(detach_shared_bus, bool, 0644);
@@ -1050,6 +1051,8 @@ static int tegra3_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	flags |= (p->u.cpu.mode == MODE_LP) ? TEGRA_POWER_CLUSTER_LP :
 		TEGRA_POWER_CLUSTER_G;
 
+	clk_enable(cpu_mode_sclk);	/* set SCLK floor for cluster switch */
+
 	/* Since in both LP and G mode CPU main and backup sources are the
 	   same, set rate on the new parent just synchronizes super-clock
 	   muxes before mode switch with no PLL re-locking */
@@ -1057,6 +1060,7 @@ static int tegra3_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	if (ret) {
 		pr_err("%s: Failed to set rate %lu for %s\n",
 		       __func__, rate, p->name);
+		clk_disable(cpu_mode_sclk);
 		return ret;
 	}
 
@@ -1072,6 +1076,7 @@ static int tegra3_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 			clk_disable(p);
 		pr_err("%s: Failed to switch %s mode to %s\n",
 		       __func__, c->name, p->name);
+		clk_disable(cpu_mode_sclk);
 		return ret;
 	}
 
@@ -1080,6 +1085,7 @@ static int tegra3_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		clk_disable(c->parent);
 
 	clk_reparent(c, p);
+	clk_disable(cpu_mode_sclk);
 	return 0;
 }
 
@@ -4403,7 +4409,8 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("usb1.sclk",	"tegra-ehci.0",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("usb2.sclk",	"tegra-ehci.1",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("usb3.sclk",	"tegra-ehci.2",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
-	SHARED_CLK("wake.sclk",	"wake_sclk",	"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
+	SHARED_CLK("wake.sclk",	"wake_sclk",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
+	SHARED_CLK("cpu_mode.sclk","cpu_mode",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("mon.avp",	"tegra_actmon",		"avp",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("cap.sclk",	"cap_sclk",		NULL,	&tegra_clk_sbus_cmplx, NULL, 0, SHARED_CEILING),
 	SHARED_CLK("floor.sclk", "floor_sclk",		NULL,	&tegra_clk_sbus_cmplx, NULL, 0, 0),
@@ -5393,6 +5400,7 @@ void __init tegra_soc_init_clocks(void)
 		tegra3_init_one_clock(&tegra_clk_out_list[i]);
 
 	emc_bridge = &tegra_clk_emc_bridge;
+	cpu_mode_sclk = tegra_get_clock_by_name("cpu_mode.sclk");
 
 	/* Initialize to default */
 	tegra_init_cpu_edp_limits(0);
