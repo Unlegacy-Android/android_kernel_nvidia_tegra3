@@ -143,3 +143,4 @@ obj-${CONFIG_MACH_KAI}                  += board-kai-pinmux.o
 obj-${CONFIG_MACH_KAI}                  += board-kai-power.o
 obj-${CONFIG_MACH_KAI}                  += board-kai-sdhci.o
 obj-${CONFIG_MACH_KAI}                  += board-kai-sensors.o
+obj-y                                   += eeprom-wifi-mac.o
