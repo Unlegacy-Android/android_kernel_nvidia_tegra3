@@ -797,7 +797,7 @@ static void smmu_unmap(struct tegra_iovmm_domain *domain,
 }
 
 static void smmu_map_pfn(struct tegra_iovmm_domain *domain,
-	struct tegra_iovmm_area *iovma, tegra_iovmm_addr_t addr,
+	struct tegra_iovmm_area *iovma, unsigned long addr,
 	unsigned long pfn)
 {
 	struct smmu_as *as = container_of(domain, struct smmu_as, domain);
@@ -807,7 +807,7 @@ static void smmu_map_pfn(struct tegra_iovmm_domain *domain,
 	struct page *ptpage;
 
 	pr_debug("%s:%d iova=%lx pfn=%lx asid=%d\n", __func__, __LINE__,
-		 (unsigned long)addr, pfn, as - as->smmu->as);
+		 addr, pfn, as - as->smmu->as);
 
 	BUG_ON(!pfn_valid(pfn));
 	mutex_lock(&as->lock);
@@ -1349,7 +1349,7 @@ static ssize_t _sysfs_show_smmu(struct device *d,
 		if (smmu->as[asid].pdir_page)
 			rv +=
 	      sprintf(buf + rv , " @%8lx\n",
-				page_to_phys(smmu->as[asid].pdir_page));
+			(unsigned long)page_to_phys(smmu->as[asid].pdir_page));
 			else
 			rv += sprintf(buf + rv , "\n");
 	}
