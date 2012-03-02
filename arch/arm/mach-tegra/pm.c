@@ -57,6 +57,7 @@
 #include <asm/pgtable.h>
 #include <asm/tlbflush.h>
 #include <asm/suspend.h>
+#include <asm/smp_plat.h>
 
 #include <mach/clk.h>
 #include <mach/iomap.h>
@@ -321,6 +322,9 @@ static void restore_cpu_complex(u32 mode)
 
 	BUG_ON(cpu != 0);
 
+#ifdef CONFIG_SMP
+	cpu = cpu_logical_map(cpu);
+#endif
 	/* Is CPU complex already running on PLLX? */
 	reg = readl(clk_rst + CLK_RESET_CCLK_BURST);
 	policy = (reg >> CLK_RESET_CCLK_BURST_POLICY_SHIFT) & 0xF;
@@ -403,6 +407,9 @@ static void suspend_cpu_complex(u32 mode)
 
 	BUG_ON(cpu != 0);
 
+#ifdef CONFIG_SMP
+	cpu = cpu_logical_map(cpu);
+#endif
 	/* switch coresite to clk_m, save off original source */
 	tegra_sctx.clk_csite_src = readl(clk_rst + CLK_RESET_SOURCE_CSITE);
 	writel(3<<30, clk_rst + CLK_RESET_SOURCE_CSITE);

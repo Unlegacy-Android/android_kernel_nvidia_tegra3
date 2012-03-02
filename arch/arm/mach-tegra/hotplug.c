@@ -14,6 +14,7 @@
 
 #include <asm/cacheflush.h>
 #include <asm/cp15.h>
+#include <asm/smp_plat.h>
 
 #include <mach/iomap.h>
 
@@ -40,6 +41,8 @@
 int tegra_cpu_kill(unsigned int cpu)
 {
 	unsigned int reg;
+
+	cpu = cpu_logical_map(cpu);
 
 	do {
 		reg = readl(CLK_RST_CONTROLLER_CPU_CMPLX_STATUS);
