@@ -738,6 +738,12 @@ int __init enterprise_panel_init(void)
 	gpio_direction_input(enterprise_lcd_te);
 #endif
 
+#ifdef CONFIG_TEGRA_GRHOST
+	err = nvhost_device_register(&tegra_grhost_device);
+	if (err)
+		return err;
+#endif
+
 	err = platform_add_devices(enterprise_gfx_devices,
 				ARRAY_SIZE(enterprise_gfx_devices));
 
