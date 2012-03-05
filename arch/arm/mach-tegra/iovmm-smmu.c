@@ -123,7 +123,7 @@
 #define MC_SMMU_MPE_ASID_0              0x264   /* MPEG encoder (T30) */
 #define MC_SMMU_MSENC_ASID_0            0x264   /* MPEG encoder (T11x) */
 #define MC_SMMU_NV_ASID_0               0x268   /* 3D */
-#define MC_SMMU_NV2_ASID_0              0x26c   /* 3D (T30) */
+#define MC_SMMU_NV2_ASID_0              0x26c   /* 3D secondary (T30) */
 #define MC_SMMU_PPCS_ASID_0             0x270   /* AHB */
 #define MC_SMMU_SATA_ASID_0             0x278   /* SATA (T30) */
 #define MC_SMMU_VDE_ASID_0              0x27c   /* Video decoder */
@@ -131,8 +131,7 @@
 #define MC_SMMU_XUSB_HOST_ASID_0        0x288   /* USB host (T11x) */
 #define MC_SMMU_XUSB_DEV_ASID_0         0x28c   /* USB dev (T11x) */
 #define MC_SMMU_TSEC_ASID_0             0x294   /* TSEC (T11x) */
-
-#define SMMU_PDE_NEXT_SHIFT		28
+#define MC_SMMU_PPCS1_ASID_0            0x298   /* AHB secondary (T11x) */
 
 /*
  * Tegra11x
@@ -163,9 +162,19 @@
 /*
  * Copied from arahb_arbc.h
  */
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+#define AHB_MASTER_SWID_0		0x18
+#endif
 #define AHB_ARBITRATION_XBAR_CTRL_0	0xe0
 #define AHB_ARBITRATION_XBAR_CTRL_0_SMMU_INIT_DONE_DONE		1
 #define AHB_ARBITRATION_XBAR_CTRL_0_SMMU_INIT_DONE_SHIFT	17
+
+/*
+ * Copied from arapbdma.h
+ */
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+#define APBDMA_CHANNEL_SWID_0		0x3c
+#endif
 
 #define MC_SMMU_NUM_ASIDS	4
 #define MC_SMMU_TLB_FLUSH_0_TLB_FLUSH_VA_SECTION__MASK		0xffc00000
@@ -199,6 +208,8 @@
 #define SMMU_PDE_SHIFT	12
 #define SMMU_PTE_SHIFT	12
 #define SMMU_PFN_MASK	0x000fffff
+
+#define SMMU_PDE_NEXT_SHIFT		28
 
 #define SMMU_ADDR_TO_PFN(addr)	((addr) >> 12)
 #define SMMU_ADDR_TO_PDN(addr)	((addr) >> 22)
@@ -264,6 +275,7 @@
 	op(MSENC)	\
 	op(NV)		\
 	op(PPCS)	\
+	op(PPCS1)	\
 	op(TSEC)	\
 	op(VDE)		\
 	op(VI)		\
@@ -335,34 +347,34 @@ struct smmu_as {
 };
 
 /*
- * Register bank index - must be #define's
+ * Register bank index
  */
-#define _MC	0
-#define _AHBARB	1
+enum {
+	_MC,
 #ifdef TEGRA_MC0_BASE
-#define _MC0	2
-#else
-#define _MC0	_MC
+	_MC0,
 #endif
 #ifdef TEGRA_MC1_BASE
-#define _MC1	3
-#else
-#define _MC1	_MC
+	_MC1,
 #endif
+	_AHBARB,
+	_APBDMA,
+	_REGS,
+};
 
-#define _REGS	4
 static const struct {
 	unsigned long base;
 	size_t size;
 } tegra_reg[_REGS] = {
 	[_MC]	= {TEGRA_MC_BASE, TEGRA_MC_SIZE},
-	[_AHBARB]	= {TEGRA_AHB_ARB_BASE, TEGRA_AHB_ARB_SIZE},
 #ifdef TEGRA_MC0_BASE
 	[_MC0]	= {TEGRA_MC0_BASE, TEGRA_MC0_SIZE},
 #endif
 #ifdef TEGRA_MC1_BASE
 	[_MC1]	= {TEGRA_MC1_BASE, TEGRA_MC1_SIZE},
 #endif
+	[_AHBARB]	= {TEGRA_AHB_ARB_BASE, TEGRA_AHB_ARB_SIZE},
+	[_APBDMA]	= {TEGRA_APB_DMA_BASE, TEGRA_APB_DMA_SIZE},
 };
 
 /*
@@ -372,6 +384,7 @@ static const struct {
 #define regs_mc0	regs[_MC0]
 #define regs_mc1	regs[_MC1]
 #define regs_ahbarb	regs[_AHBARB]
+#define regs_apbdma	regs[_APBDMA]
 
 /*
  * Per SMMU device
@@ -1248,6 +1261,12 @@ struct _reg_name_map {
 	SMMU_HWC
 #undef op
 	_NAME_MAP(AHB_ARBITRATION_XBAR_CTRL, _AHBARB),
+#ifdef AHB_MASTER_SWID_0
+	_NAME_MAP(AHB_MASTER_SWID, _AHBARB),
+#endif
+#ifdef APBDMA_CHANNEL_SWID_0
+	_NAME_MAP(APBDMA_CHANNEL_SWID, _APBDMA),
+#endif
 };
 
 static struct _reg_name_map *lookup_reg(struct device_attribute *da)
@@ -1346,6 +1365,8 @@ static ssize_t _sysfs_show_smmu(struct device *d,
 #endif
 	rv += sprintf(buf + rv , "regs_ahbarb: %p @%8lx\n",
 				smmu->regs_ahbarb, tegra_reg[_AHBARB].base);
+	rv += sprintf(buf + rv , "regs_apbdma: %p @%8lx\n",
+				smmu->regs_apbdma, tegra_reg[_APBDMA].base);
 	rv += sprintf(buf + rv , " iovmm_base: %p\n", (void *)smmu->iovmm_base);
 	rv += sprintf(buf + rv , " page_count: %8lx\n", smmu->page_count);
 	rv += sprintf(buf + rv , "   num_ases: %d\n", smmu->num_ases);
