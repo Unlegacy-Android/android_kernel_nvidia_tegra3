@@ -169,6 +169,14 @@ static void tegra_sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 #endif
 }
 
+static unsigned int tegra_sdhci_get_cd(struct sdhci_host *sdhci)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
+
+	return tegra_host->card_present;
+}
+
 static unsigned int tegra_sdhci_get_ro(struct sdhci_host *sdhci)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
@@ -866,6 +874,7 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 
 static struct sdhci_ops tegra_sdhci_ops = {
 	.get_ro     = tegra_sdhci_get_ro,
+	.get_cd     = tegra_sdhci_get_cd,
 	.read_l     = tegra_sdhci_readl,
 	.read_w     = tegra_sdhci_readw,
 	.write_l    = tegra_sdhci_writel,
@@ -892,7 +901,8 @@ static struct sdhci_pltfm_data sdhci_tegra_pdata = {
 		  SDHCI_QUIRK_SINGLE_POWER_WRITE |
 		  SDHCI_QUIRK_NO_HISPD_BIT |
 		  SDHCI_QUIRK_BROKEN_ADMA_ZEROLEN_DESC |
-		  SDHCI_QUIRK_NO_CALC_MAX_DISCARD_TO,
+		  SDHCI_QUIRK_NO_CALC_MAX_DISCARD_TO |
+		  SDHCI_QUIRK_BROKEN_CARD_DETECTION,
 	.ops  = &tegra_sdhci_ops,
 };
 
@@ -1028,6 +1038,12 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 		gpio_direction_input(plat->wp_gpio);
 	}
 
+	/*
+	 * If there is no card detect gpio, assume that the
+	 * card is always present.
+	 */
+	if (!gpio_is_valid(plat->cd_gpio))
+		tegra_host->card_present = 1;
 
 	if (!plat->mmc_data.built_in) {
 		if (plat->mmc_data.ocr_mask & SDHOST_1V8_OCR_MASK) {
