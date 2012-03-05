@@ -1128,6 +1128,13 @@ int __init cardhu_panel_init(void)
 	tegra_gpio_enable(cardhu_hdmi_hpd);
 	gpio_request(cardhu_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(cardhu_hdmi_hpd);
+
+#ifdef CONFIG_TEGRA_GRHOST
+	err = nvhost_device_register(&tegra_grhost_device);
+	if (err)
+		return err;
+#endif
+
 	err = platform_add_devices(cardhu_gfx_devices,
 				ARRAY_SIZE(cardhu_gfx_devices));
 
