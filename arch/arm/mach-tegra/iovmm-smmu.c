@@ -389,8 +389,9 @@ struct smmu_device {
 	struct device	sysfs_dev;
 	int		sysfs_use_count;
 	bool		enable;
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	struct page *avp_vector_page;	/* dummy page shared by all AS's */
-
+#endif
 	/*
 	 * Register image savers for suspend/resume
 	 */
@@ -604,8 +605,10 @@ static int smmu_remove(struct platform_device *pdev)
 		kfree(smmu->as);
 	}
 
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	if (smmu->avp_vector_page)
 		__free_page(smmu->avp_vector_page);
+#endif
 	tegra_iovmm_unregister(&smmu->iovmm_dev);
 	for (i = 0; i < _REGS; i++) {
 		if (smmu->regs[i]) {
@@ -950,9 +953,11 @@ static struct tegra_iovmm_domain *smmu_alloc_domain(
 	_sysfs_create(as, client->misc_dev->this_device);
 	mutex_unlock(&as->lock);
 
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	/* Reserve "page zero" for AVP vectors using a common dummy page */
 	smmu_map_pfn(&as->domain, NULL, 0,
 		page_to_phys(as->smmu->avp_vector_page) >> SMMU_PAGE_SHIFT);
+#endif
 	return &as->domain;
 
 bad:
@@ -1103,14 +1108,18 @@ static int smmu_probe(struct platform_device *pdev)
 	smmu->enable = 1;
 	platform_set_drvdata(pdev, smmu);
 
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	smmu->avp_vector_page = alloc_page(GFP_KERNEL);
 	if (!smmu->avp_vector_page)
 		goto fail;
+#endif
 	return 0;
 
 fail:
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	if (smmu->avp_vector_page)
 		__free_page(smmu->avp_vector_page);
+#endif
 	if (smmu && smmu->as) {
 		for (asid = 0; asid < smmu->num_ases; asid++) {
 			if (smmu->as[asid].pdir_page) {
