@@ -1070,6 +1070,8 @@ static int tegra_dma_suspend(void)
 		*ctx++ = readl(addr + APB_DMA_CHAN_APB_SEQ);
 	}
 
+	/* Disabling clock of dma. */
+	clk_disable(dma_clk);
 	return 0;
 }
 
@@ -1077,6 +1079,9 @@ static void tegra_dma_resume(void)
 {
 	u32 *ctx = apb_dma;
 	int i;
+
+	/* Enabling clock of dma. */
+	clk_enable(dma_clk);
 
 	writel(*ctx++, general_dma_addr + APB_DMA_GEN);
 	writel(*ctx++, general_dma_addr + APB_DMA_CNTRL);
