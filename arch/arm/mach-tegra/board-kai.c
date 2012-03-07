@@ -35,6 +35,7 @@
 #include <linux/tegra_uart.h>
 #include <linux/memblock.h>
 #include <linux/spi-tegra.h>
+#include <linux/nfc/pn544.h>
 #include <linux/smb349-charger.h>
 #include <linux/max17048_battery.h>
 #include <linux/leds.h>
@@ -141,6 +142,20 @@ static __initdata struct tegra_clk_init_table kai_clk_init_table[] = {
 	{ "i2c4",	"pll_p",	3200000,	false},
 	{ "i2c5",	"pll_p",	3200000,	false},
 	{ NULL,		NULL,		0,		0},
+};
+
+static struct pn544_i2c_platform_data nfc_pdata = {
+	.irq_gpio = TEGRA_GPIO_PX0,
+	.ven_gpio = TEGRA_GPIO_PS7,
+	.firm_gpio = TEGRA_GPIO_PR3,
+};
+
+static struct i2c_board_info __initdata kai_nfc_board_info[] = {
+	{
+		I2C_BOARD_INFO("pn544", 0x28),
+		.platform_data = &nfc_pdata,
+		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PX0),
+	},
 };
 
 static struct tegra_i2c_platform_data kai_i2c1_platform_data = {
@@ -271,6 +286,8 @@ static void kai_i2c_init(void)
 
 	i2c_register_board_info(4, kai_i2c4_max17048_board_info,
 		ARRAY_SIZE(kai_i2c4_max17048_board_info));
+
+	i2c_register_board_info(0, kai_nfc_board_info, 1);
 }
 
 static struct platform_device *kai_uart_devices[] __initdata = {
@@ -686,6 +703,13 @@ static void kai_audio_init(void)
 	}
 }
 
+static void kai_nfc_init(void)
+{
+	tegra_gpio_enable(TEGRA_GPIO_PX0);
+	tegra_gpio_enable(TEGRA_GPIO_PP3);
+	tegra_gpio_enable(TEGRA_GPIO_PO7);
+}
+
 static void __init tegra_kai_init(void)
 {
 	tegra_thermal_init(&thermal_data);
@@ -708,6 +732,7 @@ static void __init tegra_kai_init(void)
 	kai_touch_init();
 	kai_keys_init();
 	kai_panel_init();
+	kai_nfc_init();
 	kai_sensors_init();
 	kai_pins_state_init();
 	tegra_release_bootloader_fb();
