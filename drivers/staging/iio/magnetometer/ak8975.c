@@ -108,7 +108,8 @@ static const int ak8975_index_to_reg[] = {
 static int ak8975_write_data(struct i2c_client *client,
 			     u8 reg, u8 val, u8 mask, u8 shift)
 {
-	struct ak8975_data *data = i2c_get_clientdata(client);
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct ak8975_data *data = iio_priv(indio_dev);
 	u8 regval;
 	int ret;
 
@@ -159,7 +160,8 @@ static int ak8975_read_data(struct i2c_client *client,
  */
 static int ak8975_setup(struct i2c_client *client)
 {
-	struct ak8975_data *data = i2c_get_clientdata(client);
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct ak8975_data *data = iio_priv(indio_dev);
 	u8 device_id;
 	int ret;
 
