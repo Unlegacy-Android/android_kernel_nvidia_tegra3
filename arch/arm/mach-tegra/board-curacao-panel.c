@@ -396,6 +396,12 @@ int __init curacao_panel_init(void)
 	err = platform_add_devices(curacao_gfx_devices,
 				   ARRAY_SIZE(curacao_gfx_devices));
 
+#ifdef CONFIG_TEGRA_GRHOST
+	err = nvhost_device_register(&tegra_grhost_device);
+	if (err)
+		return err;
+#endif
+
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
 	res = nvhost_get_resource_byname(&curacao_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
