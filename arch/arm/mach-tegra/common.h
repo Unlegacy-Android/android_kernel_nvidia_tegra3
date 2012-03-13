@@ -6,6 +6,9 @@ struct arm_soc_smp_ops;
 extern struct arm_soc_smp_init_ops	tegra_soc_smp_init_ops;
 extern struct arm_soc_smp_ops		tegra_soc_smp_ops;
 
+extern unsigned long tegra_tsec_start;
+extern unsigned long tegra_tsec_size;
+
 #ifdef CONFIG_CACHE_L2X0
 void tegra_init_cache(bool init);
 #else
