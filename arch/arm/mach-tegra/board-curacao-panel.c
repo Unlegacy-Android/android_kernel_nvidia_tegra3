@@ -35,6 +35,7 @@
 #include <asm/mach-types.h>
 
 #include "board.h"
+#include "common.h"
 #include "devices.h"
 #include "gpio-names.h"
 
@@ -362,6 +363,13 @@ static struct nvmap_platform_carveout curacao_carveouts[] = {
 		.size		= 0,	/* Filled in by curacao_panel_init() */
 		.buddy_size	= SZ_32K,
 	},
+	[3] = {
+		.name		= "tsec",
+		.usage_mask	= NVMAP_HEAP_CARVEOUT_TSEC,
+		.base		= 0,	/* Filled in by curacao_panel_init() */
+		.size		= 0,	/* Filled in by curacao_panel_init() */
+		.buddy_size	= SZ_32K,
+	},
 };
 
 static struct nvmap_platform_data curacao_nvmap_data = {
@@ -392,6 +400,8 @@ int __init curacao_panel_init(void)
 	curacao_carveouts[1].size = tegra_carveout_size;
 	curacao_carveouts[2].base = tegra_vpr_start;
 	curacao_carveouts[2].size = tegra_vpr_size;
+	curacao_carveouts[3].base = tegra_tsec_start;
+	curacao_carveouts[3].size = tegra_tsec_size;
 
 	err = platform_add_devices(curacao_gfx_devices,
 				   ARRAY_SIZE(curacao_gfx_devices));
