@@ -314,11 +314,15 @@ void machine_power_off(void)
 
 void machine_restart(char *cmd)
 {
-	machine_shutdown();
-
 	/* Flush the console to make sure all the relevant messages make it
 	 * out to the console drivers */
 	arm_machine_flush_console();
+
+	/* Disable interrupts first */
+	local_irq_disable();
+	local_fiq_disable();
+
+	machine_shutdown();
 
 	arm_pm_restart(reboot_mode, cmd);
 
