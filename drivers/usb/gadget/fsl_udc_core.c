@@ -445,6 +445,11 @@ static int dr_controller_setup(struct fsl_udc *udc)
 	return 0;
 }
 
+static int can_pullup(struct fsl_udc *udc)
+{
+	return udc->driver && udc->softconnect && udc->vbus_active;
+}
+
 /* Enable DR irq and set controller to run state */
 static void dr_controller_run(struct fsl_udc *udc)
 {
@@ -1365,7 +1370,6 @@ static int fsl_wakeup(struct usb_gadget *gadget)
 }
 #endif
 
-
 static int fsl_set_selfpowered(struct usb_gadget * gadget, int is_on)
 {
 	struct fsl_udc *udc;
@@ -1460,6 +1464,7 @@ static int fsl_pullup(struct usb_gadget *gadget, int is_on)
 
 	udc = container_of(gadget, struct fsl_udc, gadget);
 	udc->softconnect = (is_on != 0);
+
 	if (udc_controller->transceiver &&
 		udc_controller->transceiver->state != OTG_STATE_B_PERIPHERAL)
 		return 0;
