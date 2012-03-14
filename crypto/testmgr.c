@@ -2394,7 +2394,7 @@ static const struct alg_test_desc alg_test_descs[] = {
 				}
 			}
 		}
-	}, {
+	},{
 		.alg = "pcbc(fcrypt)",
 		.test = alg_test_skcipher,
 		.suite = {
