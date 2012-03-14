@@ -158,6 +158,7 @@ void tegra2_cpu_clear_resettable(void);
 int tegra2_sleep_core_finish(unsigned long int);
 void tegra2_hotplug_shutdown(void);
 void tegra2_sleep_wfi(unsigned long v2p);
+int tegra2_finish_sleep_cpu_secondary(unsigned long int);
 #else
 extern void tegra3_iram_start;
 extern void tegra3_iram_end;

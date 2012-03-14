@@ -40,6 +40,8 @@
 #include <linux/tick.h>
 #include <linux/cpu_pm.h>
 
+#include <asm/suspend.h>
+
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 
@@ -280,7 +282,7 @@ static bool tegra2_idle_lp2_cpu_1(struct cpuidle_device *dev,
 
 	tegra_twd_suspend(&twd_context);
 
-	tegra2_sleep_wfi(PHYS_OFFSET - PAGE_OFFSET);
+	cpu_suspend(PHYS_OFFSET - PAGE_OFFSET, tegra2_finish_sleep_cpu_secondary);
 
 	tegra2_cpu_clear_resettable();
 
@@ -301,7 +303,6 @@ bool tegra2_idle_lp2(struct cpuidle_device *dev,
 	s64 request = ktime_to_us(tick_nohz_get_sleep_length());
 	bool last_cpu = tegra_set_cpu_in_lp2(dev->cpu);
 	bool entered_lp2 = false;
-
 	cpu_pm_enter();
 
 	if (dev->cpu == 0) {
@@ -325,6 +326,7 @@ bool tegra2_idle_lp2(struct cpuidle_device *dev,
 	cpu_pm_exit();
 	tegra_clear_cpu_in_lp2(dev->cpu);
 
+	cpu_pm_enter();
 	return entered_lp2;
 }
 
