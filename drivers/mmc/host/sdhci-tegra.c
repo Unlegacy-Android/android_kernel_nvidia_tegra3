@@ -1164,7 +1164,8 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_host->instance = pdev->id;
 	tegra_host->dpd = tegra_io_dpd_get(mmc_dev(host->mmc));
 
-	host->mmc->pm_caps = plat->pm_flags;
+	host->mmc->pm_caps |= plat->pm_caps;
+	host->mmc->pm_flags |= plat->pm_flags;
 
 	/*
 	 * tegra sd controller is not able to reset the command inhibit
