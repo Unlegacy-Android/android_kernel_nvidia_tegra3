@@ -41,6 +41,8 @@ static const char driver_name[] = "tegra-ehci";
 
 #define HOSTPC1_DEVLC_STS 		(1 << 28)
 #define HOSTPC1_DEVLC_NYT_ASUS		1
+#define TEGRA_STREAM_DISABLE	0x1f8
+#define TEGRA_STREAM_DISABLE_OFFSET (1 << 4)
 
 struct tegra_ehci_hcd {
 	struct ehci_hcd *ehci;
@@ -350,6 +352,13 @@ static int tegra_ehci_setup(struct usb_hcd *hcd)
 	ehci->controller_remote_wakeup = false;
 	ehci_reset(ehci);
 	tegra_usb_phy_reset(tegra->phy);
+
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && \
+				!defined(CONFIG_TEGRA_SILICON_PLATFORM)
+	val =  readl(hcd->regs + TEGRA_STREAM_DISABLE);
+	val |= TEGRA_STREAM_DISABLE_OFFSET;
+	writel(val , hcd->regs + TEGRA_STREAM_DISABLE);
+#endif
 
 	ehci_port_power(ehci, 1);
 	return retval;
