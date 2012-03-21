@@ -1053,14 +1053,6 @@ static int __device_suspend(struct device *dev, pm_message_t state, bool async)
 
 	dpm_wait_for_children(dev, async);
 
-	data.dev = dev;
-	data.tsk = get_current();
-	init_timer_on_stack(&timer);
-	timer.expires = jiffies + HZ * 12;
-	timer.function = dpm_drv_timeout;
-	timer.data = (unsigned long)&data;
-	add_timer(&timer);
-
 	if (async_error)
 		return 0;
 
@@ -1073,6 +1065,14 @@ static int __device_suspend(struct device *dev, pm_message_t state, bool async)
 		async_error = -EBUSY;
 		return 0;
 	}
+
+	data.dev = dev;
+	data.tsk = get_current();
+	init_timer_on_stack(&timer);
+	timer.expires = jiffies + HZ * 12;
+	timer.function = dpm_drv_timeout;
+	timer.data = (unsigned long)&data;
+	add_timer(&timer);
 
 	device_lock(dev);
 
