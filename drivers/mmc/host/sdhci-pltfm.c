@@ -209,14 +209,14 @@ static int sdhci_pltfm_suspend(struct device *dev)
 
 	ret = sdhci_suspend_host(host);
 	if (ret) {
-		dev_err(&dev->dev, "suspend failed, error = %d\n", ret);
+		dev_err(dev, "suspend failed, error = %d\n", ret);
 		return ret;
 	}
 
 	if (host->ops && host->ops->suspend)
 		ret = host->ops->suspend(host);
 	if (ret) {
-		dev_err(&dev->dev, "suspend hook failed, error = %d\n", ret);
+		dev_err(dev, "suspend hook failed, error = %d\n", ret);
 		sdhci_resume_host(host);
 	}
 
@@ -231,13 +231,13 @@ static int sdhci_pltfm_resume(struct device *dev)
 	if (host->ops && host->ops->resume)
 		ret = host->ops->resume(host);
 	if (ret) {
-		dev_err(&dev->dev, "resume hook failed, error = %d\n", ret);
+		dev_err(dev, "resume hook failed, error = %d\n", ret);
 		return ret;
 	}
 
 	ret = sdhci_resume_host(host);
 	if (ret)
-		dev_err(&dev->dev, "resume failed, error = %d\n", ret);
+		dev_err(dev, "resume failed, error = %d\n", ret);
 
 	return ret;
 }

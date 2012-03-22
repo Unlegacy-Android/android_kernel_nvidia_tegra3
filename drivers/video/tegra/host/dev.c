@@ -31,6 +31,7 @@
 #include <linux/uaccess.h>
 #include <linux/file.h>
 #include <linux/clk.h>
+#include <linux/module.h>
 
 #include <asm/io.h>
 

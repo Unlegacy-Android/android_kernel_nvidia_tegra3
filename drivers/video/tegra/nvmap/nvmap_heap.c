@@ -26,6 +26,7 @@
 #include <linux/mm.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
+#include <linux/stat.h>
 
 #include <mach/nvmap.h>
 

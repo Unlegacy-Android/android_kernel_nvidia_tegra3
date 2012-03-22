@@ -17,6 +17,7 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <mach/pinmux.h>
+#include <mach/pinmux-tegra20.h>
 
 #define DEFAULT_DRIVE(_name)					\
 	{							\

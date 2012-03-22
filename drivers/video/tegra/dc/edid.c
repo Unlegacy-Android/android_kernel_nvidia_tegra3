@@ -20,6 +20,7 @@
 #include <linux/debugfs.h>
 #include <linux/fb.h>
 #include <linux/i2c.h>
+#include <linux/module.h>
 #include <linux/seq_file.h>
 #include <linux/vmalloc.h>
 

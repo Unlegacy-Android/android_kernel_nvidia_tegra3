@@ -677,8 +677,8 @@ static int __devinit tegra_i2c_probe(struct platform_device *pdev)
 	i2c_dev->dev = &pdev->dev;
 
 	i2c_dev->last_bus_clk_rate = 100000; /* default clock rate */
-	if (pdata) {
-		i2c_dev->last_bus_clk_rate = pdata->bus_clk_rate[0];
+	if (plat) {
+		i2c_dev->last_bus_clk_rate = plat->bus_clk_rate[0];
 
 	} else if (i2c_dev->dev->of_node) {    /* if there is a device tree node ... */
 		/* TODO: DAN: this doesn't work for DT */
@@ -734,10 +734,11 @@ static int __devinit tegra_i2c_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "Failed to add I2C adapter\n");
 			goto err_del_bus;
 		}
+
+		of_i2c_register_devices(&i2c_bus->adapter);
+
 		i2c_dev->bus_count++;
 	}
-
-	of_i2c_register_devices(&i2c_dev->adapter);
 
 	return 0;
 

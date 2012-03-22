@@ -176,7 +176,7 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 	}
 }
 
-static int tegra_sdhci_suspend(struct sdhci_host *sdhci, pm_message_t state)
+static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 {
 	tegra_sdhci_set_clock(sdhci, 0);
 

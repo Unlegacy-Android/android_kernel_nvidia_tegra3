@@ -25,6 +25,7 @@
 #include <asm/mach-types.h>
 #include <linux/platform_device.h>
 #include <linux/pwm_backlight.h>
+#include <mach/gpio-tegra.h>
 #include <mach/nvhost.h>
 #include <mach/nvmap.h>
 #include <mach/irqs.h>

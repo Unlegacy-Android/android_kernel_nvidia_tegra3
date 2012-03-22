@@ -20,6 +20,7 @@
 #include <linux/gpio.h>
 
 #include <asm/mach-types.h>
+#include <mach/gpio-tegra.h>
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/sdhci.h>

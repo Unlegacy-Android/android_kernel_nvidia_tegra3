@@ -20,6 +20,7 @@
  */
 
 #include <linux/pm_runtime.h>
+#include <linux/export.h>
 
 #include <mach/nvhost.h>
 

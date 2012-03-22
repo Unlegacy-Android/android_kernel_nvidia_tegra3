@@ -18,6 +18,7 @@
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/miscdevice.h>
+#include <linux/module.h>
 #include <linux/poll.h>
 #include <linux/sched.h>
 #include <linux/uaccess.h>

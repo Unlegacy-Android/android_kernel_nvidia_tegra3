@@ -632,7 +632,7 @@ void *nvmap_mmap(struct nvmap_handle_ref *ref)
 	adj_size += h->size;
 	adj_size = PAGE_ALIGN(adj_size);
 
-	v = alloc_vm_area(adj_size);
+	v = alloc_vm_area(adj_size, NULL);
 	if (!v) {
 		nvmap_handle_put(h);
 		return NULL;
