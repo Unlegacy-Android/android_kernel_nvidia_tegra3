@@ -35,6 +35,7 @@ struct subsys_private;
 struct bus_type;
 struct device_node;
 struct iommu_ops;
+struct dma_iommu_mapping;
 
 struct bus_attribute {
 	struct attribute	attr;
@@ -106,7 +107,9 @@ struct bus_type {
 	const struct dev_pm_ops *pm;
 
 	struct iommu_ops *iommu_ops;
-
+#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
+	struct dma_iommu_mapping *map;
+#endif
 	struct subsys_private *p;
 };
 
