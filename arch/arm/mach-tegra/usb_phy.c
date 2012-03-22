@@ -32,6 +32,7 @@
 #include <mach/usb_phy.h>
 #include <mach/iomap.h>
 #include <mach/pinmux.h>
+#include <mach/pinmux-tegra20.h>
 
 #define ULPI_VIEWPORT		0x170
 #define   ULPI_WAKEUP		(1 << 31)
