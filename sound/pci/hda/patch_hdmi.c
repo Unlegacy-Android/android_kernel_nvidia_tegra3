@@ -902,7 +902,7 @@ static int hdmi_pcm_open(struct hda_pcm_stream *hinfo,
 			}
 		}
 		if (!eld->lpcm_sad_ready)
-			return -EAGAIN;
+			return -ENODEV;
 	}
 #endif
 
