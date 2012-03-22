@@ -29,7 +29,8 @@
 #include <mach/iomap.h>
 #include <mach/pinmux.h>
 #include <mach/pinmux-tegra30.h>
-#include <mach/suspend.h>
+
+#include "pm.h"
 
 #define PINGROUP_REG_A	0x868
 #define MUXCTL_REG_A	0x3000
