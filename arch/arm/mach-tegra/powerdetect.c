@@ -57,11 +57,11 @@ static void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 
 static inline void pmc_writel(u32 val, unsigned long addr)
 {
-	writel(val, (u32)pmc_base + addr);
+	writel(val, pmc_base + addr);
 }
 static inline u32 pmc_readl(unsigned long addr)
 {
-	return readl((u32)pmc_base + addr);
+	return readl(pmc_base + addr);
 }
 
 

@@ -133,11 +133,11 @@ static void __iomem *actmon_base = IO_ADDRESS(TEGRA_ACTMON_BASE);
 
 static inline u32 actmon_readl(u32 offset)
 {
-	return __raw_readl((u32)actmon_base + offset);
+	return __raw_readl(actmon_base + offset);
 }
 static inline void actmon_writel(u32 val, u32 offset)
 {
-	__raw_writel(val, (u32)actmon_base + offset);
+	__raw_writel(val, actmon_base + offset);
 }
 static inline void actmon_wmb(void)
 {

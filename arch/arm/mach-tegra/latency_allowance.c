@@ -122,9 +122,9 @@ static const int normal_atom_size = 16;
 static const int fdc_atom_size = 32;
 
 #define MC_RA(r) \
-	((u32)IO_ADDRESS(TEGRA_MC_BASE) + (MC_##r))
+	(IO_ADDRESS(TEGRA_MC_BASE) + (MC_##r))
 #define RA(r) \
-	((u32)IO_ADDRESS(TEGRA_MC_BASE) + (MC_LA_##r))
+	(IO_ADDRESS(TEGRA_MC_BASE) + (MC_LA_##r))
 
 #define MASK(x) \
 	((0xFFFFFFFFUL >> (31 - (1 ? x) + (0 ? x))) << (0 ? x))
@@ -238,9 +238,9 @@ struct la_scaling_reg_info {
 };
 
 #define DISP1_RA(r) \
-	((u32)IO_ADDRESS(TEGRA_DISPLAY_BASE) + DS_DISP_MCCIF_##r##_HYST)
+	(IO_ADDRESS(TEGRA_DISPLAY_BASE) + DS_DISP_MCCIF_##r##_HYST)
 #define DISP2_RA(r) \
-	((u32)IO_ADDRESS(TEGRA_DISPLAY2_BASE) + DS_DISP_MCCIF_##r##_HYST)
+	(IO_ADDRESS(TEGRA_DISPLAY2_BASE) + DS_DISP_MCCIF_##r##_HYST)
 
 #define DISP_SCALING_REG_INFO(id, r, ra) \
 	{ \
@@ -263,11 +263,11 @@ struct la_scaling_reg_info disp_info[] = {
 };
 
 #define VI_TH_RA(r) \
-	((u32)IO_ADDRESS(TEGRA_VI_BASE) + VI_MCCIF_##r##_HYST)
+	(IO_ADDRESS(TEGRA_VI_BASE) + VI_MCCIF_##r##_HYST)
 #define VI_TM_RA(r) \
-	((u32)IO_ADDRESS(TEGRA_VI_BASE) + VI_TIMEOUT_WOCAL_VI)
+	(IO_ADDRESS(TEGRA_VI_BASE) + VI_TIMEOUT_WOCAL_VI)
 #define VI_TL_RA(r) \
-	((u32)IO_ADDRESS(TEGRA_VI_BASE) + VI_RESERVE_##r)
+	(IO_ADDRESS(TEGRA_VI_BASE) + VI_RESERVE_##r)
 
 struct la_scaling_reg_info vi_info[] = {
 	{

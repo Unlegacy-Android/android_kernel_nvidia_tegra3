@@ -67,16 +67,16 @@ static void tegra_mc_timing_save(void)
 	u32 *ctx = mc_boot_timing;
 
 	for (off = MC_EMEM_ARB_CFG; off <= MC_EMEM_ARB_TIMING_W2R; off += 4)
-		*ctx++ = readl((u32)mc + off);
+		*ctx++ = readl(mc + off);
 
 	for (off = MC_EMEM_ARB_DA_TURNS; off <= MC_EMEM_ARB_MISC1; off += 4)
-		*ctx++ = readl((u32)mc + off);
+		*ctx++ = readl(mc + off);
 
-	*ctx++ = readl((u32)mc + MC_EMEM_ARB_RING3_THROTTLE);
-	*ctx++ = readl((u32)mc + MC_EMEM_ARB_OVERRIDE);
-	*ctx++ = readl((u32)mc + MC_RESERVED_RSV);
+	*ctx++ = readl(mc + MC_EMEM_ARB_RING3_THROTTLE);
+	*ctx++ = readl(mc + MC_EMEM_ARB_OVERRIDE);
+	*ctx++ = readl(mc + MC_RESERVED_RSV);
 
-	*ctx++ = readl((u32)mc + MC_INT_MASK);
+	*ctx++ = readl(mc + MC_INT_MASK);
 }
 
 void tegra_mc_timing_restore(void)
@@ -85,20 +85,20 @@ void tegra_mc_timing_restore(void)
 	u32 *ctx = mc_boot_timing;
 
 	for (off = MC_EMEM_ARB_CFG; off <= MC_EMEM_ARB_TIMING_W2R; off += 4)
-		__raw_writel(*ctx++, (u32)mc + off);
+		__raw_writel(*ctx++, mc + off);
 
 	for (off = MC_EMEM_ARB_DA_TURNS; off <= MC_EMEM_ARB_MISC1; off += 4)
-		__raw_writel(*ctx++, (u32)mc + off);
+		__raw_writel(*ctx++, mc + off);
 
-	__raw_writel(*ctx++, (u32)mc + MC_EMEM_ARB_RING3_THROTTLE);
-	__raw_writel(*ctx++, (u32)mc + MC_EMEM_ARB_OVERRIDE);
-	__raw_writel(*ctx++, (u32)mc + MC_RESERVED_RSV);
+	__raw_writel(*ctx++, mc + MC_EMEM_ARB_RING3_THROTTLE);
+	__raw_writel(*ctx++, mc + MC_EMEM_ARB_OVERRIDE);
+	__raw_writel(*ctx++, mc + MC_RESERVED_RSV);
 
-	writel(*ctx++, (u32)mc + MC_INT_MASK);
-	off = readl((u32)mc + MC_INT_MASK);
+	writel(*ctx++, mc + MC_INT_MASK);
+	off = readl(mc + MC_INT_MASK);
 
-	writel(0x1, (u32)mc + MC_TIMING_CONTROL);
-	off = readl((u32)mc + MC_TIMING_CONTROL);
+	writel(0x1, mc + MC_TIMING_CONTROL);
+	off = readl(mc + MC_TIMING_CONTROL);
 }
 #else
 #define tegra_mc_timing_save()

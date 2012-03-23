@@ -73,9 +73,9 @@ static cpumask_t wake_timer_ready;
 static cpumask_t wake_timer_canceled;
 
 #define timer_writel(value, reg) \
-	__raw_writel(value, (u32)timer_reg_base + (reg))
+	__raw_writel(value, timer_reg_base + (reg))
 #define timer_readl(reg) \
-	__raw_readl((u32)timer_reg_base + (reg))
+	__raw_readl(timer_reg_base + (reg))
 
 
 #ifdef CONFIG_PM_SLEEP
