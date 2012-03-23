@@ -107,8 +107,9 @@ static void clk_stats_update(struct clk *c)
 	u64 cur_jiffies = get_jiffies_64();
 
 	if (c->refcnt) {
-		c->stats.time_on = cputime64_add(c->stats.time_on,
-			cputime64_sub(cur_jiffies, c->stats.last_update));
+		c->stats.time_on = c->stats.time_on +
+			(jiffies64_to_cputime64(cur_jiffies) -
+			 (c->stats.last_update));
 	}
 
 	c->stats.last_update = cur_jiffies;
