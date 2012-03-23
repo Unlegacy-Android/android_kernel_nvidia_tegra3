@@ -292,8 +292,8 @@ void tegra_init_cache(bool init)
 		}
 	}
 #else
-	writel(0x770, p + L2X0_TAG_LATENCY_CTRL);
-	writel(0x770, p + L2X0_DATA_LATENCY_CTRL);
+	tag_latency = 0x770;
+	data_latency = 0x770;
 #endif
 #endif
 	writel_relaxed(tag_latency, p + L2X0_TAG_LATENCY_CTRL);
@@ -302,7 +302,7 @@ void tegra_init_cache(bool init)
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #ifndef CONFIG_TEGRA_FPGA_PLATFORM
 	writel(7, p + L2X0_PREFETCH_CTRL);
-	writel(2, p + L2X0_PWR_CTRL);
+	writel(2, p + L2X0_POWER_CTRL);
 #endif	
 #endif
 
