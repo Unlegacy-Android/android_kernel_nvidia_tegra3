@@ -189,4 +189,4 @@ static void __init tegra20_mc_init(void)
 		writel(reg, mc + MC_INT_MASK);
 	}
 }
-arch_initcall(tegra_mc_init);
+arch_initcall(tegra20_mc_init);
