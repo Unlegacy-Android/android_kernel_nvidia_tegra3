@@ -401,13 +401,21 @@ void __init tegra20_init_early(void)
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 void __init tegra30_init_early(void)
 {
+#ifndef CONFIG_SMP
+	/* For SMP system, initializing the reset handler here is too
+	   late. For non-SMP systems, the function that calls the reset
+	   handler initializer is not called, so do it here for non-SMP. */
+	tegra_cpu_reset_handler_init();
+#endif
+	tegra_init_fuse();
 	tegra3_init_clocks();
 	tegra3_init_dvfs();
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra30_clk_init_table);
 	tegra_init_power();
-	tegra_init_cache();
+	tegra_init_cache(true);
 	tegra_init_ahb_gizmo_settings();
+	tegra_init_debug_uart_rate();
 }
 #endif
 
