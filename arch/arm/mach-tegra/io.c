@@ -25,6 +25,7 @@
 #include <linux/init.h>
 #include <linux/mm.h>
 #include <linux/io.h>
+#include <linux/dma-mapping.h>
 
 #include <asm/page.h>
 #include <asm/mach/map.h>
