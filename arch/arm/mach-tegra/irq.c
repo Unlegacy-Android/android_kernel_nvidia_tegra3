@@ -48,7 +48,11 @@
 #define ICTLR_COP_IER_CLR	0x38
 #define ICTLR_COP_IEP_CLASS	0x3c
 
-#define NUM_ICTLRS (INT_MAIN_NR/32)
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#define NUM_ICTLRS 4
+#else
+#define NUM_ICTLRS 5
+#endif
 #define FIRST_LEGACY_IRQ 32
 
 static void __iomem *ictlr_reg_base[] = {
