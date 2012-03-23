@@ -156,7 +156,6 @@ static __initdata struct tegra_clk_init_table tegra20_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "clk_m",	NULL,		0,		true },
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	{ "pll_p",	NULL,		216000000,	true },
 	{ "pll_p_out1",	"pll_p",	28800000,	true },
 	{ "pll_p_out2",	"pll_p",	48000000,	false },
@@ -173,19 +172,6 @@ static __initdata struct tegra_clk_init_table tegra20_clk_init_table[] = {
 	{ "vi",		"pll_c",	0,		false },
 	{ "2d",		"pll_c",	0,		false },
 	{ "3d",		"pll_c",	0,		false },
-#else
-	{ "pll_p",	NULL,		0,		true },
-	{ "pll_p_out1",	"pll_p",	0,		false },
-	{ "pll_p_out2",	"pll_p",	48000000,	false },
-	{ "pll_p_out3",	"pll_p",	0,		true },
-	{ "pll_m_out1",	"pll_m",	275000000,	false },
-	{ "pll_p_out4",	"pll_p",	102000000,	true },
-	{ "sclk",	"pll_p_out4",	102000000,	true },
-	{ "hclk",	"sclk",		102000000,	true },
-	{ "pclk",	"hclk",		51000000,	true },
-	{ "sbc5.sclk",	NULL,		40000000,	false},
-	{ "sbc6.sclk",	NULL,		40000000,	false},
-#endif
 	{ "sbc1.sclk",	NULL,		40000000,	false},
 	{ "sbc2.sclk",	NULL,		40000000,	false},
 	{ "sbc3.sclk",	NULL,		40000000,	false},
@@ -218,11 +204,6 @@ static __initdata struct tegra_clk_init_table tegra20_clk_init_table[] = {
 	{ "sdmmc4",	"pll_p",	48000000,	false},
 	{ "pll_a",	"pll_p_out1",	0,		false},
 	{ "pll_a_out0",	"pll_a",	0,		false},
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	{ "cbus",	"pll_c",	416000000,	false },
-	{ "pll_c_out1",	"pll_c",	208000000,	false },
-	{ "mselect",	"pll_p",	102000000,	true },
-#endif
 	{ NULL,		NULL,		0,		0},
 };
 #endif
@@ -230,25 +211,53 @@ static __initdata struct tegra_clk_init_table tegra20_clk_init_table[] = {
 static __initdata struct tegra_clk_init_table tegra30_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "clk_m",	NULL,		0,		true },
-	{ "pll_m",	"clk_m",	600000000,	true },
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
+	{ "pll_p",	NULL,		0,		true },
+	{ "pll_p_out1",	"pll_p",	0,		false },
+	{ "pll_p_out2",	"pll_p",	48000000,	false },
+	{ "pll_p_out3",	"pll_p",	0,		true },
+	{ "pll_m_out1",	"pll_m",	275000000,	false },
+	{ "pll_p_out4",	"pll_p",	102000000,	true },
+	{ "sclk",	"pll_p_out4",	102000000,	true },
+	{ "hclk",	"sclk",		102000000,	true },
+	{ "pclk",	"hclk",		51000000,	true },
+	{ "sbc5.sclk",	NULL,		40000000,	false},
+	{ "sbc6.sclk",	NULL,		40000000,	false},
+	{ "sbc1.sclk",	NULL,		40000000,	false},
+	{ "sbc2.sclk",	NULL,		40000000,	false},
+	{ "sbc3.sclk",	NULL,		40000000,	false},
+	{ "sbc4.sclk",	NULL,		40000000,	false},
+#else
 	{ "pll_p",	NULL,		216000000,	true },
-	{ "pll_p_out1",	"pll_p",	28800000,	true },
-	{ "pll_p_out2",	"pll_p",	48000000,	true },
+	{ "pll_p_out1",	"pll_p",	28800000,	false },
+	{ "pll_p_out2",	"pll_p",	48000000,	false },
 	{ "pll_p_out3",	"pll_p",	72000000,	true },
-	{ "pll_p_out4",	"pll_p",	108000000,	true },
-	{ "pll_m_out1",	"pll_m",	120000000,	true },
-	{ "sclk",	"pll_m_out1",	120000000,	true },
-	{ "hclk",	"sclk",		120000000,	true },
-	{ "pclk",	"hclk",		60000000,	true },
-	{ "csite",	NULL,		0,		true },
+	{ "pll_m_out1",	"pll_m",	275000000,	true },
+	{ "pll_c",	NULL,		ULONG_MAX,	false },
+	{ "pll_c_out1",	"pll_c",	208000000,	false },
+	{ "pll_p_out4",	"pll_p",	108000000,	false },
+	{ "sclk",	"pll_p_out4",	108000000,	true },
+	{ "hclk",	"sclk",		108000000,	true },
+	{ "pclk",	"hclk",		54000000,	true },
+#endif
+#ifdef CONFIG_TEGRA_SLOW_CSITE
+	{ "csite",	"clk_m",	1000000, 	true },
+#else
+	{ "csite",      NULL,           0,              true },
+#endif
 	{ "emc",	NULL,		0,		true },
 	{ "cpu",	NULL,		0,		true },
 	{ "kfuse",	NULL,		0,		true },
+	{ "fuse",	NULL,		0,		true },
 	{ "pll_u",	NULL,		480000000,	false },
 	{ "sdmmc1",	"pll_p",	48000000,	false},
-	{ "sdmmc2",	"pll_p",	48000000,	false},
 	{ "sdmmc3",	"pll_p",	48000000,	false},
 	{ "sdmmc4",	"pll_p",	48000000,	false},
+	{ "pll_a",	"pll_p_out1",	0,		false},
+	{ "pll_a_out0",	"pll_a",	0,		false},
+	{ "cbus",	"pll_c",	416000000,	false },
+	{ "pll_c_out1",	"pll_c",	208000000,	false },
+	{ "mselect",	"pll_p",	102000000,	true },
 	{ NULL,		NULL,		0,		0},
 };
 #endif
