@@ -265,4 +265,4 @@ static int __init tegra30_mc_init(void)
 
 	return ret;
 }
-arch_initcall(tegra_mc_init);
+arch_initcall(tegra30_mc_init);
