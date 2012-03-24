@@ -24,13 +24,8 @@
 #include <linux/types.h>
 #include <linux/input/matrix_keypad.h>
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define KBC_MAX_GPIO	24
 #define KBC_MAX_KPENT	8
-#else
-#define KBC_MAX_GPIO	20
-#define KBC_MAX_KPENT	7
-#endif
 
 #define KBC_MAX_ROW	16
 #define KBC_MAX_COL	8
@@ -38,6 +33,7 @@
 
 struct tegra_kbc_pin_cfg {
 	bool is_row;
+	bool en;
 	unsigned char num;
 };
 
@@ -49,6 +45,10 @@ struct tegra_kbc_wake_key {
 struct tegra_kbc_platform_data {
 	unsigned int debounce_cnt;
 	unsigned int repeat_cnt;
+	unsigned int scan_count;
+
+	unsigned int wake_cnt; /* 0:wake on any key >1:wake on wake_cfg */
+	const struct tegra_kbc_wake_key *wake_cfg;
 
 	struct tegra_kbc_pin_cfg pin_cfg[KBC_MAX_GPIO];
 	const struct matrix_keymap_data *keymap_data;
@@ -57,5 +57,6 @@ struct tegra_kbc_platform_data {
 	bool wakeup;
 	bool use_fn_map;
 	bool use_ghost_filter;
+	bool disable_ev_rep;
 };
 #endif
