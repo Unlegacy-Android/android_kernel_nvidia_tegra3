@@ -298,6 +298,14 @@ static __initdata struct tegra_clk_init_table tegra30_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 #endif
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+static __initdata struct tegra_clk_init_table tegra11_clk_init_table[] = {
+	{ "cl_dvfs_ref", "pll_p",	54000000,	false },
+	{ "cl_dvfs_soc", "pll_p",	54000000,	false },
+	{ "cl_dvfs_ref", "clk_m",	13000000,	false },
+	{ "cl_dvfs_soc", "clk_m",	13000000,	false },
+};
+#endif
 
 #ifdef CONFIG_CACHE_L2X0
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
