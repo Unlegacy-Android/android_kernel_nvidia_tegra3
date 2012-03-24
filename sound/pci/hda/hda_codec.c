@@ -775,7 +775,7 @@ int /*__devinit*/ snd_hda_bus_new(struct snd_card *card,
 
 	snprintf(bus->workq_name, sizeof(bus->workq_name),
 		 "hd-audio%d", card->number);
-	bus->workq = create_singlethread_workqueue(bus->workq_name);
+	bus->workq = create_freezable_workqueue(bus->workq_name);
 	if (!bus->workq) {
 		snd_printk(KERN_ERR "cannot create workqueue %s\n",
 			   bus->workq_name);
@@ -2844,6 +2844,15 @@ static int snd_hda_spdif_out_switch_put(struct snd_kcontrol *kcontrol,
 	return change;
 }
 
+static int snd_hda_hdmi_decode_get(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	struct hda_codec *codec = snd_kcontrol_chip(kcontrol);
+
+	ucontrol->value.integer.value[0] = codec->ac3dec_capable;
+	return 0;
+}
+
 static struct snd_kcontrol_new dig_mixes[] = {
 	{
 		.access = SNDRV_CTL_ELEM_ACCESS_READ,
@@ -2872,6 +2881,12 @@ static struct snd_kcontrol_new dig_mixes[] = {
 		.info = snd_hda_spdif_out_switch_info,
 		.get = snd_hda_spdif_out_switch_get,
 		.put = snd_hda_spdif_out_switch_put,
+	},
+	{
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+		.name = "AC3 Decode Capability",
+		.info = snd_ctl_boolean_mono_info,
+		.get = snd_hda_hdmi_decode_get,
 	},
 	{ } /* end */
 };
@@ -3265,7 +3280,7 @@ void snd_hda_codec_set_power_to_all(struct hda_codec *codec, hda_nid_t fg,
 						   AC_VERB_GET_POWER_STATE, 0);
 			if (state == power_state)
 				break;
-			msleep(1);
+			mdelay(1);
 		} while (time_after_eq(end_time, jiffies));
 	}
 }

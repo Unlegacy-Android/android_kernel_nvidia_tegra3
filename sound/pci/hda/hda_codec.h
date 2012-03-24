@@ -21,6 +21,8 @@
 #ifndef __SOUND_HDA_CODEC_H
 #define __SOUND_HDA_CODEC_H
 
+#include <linux/platform_device.h>
+
 #include <sound/info.h>
 #include <sound/control.h>
 #include <sound/pcm.h>
@@ -617,6 +619,7 @@ struct hda_bus_ops {
 struct hda_bus_template {
 	void *private_data;
 	struct pci_dev *pci;
+	struct platform_device *pdev;
 	const char *modelname;
 	int *power_save;
 	struct hda_bus_ops ops;
@@ -865,6 +868,7 @@ struct hda_codec {
 	unsigned long power_jiffies;
 #endif
 
+	bool ac3dec_capable;
 	/* codec-specific additional proc output */
 	void (*proc_widget_hook)(struct snd_info_buffer *buffer,
 				 struct hda_codec *codec, hda_nid_t nid);
