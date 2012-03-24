@@ -34,6 +34,9 @@
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/regulator.h>
+#include <linux/debugfs.h>
+#include <linux/seq_file.h>
+#include <linux/uaccess.h>
 
 #include "dummy.h"
 
@@ -1430,6 +1433,8 @@ static int _regulator_enable(struct regulator_dev *rdev)
 			}
 
 			trace_regulator_enable(rdev_get_name(rdev));
+			_notifier_call_chain(
+				rdev, REGULATOR_EVENT_PRE_ENABLE, NULL);
 
 			/* Allow the regulator to ramp; it would be useful
 			 * to extend this for bulk operations so that the
@@ -1447,6 +1452,8 @@ static int _regulator_enable(struct regulator_dev *rdev)
 				udelay(delay);
 			}
 
+			_notifier_call_chain(
+				rdev, REGULATOR_EVENT_POST_ENABLE, NULL);
 			trace_regulator_enable_complete(rdev_get_name(rdev));
 
 		} else if (ret < 0) {
@@ -1801,6 +1808,10 @@ static int _regulator_do_set_voltage(struct regulator_dev *rdev,
 	min_uV += rdev->constraints->uV_offset;
 	max_uV += rdev->constraints->uV_offset;
 
+	if (_regulator_is_enabled(rdev))
+		_notifier_call_chain(rdev, REGULATOR_EVENT_OUT_PRECHANGE,
+				     NULL);
+
 	if (rdev->desc->ops->set_voltage) {
 		ret = rdev->desc->ops->set_voltage(rdev, min_uV, max_uV,
 						   &selector);
@@ -1866,6 +1877,10 @@ static int _regulator_do_set_voltage(struct regulator_dev *rdev,
 
 	if (ret == 0)
 		_notifier_call_chain(rdev, REGULATOR_EVENT_VOLTAGE_CHANGE,
+				     NULL);
+
+	if (_regulator_is_enabled(rdev))
+		_notifier_call_chain(rdev, REGULATOR_EVENT_OUT_POSTCHANGE,
 				     NULL);
 
 	trace_regulator_set_voltage_complete(rdev_get_name(rdev), selector);
@@ -3206,4 +3221,59 @@ unlock:
 
 	return 0;
 }
+
+#ifdef CONFIG_DEBUG_FS
+static int regulator_syncevent(struct file *file, const char __user *user_buf,
+				size_t count, loff_t *ppos)
+{
+	struct regulator_dev *rdev;
+	char buffer[40];
+	int buf_size;
+
+	memset(buffer, 0, sizeof(buffer));
+	buf_size = min(count, (sizeof(buffer)-1));
+
+	if (copy_from_user(buffer, user_buf, buf_size))
+		return -EFAULT;
+
+	if (!strnicmp("all", buffer, 3)) {
+
+		mutex_lock(&regulator_list_mutex);
+
+		list_for_each_entry(rdev, &regulator_list, list) {
+			mutex_lock(&rdev->mutex);
+
+			if (_regulator_is_enabled(rdev))
+				trace_regulator_enable(rdev_get_name(rdev));
+			else
+				trace_regulator_disable(rdev_get_name(rdev));
+
+			trace_regulator_set_voltage(rdev_get_name(rdev),
+				_regulator_get_voltage(rdev),
+				_regulator_get_voltage(rdev));
+
+			mutex_unlock(&rdev->mutex);
+		}
+	}
+
+	mutex_unlock(&regulator_list_mutex);
+
+	return count;
+}
+
+static const struct file_operations regulator_syncevent_fops = {
+	.write		= regulator_syncevent,
+};
+
+static int __init regulator_init_debugfs(void)
+{
+	debugfs_create_file("syncevent_regulators", S_IWUSR, NULL, NULL,
+			&regulator_syncevent_fops);
+
+	return 0;
+}
+
+late_initcall(regulator_init_debugfs);
+#endif
+
 late_initcall(regulator_init_complete);
