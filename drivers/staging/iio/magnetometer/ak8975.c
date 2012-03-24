@@ -108,7 +108,8 @@ static const int ak8975_index_to_reg[] = {
 static int ak8975_write_data(struct i2c_client *client,
 			     u8 reg, u8 val, u8 mask, u8 shift)
 {
-	struct ak8975_data *data = i2c_get_clientdata(client);
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct ak8975_data *data = iio_priv(indio_dev);
 	u8 regval;
 	int ret;
 
@@ -159,7 +160,8 @@ static int ak8975_read_data(struct i2c_client *client,
  */
 static int ak8975_setup(struct i2c_client *client)
 {
-	struct ak8975_data *data = i2c_get_clientdata(client);
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct ak8975_data *data = iio_priv(indio_dev);
 	u8 device_id;
 	int ret;
 
@@ -509,12 +511,6 @@ static int ak8975_probe(struct i2c_client *client,
 		goto exit_gpio;
 	}
 	data = iio_priv(indio_dev);
-	/* Perform some basic start-of-day setup of the device. */
-	err = ak8975_setup(client);
-	if (err < 0) {
-		dev_err(&client->dev, "AK8975 initialization fails\n");
-		goto exit_free_iio;
-	}
 
 	i2c_set_clientdata(client, indio_dev);
 	data->client = client;
@@ -526,6 +522,13 @@ static int ak8975_probe(struct i2c_client *client,
 	indio_dev->num_channels = ARRAY_SIZE(ak8975_channels);
 	indio_dev->info = &ak8975_info;
 	indio_dev->modes = INDIO_DIRECT_MODE;
+
+	/* Perform some basic start-of-day setup of the device. */
+	err = ak8975_setup(client);
+	if (err < 0) {
+		dev_err(&client->dev, "AK8975 initialization fails\n");
+		goto exit_free_iio;
+	}
 
 	err = iio_device_register(indio_dev);
 	if (err < 0)
