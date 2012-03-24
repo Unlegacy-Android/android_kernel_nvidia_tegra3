@@ -146,6 +146,15 @@ config MACH_ARUBA
 
 # Cardhu
 
+config MACH_CARDHU
+       bool "Cardhu board"
+       depends on ARCH_TEGRA_3x_SOC
+       select MACH_HAS_SND_SOC_TEGRA_WM8903 if SND_SOC
+       select MACH_HAS_SND_SOC_TEGRA_TLV320AIC326X if SND_SOC
+       select MACH_HAS_SND_SOC_TEGRA_MAX98095 if SND_SOC
+       help
+         Support for NVIDIA Cardhu development platform
+
 # Enterprise
 
 choice
@@ -212,6 +221,13 @@ config TEGRA_PWM
 	select HAVE_PWM
 	help
 	  Enable support for the Tegra PWM controller(s).
+
+config TEGRA_CARDHU_DSI
+	bool "Support DSI panel on Cardhu"
+	depends on MACH_CARDHU
+	select TEGRA_DSI
+	help
+		Support for DSI Panel on Nvidia Cardhu
 
 config TEGRA_EMC_SCALING_ENABLE
 	bool "Enable scaling the memory frequency"

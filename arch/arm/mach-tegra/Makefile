@@ -138,5 +138,18 @@ obj-${CONFIG_MACH_ARUBA}                += board-aruba-sensors.o
 # Whistler
 
 # Cardhu
+obj-${CONFIG_MACH_CARDHU}               += board-cardhu.o
+obj-${CONFIG_MACH_CARDHU}               += board-cardhu-kbc.o
+obj-${CONFIG_MACH_CARDHU}               += board-cardhu-panel.o
+obj-${CONFIG_MACH_CARDHU}               += board-cardhu-pinmux.o
+obj-${CONFIG_MACH_CARDHU}               += board-cardhu-power.o
+obj-${CONFIG_MACH_CARDHU}               += board-cardhu-pm298-power-rails.o
+obj-${CONFIG_MACH_CARDHU}               += board-cardhu-pm299-power-rails.o
+obj-${CONFIG_MACH_CARDHU}               += board-cardhu-sdhci.o
+obj-${CONFIG_MACH_CARDHU}               += board-cardhu-sensors.o
+obj-${CONFIG_MACH_CARDHU}               += board-cardhu-memory.o
+obj-${CONFIG_MACH_CARDHU}               += board-cardhu-powermon.o
+obj-${CONFIG_MACH_CARDHU}               += baseband-xmm-power.o
+obj-m += baseband-xmm-power2.o
 
 # Enterprise
