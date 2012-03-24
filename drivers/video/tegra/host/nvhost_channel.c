@@ -3,118 +3,93 @@
  *
  * Tegra Graphics Host Channel
  *
- * Copyright (c) 2010, NVIDIA Corporation.
+ * Copyright (c) 2010-2012, NVIDIA Corporation.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "nvhost_channel.h"
 #include "dev.h"
-#include "nvhost_hwctx.h"
+#include "nvhost_job.h"
+#include <trace/events/nvhost.h>
+#include <linux/nvhost_ioctl.h>
+#include <linux/slab.h>
 
 #include <linux/platform_device.h>
 
-#define NVMODMUTEX_2D_FULL   (1)
-#define NVMODMUTEX_2D_SIMPLE (2)
-#define NVMODMUTEX_2D_SB_A   (3)
-#define NVMODMUTEX_2D_SB_B   (4)
-#define NVMODMUTEX_3D        (5)
-#define NVMODMUTEX_DISPLAYA  (6)
-#define NVMODMUTEX_DISPLAYB  (7)
-#define NVMODMUTEX_VI        (8)
-#define NVMODMUTEX_DSI       (9)
+#define NVHOST_CHANNEL_LOW_PRIO_MAX_WAIT 50
 
-static void power_2d(struct nvhost_module *mod, enum nvhost_power_action action);
-static void power_3d(struct nvhost_module *mod, enum nvhost_power_action action);
-static void power_mpe(struct nvhost_module *mod, enum nvhost_power_action action);
+int nvhost_channel_init(struct nvhost_channel *ch,
+		struct nvhost_master *dev, int index)
+{
+	int err;
+	struct nvhost_device *ndev;
+	struct resource *r = NULL;
+	void __iomem *regs = NULL;
+	struct resource *reg_mem = NULL;
 
-static const struct nvhost_channeldesc channelmap[] = {
-{
-	/* channel 0 */
-	.name	       = "display",
-	.syncpts       = BIT(NVSYNCPT_DISP0) | BIT(NVSYNCPT_DISP1) |
-			 BIT(NVSYNCPT_VBLANK0) | BIT(NVSYNCPT_VBLANK1),
-	.modulemutexes = BIT(NVMODMUTEX_DISPLAYA) | BIT(NVMODMUTEX_DISPLAYB),
-},
-{
-	/* channel 1 */
-	.name	       = "gr3d",
-	.syncpts       = BIT(NVSYNCPT_3D),
-	.waitbases     = BIT(NVWAITBASE_3D),
-	.modulemutexes = BIT(NVMODMUTEX_3D),
-	.class	       = NV_GRAPHICS_3D_CLASS_ID,
-	.power         = power_3d,
-},
-{
-	/* channel 2 */
-	.name	       = "gr2d",
-	.syncpts       = BIT(NVSYNCPT_2D_0) | BIT(NVSYNCPT_2D_1),
-	.waitbases     = BIT(NVWAITBASE_2D_0) | BIT(NVWAITBASE_2D_1),
-	.modulemutexes = BIT(NVMODMUTEX_2D_FULL) | BIT(NVMODMUTEX_2D_SIMPLE) |
-			 BIT(NVMODMUTEX_2D_SB_A) | BIT(NVMODMUTEX_2D_SB_B),
-	.power         = power_2d,
-},
-{
-	/* channel 3 */
-	.name	 = "isp",
-	.syncpts = 0,
-},
-{
-	/* channel 4 */
-	.name	       = "vi",
-	.syncpts       = BIT(NVSYNCPT_VI_ISP_0) | BIT(NVSYNCPT_VI_ISP_1) |
-			 BIT(NVSYNCPT_VI_ISP_2) | BIT(NVSYNCPT_VI_ISP_3) |
-			 BIT(NVSYNCPT_VI_ISP_4) | BIT(NVSYNCPT_VI_ISP_5),
-	.modulemutexes = BIT(NVMODMUTEX_VI),
-},
-{
-	/* channel 5 */
-	.name	       = "mpe",
-	.syncpts       = BIT(NVSYNCPT_MPE) | BIT(NVSYNCPT_MPE_EBM_EOF) |
-			 BIT(NVSYNCPT_MPE_WR_SAFE),
-	.waitbases     = BIT(NVWAITBASE_MPE),
-	.class	       = NV_VIDEO_ENCODE_MPEG_CLASS_ID,
-	.power	       = power_mpe,
-},
-{
-	/* channel 6 */
-	.name	       = "dsi",
-	.syncpts       = BIT(NVSYNCPT_DSI),
-	.modulemutexes = BIT(NVMODMUTEX_DSI),
-}};
+	/* Link nvhost_device to nvhost_channel */
+	err = host_channel_op(dev).init(ch, dev, index);
+	if (err < 0) {
+		dev_err(&dev->dev->dev, "failed to init channel %d\n",
+				index);
+		return err;
+	}
+	ndev = ch->dev;
+	ndev->channel = ch;
 
-static inline void __iomem *channel_aperture(void __iomem *p, int ndx)
-{
-	ndx += NVHOST_CHANNEL_BASE;
-	p += NV_HOST1X_CHANNEL0_BASE;
-	p += ndx * NV_HOST1X_CHANNEL_MAP_SIZE_BYTES;
-	return p;
+	/* Map IO memory related to nvhost_device */
+	if (ndev->moduleid != NVHOST_MODULE_NONE) {
+		/* First one is host1x - skip that */
+		r = nvhost_get_resource(dev->dev,
+				IORESOURCE_MEM, ndev->moduleid + 1);
+		if (!r)
+			goto fail;
+
+		reg_mem = request_mem_region(r->start,
+				resource_size(r), ndev->name);
+		if (!reg_mem)
+			goto fail;
+
+		regs = ioremap(r->start, resource_size(r));
+		if (!regs)
+			goto fail;
+
+		ndev->reg_mem = reg_mem;
+		ndev->aperture = regs;
+	}
+	return 0;
+
+fail:
+	if (reg_mem)
+		release_mem_region(r->start, resource_size(r));
+	if (regs)
+		iounmap(regs);
+	dev_err(&ndev->dev, "failed to get register memory\n");
+	return -ENXIO;
+
 }
 
-int __init nvhost_channel_init(struct nvhost_channel *ch,
-			struct nvhost_master *dev, int index)
+int nvhost_channel_submit(struct nvhost_job *job)
 {
-	BUILD_BUG_ON(NVHOST_NUMCHANNELS != ARRAY_SIZE(channelmap));
+	/* Low priority submits wait until sync queue is empty. Ignores result
+	 * from nvhost_cdma_flush, as we submit either when push buffer is
+	 * empty or when we reach the timeout. */
+	if (job->priority < NVHOST_PRIORITY_MEDIUM)
+		(void)nvhost_cdma_flush(&job->ch->cdma,
+				NVHOST_CHANNEL_LOW_PRIO_MAX_WAIT);
 
-	ch->dev = dev;
-	ch->desc = &channelmap[index];
-	ch->aperture = channel_aperture(dev->aperture, index);
-	mutex_init(&ch->reflock);
-	mutex_init(&ch->submitlock);
-
-	return nvhost_hwctx_handler_init(&ch->ctxhandler, ch->desc->name);
+	return channel_op(job->ch).submit(job);
 }
 
 struct nvhost_channel *nvhost_getchannel(struct nvhost_channel *ch)
@@ -122,25 +97,28 @@ struct nvhost_channel *nvhost_getchannel(struct nvhost_channel *ch)
 	int err = 0;
 	mutex_lock(&ch->reflock);
 	if (ch->refcount == 0) {
-		err = nvhost_module_init(&ch->mod, ch->desc->name,
-					ch->desc->power, &ch->dev->mod,
-					&ch->dev->pdev->dev);
-		if (!err) {
-			err = nvhost_cdma_init(&ch->cdma);
-			if (err)
-				nvhost_module_deinit(&ch->mod);
-		}
+		if (ch->dev->init)
+			ch->dev->init(ch->dev);
+		err = nvhost_cdma_init(&ch->cdma);
+	} else if (ch->dev->exclusive) {
+		err = -EBUSY;
 	}
-	if (!err) {
+	if (!err)
 		ch->refcount++;
-	}
+
 	mutex_unlock(&ch->reflock);
+
+	/* Keep alive modules that needs to be when a channel is open */
+	if (!err && ch->dev->keepalive)
+		nvhost_module_busy(ch->dev);
 
 	return err ? NULL : ch;
 }
 
 void nvhost_putchannel(struct nvhost_channel *ch, struct nvhost_hwctx *ctx)
 {
+	BUG_ON(!channel_cdma_op(ch).stop);
+
 	if (ctx) {
 		mutex_lock(&ch->submitlock);
 		if (ch->cur_ctx == ctx)
@@ -148,103 +126,33 @@ void nvhost_putchannel(struct nvhost_channel *ch, struct nvhost_hwctx *ctx)
 		mutex_unlock(&ch->submitlock);
 	}
 
+	/* Allow keep-alive'd module to be turned off */
+	if (ch->dev->keepalive)
+		nvhost_module_idle(ch->dev);
+
 	mutex_lock(&ch->reflock);
 	if (ch->refcount == 1) {
-		nvhost_module_deinit(&ch->mod);
-		/* cdma may already be stopped, that's ok */
-		nvhost_cdma_stop(&ch->cdma);
+		channel_cdma_op(ch).stop(&ch->cdma);
 		nvhost_cdma_deinit(&ch->cdma);
+		nvhost_module_suspend(ch->dev, false);
 	}
 	ch->refcount--;
 	mutex_unlock(&ch->reflock);
 }
 
-void nvhost_channel_suspend(struct nvhost_channel *ch)
+int nvhost_channel_suspend(struct nvhost_channel *ch)
 {
+	int ret = 0;
+
 	mutex_lock(&ch->reflock);
-	BUG_ON(nvhost_module_powered(&ch->mod));
-	if (ch->refcount)
-		nvhost_cdma_stop(&ch->cdma);
+	BUG_ON(!channel_cdma_op(ch).stop);
+
+	if (ch->refcount) {
+		ret = nvhost_module_suspend(ch->dev, false);
+		if (!ret)
+			channel_cdma_op(ch).stop(&ch->cdma);
+	}
 	mutex_unlock(&ch->reflock);
-}
 
-void nvhost_channel_submit(struct nvhost_channel *ch,
-                           struct nvmap_client *user_nvmap,
-                           struct nvhost_op_pair *ops, int num_pairs,
-                           struct nvhost_cpuinterrupt *intrs, int num_intrs,
-                           struct nvmap_handle **unpins, int num_unpins,
-                           u32 syncpt_id, u32 syncpt_val)
-{
-	int i;
-	struct nvhost_op_pair* p;
-
-	/* schedule interrupts */
-	for (i = 0; i < num_intrs; i++) {
-		nvhost_intr_add_action(&ch->dev->intr, syncpt_id, intrs[i].syncpt_val,
-				NVHOST_INTR_ACTION_CTXSAVE, intrs[i].intr_data, NULL);
-	}
-
-	/* begin a CDMA submit */
-	nvhost_cdma_begin(&ch->cdma);
-
-	/* push ops */
-	for (i = 0, p = ops; i < num_pairs; i++, p++)
-		nvhost_cdma_push(&ch->cdma, p->op1, p->op2);
-
-	/* end CDMA submit & stash pinned hMems into sync queue for later cleanup */
-	nvhost_cdma_end(user_nvmap, &ch->cdma, syncpt_id, syncpt_val,
-                        unpins, num_unpins);
-}
-
-static void power_2d(struct nvhost_module *mod, enum nvhost_power_action action)
-{
-	/* TODO: [ahatala 2010-06-17] reimplement EPP hang war */
-	if (action == NVHOST_POWER_ACTION_OFF) {
-		/* TODO: [ahatala 2010-06-17] reset EPP */
-	}
-}
-
-static void power_3d(struct nvhost_module *mod, enum nvhost_power_action action)
-{
-	struct nvhost_channel *ch = container_of(mod, struct nvhost_channel, mod);
-
-	if (action == NVHOST_POWER_ACTION_OFF) {
-		mutex_lock(&ch->submitlock);
-		if (ch->cur_ctx) {
-			DECLARE_WAIT_QUEUE_HEAD_ONSTACK(wq);
-			struct nvhost_op_pair save;
-			struct nvhost_cpuinterrupt ctxsw;
-			u32 syncval;
-			void *ref;
-			syncval = nvhost_syncpt_incr_max(&ch->dev->syncpt,
-							NVSYNCPT_3D,
-							ch->cur_ctx->save_incrs);
-			save.op1 = nvhost_opcode_gather(0, ch->cur_ctx->save_size);
-			save.op2 = ch->cur_ctx->save_phys;
-			ctxsw.intr_data = ch->cur_ctx;
-			ctxsw.syncpt_val = syncval - 1;
-			ch->cur_ctx->valid = true;
-			ch->ctxhandler.get(ch->cur_ctx);
-			ch->cur_ctx = NULL;
-
-			nvhost_channel_submit(ch, ch->dev->nvmap,
-					      &save, 1, &ctxsw, 1, NULL, 0,
-					      NVSYNCPT_3D, syncval);
-
-			nvhost_intr_add_action(&ch->dev->intr, NVSYNCPT_3D,
-					       syncval,
-					       NVHOST_INTR_ACTION_WAKEUP,
-					       &wq, &ref);
-			wait_event(wq,
-				   nvhost_syncpt_min_cmp(&ch->dev->syncpt,
-							 NVSYNCPT_3D, syncval));
-			nvhost_intr_put_ref(&ch->dev->intr, ref);
-			nvhost_cdma_update(&ch->cdma);
-		}
-		mutex_unlock(&ch->submitlock);
-	}
-}
-
-static void power_mpe(struct nvhost_module *mod, enum nvhost_power_action action)
-{
+	return ret;
 }

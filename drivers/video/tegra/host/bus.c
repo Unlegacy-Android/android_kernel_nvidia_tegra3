@@ -2,11 +2,9 @@
  * drivers/video/tegra/host/bus.c
  *
  * Copyright (C) 2010 Google, Inc.
+ * Author: Erik Gilling <konkers@google.com>
  *
- * Author:
- *	Erik Gilling <konkers@google.com>
- *
- * based heavily on drivers/base/platform.c
+ * Copyright (C) 2010-2012 NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -21,15 +19,11 @@
 
 #include <linux/pm_runtime.h>
 #include <linux/export.h>
-
-#include <mach/nvhost.h>
+#include <linux/nvhost.h>
 
 #include "dev.h"
 
 struct nvhost_master *nvhost;
-struct device nvhost_bus = {
-	.init_name	= "nvhost",
-};
 
 struct resource *nvhost_get_resource(struct nvhost_device *dev,
 				       unsigned int type, unsigned int num)
@@ -84,8 +78,6 @@ static int nvhost_drv_probe(struct device *_dev)
 	struct nvhost_driver *drv = to_nvhost_driver(_dev->driver);
 	struct nvhost_device *dev = to_nvhost_device(_dev);
 
-	dev->host = nvhost;
-
 	return drv->probe(dev);
 }
 
@@ -134,8 +126,9 @@ int nvhost_device_register(struct nvhost_device *dev)
 
 	device_initialize(&dev->dev);
 
-	if (!dev->dev.parent)
-		dev->dev.parent = &nvhost_bus;
+	/*  If the dev does not have a parent, assign host1x as parent */
+	if (!dev->dev.parent && nvhost && nvhost->dev != dev)
+		dev->dev.parent = &nvhost->dev->dev;
 
 	dev->dev.bus = &nvhost_bus_type;
 
@@ -202,12 +195,10 @@ void nvhost_device_unregister(struct nvhost_device *dev)
 }
 EXPORT_SYMBOL_GPL(nvhost_device_unregister);
 
-
 static int nvhost_bus_match(struct device *_dev, struct device_driver *drv)
 {
 	struct nvhost_device *dev = to_nvhost_device(_dev);
 
-	pr_info("host1x: %s %s\n", dev->name, drv->name);
 	return !strncmp(dev->name, drv->name, strlen(drv->name));
 }
 
@@ -545,9 +536,21 @@ struct bus_type nvhost_bus_type = {
 };
 EXPORT_SYMBOL(nvhost_bus_type);
 
-int nvhost_bus_register(struct nvhost_master *host)
+static int set_parent(struct device *dev, void *data)
+{
+	struct nvhost_device *ndev = to_nvhost_device(dev);
+	struct nvhost_master *host = data;
+	if (!dev->parent && ndev != host->dev)
+		dev->parent = &host->dev->dev;
+	return 0;
+}
+
+int nvhost_bus_add_host(struct nvhost_master *host)
 {
 	nvhost = host;
+
+	/*  Assign host1x as parent to all devices in nvhost bus */
+	bus_for_each_dev(&nvhost_bus_type, NULL, host, set_parent);
 
 	return 0;
 }
@@ -558,13 +561,8 @@ int nvhost_bus_init(void)
 	int err;
 
 	pr_info("host1x bus init\n");
-	err = device_register(&nvhost_bus);
-	if (err)
-		return err;
 
 	err = bus_register(&nvhost_bus_type);
-	if (err)
-		device_unregister(&nvhost_bus);
 
 	return err;
 }
