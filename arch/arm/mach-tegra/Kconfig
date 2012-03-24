@@ -156,6 +156,13 @@ config MACH_CARDHU
          Support for NVIDIA Cardhu development platform
 
 # Enterprise
+config MACH_TEGRA_ENTERPRISE
+       bool "Enterprise board"
+       depends on ARCH_TEGRA_3x_SOC
+       select MACH_HAS_SND_SOC_TEGRA_MAX98088 if SND_SOC
+       select TEGRA_SLOW_CSITE
+       help
+         Support for NVIDIA Enterprise development platform
 
 choice
        prompt "Tegra platform type"
