@@ -579,3 +579,46 @@ int mmc_send_hpi_cmd(struct mmc_card *card, u32 *status)
 
 	return 0;
 }
+
+int mmc_send_bk_ops_cmd(struct mmc_card *card, bool is_synchronous)
+{
+	int err;
+	struct mmc_command cmd;
+	u32 status;
+
+	BUG_ON(!card);
+	BUG_ON(!card->host);
+
+	memset(&cmd, 0, sizeof(struct mmc_command));
+
+	cmd.opcode = MMC_SWITCH;
+	cmd.arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
+		(EXT_CSD_BKOPS_EN << 16) |
+		(1 << 8) |
+		EXT_CSD_CMD_SET_NORMAL;
+	if (is_synchronous)
+		cmd.flags = MMC_RSP_R1B | MMC_CMD_AC;
+	else
+		cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
+
+	err = mmc_wait_for_cmd(card->host, &cmd, MMC_CMD_RETRIES);
+	if (err)
+		return err;
+
+	/* Must check status to be sure of no errors */
+	do {
+		err = mmc_send_status(card, &status);
+		if (err)
+			return err;
+		if (card->host->caps & MMC_CAP_WAIT_WHILE_BUSY)
+			break;
+	} while (R1_CURRENT_STATE(status) == 7);
+
+	if (status & 0xFDFFA000)
+		printk(KERN_ERR "%s: unexpected status %#x after "
+			   "switch", mmc_hostname(card->host), status);
+	if (status & R1_SWITCH_ERROR)
+		return -EBADMSG;
+
+	return 0;
+}

@@ -354,6 +354,9 @@ static int mmc_read_switch(struct mmc_card *card)
 		card->sw_caps.sd3_curr_limit = status[7];
 	}
 
+	if (status[13] & 0x02)
+		card->sw_caps.hs_max_dtr = 50000000;
+
 out:
 	kfree(status);
 
@@ -545,6 +548,8 @@ static int sd_set_bus_speed_mode(struct mmc_card *card, u8 *status)
 			mmc_hostname(card->host));
 	else {
 		mmc_set_timing(card->host, timing);
+		if (timing == MMC_TIMING_UHS_DDR50)
+			mmc_card_set_ddr_mode(card);
 		mmc_set_clock(card->host, card->sw_caps.uhs_max_dtr);
 	}
 
@@ -972,7 +977,7 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 			goto free_card;
 
 		/* Card is an ultra-high-speed card */
-		mmc_card_set_uhs(card);
+		mmc_sd_card_set_uhs(card);
 
 		/*
 		 * Since initialization is now complete, enable preset

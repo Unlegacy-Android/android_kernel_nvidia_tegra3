@@ -27,6 +27,10 @@
 
 #define to_mmc_driver(d)	container_of(d, struct mmc_driver, drv)
 
+#ifdef CONFIG_MMC_TEST
+static struct mmc_driver *mmc_test_drv;
+#endif
+
 static ssize_t mmc_type_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -108,6 +112,13 @@ static int mmc_bus_probe(struct device *dev)
 {
 	struct mmc_driver *drv = to_mmc_driver(dev->driver);
 	struct mmc_card *card = mmc_dev_to_card(dev);
+
+#ifdef CONFIG_MMC_TEST
+	/*
+	 * Hack: Explicitly invoking mmc_test probe to co-exist with mmcblk driver.
+	 */
+	mmc_test_drv->probe(card);
+#endif
 
 	return drv->probe(card);
 }
@@ -208,6 +219,10 @@ void mmc_unregister_bus(void)
 int mmc_register_driver(struct mmc_driver *drv)
 {
 	drv->drv.bus = &mmc_bus_type;
+#ifdef CONFIG_MMC_TEST
+	if (!strcmp(drv->drv.name, "mmc_test"))
+		mmc_test_drv = drv;
+#endif
 	return driver_register(&drv->drv);
 }
 
@@ -305,7 +320,7 @@ int mmc_add_card(struct mmc_card *card)
 	} else {
 		pr_info("%s: new %s%s%s%s card at address %04x\n",
 			mmc_hostname(card->host),
-			mmc_card_uhs(card) ? "ultra high speed " :
+			mmc_sd_card_uhs(card) ? "ultra high speed " :
 			(mmc_card_highspeed(card) ? "high speed " : ""),
 			(mmc_card_hs200(card) ? "HS200 " : ""),
 			mmc_card_ddr_mode(card) ? "DDR " : "",
