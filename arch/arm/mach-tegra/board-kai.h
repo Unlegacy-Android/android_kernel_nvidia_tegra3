@@ -79,9 +79,13 @@ int kai_emc_init(void);
 int kai_edp_init(void);
 void __init kai_tsensor_init(void);
 int __init touch_init_raydium(int irq_gpio, int reset_gpio, int platform);
+int __init touch_init_synaptics_kai(void);
 
 #define TOUCH_GPIO_IRQ_RAYDIUM_SPI      TEGRA_GPIO_PZ3
 #define TOUCH_GPIO_RST_RAYDIUM_SPI      TEGRA_GPIO_PN5
+
+#define SYNAPTICS_ATTN_GPIO             TEGRA_GPIO_PZ3
+#define SYNAPTICS_RESET_GPIO            TEGRA_GPIO_PN5
 
 #define KAI_TS_ID1      TEGRA_GPIO_PI7
 #define KAI_TS_ID2      TEGRA_GPIO_PC7

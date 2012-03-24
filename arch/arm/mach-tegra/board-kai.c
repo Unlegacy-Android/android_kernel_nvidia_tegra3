@@ -624,6 +624,10 @@ static int __init kai_touch_init(void)
 
 		touch_init_raydium();
 		break;
+	case 3:
+		pr_info("Synaptics PCB based touch init\n");
+		touch_init_synaptics_kai();
+		break;
 	default:
 		pr_err("touch_id error, no touch %d\n", touch_id);
 	}
