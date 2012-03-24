@@ -162,6 +162,7 @@ config MFD_TPS65910
 	depends on I2C=y && GPIOLIB
 	select MFD_CORE
 	select GPIO_TPS65910
+	select REGMAP_I2C
 	help
 	  if you say yes here you get support for the TPS65910 series of
 	  Power Management chips.
@@ -427,6 +428,26 @@ config MFD_S5M_CORE
 	 This driver provies common support for accessing the device,
 	 additional drivers must be enabled in order to use the functionality
 	 of the device
+
+config MFD_MAX8907C
+	tristate "Maxim Semiconductor MAX8907C PMIC Support"
+	select MFD_CORE
+	depends on I2C
+	help
+	  Say yes here to support for Maxim Semiconductor MAX8907C. This is
+	  a Power Management IC. This driver provies common support for
+	  accessing the device, additional drivers must be enabled in order
+	  to use the functionality of the device.
+
+config MFD_MAX77663
+	tristate "Maxim Semiconductor MAX77663 PMIC Support"
+	select MFD_CORE
+	depends on I2C
+	help
+	  Say yes here to support for Maxim Semiconductor MAX77663. This is
+	  a Power Management IC. This driver provies common support for
+	  accessing the device, additional drivers must be enabled in order
+	  to use the functionality of the device.
 
 config MFD_WM8400
 	tristate "Support Wolfson Microelectronics WM8400"
@@ -829,6 +850,66 @@ config MFD_INTEL_MSIC
 	  Select this option to enable access to Intel MSIC (Avatele
 	  Passage) chip. This chip embeds audio, battery, GPIO, etc.
 	  devices used in Intel Medfield platforms.
+
+config MFD_TPS6591X
+	bool "TPS6591x Power Management chips"
+	depends on I2C && GPIOLIB && GENERIC_HARDIRQS
+	select MFD_CORE
+	help
+	  If you say yes here you get support for the TPS6591X series of
+	  Power Management chips.
+	  This driver provides common support for accessing the device,
+	  additional drivers must be enabled in order to use the
+	  functionality of the device.
+
+config MFD_TPS65090
+	bool "TPS65090 Power Management chips"
+	depends on I2C && GENERIC_HARDIRQS
+	select MFD_CORE
+	select REGMAP_I2C
+	help
+	  If you say yes here you get support for the TPS65090 series of
+	  Power Management chips.
+	  This driver provides common support for accessing the device,
+	  additional drivers must be enabled in order to use the
+	  functionality of the device.
+
+config MFD_AAT2870_CORE
+	bool "Support for the AnalogicTech AAT2870"
+	select MFD_CORE
+	depends on I2C=y && GPIOLIB
+	help
+	  If you say yes here you get support for the AAT2870.
+
+config MFD_TPS80031
+	bool "TI TPS80031 Power Management chips"
+	depends on I2C && GPIOLIB && GENERIC_HARDIRQS
+	select MFD_CORE
+	help
+	  If you say yes here you get support for the TPS80031 Power
+	  Management chips.
+	  This driver provides common support for accessing the device,
+	  additional drivers must be enabled in order to use the
+	  functionality of the device.
+
+config GPADC_TPS80031
+	bool "Support for TI TPS80031 Gpadc driver"
+	depends on  MFD_TPS80031
+	help
+	  If you say yes here you get support for the TPS80031 gpadc
+	  Module.
+
+config MFD_RICOH583
+	bool "Ricoh RC5T583 Power Management system device"
+	depends on I2C && GPIOLIB && GENERIC_HARDIRQS
+	select MFD_CORE
+	default n
+	help
+	  If you say yes here you get support for the RICOH583 Power
+	  Management system device.
+	  This driver provides common support for accessing the device,
+	  additional drivers must be enabled in order to use the
+	  functionality of the device.
 
 endmenu
 endif
