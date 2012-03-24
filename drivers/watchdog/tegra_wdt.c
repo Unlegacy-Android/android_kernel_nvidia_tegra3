@@ -3,7 +3,7 @@
  *
  * watchdog driver for NVIDIA tegra internal watchdog
  *
- * Copyright (c) 2010, NVIDIA Corporation.
+ * Copyright (c) 2011, NVIDIA Corporation.
  *
  * based on drivers/watchdog/softdog.c and drivers/watchdog/omap_wdt.c
  *
@@ -39,22 +39,11 @@
 #define MIN_WDT_PERIOD	5
 #define MAX_WDT_PERIOD	1000
 
-#define TIMER_PTV	0x0
-#define TIMER_EN	(1 << 31)
-#define TIMER_PERIODIC	(1 << 30)
-
-#define TIMER_PCR	0x4
-#define TIMER_PCR_INTR	(1 << 30)
-
-#define WDT_EN		(1 << 5)
-#define WDT_SEL_TMR1	(0 << 4)
-#define WDT_SYS_RST	(1 << 2)
-
-/*
- * For spinlock lockup detection to work, the heartbeat should be 2*lockup
- * for cases where the spinlock disabled irqs.
- */
-static int heartbeat = 120; /* must be greater than MIN_WDT_PERIOD and lower than MAX_WDT_PERIOD */
+enum tegra_wdt_status {
+	WDT_DISABLED = 1 << 0,
+	WDT_ENABLED = 1 << 1,
+	WDT_IOCTL_ENABBLED_AT_PROBE = 1 << 2,
+};
 
 struct tegra_wdt {
 	struct miscdevice	miscdev;
@@ -66,10 +55,26 @@ struct tegra_wdt {
 	void __iomem		*wdt_timer;
 	int			irq;
 	int			timeout;
-	bool			enabled;
+	int			status;
 };
 
-static struct tegra_wdt *tegra_wdt_dev;
+static struct platform_device *tegra_wdt_dev;
+/*
+ * For spinlock lockup detection to work, the heartbeat should be 2*lockup
+ * for cases where the spinlock disabled irqs.
+ */
+static int heartbeat = 120; /* must be greater than MIN_WDT_PERIOD and lower than MAX_WDT_PERIOD */
+
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
+
+#define TIMER_PTV		0x0
+ #define TIMER_EN		(1 << 31)
+ #define TIMER_PERIODIC		(1 << 30)
+#define TIMER_PCR		0x4
+ #define TIMER_PCR_INTR		(1 << 30)
+#define WDT_EN			(1 << 5)
+#define WDT_SEL_TMR1		(0 << 4)
+#define WDT_SYS_RST		(1 << 2)
 
 static void tegra_wdt_enable(struct tegra_wdt *wdt)
 {
@@ -92,6 +97,11 @@ static void tegra_wdt_disable(struct tegra_wdt *wdt)
 	writel(0, wdt->wdt_timer + TIMER_PTV);
 }
 
+static inline void tegra_wdt_ping(struct tegra_wdt *wdt)
+{
+	return;
+}
+
 static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
 {
 	struct tegra_wdt *wdt = dev_id;
@@ -99,6 +109,78 @@ static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
 	writel(TIMER_PCR_INTR, wdt->wdt_timer + TIMER_PCR);
 	return IRQ_HANDLED;
 }
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
+
+#define TIMER_PTV			0
+ #define TIMER_EN			(1 << 31)
+ #define TIMER_PERIODIC			(1 << 30)
+#define TIMER_PCR			0x4
+ #define TIMER_PCR_INTR			(1 << 30)
+#define WDT_CFG				(0)
+ #define WDT_CFG_TMR_SRC		(0 << 0) /* for TMR10. */
+ #define WDT_CFG_PERIOD			(1 << 4)
+ #define WDT_CFG_INT_EN			(1 << 12)
+ #define WDT_CFG_SYS_RST_EN		(1 << 14)
+ #define WDT_CFG_PMC2CAR_RST_EN		(1 << 15)
+#define WDT_CMD				(8)
+ #define WDT_CMD_START_COUNTER		(1 << 0)
+ #define WDT_CMD_DISABLE_COUNTER	(1 << 1)
+#define WDT_UNLOCK			(0xC)
+ #define WDT_UNLOCK_PATTERN		(0xC45A << 0)
+
+static void tegra_wdt_set_timeout(struct tegra_wdt *wdt, int sec)
+{
+	u32 ptv;
+
+	ptv = readl(wdt->wdt_timer + TIMER_PTV);
+
+	wdt->timeout = clamp(sec, MIN_WDT_PERIOD, MAX_WDT_PERIOD);
+	if (ptv & TIMER_EN) {
+		/* since the watchdog reset occurs when a fourth interrupt
+		 * is asserted before the first is processed, program the
+		 * timer period to one-fourth of the watchdog period */
+		ptv = (wdt->timeout * 1000000ul) / 4;
+		ptv |= (TIMER_EN | TIMER_PERIODIC);
+		writel(ptv, wdt->wdt_timer + TIMER_PTV);
+	}
+}
+
+static inline void tegra_wdt_ping(struct tegra_wdt *wdt)
+{
+	writel(WDT_CMD_START_COUNTER, wdt->wdt_source + WDT_CMD);
+}
+
+static void tegra_wdt_enable(struct tegra_wdt *wdt)
+{
+	u32 val;
+
+	writel(TIMER_PCR_INTR, wdt->wdt_timer + TIMER_PCR);
+	val = (wdt->timeout * 1000000ul) / 4;
+	val |= (TIMER_EN | TIMER_PERIODIC);
+	writel(val, wdt->wdt_timer + TIMER_PTV);
+
+	val = WDT_CFG_TMR_SRC | WDT_CFG_PERIOD | /*WDT_CFG_INT_EN |*/
+		/*WDT_CFG_SYS_RST_EN |*/ WDT_CFG_PMC2CAR_RST_EN;
+	writel(val, wdt->wdt_source + WDT_CFG);
+	writel(WDT_CMD_START_COUNTER, wdt->wdt_source + WDT_CMD);
+}
+
+static void tegra_wdt_disable(struct tegra_wdt *wdt)
+{
+	writel(WDT_UNLOCK_PATTERN, wdt->wdt_source + WDT_UNLOCK);
+	writel(WDT_CMD_DISABLE_COUNTER, wdt->wdt_source + WDT_CMD);
+
+	writel(0, wdt->wdt_timer + TIMER_PTV);
+}
+
+static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
+{
+	struct tegra_wdt *wdt = dev_id;
+
+	tegra_wdt_ping(wdt);
+	return IRQ_HANDLED;
+}
+#endif
 
 static int tegra_wdt_notify(struct notifier_block *this,
 			    unsigned long code, void *dev)
@@ -112,13 +194,12 @@ static int tegra_wdt_notify(struct notifier_block *this,
 
 static int tegra_wdt_open(struct inode *inode, struct file *file)
 {
-	struct miscdevice *miscdev = file->private_data;
-	struct tegra_wdt *wdt = dev_get_drvdata(miscdev->parent);
+	struct tegra_wdt *wdt = platform_get_drvdata(tegra_wdt_dev);
 
 	if (test_and_set_bit(1, &wdt->users))
 		return -EBUSY;
 
-	wdt->enabled = true;
+	wdt->status |= WDT_ENABLED;
 	wdt->timeout = heartbeat;
 	tegra_wdt_enable(wdt);
 	file->private_data = wdt;
@@ -129,10 +210,12 @@ static int tegra_wdt_release(struct inode *inode, struct file *file)
 {
 	struct tegra_wdt *wdt = file->private_data;
 
+	if (wdt->status == WDT_ENABLED) {
 #ifndef CONFIG_WATCHDOG_NOWAYOUT
-	tegra_wdt_disable(wdt);
-	wdt->enabled = false;
+		tegra_wdt_disable(wdt);
+		wdt->status = WDT_DISABLED;
 #endif
+	}
 	wdt->users = 0;
 	return 0;
 }
@@ -143,6 +226,7 @@ static long tegra_wdt_ioctl(struct file *file, unsigned int cmd,
 	struct tegra_wdt *wdt = file->private_data;
 	static DEFINE_SPINLOCK(lock);
 	int new_timeout;
+	int option;
 	static const struct watchdog_info ident = {
 		.identity = "Tegra Watchdog",
 		.options = WDIOF_SETTIMEOUT,
@@ -158,6 +242,9 @@ static long tegra_wdt_ioctl(struct file *file, unsigned int cmd,
 		return put_user(0, (int __user *)arg);
 
 	case WDIOC_KEEPALIVE:
+		spin_lock(&lock);
+		tegra_wdt_ping(wdt);
+		spin_unlock(&lock);
 		return 0;
 
 	case WDIOC_SETTIMEOUT:
@@ -170,9 +257,31 @@ static long tegra_wdt_ioctl(struct file *file, unsigned int cmd,
 		spin_unlock(&lock);
 	case WDIOC_GETTIMEOUT:
 		return put_user(wdt->timeout, (int __user *)arg);
-	default:
-		return -ENOTTY;
+
+	case WDIOC_SETOPTIONS:
+#ifndef CONFIG_WATCHDOG_NOWAYOUT
+		if (get_user(option, (int __user *)arg))
+			return -EFAULT;
+		spin_lock(&lock);
+		if (option & WDIOS_DISABLECARD) {
+			wdt->status &= ~WDT_ENABLED;
+			wdt->status |= WDT_DISABLED;
+			tegra_wdt_disable(wdt);
+		} else if (option & WDIOS_ENABLECARD) {
+			tegra_wdt_enable(wdt);
+			wdt->status |= WDT_ENABLED;
+			wdt->status &= ~WDT_DISABLED;
+		} else {
+			spin_unlock(&lock);
+			return -EINVAL;
+		}
+		spin_unlock(&lock);
+		return 0;
+#else
+		return -EINVAL;
+#endif
 	}
+	return -ENOTTY;
 }
 
 static ssize_t tegra_wdt_write(struct file *file, const char __user *data,
@@ -281,11 +390,13 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, wdt);
-	tegra_wdt_dev = wdt;
+	tegra_wdt_dev = pdev;
 #ifdef CONFIG_TEGRA_WATCHDOG_ENABLE_ON_PROBE
-	wdt->enabled = true;
+	wdt->status = WDT_ENABLED | WDT_ENABLED_AT_PROBE;
 	wdt->timeout = heartbeat;
 	tegra_wdt_enable(wdt);
+#else
+	wdt->status = WDT_DISABLED;
 #endif
 	return 0;
 fail:
@@ -317,7 +428,7 @@ static int tegra_wdt_remove(struct platform_device *pdev)
 	release_mem_region(wdt->res_src->start, resource_size(wdt->res_src));
 	release_mem_region(wdt->res_wdt->start, resource_size(wdt->res_wdt));
 	kfree(wdt);
-	tegra_wdt_dev = NULL;
+	platform_set_drvdata(pdev, NULL);
 	return 0;
 }
 
@@ -334,7 +445,7 @@ static int tegra_wdt_resume(struct platform_device *pdev)
 {
 	struct tegra_wdt *wdt = platform_get_drvdata(pdev);
 
-	if (wdt->enabled)
+	if (wdt->status & WDT_ENABLED)
 		tegra_wdt_enable(wdt);
 
 	return 0;
