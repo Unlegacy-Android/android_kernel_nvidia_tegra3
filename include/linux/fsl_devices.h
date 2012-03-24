@@ -58,6 +58,13 @@ enum fsl_usb2_phy_modes {
 	FSL_USB2_PHY_SERIAL,
 };
 
+enum fsl_usb2_phy_types {
+	FSL_USB2_PHY_TYPE_UTMIP = 1,
+	FSL_USB2_PHY_TYPE_ULPI = 2,
+	FSL_USB2_PHY_TYPE_HSIC = 3,
+	FSL_USB2_PHY_TYPE_ICUSB = 4,
+};
+
 struct clk;
 struct platform_device;
 
@@ -72,7 +79,6 @@ struct fsl_usb2_platform_data {
 	void		(*exit)(struct platform_device *);
 	void __iomem	*regs;		/* ioremap'd register base */
 	struct clk	*clk;
-	unsigned	power_budget;	/* hcd->power_budget */
 	unsigned	big_endian_mmio:1;
 	unsigned	big_endian_desc:1;
 	unsigned	es:1;		/* need USBMODE:ES */
@@ -97,6 +103,7 @@ struct fsl_usb2_platform_data {
 	u32		pm_usbgenctrl;
 
         void		*phy_config;
+	enum fsl_usb2_phy_types usb_phy_type;
 };
 
 /* Flags in fsl_usb2_mph_platform_data */

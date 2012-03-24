@@ -613,3 +613,9 @@ config USB_PXA168_EHCI
 	help
 	  Enable support for Marvell PXA168 SoC's on-chip EHCI
 	  host controller
+
+config USB_EHCI_ONOFF_FEATURE
+        boolean "EHCI ON/OFF Feature"
+        depends on USB && USB_EHCI_HCD
+        help
+          Enable support for turning EHCI Off and On
