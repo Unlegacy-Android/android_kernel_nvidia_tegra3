@@ -7,6 +7,8 @@
  *	Colin Cross <ccross@google.com>
  *	Erik Gilling <konkers@google.com>
  *
+ * Copyright (C) 2010-2012 NVIDIA Corporation
+ *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -25,6 +27,54 @@
 #include <linux/serial_reg.h>
 
 #include <mach/iomap.h>
+
+#if defined(CONFIG_TEGRA_DEBUG_UARTA)
+#define DEBUG_UART_CLK_SRC		(TEGRA_CLK_RESET_BASE + 0x178)
+#define DEBUG_UART_CLK_ENB_SET_REG	(TEGRA_CLK_RESET_BASE + 0x320)
+#define DEBUG_UART_CLK_ENB_SET_BIT	(1 << 6)
+#define DEBUG_UART_RST_CLR_REG		(TEGRA_CLK_RESET_BASE + 0x304)
+#define DEBUG_UART_RST_CLR_BIT		(1 << 6)
+#elif defined(CONFIG_TEGRA_DEBUG_UARTB)
+#define DEBUG_UART_CLK_SRC		(TEGRA_CLK_RESET_BASE + 0x17c)
+#define DEBUG_UART_CLK_ENB_SET_REG	(TEGRA_CLK_RESET_BASE + 0x320)
+#define DEBUG_UART_CLK_ENB_SET_BIT	(1 << 7)
+#define DEBUG_UART_RST_CLR_REG		(TEGRA_CLK_RESET_BASE + 0x304)
+#define DEBUG_UART_RST_CLR_BIT		(1 << 7)
+#elif defined(CONFIG_TEGRA_DEBUG_UARTC)
+#define DEBUG_UART_CLK_SRC		(TEGRA_CLK_RESET_BASE + 0x1a0)
+#define DEBUG_UART_CLK_ENB_SET_REG	(TEGRA_CLK_RESET_BASE + 0x328)
+#define DEBUG_UART_CLK_ENB_SET_BIT	(1 << 23)
+#define DEBUG_UART_RST_CLR_REG		(TEGRA_CLK_RESET_BASE + 0x30C)
+#define DEBUG_UART_RST_CLR_BIT		(1 << 23)
+#elif defined(CONFIG_TEGRA_DEBUG_UARTD)
+#define DEBUG_UART_CLK_SRC		(TEGRA_CLK_RESET_BASE + 0x1c0)
+#define DEBUG_UART_CLK_ENB_SET_REG	(TEGRA_CLK_RESET_BASE + 0x330)
+#define DEBUG_UART_CLK_ENB_SET_BIT	(1 << 1)
+#define DEBUG_UART_RST_CLR_REG		(TEGRA_CLK_RESET_BASE + 0x314)
+#define DEBUG_UART_RST_CLR_BIT		(1 << 1)
+#elif defined(CONFIG_TEGRA_DEBUG_UARTE)
+#define DEBUG_UART_CLK_SRC		(TEGRA_CLK_RESET_BASE + 0x1c4)
+#define DEBUG_UART_CLK_ENB_SET_REG	(TEGRA_CLK_RESET_BASE + 0x330)
+#define DEBUG_UART_CLK_ENB_SET_BIT	(1 << 2)
+#define DEBUG_UART_RST_CLR_REG		(TEGRA_CLK_RESET_BASE + 0x314)
+#define DEBUG_UART_RST_CLR_BIT		(1 << 2)
+#else
+#define DEBUG_UART_CLK_SRC		0
+#define DEBUG_UART_CLK_ENB_SET_REG	0
+#define DEBUG_UART_CLK_ENB_SET_BIT	0
+#define DEBUG_UART_RST_CLR_REG		0
+#define DEBUG_UART_RST_CLR_BIT		0
+#endif
+#define PLLP_BASE			(TEGRA_CLK_RESET_BASE + 0x0a0)
+#define PLLP_BASE_OVERRIDE		(1 << 28)
+#define PLLP_BASE_DIVP_SHIFT		20
+#define PLLP_BASE_DIVP_MASK		(0x7 << 20)
+#define PLLP_BASE_DIVN_SHIFT		8
+#define PLLP_BASE_DIVN_MASK		(0x3FF << 8)
+
+#define DEBUG_UART_DLL_216		0x75
+#define DEBUG_UART_DLL_408		0xdd
+#define DEBUG_UART_DLL_204		0x6f
 
 static void putc(int c)
 {
@@ -58,63 +108,59 @@ static inline void arch_decomp_setup(void)
 	volatile u8 *uart = (volatile u8 *)TEGRA_DEBUG_UART_BASE;
 	int shift = 2;
 	volatile u32 *addr;
+	u8 uart_dll = DEBUG_UART_DLL_216;
+	u32 val;
 
 	if (uart == NULL)
 		return;
 
-/*
-	addr = (volatile u32 *)0x70000014;
-	*addr &= ~(1<<29);
-
-	addr = (volatile u32 *)0x70000084;
-	*addr &= ~(3<<2);
-
-	addr = (volatile u32 *)0x700000b0;
-	*addr &= ~(3<<24);
-
-	konk_delay(5);
-
-*/
-
-	/* OSC_CTRL_0 */
-	/*addr = (volatile u32 *)0x60006050;*/
-
-	/* PLLP_BASE_0 */
-	addr = (volatile u32 *)0x600060a0;
-	*addr = 0x5011b00c;
-
-	/* PLLP_OUTA_0 */
-	addr = (volatile u32 *)0x600060a4;
-	*addr = 0x10031c03;
-
-	/* PLLP_OUTB_0 */
-	addr = (volatile u32 *)0x600060a8;
-	*addr = 0x06030a03;
-
-	/* PLLP_MISC_0 */
-	addr = (volatile u32 *)0x600060ac;
-	*addr = 0x00000800;
-
-	konk_delay(1000);
-
-	/* UARTD clock source is PLLP_OUT0 */
-	addr = (volatile u32 *)0x600061c0;
+	/* Debug UART clock source is PLLP_OUT0. */
+	addr = (volatile u32 *)DEBUG_UART_CLK_SRC;
 	*addr = 0;
 
-	/* Enable clock to UARTD */
-	addr = (volatile u32 *)0x60006018;
-	*addr |= (1<<1);
+	/* Enable clock to debug UART. */
+	addr = (volatile u32 *)DEBUG_UART_CLK_ENB_SET_REG;
+	*addr = DEBUG_UART_CLK_ENB_SET_BIT;
 
 	konk_delay(5);
 
-	/* Deassert reset to UARTD */
-	addr = (volatile u32 *)0x6000600c;
-	*addr &= ~(1<<1);
+	/* Deassert reset to debug UART. */
+	addr = (volatile u32 *)DEBUG_UART_RST_CLR_REG;
+	*addr = DEBUG_UART_RST_CLR_BIT;
 
 	konk_delay(5);
 
+	/*
+	 * On Tegra2 platforms PLLP always run at 216MHz
+	 * On Tegra3 platforms PLLP can run at 216MHz, 204MHz, or 408MHz
+	 * Discrimantion algorithm below assumes that PLLP is configured
+	 * according to h/w recomendations with update rate 1MHz or 1.2MHz
+	 * depending on oscillator frequency
+	 */
+	addr = (volatile u32 *)PLLP_BASE;
+	val = *addr;
+	if (val & PLLP_BASE_OVERRIDE) {
+		u32 p = (val & PLLP_BASE_DIVP_MASK) >> PLLP_BASE_DIVP_SHIFT;
+		val = (val & PLLP_BASE_DIVN_MASK) >> (PLLP_BASE_DIVN_SHIFT + p);
+		switch (val) {
+		case 170:
+		case 204:
+			uart_dll = DEBUG_UART_DLL_204;
+			break;
+		case 340:
+		case 408:
+			uart_dll = DEBUG_UART_DLL_408;
+			break;
+		case 180:
+		case 216:
+		default:
+			break;
+		}
+	}
+
+	/* Set up debug UART. */
 	uart[UART_LCR << shift] |= UART_LCR_DLAB;
-	uart[UART_DLL << shift] = 0x75;
+	uart[UART_DLL << shift] = uart_dll;
 	uart[UART_DLM << shift] = 0x0;
 	uart[UART_LCR << shift] = 3;
 }

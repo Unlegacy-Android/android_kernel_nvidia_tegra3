@@ -6,6 +6,8 @@
  * Author:
  *	Erik Gilling <konkers@google.com>
  *
+ * Copyright (c) 2011 NVIDIA Corporation.
+ *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -25,19 +27,19 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/module.h>
+#include <linux/delay.h>
 
 #include <asm/mach/irq.h>
 
 #include <mach/gpio-tegra.h>
 #include <mach/iomap.h>
+#include <mach/pinmux.h>
 
 #include "../../arch/arm/mach-tegra/pm-irq.h"
 
 #define GPIO_BANK(x)		((x) >> 5)
 #define GPIO_PORT(x)		(((x) >> 3) & 0x3)
 #define GPIO_BIT(x)		((x) & 0x7)
-
-#define GPIO_REG(x)		(GPIO_BANK(x) * 0x80 + GPIO_PORT(x) * 4)
 
 #define GPIO_CNF(x)		(GPIO_REG(x) + 0x00)
 #define GPIO_OE(x)		(GPIO_REG(x) + 0x10)
@@ -48,12 +50,25 @@
 #define GPIO_INT_LVL(x)		(GPIO_REG(x) + 0x60)
 #define GPIO_INT_CLR(x)		(GPIO_REG(x) + 0x70)
 
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
+#define GPIO_REG(x)		(GPIO_BANK(x) * 0x80 + GPIO_PORT(x) * 4)
+
 #define GPIO_MSK_CNF(x)		(GPIO_REG(x) + 0x800)
 #define GPIO_MSK_OE(x)		(GPIO_REG(x) + 0x810)
 #define GPIO_MSK_OUT(x)		(GPIO_REG(x) + 0X820)
 #define GPIO_MSK_INT_STA(x)	(GPIO_REG(x) + 0x840)
 #define GPIO_MSK_INT_ENB(x)	(GPIO_REG(x) + 0x850)
 #define GPIO_MSK_INT_LVL(x)	(GPIO_REG(x) + 0x860)
+#else
+#define GPIO_REG(x)		(GPIO_BANK(x) * 0x100 + GPIO_PORT(x) * 4)
+
+#define GPIO_MSK_CNF(x)		(GPIO_REG(x) + 0x80)
+#define GPIO_MSK_OE(x)		(GPIO_REG(x) + 0x90)
+#define GPIO_MSK_OUT(x)		(GPIO_REG(x) + 0XA0)
+#define GPIO_MSK_INT_STA(x)	(GPIO_REG(x) + 0xC0)
+#define GPIO_MSK_INT_ENB(x)	(GPIO_REG(x) + 0xD0)
+#define GPIO_MSK_INT_LVL(x)	(GPIO_REG(x) + 0xE0)
+#endif
 
 #define GPIO_INT_LVL_MASK		0x010101
 #define GPIO_INT_LVL_EDGE_RISING	0x000101
@@ -66,7 +81,7 @@ struct tegra_gpio_bank {
 	int bank;
 	int irq;
 	spinlock_t lvl_lock[4];
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 	u32 cnf[4];
 	u32 out[4];
 	u32 oe[4];
@@ -75,9 +90,12 @@ struct tegra_gpio_bank {
 #endif
 };
 
-
 static void __iomem *regs;
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 static struct tegra_gpio_bank tegra_gpio_banks[7];
+#else
+static struct tegra_gpio_bank tegra_gpio_banks[8];
+#endif
 
 static inline void tegra_gpio_writel(u32 val, u32 reg)
 {
@@ -94,6 +112,12 @@ static int tegra_gpio_compose(int bank, int port, int bit)
 	return (bank << 5) | ((port & 0x3) << 3) | (bit & 0x7);
 }
 
+void tegra_gpio_set_tristate(int gpio_nr, enum tegra_tristate ts)
+{
+	int pin_group  =  tegra_pinmux_get_pingroup(gpio_nr);
+	tegra_pinmux_set_tristate(pin_group, ts);
+}
+
 static void tegra_gpio_mask_write(u32 reg, int gpio, int value)
 {
 	u32 val;
@@ -104,14 +128,52 @@ static void tegra_gpio_mask_write(u32 reg, int gpio, int value)
 	tegra_gpio_writel(val, reg);
 }
 
+int tegra_gpio_get_bank_int_nr(int gpio)
+{
+	int bank;
+	int irq;
+	if (gpio >= TEGRA_NR_GPIOS) {
+		pr_warn("%s : Invalid gpio ID - %d\n", __func__, gpio);
+		return -EINVAL;
+	}
+	bank = gpio >> 5;
+	irq = tegra_gpio_banks[bank].irq;
+	return irq;
+}
+
 void tegra_gpio_enable(int gpio)
 {
+	if (gpio >= TEGRA_NR_GPIOS) {
+		pr_warn("%s : Invalid gpio ID - %d\n", __func__, gpio);
+		return;
+	}
 	tegra_gpio_mask_write(GPIO_MSK_CNF(gpio), gpio, 1);
 }
+EXPORT_SYMBOL_GPL(tegra_gpio_enable);
 
 void tegra_gpio_disable(int gpio)
 {
+	if (gpio >= TEGRA_NR_GPIOS) {
+		pr_warn("%s : Invalid gpio ID - %d\n", __func__, gpio);
+		return;
+	}
 	tegra_gpio_mask_write(GPIO_MSK_CNF(gpio), gpio, 0);
+}
+EXPORT_SYMBOL_GPL(tegra_gpio_disable);
+
+void tegra_gpio_init_configure(unsigned gpio, bool is_input, int value)
+{
+	if (gpio >= TEGRA_NR_GPIOS) {
+		pr_warn("%s : Invalid gpio ID - %d\n", __func__, gpio);
+		return;
+	}
+	if (is_input) {
+		tegra_gpio_mask_write(GPIO_MSK_OE(gpio), gpio, 0);
+	} else {
+		tegra_gpio_mask_write(GPIO_MSK_OUT(gpio), gpio, value);
+		tegra_gpio_mask_write(GPIO_MSK_OE(gpio), gpio, 1);
+	}
+	tegra_gpio_mask_write(GPIO_MSK_CNF(gpio), gpio, 1);
 }
 
 static void tegra_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
@@ -121,6 +183,9 @@ static void tegra_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 
 static int tegra_gpio_get(struct gpio_chip *chip, unsigned offset)
 {
+	if ((tegra_gpio_readl(GPIO_OE(offset)) >> GPIO_BIT(offset)) & 0x1)
+		return (tegra_gpio_readl(GPIO_OUT(offset)) >>
+			GPIO_BIT(offset)) & 0x1;
 	return (tegra_gpio_readl(GPIO_IN(offset)) >> GPIO_BIT(offset)) & 0x1;
 }
 
@@ -138,6 +203,12 @@ static int tegra_gpio_direction_output(struct gpio_chip *chip, unsigned offset,
 	return 0;
 }
 
+static int tegra_gpio_set_debounce(struct gpio_chip *chip, unsigned offset,
+				unsigned debounce)
+{
+	return -ENOSYS;
+}
+
 static int tegra_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
 {
 	return TEGRA_GPIO_TO_IRQ(offset);
@@ -149,6 +220,7 @@ static struct gpio_chip tegra_gpio_chip = {
 	.get			= tegra_gpio_get,
 	.direction_output	= tegra_gpio_direction_output,
 	.set			= tegra_gpio_set,
+	.set_debounce		= tegra_gpio_set_debounce,
 	.to_irq			= tegra_gpio_to_irq,
 	.base			= 0,
 	.ngpio			= TEGRA_NR_GPIOS,
@@ -159,6 +231,15 @@ static void tegra_gpio_irq_ack(struct irq_data *d)
 	int gpio = d->irq - INT_GPIO_BASE;
 
 	tegra_gpio_writel(1 << GPIO_BIT(gpio), GPIO_INT_CLR(gpio));
+
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+	/* FPGA platforms have a serializer between the GPIO
+	   block and interrupt controller. Allow time for
+	   clearing of the GPIO interrupt to propagate to the
+	   interrupt controller before re-enabling the IRQ
+	   to prevent double interrupts. */
+	udelay(15);
+#endif
 }
 
 static void tegra_gpio_irq_mask(struct irq_data *d)
@@ -252,7 +333,7 @@ static void tegra_gpio_irq_handler(unsigned int irq, struct irq_desc *desc)
 
 }
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 void tegra_gpio_resume(void)
 {
 	unsigned long flags;
@@ -368,10 +449,11 @@ static int __devinit tegra_gpio_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	for (i = 0; i < 7; i++) {
+	for (i = 0; i < ARRAY_SIZE(tegra_gpio_banks); i++) {
 		for (j = 0; j < 4; j++) {
 			int gpio = tegra_gpio_compose(i, j, 0);
 			tegra_gpio_writel(0x00, GPIO_INT_ENB(gpio));
+			tegra_gpio_writel(0x00, GPIO_INT_STA(gpio));
 		}
 	}
 
@@ -397,11 +479,12 @@ static int __devinit tegra_gpio_probe(struct platform_device *pdev)
 	for (i = 0; i < ARRAY_SIZE(tegra_gpio_banks); i++) {
 		bank = &tegra_gpio_banks[i];
 
-		irq_set_chained_handler(bank->irq, tegra_gpio_irq_handler);
-		irq_set_handler_data(bank->irq, bank);
-
 		for (j = 0; j < 4; j++)
 			spin_lock_init(&bank->lvl_lock[j]);
+
+		irq_set_handler_data(bank->irq, bank);
+		irq_set_chained_handler(bank->irq, tegra_gpio_irq_handler);
+
 	}
 
 	return 0;
@@ -451,7 +534,8 @@ static int dbg_gpio_show(struct seq_file *s, void *unused)
 	int i;
 	int j;
 
-	for (i = 0; i < 7; i++) {
+	seq_printf(s, "Bank:Port CNF OE OUT IN INT_STA INT_ENB INT_LVL\n");
+	for (i = 0; i < ARRAY_SIZE(tegra_gpio_banks); i++) {
 		for (j = 0; j < 4; j++) {
 			int gpio = tegra_gpio_compose(i, j, 0);
 			seq_printf(s,

@@ -7,6 +7,8 @@
  *	Colin Cross <ccross@google.com>
  *	Erik Gilling <konkers@google.com>
  *
+ * Copyright (C) 2010-2011 NVIDIA Corporation
+ *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -23,6 +25,7 @@
 #include <linux/init.h>
 #include <linux/mm.h>
 #include <linux/io.h>
+#include <linux/dma-mapping.h>
 
 #include <asm/page.h>
 #include <asm/mach/map.h>
@@ -77,4 +80,6 @@ static struct map_desc tegra_io_desc[] __initdata = {
 void __init tegra_map_common_io(void)
 {
 	iotable_init(tegra_io_desc, ARRAY_SIZE(tegra_io_desc));
+
+	init_consistent_dma_size(14 * SZ_1M);
 }

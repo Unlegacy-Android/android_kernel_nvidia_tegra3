@@ -4,7 +4,7 @@
  * Author:
  *	Colin Cross <ccross@android.com>
  *
- * Copyright (C) 2010, NVIDIA Corporation
+ * Copyright (C) 2010-2012, NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -27,8 +27,10 @@
 #include <asm/hardware/gic.h>
 
 #include <mach/iomap.h>
+#include <mach/legacy_irq.h>
 
 #include "board.h"
+#include "gic.h"
 #include "pm-irq.h"
 
 #define ICTLR_CPU_IEP_VFIQ	0x08
@@ -46,7 +48,11 @@
 #define ICTLR_COP_IER_CLR	0x38
 #define ICTLR_COP_IEP_CLASS	0x3c
 
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define NUM_ICTLRS 4
+#else
+#define NUM_ICTLRS 5
+#endif
 #define FIRST_LEGACY_IRQ 32
 
 static void __iomem *ictlr_reg_base[] = {
@@ -54,9 +60,12 @@ static void __iomem *ictlr_reg_base[] = {
 	IO_ADDRESS(TEGRA_SECONDARY_ICTLR_BASE),
 	IO_ADDRESS(TEGRA_TERTIARY_ICTLR_BASE),
 	IO_ADDRESS(TEGRA_QUATERNARY_ICTLR_BASE),
+#if (NUM_ICTLRS > 4)
+	IO_ADDRESS(TEGRA_QUINARY_ICTLR_BASE),
+#endif
 };
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 static u32 cop_ier[NUM_ICTLRS];
 static u32 cpu_ier[NUM_ICTLRS];
 static u32 cpu_iep[NUM_ICTLRS];
@@ -124,7 +133,7 @@ static int tegra_set_type(struct irq_data *d, unsigned int flow_type)
 }
 
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 static int tegra_set_wake(struct irq_data *d, unsigned int enable)
 {
 	return tegra_pm_irq_set_wake(d->irq, enable);
@@ -190,6 +199,7 @@ void __init tegra_init_irq(void)
 		void __iomem *ictlr = ictlr_reg_base[i];
 		writel(~0, ictlr + ICTLR_CPU_IER_CLR);
 		writel(0, ictlr + ICTLR_CPU_IEP_CLASS);
+		writel(~0, ictlr + ICTLR_CPU_IEP_FIR_CLR);
 	}
 
 	gic_arch_extn.irq_ack = tegra_ack;
@@ -206,6 +216,16 @@ void __init tegra_init_irq(void)
 	 * initialized elsewhere under DT.
 	 */
 	if (!of_have_populated_dt())
-		gic_init(0, 29, IO_ADDRESS(TEGRA_ARM_INT_DIST_BASE),
-			IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x100));
+		tegra_gic_init();
+}
+
+void tegra_init_legacy_irq_cop(void)
+{
+	int i;
+
+	for (i = 0; i < NUM_ICTLRS; i++) {
+		void __iomem *ictlr = ictlr_reg_base[i];
+		writel(~0, ictlr + ICTLR_COP_IER_CLR);
+		writel(0, ictlr + ICTLR_COP_IEP_CLASS);
+	}
 }
