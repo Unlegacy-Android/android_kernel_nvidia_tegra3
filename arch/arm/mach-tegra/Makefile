@@ -179,3 +179,13 @@ obj-${CONFIG_MACH_TEGRA_ENTERPRISE}     += board-enterprise-power.o
 obj-${CONFIG_MACH_TEGRA_ENTERPRISE}     += board-enterprise-baseband.o
 obj-${CONFIG_MACH_TEGRA_ENTERPRISE}     += board-enterprise-kbc.o
 obj-${CONFIG_MACH_TEGRA_ENTERPRISE}     += board-enterprise-sensors.o
+
+obj-${CONFIG_MACH_KAI}                  += board-kai.o
+obj-${CONFIG_MACH_KAI}                  += board-kai-kbc.o
+obj-${CONFIG_MACH_KAI}                  += board-kai-memory.o
+obj-${CONFIG_MACH_KAI}                  += board-kai-panel.o
+obj-${CONFIG_MACH_KAI}                  += board-kai-pinmux.o
+obj-${CONFIG_MACH_KAI}                  += board-kai-power.o
+obj-${CONFIG_MACH_KAI}                  += board-kai-sdhci.o
+obj-${CONFIG_MACH_KAI}                  += board-kai-sensors.o
+obj-y                                   += eeprom-wifi-mac.o
