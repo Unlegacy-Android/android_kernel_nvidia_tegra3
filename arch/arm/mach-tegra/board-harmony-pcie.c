@@ -22,12 +22,24 @@
 
 #include <asm/mach-types.h>
 
+#include <mach/pci.h>
+#include "devices.h"
 #include "board.h"
 #include "board-harmony.h"
 
 #ifdef CONFIG_TEGRA_PCI
 
-static int __init harmony_pcie_init(void)
+/* GPIO 3 of the PMIC */
+#define EN_VDD_1V05_GPIO	(TEGRA_NR_GPIOS + 2)
+
+static struct tegra_pci_platform_data harmony_pci_platform_data = {
+	.port_status[0]	= 1,
+	.port_status[1]	= 1,
+	.use_dock_detect	= 0,
+	.gpio		= 0,
+};
+
+int __init harmony_pcie_init(void)
 {
 	struct regulator *regulator = NULL;
 	int err;
@@ -47,9 +59,8 @@ static int __init harmony_pcie_init(void)
 
 	regulator_enable(regulator);
 
-	err = tegra_pcie_init(true, true);
-	if (err)
-		goto err_pcie;
+	tegra_pci_device.dev.platform_data = &harmony_pci_platform_data;
+	platform_device_register(&tegra_pci_device);
 
 	return 0;
 
@@ -61,8 +72,5 @@ err_reg:
 
 	return err;
 }
-
-/* PCI should be initialized after I2C, mfd and regulators */
-subsys_initcall_sync(harmony_pcie_init);
 
 #endif
