@@ -36,6 +36,7 @@
 #include <mach/dc.h>
 #include <mach/fb.h>
 #include <mach/hardware.h>
+#include <mach/gpio-tegra.h>
 
 #include "board.h"
 #include "board-enterprise.h"
