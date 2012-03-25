@@ -479,11 +479,12 @@ static int powergate_module(int id)
 	return tegra_powergate_set(id, false);
 }
 
-static bool tegra_powergate_is_powered(int id)
+bool tegra_powergate_is_powered(int id)
 {
 	u32 status;
 
-	WARN_ON(id < 0 || id >= TEGRA_NUM_POWERGATE);
+	if (id < 0 || id >= TEGRA_NUM_POWERGATE)
+		return -EINVAL;
 
 	status = pmc_read(PWRGATE_STATUS) & (1 << id);
 	return !!status;

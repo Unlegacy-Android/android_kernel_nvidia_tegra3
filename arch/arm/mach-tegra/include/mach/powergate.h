@@ -54,6 +54,7 @@
 
 struct clk;
 
+bool tegra_powergate_is_powered(int id);
 int tegra_powergate_mc_disable(int id);
 int tegra_powergate_mc_enable(int id);
 int tegra_powergate_mc_flush(int id);
