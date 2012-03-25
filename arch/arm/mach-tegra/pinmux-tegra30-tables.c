@@ -438,7 +438,7 @@ void __devinit tegra30_pinmux_init(const struct tegra_pingroup_desc **pg,
 	*pg_max = TEGRA_MAX_PINGROUP;
 	*pgdrive = tegra_soc_drive_pingroups;
 	*pgdrive_max = TEGRA_MAX_DRIVE_PINGROUP;
-	*gpiomap = gpio_to_pingroups;
+	*gpiomap = gpio_to_pingroup;
 	*gpiomap_max = TEGRA_MAX_GPIO;
 }
 
