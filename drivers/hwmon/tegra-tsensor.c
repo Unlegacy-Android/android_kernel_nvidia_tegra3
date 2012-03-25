@@ -29,6 +29,7 @@
 #include <linux/hwmon.h>
 #include <linux/regulator/consumer.h>
 #include <linux/delay.h>
+#include <linux/module.h>
 
 #include <mach/iomap.h>
 #include <mach/clk.h>
