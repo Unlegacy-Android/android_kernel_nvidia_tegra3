@@ -43,7 +43,7 @@
 #include <linux/vmalloc.h>
 #include <linux/memblock.h>
 #include <linux/console.h>
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 
 #include <asm/cacheflush.h>
 #include <asm/hardware/gic.h>
@@ -172,7 +172,7 @@ struct suspend_context tegra_sctx;
 #define MC_SECURITY_CFG2	0x7c
 
 #define AWAKE_CPU_FREQ_MIN	100000
-static struct pm_qos_request_list awake_cpu_freq_req;
+static struct pm_qos_request awake_cpu_freq_req;
 
 struct dvfs_rail *tegra_cpu_rail;
 static struct dvfs_rail *tegra_core_rail;

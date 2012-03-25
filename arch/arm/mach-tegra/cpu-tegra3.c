@@ -32,7 +32,7 @@
 #include <linux/clk.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
-#include <linux/pm_qos_params.h>
+#include <linux/pm_qos.h>
 
 #include "pm.h"
 #include "cpu-tegra.h"
@@ -428,8 +428,8 @@ int tegra_auto_hotplug_init(struct mutex *cpu_lock)
 
 static struct dentry *hp_debugfs_root;
 
-struct pm_qos_request_list min_cpu_req;
-struct pm_qos_request_list max_cpu_req;
+struct pm_qos_request min_cpu_req;
+struct pm_qos_request max_cpu_req;
 
 static int hp_stats_show(struct seq_file *s, void *data)
 {
