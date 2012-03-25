@@ -177,13 +177,6 @@ bool tegra3_lp2_is_allowed(struct cpuidle_device *dev,
 	return true;
 }
 
-static inline void tegra3_lp3_fall_back(struct cpuidle_device *dev)
-{
-	tegra_cpu_wfi();
-	/* fall back here from LP2 path - tell cpuidle governor */
-	dev->last_state = &dev->states[0];
-}
-
 static inline void tegra3_lp2_restore_affinity(void)
 {
 #ifdef CONFIG_SMP
@@ -198,7 +191,7 @@ static inline void tegra3_lp2_restore_affinity(void)
 #endif
 }
 
-static void tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
+static bool tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
 			   struct cpuidle_state *state, s64 request)
 {
 	ktime_t entry_time;
@@ -213,8 +206,8 @@ static void tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
 
 	if (request < state->target_residency) {
 		/* Not enough time left to enter LP2 */
-		tegra3_lp3_fall_back(dev);
-		return;
+		tegra_cpu_wfi();
+		return false;
 	}
 
 #ifdef CONFIG_SMP
@@ -234,8 +227,8 @@ static void tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
 		if (!tegra3_rail_off_is_allowed()) {
 			/* Yes, re-enable the distributor and LP3. */
 			tegra_gic_dist_enable();
-			tegra3_lp3_fall_back(dev);
-			return;
+			tegra_cpu_wfi();
+			return false;
 		}
 
 		/* LP2 initial targeted wake time */
@@ -321,9 +314,11 @@ static void tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
 			ktime_to_us(ktime_sub(exit_time, entry_time)),
 			offset, bin);
 	}
+
+	return true;
 }
 
-static void tegra3_idle_enter_lp2_cpu_n(struct cpuidle_device *dev,
+static bool tegra3_idle_enter_lp2_cpu_n(struct cpuidle_device *dev,
 			   struct cpuidle_state *state, s64 request)
 {
 #ifdef CONFIG_SMP
@@ -357,8 +352,8 @@ static void tegra3_idle_enter_lp2_cpu_n(struct cpuidle_device *dev,
 		/*
 		 * Not enough time left to enter LP2, or wake timer not ready
 		 */
-		tegra3_lp3_fall_back(dev);
-		return;
+		tegra_cpu_wfi();
+		return false;
 	}
 
 #ifndef CONFIG_TEGRA_LP2_ARM_TWD
@@ -406,26 +401,33 @@ static void tegra3_idle_enter_lp2_cpu_n(struct cpuidle_device *dev,
 		smp_wmb();
 	}
 #endif
+
+	return true;
 }
 
-void tegra3_idle_lp2(struct cpuidle_device *dev,
+bool tegra3_idle_lp2(struct cpuidle_device *dev,
 			   struct cpuidle_state *state)
 {
 	s64 request = ktime_to_us(tick_nohz_get_sleep_length());
 	bool last_cpu = tegra_set_cpu_in_lp2(dev->cpu);
+	bool entered_lp2;
 
 	cpu_pm_enter();
 
 	if (dev->cpu == 0) {
-		if (last_cpu)
-			tegra3_idle_enter_lp2_cpu_0(dev, state, request);
-		else
-			tegra3_lp3_fall_back(dev);
+		if (last_cpu) {
+			entered_lp2 = tegra3_idle_enter_lp2_cpu_0(dev, state, request);
+		} else {
+			tegra_cpu_wfi();
+			entered_lp2 = false;
+		}
 	} else
-		tegra3_idle_enter_lp2_cpu_n(dev, state, request);
+		entered_lp2 = tegra3_idle_enter_lp2_cpu_n(dev, state, request);
 
 	cpu_pm_exit();
 	tegra_clear_cpu_in_lp2(dev->cpu);
+
+	return entered_lp2;
 }
 
 int tegra3_cpudile_init_soc(void)
