@@ -19,7 +19,7 @@
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
-#include <mach/gpio.h>
+#include <mach/gpio-tegra.h>
 
 #include "gpio-names.h"
 
