@@ -32,6 +32,7 @@
 #include <linux/clk.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
+#include <mach/gpio-tegra.h>
 
 struct bcm4329_rfkill_data {
 	int gpio_reset;
