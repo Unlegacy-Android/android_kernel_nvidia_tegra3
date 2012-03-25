@@ -174,7 +174,7 @@ enum {
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CFG_RSV),
 
 #define DEFINE_REG(base, reg) ((base) ? (IO_ADDRESS((base)) + (reg)) : 0)
-static const u32 burst_reg_addr[TEGRA_EMC_NUM_REGS] = {
+static const void __iomem *burst_reg_addr[TEGRA_EMC_NUM_REGS] = {
 	BURST_REG_LIST
 };
 #undef DEFINE_REG
@@ -244,9 +244,9 @@ static void emc_last_stats_update(int last_sel)
 	spin_lock_irqsave(&emc_stats.spinlock, flags);
 
 	if (emc_stats.last_sel < TEGRA_EMC_TABLE_MAX_SIZE)
-		emc_stats.time_at_clock[emc_stats.last_sel] = cputime64_add(
-			emc_stats.time_at_clock[emc_stats.last_sel],
-			cputime64_sub(cur_jiffies, emc_stats.last_update));
+		emc_stats.time_at_clock[emc_stats.last_sel] = 
+			emc_stats.time_at_clock[emc_stats.last_sel] + 
+			(cur_jiffies - emc_stats.last_update);
 
 	emc_stats.last_update = cur_jiffies;
 
