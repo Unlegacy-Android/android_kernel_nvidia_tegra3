@@ -44,6 +44,7 @@
 #include <linux/memblock.h>
 #include <linux/console.h>
 #include <linux/pm_qos.h>
+#include <linux/export.h>
 
 #include <asm/cacheflush.h>
 #include <asm/hardware/gic.h>
