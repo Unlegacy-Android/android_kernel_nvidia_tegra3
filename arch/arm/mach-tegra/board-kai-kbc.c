@@ -33,6 +33,8 @@
 #include <mach/io.h>
 #include <mach/iomap.h>
 #include <mach/kbc.h>
+#include <mach/gpio-tegra.h>
+
 #include "board.h"
 #include "board-kai.h"
 
