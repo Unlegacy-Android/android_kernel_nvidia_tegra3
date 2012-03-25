@@ -37,19 +37,19 @@
 #include <linux/i2c/pca954x.h>
 #include <linux/i2c/pca953x.h>
 #include <linux/nct1008.h>
+#include <linux/gpio.h>
+
+#include <mach/gpio-tegra.h>
 #include <mach/fb.h>
-#include <mach/gpio.h>
 #include <media/ov5650.h>
 #include <media/ov14810.h>
 #include <media/ov2710.h>
 #include <media/tps61050.h>
 #include <generated/mach-types.h>
-#include "gpio-names.h"
 #include "board.h"
 #include <linux/mpu.h>
 #include <media/sh532u.h>
 #include <linux/bq27x00.h>
-#include <mach/gpio.h>
 #include <mach/edp.h>
 #include <mach/thermal.h>
 
