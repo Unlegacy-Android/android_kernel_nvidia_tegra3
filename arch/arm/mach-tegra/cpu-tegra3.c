@@ -106,9 +106,9 @@ static void hp_stats_update(unsigned int cpu, bool up)
 	bool was_up = hp_stats[cpu].up_down_count & 0x1;
 
 	if (was_up)
-		hp_stats[cpu].time_up_total = cputime64_add(
-			hp_stats[cpu].time_up_total, cputime64_sub(
-				cur_jiffies, hp_stats[cpu].last_update));
+		hp_stats[cpu].time_up_total =
+			hp_stats[cpu].time_up_total +
+			(cur_jiffies - hp_stats[cpu].last_update);
 
 	if (was_up != up) {
 		hp_stats[cpu].up_down_count++;
