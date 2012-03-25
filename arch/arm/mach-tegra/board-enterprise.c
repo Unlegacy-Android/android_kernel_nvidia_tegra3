@@ -54,6 +54,8 @@
 #include <mach/tegra_max98088_pdata.h>
 #include <mach/thermal.h>
 #include <mach/tegra-bb-power.h>
+#include <mach/gpio-tegra.h>
+
 #include "board.h"
 #include "clock.h"
 #include "board-enterprise.h"
