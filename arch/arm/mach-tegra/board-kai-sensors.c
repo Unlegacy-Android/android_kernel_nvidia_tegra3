@@ -24,9 +24,14 @@
 #include <linux/cm3217.h>
 #include <linux/mpu.h>
 #include <linux/regulator/consumer.h>
+#include <linux/gpio.h>
+
 #include <asm/mach-types.h>
-#include <mach/gpio.h>
+
 #include <media/ov2710.h>
+
+#include <mach/gpio-tegra.h>
+
 #include "board.h"
 #include "board-kai.h"
 #include "cpu-tegra.h"
