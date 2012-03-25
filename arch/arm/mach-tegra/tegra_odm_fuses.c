@@ -45,6 +45,7 @@
 #include <linux/ctype.h>
 #include <linux/wakelock.h>
 #include <linux/clk.h>
+#include <linux/export.h>
 
 #include <mach/tegra_odm_fuses.h>
 #include <mach/iomap.h>
