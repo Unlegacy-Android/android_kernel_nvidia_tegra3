@@ -27,6 +27,7 @@
 #include <linux/usb.h>
 #include <linux/err.h>
 #include <linux/wakelock.h>
+#include <mach/gpio-tegra.h>
 #include <mach/tegra_usb_modem_power.h>
 
 struct tegra_usb_modem {
