@@ -15,7 +15,9 @@
  */
 
 #include <linux/delay.h>
+#ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
+#endif
 #include <linux/i2c.h>
 #include <linux/input.h>
 #include <linux/interrupt.h>
@@ -50,7 +52,9 @@ struct cm3217_info {
 	struct device *ls_dev;
 	struct input_dev *ls_input_dev;
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
+#endif
 	struct i2c_client *i2c_client;
 	struct workqueue_struct *lp_wq;
 
@@ -866,6 +870,7 @@ static int cm3217_setup(struct cm3217_info *lpi)
 	return ret;
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 static void cm3217_early_suspend(struct early_suspend *h)
 {
 	struct cm3217_info *lpi = lp_info;
@@ -886,6 +891,7 @@ static void cm3217_late_resume(struct early_suspend *h)
 	if (lpi->als_enabled_before_suspend)
 		lightsensor_enable(lpi);
 }
+#endif
 
 static int cm3217_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
@@ -1017,10 +1023,12 @@ static int cm3217_probe(struct i2c_client *client,
 	if (ret)
 		goto err_create_ls_device_file;
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	lpi->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
 	lpi->early_suspend.suspend = cm3217_early_suspend;
 	lpi->early_suspend.resume = cm3217_late_resume;
 	register_early_suspend(&lpi->early_suspend);
+#endif
 
 	lpi->als_enable = 0;
 	lpi->als_enabled_before_suspend = 0;
