@@ -188,7 +188,7 @@ static inline int performance_multiplier(void)
 
 static DEFINE_PER_CPU(struct menu_device, menu_devices);
 
-static void menu_update(struct cpuidle_driver *drv, struct cpuidle_device *dev);
+static void menu_update(struct cpuidle_device *dev);
 
 /* This implements DIV_ROUND_CLOSEST but avoids 64 bit division */
 static u64 div_round64(u64 dividend, u32 divisor)
@@ -234,10 +234,9 @@ static void detect_repeating_patterns(struct menu_device *data)
 
 /**
  * menu_select - selects the next idle state to enter
- * @drv: cpuidle driver containing state data
  * @dev: the CPU
  */
-static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
+static int menu_select(struct cpuidle_device *dev)
 {
 	struct menu_device *data = &__get_cpu_var(menu_devices);
 	int latency_req = pm_qos_request(PM_QOS_CPU_DMA_LATENCY);
@@ -247,7 +246,7 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	struct timespec t;
 
 	if (data->needs_update) {
-		menu_update(drv, dev);
+		menu_update(dev);
 		data->needs_update = 0;
 	}
 
@@ -292,8 +291,8 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	 * Find the idle state with the lowest power while satisfying
 	 * our constraints.
 	 */
-	for (i = CPUIDLE_DRIVER_STATE_START; i < drv->state_count; i++) {
-		struct cpuidle_state *s = &drv->states[i];
+	for (i = CPUIDLE_DRIVER_STATE_START; i < dev->state_count; i++) {
+		struct cpuidle_state *s = &dev->states[i];
 
 		if (s->target_residency > data->predicted_us)
 			continue;
@@ -330,15 +329,14 @@ static void menu_reflect(struct cpuidle_device *dev, int index)
 
 /**
  * menu_update - attempts to guess what happened after entry
- * @drv: cpuidle driver containing state data
  * @dev: the CPU
  */
-static void menu_update(struct cpuidle_driver *drv, struct cpuidle_device *dev)
+static void menu_update(struct cpuidle_device *dev)
 {
 	struct menu_device *data = &__get_cpu_var(menu_devices);
 	int last_idx = data->last_state_idx;
 	unsigned int last_idle_us = cpuidle_get_last_residency(dev);
-	struct cpuidle_state *target = &drv->states[last_idx];
+	struct cpuidle_state *target = &dev->states[last_idx];
 	unsigned int measured_us;
 	u64 new_factor;
 
@@ -392,11 +390,9 @@ static void menu_update(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 
 /**
  * menu_enable_device - scans a CPU's states and does setup
- * @drv: cpuidle driver
  * @dev: the CPU
  */
-static int menu_enable_device(struct cpuidle_driver *drv,
-				struct cpuidle_device *dev)
+static int menu_enable_device(struct cpuidle_device *dev)
 {
 	struct menu_device *data = &per_cpu(menu_devices, dev->cpu);
 
