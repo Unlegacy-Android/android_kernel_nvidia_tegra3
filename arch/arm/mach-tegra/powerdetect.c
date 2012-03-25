@@ -24,6 +24,7 @@
 #include <linux/err.h>
 #include <linux/notifier.h>
 #include <linux/regulator/consumer.h>
+#include <linux/module.h>
 
 #include <mach/iomap.h>
 
