@@ -27,12 +27,12 @@
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/clockchips.h>
+#include <linux/cpu_pm.h>
 
 #include <mach/gpio.h>
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 
-#include <asm/cpu_pm.h>
 #include <asm/hardware/gic.h>
 
 #include <trace/events/power.h>
