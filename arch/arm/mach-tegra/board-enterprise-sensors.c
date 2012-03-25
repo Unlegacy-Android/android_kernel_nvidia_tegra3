@@ -40,12 +40,15 @@
 #include <linux/platform_data/ina230.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
-#include <mach/gpio.h>
+#include <linux/gpio.h>
+
 #include <media/ar0832_main.h>
 #include <media/tps61050.h>
 #include <media/ov9726.h>
 #include <mach/edp.h>
 #include <mach/thermal.h>
+#include <mach/gpio-tegra.h>
+
 #include "cpu-tegra.h"
 #include "gpio-names.h"
 #include "board-enterprise.h"
