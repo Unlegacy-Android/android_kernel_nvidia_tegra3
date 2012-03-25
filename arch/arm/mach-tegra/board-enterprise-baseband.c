@@ -32,6 +32,8 @@
 #include <mach/pinmux.h>
 #include <mach/usb_phy.h>
 #include <mach/tegra_usb_modem_power.h>
+#include <mach/gpio-tegra.h>
+
 #include "devices.h"
 #include "gpio-names.h"
 
