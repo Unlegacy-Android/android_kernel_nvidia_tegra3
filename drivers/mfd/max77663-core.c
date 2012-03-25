@@ -24,6 +24,7 @@
 #include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/uaccess.h>
+#include <linux/module.h>
 
 #include <linux/mfd/max77663-core.h>
 
