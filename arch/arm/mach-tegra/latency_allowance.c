@@ -105,7 +105,7 @@ static struct dentry *latency_debug_dir;
 struct la_client_info {
 	unsigned int fifo_size_in_atoms;
 	unsigned int expiration_in_ns;	/* worst case expiration value */
-	unsigned long reg_addr;
+	void __iomem *reg_addr;
 	unsigned long mask;
 	unsigned long shift;
 	enum tegra_la_id id;
@@ -226,13 +226,13 @@ struct la_scaling_info {
 
 struct la_scaling_reg_info {
 	enum tegra_la_id id;
-	unsigned int tl_reg_addr;
+	void __iomem *tl_reg_addr;
 	unsigned int tl_mask;
 	unsigned int tl_shift;
-	unsigned int tm_reg_addr;
+	void __iomem *tm_reg_addr;
 	unsigned int tm_mask;
 	unsigned int tm_shift;
-	unsigned int th_reg_addr;
+	void __iomem *th_reg_addr;
 	unsigned int th_mask;
 	unsigned int th_shift;
 };
@@ -441,7 +441,7 @@ int tegra_enable_latency_scaling(enum tegra_la_id id,
 				    unsigned int threshold_high)
 {
 	unsigned long reg;
-	unsigned long scaling_enable_reg = MC_RA(ARB_OVERRIDE);
+	void __iomem *scaling_enable_reg = MC_RA(ARB_OVERRIDE);
 
 	VALIDATE_ID(id);
 	VALIDATE_THRESHOLDS(threshold_low, threshold_mid, threshold_high);
@@ -476,7 +476,7 @@ exit:
 void tegra_disable_latency_scaling(enum tegra_la_id id)
 {
 	unsigned long reg;
-	unsigned long scaling_enable_reg = MC_RA(ARB_OVERRIDE);
+	void __iomem *scaling_enable_reg = MC_RA(ARB_OVERRIDE);
 
 	if (id >= TEGRA_LA_MAX_ID)
 		return;
