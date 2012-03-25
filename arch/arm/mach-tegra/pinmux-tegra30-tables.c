@@ -41,7 +41,7 @@
 	[TEGRA_DRIVE_PINGROUP_ ## pg_name] = {			\
 		.name = #pg_name,				\
 		.reg_bank = 0,					\
-		.reg = ((r) - PINGROUP_REG_A)			\
+		.reg = ((r) - PINGROUP_REG_A),			\
 		.drvup_offset = drv_up_offset,			\
 		.drvup_mask = drv_up_mask,			\
 		.drvdown_offset = drv_down_offset,		\
@@ -56,7 +56,7 @@
 	[TEGRA_DRIVE_PINGROUP_ ## pg_name] = {		\
 		.name = #pg_name,			\
 		.reg_bank = 0,				\
-		.reg = ((r) - PINGROUP_REG_A)		\
+		.reg = ((r) - PINGROUP_REG_A),		\
 		.drvup_offset = 20,			\
 		.drvup_mask = 0x1f,			\
 		.drvdown_offset = 12,			\
