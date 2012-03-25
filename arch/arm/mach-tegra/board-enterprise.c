@@ -41,6 +41,8 @@
 #include <linux/nfc/pn544.h>
 #include <sound/max98088.h>
 
+#include <asm/hardware/gic.h>
+
 #include <mach/clk.h>
 #include <mach/iomap.h>
 #include <mach/irqs.h>
@@ -962,11 +964,13 @@ static void __init tegra_enterprise_reserve(void)
 }
 
 MACHINE_START(TEGRA_ENTERPRISE, "tegra_enterprise")
-	.boot_params    = 0x80000100,
+	.atag_offset	= 0x100,
 	.map_io         = tegra_map_common_io,
 	.reserve        = tegra_enterprise_reserve,
-	.init_early	= tegra_init_early,
+	.init_early	= tegra30_init_early,
 	.init_irq       = tegra_init_irq,
+	.handle_irq	= gic_handle_irq,
 	.timer          = &tegra_timer,
 	.init_machine   = tegra_enterprise_init,
+	.restart	= tegra_assert_system_reset,
 MACHINE_END
