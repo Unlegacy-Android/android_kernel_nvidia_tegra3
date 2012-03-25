@@ -29,7 +29,9 @@
 #include <linux/platform_data/tegra_usb.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
+
 #include <mach/pinmux.h>
+#include <mach/pinmux-tegra30.h>
 #include <mach/usb_phy.h>
 #include <mach/tegra_usb_modem_power.h>
 #include <mach/gpio-tegra.h>
