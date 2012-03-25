@@ -33,7 +33,6 @@
 #include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/suspend.h>
-#include <linux/earlysuspend.h>
 #include <linux/slab.h>
 #include <linux/serial_reg.h>
 #include <linux/seq_file.h>
@@ -280,6 +279,7 @@ static __init int alloc_suspend_context(void)
 	struct page *ctx_page;
 	unsigned long ctx_virt = 0;
 	pgd_t *pgd;
+	pud_t *pud;
 	pmd_t *pmd;
 	pte_t *pte;
 
@@ -297,7 +297,8 @@ static __init int alloc_suspend_context(void)
 	pgd = tegra_pgd + pgd_index(ctx_virt);
 	if (!pgd_present(*pgd))
 		goto fail;
-	pmd = pmd_offset(pgd, ctx_virt);
+	pud = pud_offset(pgd, ctx_virt);
+	pmd = pmd_offset(pud, ctx_virt);
 	if (!pmd_none(*pmd))
 		goto fail;
 	pte = pte_alloc_kernel(pmd, ctx_virt);
