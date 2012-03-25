@@ -35,6 +35,7 @@
 #include <linux/suspend.h>
 #include <linux/tick.h>
 #include <linux/cpu_pm.h>
+#include <linux/module.h>
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
