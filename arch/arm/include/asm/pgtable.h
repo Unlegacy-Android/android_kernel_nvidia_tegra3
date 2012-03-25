@@ -45,6 +45,8 @@
 #define LIBRARY_TEXT_START	0x0c000000
 
 #ifndef __ASSEMBLY__
+#include <linux/spinlock.h>
+
 extern void __pte_error(const char *file, int line, pte_t);
 extern void __pmd_error(const char *file, int line, pmd_t);
 extern void __pgd_error(const char *file, int line, pgd_t);
