@@ -40,7 +40,7 @@ static const struct tegra_drive_pingroup_desc *drive_pingroups;
 static const int *gpio_to_pingroups_map;
 static int pingroup_max;
 static int drive_max;
-static int gpio_to_pingroups_map_max;
+static int gpio_to_pingroups_max;
 
 static char *tegra_mux_names[TEGRA_MAX_MUX] = {
 #define TEGRA_MUX(mux) [TEGRA_MUX_##mux] = #mux,
@@ -282,7 +282,7 @@ static int tegra_pinmux_set_func(const struct tegra_pingroup_config *config)
 	return 0;
 }
 
-int tegra_pinmux_get_func(int tegra_pingroup pg)
+int tegra_pinmux_get_func(int pg)
 {
 	int mux = -1;
 	unsigned long reg;
@@ -364,12 +364,12 @@ static int tegra_pinmux_set_lock(int pg, enum tegra_pin_lock lock)
 
 	spin_lock_irqsave(&mux_lock, flags);
 
-	reg = pg_readl(pingroups[pg].mux_reg);
+	reg = pg_readl(pingroups[pg].mux_bank, pingroups[pg].mux_reg);
 	reg &= ~(0x1 << pingroups[pg].lock_bit);
 	if (lock == TEGRA_PIN_LOCK_ENABLE)
 		reg |= (0x1 << pingroups[pg].lock_bit);
 
-	pg_writel(reg, pingroups[pg].mux_reg);
+	pg_writel(reg, pingroups[pg].mux_bank, pingroups[pg].mux_reg);
 
 	spin_unlock_irqrestore(&mux_lock, flags);
 	return 0;
