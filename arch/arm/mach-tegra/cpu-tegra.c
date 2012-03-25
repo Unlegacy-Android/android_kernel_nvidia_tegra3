@@ -456,7 +456,7 @@ static int tegra_verify_speed(struct cpufreq_policy *policy)
 	return cpufreq_frequency_table_verify(policy, freq_table);
 }
 
-static unsigned int tegra_getspeed(unsigned int cpu)
+unsigned int tegra_getspeed(unsigned int cpu)
 {
 	unsigned long rate;
 
