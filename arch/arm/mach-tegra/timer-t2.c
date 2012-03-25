@@ -28,6 +28,7 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/syscore_ops.h>
+#include <linux/export.h>
 
 #include <asm/mach/time.h>
 #include <asm/localtimer.h>

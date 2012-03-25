@@ -31,6 +31,7 @@
 #include <linux/smp.h>
 #include <linux/syscore_ops.h>
 #include <linux/cpu.h>
+#include <linux/export.h>
 
 #include <asm/mach/time.h>
 #include <asm/localtimer.h>
