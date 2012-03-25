@@ -38,9 +38,9 @@
 #include <linux/suspend.h>
 #include <linux/tick.h>
 #include <linux/clk.h>
+#include <linux/cpu_pm.h>
 
 #include <asm/cacheflush.h>
-#include <asm/cpu_pm.h>
 #include <asm/hardware/gic.h>
 #include <asm/localtimer.h>
 
