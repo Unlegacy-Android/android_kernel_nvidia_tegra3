@@ -21,6 +21,8 @@
 #include <linux/delay.h>
 #include <linux/init.h>
 
+#include <mach/gpio-tegra.h>
+
 #include "board.h"
 
 #define RETRY_MAX_COUNT (9*8+1) /*I2C controller supports eight-byte burst transfer*/
