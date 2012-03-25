@@ -58,6 +58,7 @@
 #include <mach/usb_phy.h>
 #include <mach/thermal.h>
 #include <mach/pci.h>
+#include <mach/gpio-tegra.h>
 
 #include "board.h"
 #include "clock.h"
