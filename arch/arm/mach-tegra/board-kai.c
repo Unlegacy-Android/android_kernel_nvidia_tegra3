@@ -56,6 +56,7 @@
 #include <asm/mach/arch.h>
 #include <mach/usb_phy.h>
 #include <mach/thermal.h>
+#include <mach/gpio-tegra.h>
 
 #include "board.h"
 #include "clock.h"
