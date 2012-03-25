@@ -39,6 +39,7 @@
 #include <linux/tick.h>
 #include <linux/clk.h>
 #include <linux/cpu_pm.h>
+#include <linux/module.h>
 
 #include <asm/cacheflush.h>
 #include <asm/hardware/gic.h>
