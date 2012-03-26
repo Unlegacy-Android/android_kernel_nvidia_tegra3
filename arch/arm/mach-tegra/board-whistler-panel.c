@@ -36,6 +36,7 @@
 #include <mach/iomap.h>
 #include <mach/dc.h>
 #include <mach/fb.h>
+#include <mach/gpio-tegra.h>
 
 #include "devices.h"
 #include "gpio-names.h"
