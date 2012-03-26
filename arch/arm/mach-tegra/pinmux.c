@@ -903,7 +903,9 @@ static int __devinit tegra_pinmux_probe(struct platform_device *pdev)
 	else
 		/* no device tree available, so we must be on tegra20 */
 		tegra20_pinmux_init(&pingroups, &pingroup_max,
-					&drive_pingroups, &drive_max);
+					&drive_pingroups, &drive_max,
+					&gpio_to_pingroups_map,
+					&gpio_to_pingroups_max);
 #else
 	pr_warn("non Tegra20 platform requires pinmux devicetree node\n");
 #endif
