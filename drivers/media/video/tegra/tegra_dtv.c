@@ -38,6 +38,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/delay.h>
+#include <linux/module.h>
 
 #include <media/tegra_dtv.h>
 
