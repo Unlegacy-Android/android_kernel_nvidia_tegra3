@@ -33,6 +33,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/device.h>
+#include <linux/export.h>
 
 #include <mach/clk.h>
 #include <mach/dc.h>
