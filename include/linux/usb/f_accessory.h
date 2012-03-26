@@ -44,7 +44,7 @@
  *	index:          0
  *	data            version number (16 bits little endian)
  *                     1 for original accessory support
- *                     2 adds device to host audio support
+ *                     2 adds HID and device to host audio support
  */
 #define ACCESSORY_GET_PROTOCOL  51
 
