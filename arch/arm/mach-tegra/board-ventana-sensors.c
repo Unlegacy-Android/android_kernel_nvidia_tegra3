@@ -39,8 +39,9 @@
 #include <linux/nct1008.h>
 #include <linux/err.h>
 #include <linux/regulator/consumer.h>
+#include <linux/gpio.h>
 
-#include <mach/gpio.h>
+#include <mach/gpio-tegra.h>
 
 #include <media/ov5650.h>
 #include <media/ov2710.h>
