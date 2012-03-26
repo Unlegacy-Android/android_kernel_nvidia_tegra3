@@ -91,6 +91,8 @@
 #include <linux/list.h>
 #include <linux/regulator/consumer.h>
 #include <linux/gpio.h>
+#include <linux/module.h>
+
 #include <media/nvc.h>
 #include <media/ssl3250a.h>
 
