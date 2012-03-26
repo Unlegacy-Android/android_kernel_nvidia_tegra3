@@ -24,7 +24,9 @@
 #include <linux/device.h>
 #include <linux/input.h>
 #include <linux/delay.h>
+#ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
+#endif
 #include <linux/i2c.h>
 #include <linux/i2c/panjit_ts.h>
 #include <linux/interrupt.h>
@@ -48,7 +50,9 @@ struct pj_data {
 	struct input_dev	*input_dev;
 	struct i2c_client	*client;
 	int			gpio_reset;
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend	early_suspend;
+#endif
 };
 
 struct pj_event {
