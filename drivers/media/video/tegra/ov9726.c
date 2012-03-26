@@ -19,9 +19,8 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/uaccess.h>
-#include <mach/iomap.h>
 #include <linux/atomic.h>
-#include <mach/gpio.h>
+#include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 
 #include <media/ov9726.h>
