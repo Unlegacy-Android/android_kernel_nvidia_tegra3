@@ -24,7 +24,7 @@ int cpuidle_driver_refcount;
  */
 int cpuidle_register_driver(struct cpuidle_driver *drv)
 {
-	if (!drv)
+	if (!drv || !drv->state_count)
 		return -EINVAL;
 
 	if (cpuidle_disabled())
