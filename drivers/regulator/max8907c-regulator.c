@@ -370,8 +370,8 @@ static int max8907c_regulator_probe(struct platform_device *pdev)
 	info = &max8907c_regulators[pdev->id];
 	info->i2c = max8907c->i2c_power;
 
-	rdev = regulator_register(&info->desc,
-				  &pdev->dev, pdev->dev.platform_data, info);
+	rdev = regulator_register(&info->desc, &pdev->dev,
+				pdev->dev.platform_data, info, NULL);
 	if (IS_ERR(rdev)) {
 		dev_err(&pdev->dev, "Cannot register regulator \"%s\", %ld\n",
 			info->desc.name, PTR_ERR(rdev));
