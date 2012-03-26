@@ -33,7 +33,6 @@
 
 #include <linux/delay.h>
 #include <linux/i2c.h>
-#include <mach/gpio.h>
 #include <media/ov5650.h>
 #include <media/soc380.h>
 #include <linux/regulator/consumer.h>
@@ -44,6 +43,7 @@
 #include <linux/i2c/pca953x.h>
 
 #include <mach/tegra_odm_fuses.h>
+#include <mach/gpio-tegra.h>
 
 #include "gpio-names.h"
 #include "cpu-tegra.h"
