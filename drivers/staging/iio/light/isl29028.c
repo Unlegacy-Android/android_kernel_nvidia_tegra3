@@ -101,7 +101,6 @@ enum {
 };
 
 struct isl29028_chip {
-	struct iio_dev		*indio_dev;
 	struct i2c_client	*client;
 	struct mutex		lock;
 	int			irq;
@@ -396,7 +395,7 @@ static ssize_t show_prox_period(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
 	return sprintf(buf, "%d\n", chip->prox_period);
@@ -406,7 +405,7 @@ static ssize_t store_prox_period(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	bool st;
 	unsigned long lval;
@@ -433,7 +432,7 @@ static ssize_t show_prox_enable(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
 	if (chip->is_prox_enable)
@@ -446,7 +445,7 @@ static ssize_t store_prox_enable(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	bool st;
 	unsigned long lval;
@@ -481,7 +480,7 @@ static ssize_t show_als_ir_mode(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
 	return sprintf(buf, "Current Mode: %d [0:None, 1:ALS, 2:IR]\n",
@@ -492,7 +491,7 @@ static ssize_t store_als_ir_mode(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	bool st;
 	unsigned long lval;
@@ -527,7 +526,7 @@ static ssize_t show_proxim_low_threshold(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
 	return sprintf(buf, "%d\n", chip->prox_low_thres);
@@ -537,7 +536,7 @@ static ssize_t store_proxim_low_threshold(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	bool st;
 	unsigned long lval;
@@ -568,7 +567,7 @@ static ssize_t show_proxim_high_threshold(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
 	return sprintf(buf, "%d\n", chip->prox_high_thres);
@@ -578,7 +577,7 @@ static ssize_t store_proxim_high_threshold(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	bool st;
 	unsigned long lval;
@@ -609,7 +608,7 @@ static ssize_t show_als_low_threshold(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
 	return sprintf(buf, "%d\n", chip->als_low_thres);
@@ -619,7 +618,7 @@ static ssize_t store_als_low_threshold(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	bool st;
 	unsigned long lval;
@@ -652,7 +651,7 @@ static ssize_t show_als_high_threshold(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
 	return sprintf(buf, "%d\n", chip->als_high_thres);
@@ -662,7 +661,7 @@ static ssize_t store_als_high_threshold(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	bool st;
 	unsigned long lval;
@@ -695,7 +694,7 @@ static ssize_t show_ir_low_threshold(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
 	return sprintf(buf, "%d\n", chip->ir_low_thres);
@@ -705,7 +704,7 @@ static ssize_t store_ir_low_threshold(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	bool st;
 	unsigned long lval;
@@ -738,7 +737,7 @@ static ssize_t show_ir_high_threshold(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
 	return sprintf(buf, "%d\n", chip->ir_high_thres);
@@ -748,7 +747,7 @@ static ssize_t store_ir_high_threshold(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	bool st;
 	unsigned long lval;
@@ -781,7 +780,7 @@ static ssize_t show_proxim_persist(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
 	return sprintf(buf, "%d\n", chip->prox_persist);
@@ -791,7 +790,7 @@ static ssize_t store_proxim_persist(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	unsigned long lval;
 
 	dev_vdbg(dev, "%s()\n", __func__);
@@ -815,7 +814,7 @@ static ssize_t show_als_persist(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
 	return sprintf(buf, "%d\n", chip->als_persist);
@@ -825,7 +824,7 @@ static ssize_t store_als_persist(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	unsigned long lval;
 
 	dev_vdbg(dev, "%s()\n", __func__);
@@ -849,7 +848,7 @@ static ssize_t show_proxim_data(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	int prox_data;
 	bool st;
 	ssize_t buf_count = 0;
@@ -875,7 +874,7 @@ static ssize_t show_als_data(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	int als_ir_data;
 	bool st;
 	ssize_t buf_count = 0;
@@ -908,7 +907,7 @@ static ssize_t show_ir_data(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	int als_ir_data;
 	bool st;
 	ssize_t buf_count = 0;
@@ -933,7 +932,7 @@ static ssize_t show_wait_proxim_int(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	bool st;
 
@@ -966,7 +965,7 @@ static ssize_t show_wait_als_ir_int(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	bool st;
 
@@ -1001,7 +1000,7 @@ static ssize_t show_name(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-	struct isl29028_chip *chip = indio_dev->dev_data;
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	return sprintf(buf, "%s\n", chip->client->name);
 }
 
@@ -1072,7 +1071,8 @@ static const struct attribute_group isl29108_group = {
 
 static int isl29028_chip_init(struct i2c_client *client)
 {
-	struct isl29028_chip *chip = i2c_get_clientdata(client);
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	int i;
 	bool st;
 
@@ -1161,18 +1161,20 @@ static int __devinit isl29028_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
 	struct isl29028_chip *chip;
+	struct iio_dev *indio_dev;
 	int err;
 
 	dev_dbg(&client->dev, "%s() called\n", __func__);
 
-	chip = kzalloc(sizeof(struct isl29028_chip), GFP_KERNEL);
-	if (!chip) {
-		dev_err(&client->dev, "Memory allocation fails\n");
+	indio_dev = iio_allocate_device(sizeof(*chip));
+	if (indio_dev == NULL) {
+		dev_err(&client->dev, "iio allocation fails\n");
 		err = -ENOMEM;
 		goto exit;
 	}
+	chip = iio_priv(indio_dev);
 
-	i2c_set_clientdata(client, chip);
+	i2c_set_clientdata(client, indio_dev);
 	chip->client = client;
 	chip->irq = client->irq;
 
@@ -1180,7 +1182,7 @@ static int __devinit isl29028_probe(struct i2c_client *client,
 
 	err = isl29028_chip_init(client);
 	if (err)
-		goto exit_free;
+		goto exit_iio_free;
 
 	init_completion(&chip->prox_completion);
 	init_completion(&chip->als_completion);
@@ -1191,49 +1193,40 @@ static int __devinit isl29028_probe(struct i2c_client *client,
 		if (err) {
 			dev_err(&client->dev, "Unable to register irq %d; "
 				"error %d\n", chip->irq, err);
-			goto exit_free;
+			goto exit_iio_free;
 		}
 	}
 
 	chip->is_int_enable = true;
-	chip->indio_dev = iio_allocate_device(0);
-	if (!chip->indio_dev) {
-		dev_err(&client->dev, "iio allocation fails\n");
-		goto exit_irq;
-	}
-
-	chip->indio_dev->info = &isl29028_info;
-	chip->indio_dev->dev.parent = &client->dev;
-	chip->indio_dev->dev_data = (void *)(chip);
-	chip->indio_dev->modes = INDIO_DIRECT_MODE;
-	err = iio_device_register(chip->indio_dev);
+	indio_dev->info = &isl29028_info;
+	indio_dev->dev.parent = &client->dev;
+	indio_dev->modes = INDIO_DIRECT_MODE;
+	err = iio_device_register(indio_dev);
 	if (err) {
 		dev_err(&client->dev, "iio registration fails\n");
-		goto exit_iio_free;
+		goto exit_irq;
 	}
 	dev_dbg(&client->dev, "%s() success\n", __func__);
 	return 0;
 
-exit_iio_free:
-	iio_free_device(chip->indio_dev);
 exit_irq:
 	if (chip->irq > 0)
 		free_irq(chip->irq, chip);
-exit_free:
-	kfree(chip);
+exit_iio_free:
+	iio_free_device(indio_dev);
 exit:
 	return err;
 }
 
 static int __devexit isl29028_remove(struct i2c_client *client)
 {
-	struct isl29028_chip *chip = i2c_get_clientdata(client);
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 
 	dev_dbg(&client->dev, "%s()\n", __func__);
-	iio_device_unregister(chip->indio_dev);
 	if (chip->irq > 0)
 		free_irq(chip->irq, chip);
-	kfree(chip);
+	iio_device_unregister(indio_dev);
 	return 0;
 }
 
