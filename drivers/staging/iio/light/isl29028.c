@@ -30,7 +30,7 @@
 #include <linux/completion.h>
 #include <linux/interrupt.h>
 #include "../iio.h"
-
+#include "../sysfs.h"
 #define CONVERSION_TIME_MS		100
 
 #define ISL29028_REG_ADD_CONFIGURE	0x01
