@@ -634,6 +634,7 @@ void __init tegra_ventana_reserve(void)
 }
 
 MACHINE_START(VENTANA, "ventana")
+	.atag_offset	= 0x100,
 	.map_io         = tegra_map_common_io,
 	.init_early	= tegra20_init_early,
 	.init_irq       = tegra_init_irq,
