@@ -31,6 +31,7 @@
 #include <linux/io.h>
 #include <linux/delay.h>
 #include <linux/err.h>
+#include <linux/export.h>
 
 #define USB_PHY_WAKEUP		0x408
 #define  USB_ID_INT_EN		(1 << 0)
