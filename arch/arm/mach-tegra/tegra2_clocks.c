@@ -32,6 +32,7 @@
 
 #include <mach/iomap.h>
 #include <mach/pinmux.h>
+#include <mach/pinmux-tegra20.h>
 
 #include "clock.h"
 #include "fuse.h"
