@@ -29,6 +29,7 @@
 #include <linux/io.h>
 #include <mach/iomap.h>
 #include <mach/pinmux.h>
+#include <mach/pinmux-tegra20.h>
 #include <sound/soc.h>
 #include "tegra20_das.h"
 
