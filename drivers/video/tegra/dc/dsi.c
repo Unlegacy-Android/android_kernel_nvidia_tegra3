@@ -24,6 +24,8 @@
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/workqueue.h>
+#include <linux/moduleparam.h>
+#include <linux/export.h>
 
 #include <mach/clk.h>
 #include <mach/dc.h>
