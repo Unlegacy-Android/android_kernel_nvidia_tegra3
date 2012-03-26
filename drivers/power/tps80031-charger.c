@@ -399,7 +399,7 @@ static int tps80031_charger_probe(struct platform_device *pdev)
 	charger->state = charging_state_idle;
 
 	charger->rdev = regulator_register(&charger->reg_desc, &pdev->dev,
-					&charger->reg_init_data, charger);
+					&charger->reg_init_data, charger, NULL);
 	if (IS_ERR(charger->rdev)) {
 		dev_err(&pdev->dev, "failed to register %s\n",
 						charger->reg_desc.name);
