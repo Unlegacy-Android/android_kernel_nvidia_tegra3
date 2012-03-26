@@ -24,7 +24,9 @@
 #include <linux/resource.h>
 #include <asm/mach-types.h>
 #include <linux/platform_device.h>
+#ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
+#endif
 #include <linux/kernel.h>
 #include <linux/pwm_backlight.h>
 #include <linux/tegra_pwm_bl.h>
