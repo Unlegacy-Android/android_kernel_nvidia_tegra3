@@ -29,6 +29,7 @@
 #include <mach/nvmap.h>
 #include <mach/tegra_fb.h>
 #include <mach/fb.h>
+#include <mach/gpio-tegra.h>
 
 #include "devices.h"
 #include "gpio-names.h"
