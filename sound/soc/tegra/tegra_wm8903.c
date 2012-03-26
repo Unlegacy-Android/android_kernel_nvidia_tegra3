@@ -853,20 +853,20 @@ static __devinit int tegra_wm8903_driver_probe(struct platform_device *pdev)
 		if (ret)
 			goto err;
 
-		tegra_wm8903_dai.codec_name = NULL;
-		tegra_wm8903_dai.codec_of_node = of_parse_phandle(
+		tegra_wm8903_dai[0].codec_name = NULL;
+		tegra_wm8903_dai[0].codec_of_node = of_parse_phandle(
 				pdev->dev.of_node, "nvidia,audio-codec", 0);
-		if (!tegra_wm8903_dai.codec_of_node) {
+		if (!tegra_wm8903_dai[0].codec_of_node) {
 			dev_err(&pdev->dev,
 				"Property 'nvidia,audio-codec' missing or invalid\n");
 			ret = -EINVAL;
 			goto err;
 		}
 
-		tegra_wm8903_dai.cpu_dai_name = NULL;
-		tegra_wm8903_dai.cpu_dai_of_node = of_parse_phandle(
+		tegra_wm8903_dai[0].cpu_dai_name = NULL;
+		tegra_wm8903_dai[0].cpu_dai_of_node = of_parse_phandle(
 				pdev->dev.of_node, "nvidia,i2s-controller", 0);
-		if (!tegra_wm8903_dai.cpu_dai_of_node) {
+		if (!tegra_wm8903_dai[0].cpu_dai_of_node) {
 			dev_err(&pdev->dev,
 				"Property 'nvidia,i2s-controller' missing or invalid\n");
 			ret = -EINVAL;
