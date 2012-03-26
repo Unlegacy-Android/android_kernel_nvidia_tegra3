@@ -28,6 +28,7 @@
 #include <linux/platform_device.h>
 #include <linux/rtc.h>
 #include <linux/slab.h>
+#include <linux/module.h>
 
 #define RTC_CTRL	0xc0
 #define POR_RESET_N	BIT(7)
