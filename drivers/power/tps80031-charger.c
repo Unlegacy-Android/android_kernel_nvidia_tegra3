@@ -29,6 +29,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/mfd/tps80031.h>
 #include <linux/tps80031-charger.h>
+#include <linux/module.h>
 
 #define CONTROLLER_CTRL1	0xe1
 #define CONTROLLER_STAT1	0xe3
