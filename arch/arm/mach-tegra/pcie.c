@@ -548,9 +548,9 @@ static int tegra_pcie_setup(int nr, struct pci_sys_data *sys)
 	pp = tegra_pcie.port + nr;
 	pp->root_bus_nr = sys->busnr;
 
-	pci_add_resources(&sys->resource, &pcie_io_space);
-	pci_add_resources(&sys->resource, &pcie_mem_space);
-	pci_add_resources(&sys->resource, &pcie_prefetch_mem_space);
+	pci_add_resource(&sys->resources, &pcie_io_space);
+	pci_add_resource(&sys->resources, &pcie_mem_space);
+	pci_add_resource(&sys->resources, &pcie_prefetch_mem_space);
 
 	return 1;
 }
