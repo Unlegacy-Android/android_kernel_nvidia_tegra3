@@ -18,6 +18,8 @@
 #include <linux/init.h>
 #include <linux/gpio.h>
 #include <mach/pinmux.h>
+#include <mach/pinmux-tegra20.h>
+#include <mach/gpio-tegra.h>
 
 #include "board-whistler.h"
 #include "gpio-names.h"
