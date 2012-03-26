@@ -23,6 +23,7 @@
 #include <linux/uaccess.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
+#include <linux/export.h>
 
 #include <video/tegra_dc_ext.h>
 
