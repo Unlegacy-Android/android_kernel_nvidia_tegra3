@@ -135,7 +135,7 @@ static int tegra20_spdif_hw_params(struct snd_pcm_substream *substream,
 {
 	struct device *dev = substream->pcm->card->dev;
 	struct tegra20_spdif *spdif = snd_soc_dai_get_drvdata(dai);
-	int ret, spdifclock;
+	int ret, srate, spdifclock;
 	u32 ch_sta[2] = {0, 0};
 
 	spdif->reg_ctrl &= ~TEGRA20_SPDIF_CTRL_PACK;
@@ -149,6 +149,7 @@ static int tegra20_spdif_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
+	srate = params_rate(params);
 	ch_sta[0] = tegra20_spdif_read(spdif, TEGRA20_SPDIF_CH_STA_TX_A);
 	ch_sta[0] &= ~TEGRA20_SPDIF_CH_STA_TX_A_SAMP_FREQ_MASK;
 	ch_sta[1] = tegra20_spdif_read(spdif, TEGRA20_SPDIF_CH_STA_TX_B);
