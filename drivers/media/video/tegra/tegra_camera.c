@@ -25,6 +25,9 @@
 #include <linux/io.h>
 #include <linux/uaccess.h>
 #include <linux/delay.h>
+#include <linux/export.h>
+#include <linux/slab.h>
+
 #include <mach/iomap.h>
 #include <mach/clk.h>
 #include <mach/powergate.h>
