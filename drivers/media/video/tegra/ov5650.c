@@ -19,6 +19,8 @@
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
+#include <linux/module.h>
+
 #include <media/ov5650.h>
 #include <media/tegra_camera.h>
 
