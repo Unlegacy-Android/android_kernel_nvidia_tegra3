@@ -82,8 +82,7 @@ int tegra_irq_to_wake(int irq)
 
 		/* step 2 below uses saved last_wake from step 1
 		 * in previous call */
-		search_gpio = irq_to_gpio(
-			tegra_wake_event_irq[i]);
+		search_gpio = tegra_wake_event_irq[i] - INT_GPIO_BASE;
 		if (search_gpio < 0)
 			continue;
 		wake_irq = tegra_gpio_get_bank_int_nr(search_gpio);
