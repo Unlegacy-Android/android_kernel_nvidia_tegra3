@@ -31,6 +31,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/tps80031-regulator.h>
 #include <linux/mfd/tps80031.h>
+#include <linux/module.h>
 
 /* Flags for DCDC Voltage reading */
 #define DCDC_OFFSET_EN		BIT(0)
