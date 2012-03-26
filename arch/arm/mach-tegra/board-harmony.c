@@ -48,6 +48,7 @@
 #include <mach/nand.h>
 #include <mach/clk.h>
 #include <mach/usb_phy.h>
+#include <mach/pinmux-tegra20.h>
 
 #include "clock.h"
 #include "board.h"
