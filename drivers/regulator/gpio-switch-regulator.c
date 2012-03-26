@@ -31,6 +31,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/gpio.h>
 #include <linux/regulator/gpio-switch-regulator.h>
+#include <linux/module.h>
 
 struct gpio_switch_regulator {
 	struct regulator_desc		reg_desc;
