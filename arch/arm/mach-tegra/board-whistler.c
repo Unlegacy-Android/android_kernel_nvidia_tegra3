@@ -46,6 +46,8 @@
 #include <mach/io.h>
 #include <mach/i2s.h>
 #include <mach/tegra_wm8753_pdata.h>
+#include <mach/gpio-tegra.h>
+
 #include <sound/tlv320aic326x.h>
 
 #include <asm/mach-types.h>
