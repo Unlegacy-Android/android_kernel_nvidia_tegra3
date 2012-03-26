@@ -39,6 +39,7 @@
 #include <linux/slab.h>
 #include <linux/workqueue.h>
 #include <linux/tegra_uart.h>
+#include <linux/tty_flip.h>
 
 #include <mach/dma.h>
 #include <mach/clk.h>
