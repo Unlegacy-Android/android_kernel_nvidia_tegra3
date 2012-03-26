@@ -19,6 +19,8 @@
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
+#include <linux/module.h>
+
 #include <media/ov2710.h>
 
 struct ov2710_reg {
