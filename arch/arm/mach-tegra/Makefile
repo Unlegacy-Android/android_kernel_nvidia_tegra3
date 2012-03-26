@@ -42,7 +42,7 @@ obj-$(CONFIG_FIQ)                       += fiq.o
 obj-$(CONFIG_TEGRA_FIQ_DEBUGGER)        += tegra_fiq_debugger.o
 obj-$(CONFIG_TEGRA_PWM)                 += pwm.o
 obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)       += arb_sema.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += powergate.o
+obj-y                                   += powergate.o
 ifeq ($(CONFIG_TEGRA_SILICON_PLATFORM),y)
 obj-y                                   += dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_dvfs.o
