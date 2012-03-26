@@ -31,6 +31,7 @@
 #include <linux/platform_device.h>
 #include <linux/rtc.h>
 #include <linux/slab.h>
+#include <linux/module.h>
 
 #define RTC_CTRL		0x10
 #define RTC_STATUS		0x11
