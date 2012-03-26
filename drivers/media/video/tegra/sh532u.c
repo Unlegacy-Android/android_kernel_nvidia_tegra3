@@ -85,6 +85,8 @@
 #include <linux/list.h>
 #include <linux/jiffies.h>
 #include <linux/gpio.h>
+#include <linux/module.h>
+
 #include <media/nvc.h>
 #include <media/sh532u.h>
 
