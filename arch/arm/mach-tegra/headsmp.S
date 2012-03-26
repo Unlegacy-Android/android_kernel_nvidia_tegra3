@@ -47,10 +47,12 @@
  *	 secondary_startup routine. Used for initial boot and hotplug
  *	 of secondary CPUs.
  */
+	__CPUINIT
 ENTRY(tegra_secondary_startup)
 	bl	__invalidate_cpu_state
 	b	secondary_startup
 ENDPROC(tegra_secondary_startup)
+	.previous
 #endif
 
 #ifdef CONFIG_PM_SLEEP
