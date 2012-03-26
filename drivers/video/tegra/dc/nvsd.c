@@ -21,6 +21,7 @@
 #include <linux/slab.h>
 #include <linux/backlight.h>
 #include <linux/platform_device.h>
+#include <linux/stat.h>
 
 #include "dc_reg.h"
 #include "dc_priv.h"
