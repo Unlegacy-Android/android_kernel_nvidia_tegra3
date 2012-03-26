@@ -31,6 +31,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/tps6591x-regulator.h>
 #include <linux/mfd/tps6591x.h>
+#include <linux/module.h>
 
 /* supply control and voltage setting  */
 #define TPS6591X_VIO_ADD		0x20
