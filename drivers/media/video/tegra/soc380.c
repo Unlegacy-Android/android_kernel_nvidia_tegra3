@@ -25,6 +25,8 @@
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
+#include <linux/module.h>
+
 #include <media/soc380.h>
 
 struct soc380_reg {
