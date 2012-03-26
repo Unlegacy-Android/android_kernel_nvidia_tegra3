@@ -20,6 +20,7 @@
 #include <linux/moduleparam.h>
 #include <linux/tegra_caif.h>
 #include <mach/tegra_usb_modem_power.h>
+#include <mach/pinmux-tegra20.h>
 
 #include "board.h"
 #include "board-whistler-baseband.h"
