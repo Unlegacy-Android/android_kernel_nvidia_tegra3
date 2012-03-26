@@ -22,6 +22,7 @@
 #include <linux/atomic.h>
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
+#include <linux/module.h>
 
 #include <media/ov9726.h>
 
