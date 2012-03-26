@@ -27,6 +27,8 @@
 #include <linux/tegra_rpc.h>
 #include <linux/tegra_avp.h>
 #include <linux/types.h>
+#include <linux/moduleparam.h>
+#include <linux/stat.h>
 
 #include <mach/clk.h>
 #include <mach/nvmap.h>
