@@ -44,6 +44,7 @@
 #include <sound/soc.h>
 
 #include "tegra20_i2s.h"
+#include "tegra20_das.h"
 
 #define DRV_NAME "tegra20-i2s"
 
