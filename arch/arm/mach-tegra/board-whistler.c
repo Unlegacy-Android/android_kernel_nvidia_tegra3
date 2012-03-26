@@ -53,6 +53,8 @@
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
+#include <asm/hardware/gic.h>
+
 #include <mach/usb_phy.h>
 
 #include "board.h"
@@ -553,11 +555,13 @@ void __init tegra_whistler_reserve(void)
 }
 
 MACHINE_START(WHISTLER, "whistler")
-	.boot_params    = 0x00000100,
+	.atag_offset	= 0x100,
 	.map_io         = tegra_map_common_io,
-	.reserve        = tegra_whistler_reserve,
-	.init_early	= tegra_init_early,
+	.init_early	= tegra20_init_early,
 	.init_irq       = tegra_init_irq,
+	.handle_irq	= gic_handle_irq,
+	.reserve        = tegra_whistler_reserve,
 	.timer          = &tegra_timer,
 	.init_machine   = tegra_whistler_init,
+	.restart	= tegra_assert_system_reset,
 MACHINE_END
