@@ -31,6 +31,7 @@
 #include <linux/platform_device.h>
 #include <linux/rtc.h>
 #include <linux/slab.h>
+#include <linux/module.h>
 
 #define rtc_ctrl1		0xED
 #define rtc_ctrl2		0xEE
