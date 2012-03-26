@@ -15,12 +15,12 @@
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
-#include <mach/hardware.h>
 #include <linux/gpio.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
-#include <asm/atomic.h>
+#include <linux/atomic.h>
 #include <linux/regulator/consumer.h>
+#include <linux/export.h>
 #include <media/ar0832_main.h>
 
 #define POS_LOW  0
