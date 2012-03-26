@@ -17,3 +17,17 @@
 extern struct resource *tegra_smmu_window(int wnum);
 extern int tegra_smmu_window_count(void);
 #endif
+
+#if  defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU_LINEAR)
+static inline void tegra_iommu_map_linear(unsigned long start, size_t size)
+{
+}
+#elif defined(CONFIG_TEGRA_IOMMU_SMMU)
+extern void smmu_iommu_map_linear(unsigned long start, size_t size);
+#define tegra_iommu_map_linear(start, size) smmu_iommu_map_linear(start, size);
+#else
+#define tegra_iommu_map_linear(start, size)
+#endif
+
+/* FIXME: Should be done in DMA API */
+#define dma_map_linear_at(dev, start, size, dir) tegra_iommu_map_linear(start, size)
