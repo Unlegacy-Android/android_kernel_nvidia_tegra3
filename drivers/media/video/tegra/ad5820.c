@@ -20,6 +20,8 @@
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
+#include <linux/module.h>
+
 #include <media/ad5820.h>
 
 /* Focuser single step & full scale transition time truth table
