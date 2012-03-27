@@ -5,6 +5,7 @@ comment "NVIDIA Tegra options"
 config ARCH_TEGRA_2x_SOC
 	bool "Enable support for Tegra20 family"
 	depends on !ARCH_TEGRA_3x_SOC
+	select ARM_CPU_SUSPEND if PM
 	select ARCH_TEGRA_HAS_PCIE
 	select CPU_V7
 	select ARM_GIC
@@ -26,6 +27,7 @@ config ARCH_TEGRA_2x_SOC
 
 config ARCH_TEGRA_3x_SOC
 	bool "Enable support for Tegra30 family"
+	select ARM_CPU_SUSPEND if PM
 	select ARCH_TEGRA_HAS_PCIE
 	select ARCH_TEGRA_HAS_SATA
 	select ARCH_TEGRA_HAS_DUAL_3D

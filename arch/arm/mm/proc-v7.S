@@ -129,7 +129,7 @@ ENDPROC(cpu_v7_dcache_clean_area)
 #endif
 
 .globl	cpu_v7_suspend_size
-.equ	cpu_v7_suspend_size, (4 * 9) + cpu_v7_debug_suspend_size
+.equ	cpu_v7_suspend_size, (4 * 10) + cpu_v7_debug_suspend_size
 #ifdef CONFIG_ARM_CPU_SUSPEND
 ENTRY(cpu_v7_do_suspend)
 	stmfd	sp!, {r3 - r10, lr}
