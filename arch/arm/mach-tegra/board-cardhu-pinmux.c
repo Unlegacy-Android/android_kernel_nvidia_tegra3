@@ -22,6 +22,7 @@
 #include <mach/gpio-tegra.h>
 #include "board.h"
 #include "board-cardhu.h"
+#include "devices.h"
 #include "gpio-names.h"
 
 #define DEFAULT_DRIVE(_name)					\
@@ -623,9 +624,18 @@ static void __init cardhu_gpio_init_configure(void)
 	}
 }
 
+static struct platform_device *pinmux_devices[] = {
+	&tegra_gpio_device,
+	&tegra_pinmux_device,
+};
+
 int __init cardhu_pinmux_init(void)
 {
 	struct board_info board_info;
+
+	platform_add_devices(pinmux_devices, ARRAY_SIZE(pinmux_devices));
+
+	tegra30_default_pinmux();
 
 	cardhu_gpio_init_configure();
 
