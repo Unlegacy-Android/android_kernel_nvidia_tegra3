@@ -28,6 +28,7 @@
 #include <linux/platform_device.h>
 #include <linux/module.h>
 #include <linux/delay.h>
+#include <linux/syscore_ops.h>
 
 #include <asm/mach/irq.h>
 
@@ -399,7 +400,20 @@ static int tegra_gpio_irq_set_wake(struct irq_data *d, unsigned int enable)
 }
 #else
 #define tegra_gpio_irq_set_wake NULL
+#define tegra_gpio_suspend NULL
+#define tegra_gpio_resume NULL
 #endif
+
+static struct syscore_ops tegra_gpio_syscore_ops = {
+	.suspend = tegra_gpio_suspend,
+	.resume = tegra_gpio_resume,
+};
+
+int tegra_gpio_resume_init(void)
+{
+	register_syscore_ops(&tegra_gpio_syscore_ops);
+	return 0;
+}
 
 static struct irq_chip tegra_gpio_irq_chip = {
 	.name		= "GPIO",
