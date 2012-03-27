@@ -64,6 +64,11 @@
 #define STA_COUNT_SHIFT				2
 #define STA_COUNT_MASK				0xFFFC
 
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define APB_DMA_CHAN_CSRE			0x00C
+#define CSRE_PAUSE				(1<<31)
+#endif
+
 #define APB_DMA_CHAN_AHB_PTR			0x010
 
 #define APB_DMA_CHAN_AHB_SEQ			0x014
@@ -196,7 +201,14 @@ static void resume_dma(void)
 	writel(GEN_ENABLE, general_dma_addr + APB_DMA_GEN);
 	spin_unlock(&enable_lock);
 }
-
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+static void pause_dma_channel(struct tegra_dma_channel *ch, bool wait_for_burst_complete)
+{
+	writel(CSRE_PAUSE, ch->addr + APB_DMA_CHAN_CSRE);
+	if (wait_for_burst_complete)
+		udelay(20);
+}
+#endif
 static void start_head_req(struct tegra_dma_channel *ch)
 {
 	struct tegra_dma_req *head_req;
@@ -303,10 +315,18 @@ static unsigned int get_channel_status(struct tegra_dma_channel *ch,
 		 *  - Stop the dma channel
 		 *  - Globally re-enable DMA to resume other transfers
 		 */
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+		spin_lock(&enable_lock);
+		pause_dma_channel(ch, true);
+		status = readl(ch->addr + APB_DMA_CHAN_STA);
+		tegra_dma_stop(ch);
+		spin_unlock(&enable_lock);
+#else
 		pause_dma(true);
 		status = readl(ch->addr + APB_DMA_CHAN_STA);
 		tegra_dma_stop(ch);
 		resume_dma();
+#endif
 		if (status & STA_ISE_EOC) {
 			pr_err("Got Dma Int here clearing");
 			writel(status, ch->addr + APB_DMA_CHAN_STA);
