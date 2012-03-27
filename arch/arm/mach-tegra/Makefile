@@ -62,7 +62,6 @@ obj-y                                   += powergate.o
 ifeq ($(CONFIG_TEGRA_SILICON_PLATFORM),y)
 obj-y                                   += dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_dvfs.o
-ifeq ($(CONFIG_TEGRA_SILICON_PLATFORM),y)
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_dvfs.o
 obj-y                                   += latency_allowance.o
@@ -119,6 +118,7 @@ endif
 obj-$(CONFIG_SENSORS_TEGRA_TSENSOR)     += tegra3_tsensor.o
 obj-$(CONFIG_TEGRA_DYNAMIC_PWRDET)      += powerdetect.o
 obj-$(CONFIG_TEGRA_USB_MODEM_POWER)     += tegra_usb_modem_power.o
+obj-$(CONFIG_ARCH_TEGRA_HAS_CL_DVFS)    += tegra_cl_dvfs.o
 
 obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
 obj-$(CONFIG_MACH_HARMONY)              += board-harmony.o

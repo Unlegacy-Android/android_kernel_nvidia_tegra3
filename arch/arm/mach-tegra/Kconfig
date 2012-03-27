@@ -86,6 +86,7 @@ config ARCH_TEGRA_11x_SOC
 	select USB_ULPI if USB_SUPPORT
 	select USB_ULPI_VIEWPORT if USB_SUPPORT
 	select REPORT_PRESENT_CPUS if TEGRA_AUTO_HOTPLUG
+	select ARCH_TEGRA_HAS_CL_DVFS
 	help
 	  Support for NVIDIA Tegra 11x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
@@ -106,6 +107,9 @@ config ARCH_TEGRA_HAS_PCIE
 	bool
 
 config ARCH_TEGRA_HAS_SATA
+	bool
+
+config ARCH_TEGRA_HAS_CL_DVFS
 	bool
 
 config TEGRA_PCI
