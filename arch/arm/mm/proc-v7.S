@@ -275,8 +275,8 @@ ENTRY(cpu_v7_do_resume)
 	ldrne	r4, [r0], #4
 	mcrne	p14, 0, r4, c0, c0, 2	@ DBGDTRRXext
 
-	mrc	p14, 0, r8, c0, c0, 0   @ read IDR
-	mov	r3, r8, lsr #24
+	mrc	p14, 0, r5, c0, c0, 0   @ read IDR
+	mov	r3, r5, lsr #24
 	and	r3, r3, #0xf            @ r3 has the number of brkpt
 	rsb	r3, r3, #0xf
 
@@ -304,7 +304,7 @@ ENTRY(cpu_v7_do_resume)
 	restore_brkpt	c1
 	restore_brkpt	c0
 
-	mov	r3, r8, lsr #28         @ r3 has the number of wpt
+	mov	r3, r5, lsr #28         @ r3 has the number of wpt
 	rsb	r3, r3, #0xf
 
 	/* r3 = (15 - #of wpt) ;
