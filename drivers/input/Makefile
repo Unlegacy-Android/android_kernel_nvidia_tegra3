@@ -31,3 +31,4 @@ obj-$(CONFIG_INPUT_KEYRESET)	+= keyreset.o
 obj-$(CONFIG_INPUT_CFBOOST)	+= input-cfboost.o
 obj-$(CONFIG_SENSORS_CAP1106)	+= proximity/
 
+obj-$(CONFIG_INPUT_LID)		+= lid.o
