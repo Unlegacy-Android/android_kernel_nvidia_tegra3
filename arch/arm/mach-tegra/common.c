@@ -1170,3 +1170,13 @@ void cpufreq_set_conservative_governor(void)
 	cpufreq_set_governor(cpufreq_gov_conservative);
 }
 #endif /* CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND */
+
+static struct platform_device *pinmux_devices[] = {
+	&tegra_gpio_device,
+	&tegra_pinmux_device,
+};
+
+void tegra_enable_pinmux(void)
+{
+	platform_add_devices(pinmux_devices, ARRAY_SIZE(pinmux_devices));
+}
