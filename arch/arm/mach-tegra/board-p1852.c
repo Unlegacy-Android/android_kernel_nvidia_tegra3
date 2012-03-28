@@ -420,6 +420,7 @@ static void __init tegra_p1852_init(void)
 {
 	tegra_init_board_info();
 	tegra_clk_init_from_table(p1852_clk_init_table);
+	tegra_enable_pinmux();
 	p1852_pinmux_init();
 	p1852_i2c_init();
 	p1852_i2s_audio_init();

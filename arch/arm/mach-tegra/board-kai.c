@@ -800,6 +800,7 @@ static void __init tegra_kai_init(void)
 {
 	tegra_thermal_init(&thermal_data);
 	tegra_clk_init_from_table(kai_clk_init_table);
+	tegra_enable_pinmux();
 	kai_pinmux_init();
 	kai_i2c_init();
 	kai_spi_init();

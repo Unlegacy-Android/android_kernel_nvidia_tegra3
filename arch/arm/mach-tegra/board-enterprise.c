@@ -927,6 +927,7 @@ static void __init tegra_enterprise_init(void)
 {
 	tegra_thermal_init(&thermal_data);
 	tegra_clk_init_from_table(enterprise_clk_init_table);
+	tegra_enable_pinmux();
 	enterprise_pinmux_init();
 	enterprise_i2c_init();
 	enterprise_uart_init();

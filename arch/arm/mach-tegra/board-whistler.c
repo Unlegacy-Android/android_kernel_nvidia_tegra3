@@ -518,6 +518,7 @@ static void __init tegra_whistler_init(void)
 {
 	int modem_id = tegra_get_modem_id();
 	tegra_clk_init_from_table(whistler_clk_init_table);
+	tegra_enable_pinmux();
 	whistler_pinmux_init();
 	whistler_i2c_init();
 	whistler_uart_init();

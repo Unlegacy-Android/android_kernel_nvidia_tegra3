@@ -1121,6 +1121,7 @@ static void __init tegra_cardhu_init(void)
 {
 	tegra_thermal_init(&thermal_data);
 	tegra_clk_init_from_table(cardhu_clk_init_table);
+	tegra_enable_pinmux();
 	cardhu_pinmux_init();
 	cardhu_i2c_init();
 	cardhu_spi_init();

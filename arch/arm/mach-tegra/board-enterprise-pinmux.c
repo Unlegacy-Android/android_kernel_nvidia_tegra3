@@ -531,15 +531,8 @@ static void enterprise_set_unused_pin_gpio(struct pin_info_low_power_mode *lpm_p
 	}
 }
 
-static struct platform_device *pinmux_devices[] = {
-	&tegra_gpio_device,
-	&tegra_pinmux_device,
-};
-
 int __init enterprise_pinmux_init(void)
 {
-	platform_add_devices(pinmux_devices, ARRAY_SIZE(pinmux_devices));
-
 	tegra30_default_pinmux();
 
 	tegra_pinmux_config_table(enterprise_pinmux, ARRAY_SIZE(enterprise_pinmux));

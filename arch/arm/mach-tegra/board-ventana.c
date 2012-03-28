@@ -576,6 +576,7 @@ static void __init tegra_ventana_init(void)
 	struct board_info BoardInfo;
 
 	tegra_clk_init_from_table(ventana_clk_init_table);
+	tegra_enable_pinmux();
 	ventana_pinmux_init();
 	ventana_i2c_init();
 	ventana_uart_init();

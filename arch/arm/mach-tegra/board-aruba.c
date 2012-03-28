@@ -507,6 +507,7 @@ static void aruba_sata_init(void) { }
 static void __init tegra_aruba_init(void)
 {
 	tegra_clk_init_from_table(aruba_clk_init_table);
+	tegra_enable_pinmux();
 	aruba_pinmux_init();
 
 	platform_add_devices(aruba_devices, ARRAY_SIZE(aruba_devices));
