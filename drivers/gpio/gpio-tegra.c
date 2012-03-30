@@ -362,7 +362,7 @@ void tegra_gpio_resume(void)
 	local_irq_restore(flags);
 }
 
-void tegra_gpio_suspend(void)
+int tegra_gpio_suspend(void)
 {
 	unsigned long flags;
 	int b;
@@ -382,6 +382,8 @@ void tegra_gpio_suspend(void)
 		}
 	}
 	local_irq_restore(flags);
+
+	return 0;
 }
 
 static int tegra_gpio_irq_set_wake(struct irq_data *d, unsigned int enable)
