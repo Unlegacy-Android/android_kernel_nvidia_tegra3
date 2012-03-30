@@ -515,6 +515,7 @@ static inline void tegra_sleep_cpu(unsigned long v2p)
 			  (TEGRA_RESET_HANDLER_BASE +
 			   tegra_cpu_reset_handler_offset));
 #endif
+	cpu_suspend(v2p, tegra_sleep_cpu_finish);
 }
 
 unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
@@ -566,7 +567,7 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 			  __pa(pgd + PTRS_PER_PGD));
 	outer_disable();
 
-	cpu_suspend(PHYS_OFFSET - PAGE_OFFSET, tegra_sleep_cpu_finish);
+	tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
 
 	tegra_init_cache(false);
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_switch);
@@ -836,7 +837,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	outer_disable();
 
 	if (mode == TEGRA_SUSPEND_LP2)
-		cpu_suspend(PHYS_OFFSET - PAGE_OFFSET, tegra_sleep_cpu_finish);
+		tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
 	else
 		tegra_sleep_core(mode, PHYS_OFFSET - PAGE_OFFSET);
 
