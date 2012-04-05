@@ -70,19 +70,20 @@ extern struct cache_detail unix_gid_cache;
 static int __init
 init_sunrpc(void)
 {
-	int err = register_rpc_pipefs();
+	int err = rpc_init_mempool();
 	if (err)
 		goto out;
-	err = rpc_init_mempool();
-	if (err)
-		goto out2;
 	err = rpcauth_init_module();
 	if (err)
-		goto out3;
+		goto out2;
 
 	cache_initialize();
 
 	err = register_pernet_subsys(&sunrpc_net_ops);
+	if (err)
+		goto out3;
+
+	err = register_rpc_pipefs();
 	if (err)
 		goto out4;
 #ifdef RPC_DEBUG
@@ -94,11 +95,11 @@ init_sunrpc(void)
 	return 0;
 
 out4:
-	rpcauth_remove_module();
+	unregister_pernet_subsys(&sunrpc_net_ops);
 out3:
-	rpc_destroy_mempool();
+	rpcauth_remove_module();
 out2:
-	unregister_rpc_pipefs();
+	rpc_destroy_mempool();
 out:
 	return err;
 }
