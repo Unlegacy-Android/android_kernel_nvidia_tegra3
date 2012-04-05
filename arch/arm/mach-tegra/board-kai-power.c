@@ -97,7 +97,6 @@ static struct regulator_consumer_supply max77663_ldo2_supply[] = {
 };
 
 static struct regulator_consumer_supply max77663_ldo3_supply[] = {
-	REGULATOR_SUPPLY("vmmc", NULL),
 };
 
 static struct regulator_consumer_supply max77663_ldo4_supply[] = {
