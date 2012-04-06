@@ -2377,7 +2377,7 @@ serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
 	}
 
 	if (up->capabilities & UART_CAP_HW_CTSRTS) {
-		unsigned char mcr = serial_inp(up, UART_MCR);
+		unsigned char mcr = serial_port_in(port, UART_MCR);
 		/*
 		 * TEGRA UART core support the auto control of the RTS and CTS
 		 * flow control.
@@ -2386,7 +2386,7 @@ serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
 			mcr |= UART_MCR_HW_CTS;
 		else
 			mcr &= ~UART_MCR_HW_CTS;
-		serial_outp(up, UART_MCR, mcr);
+		serial_port_out(port, UART_MCR, mcr);
 	}
 
 #ifdef CONFIG_ARCH_OMAP
