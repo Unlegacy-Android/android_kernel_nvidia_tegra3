@@ -1891,10 +1891,10 @@ static int pair_device(struct sock *sk, struct hci_dev *hdev, void *data,
 		auth_type = HCI_AT_DEDICATED_BONDING_MITM;
 
 	if (cp->addr.type == MGMT_ADDR_BREDR)
-		conn = hci_connect(hdev, ACL_LINK, &cp->addr.bdaddr, sec_level,
+		conn = hci_connect(hdev, ACL_LINK, 0, &cp->addr.bdaddr, sec_level,
 				   auth_type);
 	else
-		conn = hci_connect(hdev, LE_LINK, &cp->addr.bdaddr, sec_level,
+		conn = hci_connect(hdev, LE_LINK, 0, &cp->addr.bdaddr, sec_level,
 				   auth_type);
 
 	memset(&rp, 0, sizeof(rp));
