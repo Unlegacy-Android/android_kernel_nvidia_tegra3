@@ -4196,7 +4196,7 @@ static int aic3262_probe(struct snd_soc_codec *codec)
 	/* off, with power on */
 	aic3262_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
-	ret = snd_soc_add_controls(codec, aic3262_snd_controls,
+	ret = snd_soc_add_codec_controls(codec, aic3262_snd_controls,
 					ARRAY_SIZE(aic3262_snd_controls));
 	if(ret)
 	{

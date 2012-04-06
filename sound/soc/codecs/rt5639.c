@@ -27,9 +27,9 @@
 
 #include "rt5639.h"
 
-#define RT5639_DEMO 1 
+#define RT5639_DEMO 1
 #define RT5639_REG_RW 1
-#define RT5639_DET_EXT_MIC 0 
+#define RT5639_DET_EXT_MIC 0
 
 #ifdef RT5639_DEMO
 struct rt5639_init_reg {
@@ -48,7 +48,7 @@ static struct rt5639_init_reg init_list[] = {
 	{RT5639_CLS_D_OUT	, 0xa000},//8d[11] = 0'b
 	{RT5639_PRIV_INDEX	, 0x001c},//PR1c = 0D21'h
 	{RT5639_PRIV_DATA	, 0x0D21},
-	
+
 	{RT5639_PRIV_INDEX	, 0x001b},//PR1B = 0D21'h
 	{RT5639_PRIV_DATA	, 0x0000},
 	{RT5639_PRIV_INDEX	, 0x0012},//PR12 = 0aa8'h
@@ -74,7 +74,7 @@ static struct rt5639_init_reg init_list[] = {
 	{RT5639_SPO_L_MIXER	, 0xe800},//SPKVOLL -> SPOLMIX
 	{RT5639_SPO_R_MIXER	, 0x2800},//SPKVOLR -> SPORMIX
 //	{RT5639_SPO_L_MIXER	, 0xb800},//DAC -> SPOLMIX
-//	{RT5639_SPO_R_MIXER	, 0x1800},//DAC -> SPORMIX  
+//	{RT5639_SPO_R_MIXER	, 0x1800},//DAC -> SPORMIX
 //	{RT5639_I2S1_SDP	, 0xD000},//change IIS1 and IIS2
 	/*record*/
 	{RT5639_IN1_IN2		, 0x5080},//IN1 boost 40db and differential mode
@@ -1183,11 +1183,9 @@ static int spk_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-static int hp_event(struct snd_soc_dapm_widget *w, 
+static int hp_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = w->codec;
-
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		printk("hp_event --SND_SOC_DAPM_POST_PMU\n");
@@ -1220,7 +1218,7 @@ static const struct snd_soc_dapm_widget rt5639_dapm_widgets[] = {
 	SND_SOC_DAPM_INPUT("MIC1"),
 	SND_SOC_DAPM_INPUT("MIC2"),
 	SND_SOC_DAPM_INPUT("DMIC1"),
-	SND_SOC_DAPM_INPUT("DMIC2"),	
+	SND_SOC_DAPM_INPUT("DMIC2"),
 
 	SND_SOC_DAPM_INPUT("IN1P"),
 	SND_SOC_DAPM_INPUT("IN1N"),
@@ -1434,7 +1432,7 @@ static const struct snd_soc_dapm_widget rt5639_dapm_widgets[] = {
 		RT5639_PWR_HP_R_BIT, 0, NULL, 0),
 
 	SND_SOC_DAPM_SUPPLY("Improve SPK amp drv", SND_SOC_NOPM, 0, 0,
-		spk_event, SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMU),		
+		spk_event, SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMU),
 
 	/* Output Lines */
 	SND_SOC_DAPM_OUTPUT("SPOLP"),
@@ -1467,8 +1465,8 @@ static const struct snd_soc_dapm_route rt5639_dapm_routes[] = {
 	{"BST2", NULL, "IN2N"},
 
 	{"INL VOL", NULL, "IN2P"},
-	{"INR VOL", NULL, "IN2N"},	
-	
+	{"INR VOL", NULL, "IN2N"},
+
 	{"RECMIXL", "HPOL Switch", "HPOL"},
 	{"RECMIXL", "INL Switch", "INL VOL"},
 	{"RECMIXL", "BST2 Switch", "BST2"},
@@ -1741,7 +1739,7 @@ static const struct snd_soc_dapm_route rt5639_dapm_routes[] = {
 	{"SPOLN", NULL, "SPOL MIX"},
 	{"SPORP", NULL, "SPOR MIX"},
 	{"SPORN", NULL, "SPOR MIX"},
-	
+
 	{"HP L amp", NULL, "HPOL MIX"},
 	{"HP R amp", NULL, "HPOR MIX"},
 	{"HPOL", NULL, "Improve HP amp drv"},
@@ -2172,7 +2170,7 @@ static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 		msleep(100);
 
 		snd_soc_update_bits(codec, RT5639_PWR_ANLG1,
-			RT5639_PWR_FV1 | RT5639_PWR_FV2,	
+			RT5639_PWR_FV1 | RT5639_PWR_FV2,
 			RT5639_PWR_FV1 | RT5639_PWR_FV2);
 
 		snd_soc_update_bits(codec, RT5639_PWR_ANLG2,
@@ -2276,7 +2274,7 @@ static int rt5639_probe(struct snd_soc_codec *codec)
 
 	codec->dapm.bias_level = SND_SOC_BIAS_STANDBY;
 
-	snd_soc_add_controls(codec, rt5639_snd_controls,
+	snd_soc_add_codec_controls(codec, rt5639_snd_controls,
 		ARRAY_SIZE(rt5639_snd_controls));
 
 	rt5639->codec = codec;

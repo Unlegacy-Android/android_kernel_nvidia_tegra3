@@ -2351,7 +2351,7 @@ static int rt5640_probe(struct snd_soc_codec *codec)
 
 	codec->dapm.bias_level = SND_SOC_BIAS_STANDBY;
 
-	snd_soc_add_controls(codec, rt5640_snd_controls,
+	snd_soc_add_codec_controls(codec, rt5640_snd_controls,
 		ARRAY_SIZE(rt5640_snd_controls));
 
 	rt5640->codec = codec;
