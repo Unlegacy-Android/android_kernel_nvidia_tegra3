@@ -2525,7 +2525,7 @@ static void azx_power_notify(struct hda_bus *bus)
  * power management
  */
 
-static int azx_suspend(struct pci_dev *pci, pm_message_t state)
+static int azx_suspend(struct azx *chip, pm_message_t state)
 {
 	struct snd_card *card = chip->card;
 	struct azx_pcm *p;
