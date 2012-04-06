@@ -23,7 +23,7 @@ DEFINE_SPINLOCK(cpuidle_driver_lock);
  */
 int cpuidle_register_driver(struct cpuidle_driver *drv)
 {
-	if (!drv || !drv->state_count)
+	if (!drv)
 		return -EINVAL;
 
 	if (cpuidle_disabled())
