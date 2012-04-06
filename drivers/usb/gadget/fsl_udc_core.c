@@ -1052,15 +1052,6 @@ fsl_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 	spin_unlock_irqrestore(&udc->lock, flags);
 
 	return 0;
-
-err_unmap:
-	if (req->mapped) {
-		dma_unmap_single(udc->gadget.dev.parent,
-			req->req.dma, req->req.length, dir);
-		req->req.dma = DMA_ADDR_INVALID;
-		req->mapped = 0;
-	}
-	return status;
 }
 
 /* dequeues (cancels, unlinks) an I/O request from an endpoint */
@@ -3016,14 +3007,14 @@ static int __init fsl_udc_probe(struct platform_device *pdev)
 	}
 
 #ifdef CONFIG_USB_OTG_UTILS
-	udc_controller->transceiver = otg_get_transceiver();
+	udc_controller->transceiver = usb_get_transceiver();
 	if (udc_controller->transceiver) {
 		dr_controller_stop(udc_controller);
 		dr_controller_reset(udc_controller);
 		fsl_udc_clk_suspend(false);
 		udc_controller->vbus_active = 0;
 		udc_controller->usb_state = USB_STATE_DEFAULT;
-		otg_set_peripheral(udc_controller->transceiver, &udc_controller->gadget);
+		otg_set_peripheral(udc_controller->transceiver->otg, &udc_controller->gadget);
 	}
 #else
 #ifdef CONFIG_ARCH_TEGRA
@@ -3076,7 +3067,7 @@ static int __exit fsl_udc_remove(struct platform_device *pdev)
 		regulator_put(udc_controller->vbus_regulator);
 
 	if (udc_controller->transceiver)
-		otg_set_peripheral(udc_controller->transceiver, NULL);
+		otg_set_peripheral(udc_controller->transceiver->otg, NULL);
 
 	fsl_udc_clk_release();
 
