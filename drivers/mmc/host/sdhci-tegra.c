@@ -111,7 +111,7 @@ struct sdhci_tegra_soc_data {
 };
 
 struct sdhci_tegra {
-	struct tegra_sdhci_platform_data *pdata;
+	const struct tegra_sdhci_platform_data *plat;
 	const struct sdhci_tegra_soc_data *soc_data;
 	bool	clk_enabled;
 	struct regulator *vdd_io_reg;
@@ -163,8 +163,6 @@ static u16 tegra_sdhci_readw(struct sdhci_host *host, int reg)
 static void tegra_sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
-	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
 
 	/* Seems like we're getting spurious timeout and crc errors, so
 	 * disable signalling of them. In case of real errors software
@@ -197,12 +195,12 @@ static unsigned int tegra_sdhci_get_cd(struct sdhci_host *sdhci)
 	return tegra_host->card_present;
 }
 
-static unsigned int tegra_sdhci_get_ro(struct sdhci_host *host)
+static unsigned int tegra_sdhci_get_ro(struct sdhci_host *sdhci)
 {
-	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
-	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
+	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
+	const struct tegra_sdhci_platform_data *plat;
 
+	plat = pdev->dev.platform_data;
 	if (!gpio_is_valid(plat->wp_gpio))
 		return -1;
 
@@ -358,14 +356,15 @@ static irqreturn_t carddetect_irq(int irq, void *data)
 	return IRQ_HANDLED;
 };
 
-static int tegra_sdhci_8bit(struct sdhci_host *host, int bus_width)
+static int tegra_sdhci_8bit(struct sdhci_host *sdhci, int bus_width)
 {
-	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
-	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
+	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
+	const struct tegra_sdhci_platform_data *plat;
 	u32 ctrl;
 
-	ctrl = sdhci_readb(host, SDHCI_HOST_CONTROL);
+	plat = pdev->dev.platform_data;
+
+	ctrl = sdhci_readb(sdhci, SDHCI_HOST_CONTROL);
 	if (plat->is_8bit && bus_width == MMC_BUS_WIDTH_8) {
 		ctrl &= ~SDHCI_CTRL_4BITBUS;
 		ctrl |= SDHCI_CTRL_8BITBUS;
@@ -376,7 +375,7 @@ static int tegra_sdhci_8bit(struct sdhci_host *host, int bus_width)
 		else
 			ctrl &= ~SDHCI_CTRL_4BITBUS;
 	}
-	sdhci_writeb(host, ctrl, SDHCI_HOST_CONTROL);
+	sdhci_writeb(sdhci, ctrl, SDHCI_HOST_CONTROL);
 	return 0;
 }
 
@@ -900,15 +899,14 @@ static struct sdhci_ops tegra_sdhci_ops = {
 	.write_l    = tegra_sdhci_writel,
 	.platform_8bit_width = tegra_sdhci_8bit,
 	.set_clock  = tegra_sdhci_set_clock,
-	.suspend    = tegra_sdhci_suspend,
-	.resume     = tegra_sdhci_resume,
+	.platform_suspend    = tegra_sdhci_suspend,
+	.platform_resume     = tegra_sdhci_resume,
 	.platform_reset_exit = tegra_sdhci_reset_exit,
 	.set_uhs_signaling = tegra_sdhci_set_uhs_signaling,
 	.switch_signal_voltage = tegra_sdhci_signal_voltage_switch,
 	.execute_freq_tuning = sdhci_tegra_execute_tuning,
 };
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 static struct sdhci_pltfm_data sdhci_tegra20_pdata = {
 	.quirks = SDHCI_QUIRK_BROKEN_TIMEOUT_VAL |
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
@@ -932,7 +930,6 @@ static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 	.nvquirks = NVQUIRK_FORCE_SDHCI_SPEC_200 |
 		    NVQUIRK_ENABLE_BLOCK_GAP_DET,
 };
-#endif
 
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 static struct sdhci_pltfm_data sdhci_tegra30_pdata = {
@@ -991,7 +988,6 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	struct sdhci_host *host;
 	struct sdhci_pltfm_host *pltfm_host;
 	struct tegra_sdhci_platform_data *plat;
-	struct sdhci_host *host;
 	struct sdhci_tegra *tegra_host;
 	struct clk *clk;
 	int rc;
@@ -1166,7 +1162,6 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	host->mmc->pm_caps = plat->pm_flags;
 
 	host->mmc->caps |= MMC_CAP_ERASE;
-	host->mmc->caps |= MMC_CAP_DISABLE;
 	/* enable 1/8V DDR capable */
 	host->mmc->caps |= MMC_CAP_1_8V_DDR;
 	if (plat->is_8bit)
@@ -1220,7 +1215,6 @@ err_cd_req:
 		gpio_free(plat->power_gpio);
 	}
 err_power_req:
-err_no_mem:
 	kfree(tegra_host);
 err_no_plat:
 	sdhci_pltfm_free(pdev);
