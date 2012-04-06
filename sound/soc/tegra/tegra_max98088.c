@@ -559,7 +559,7 @@ static void tegra_max98088_shutdown(struct snd_pcm_substream *substream)
 	 } else {
 
 		if (!i2s->is_call_mode_rec)
-			return 0;
+			return;
 
 		i2s->is_call_mode_rec = 0;
 
@@ -973,7 +973,7 @@ static int tegra_max98088_init(struct snd_soc_pcm_runtime *rtd)
 		gpio_direction_output(pdata->gpio_ext_mic_en, 0);
 	}
 
-	ret = snd_soc_add_controls(codec, tegra_max98088_controls,
+	ret = snd_soc_add_codec_controls(codec, tegra_max98088_controls,
 				   ARRAY_SIZE(tegra_max98088_controls));
 	if (ret < 0)
 		return ret;
