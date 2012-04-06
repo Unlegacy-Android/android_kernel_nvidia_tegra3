@@ -1385,6 +1385,7 @@ static struct {
 	{ 1500, 0x9, 0x2, 2 },
 };
 
+#ifdef SYS_BCLK_RATIO
 /* CLK_SYS/BCLK ratios - multiplied by 10 due to .5s */
 static struct {
 	int ratio;
@@ -1408,6 +1409,7 @@ static struct {
 	{ 440, 19 },
 	{ 480, 20 },
 };
+#endif
 
 /* Sample rates for DSP */
 static struct {
