@@ -47,7 +47,6 @@
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
-#include <asm/system.h>
 #include <asm/unaligned.h>
 #include <asm/dma.h>
 
@@ -773,6 +772,7 @@ static int fsl_ep_disable(struct usb_ep *_ep)
 	nuke(ep, -ESHUTDOWN);
 
 	ep->desc = NULL;
+	ep->ep.desc = NULL;
 	ep->stopped = 1;
 	spin_unlock_irqrestore(&udc->lock, flags);
 
@@ -1034,22 +1034,13 @@ fsl_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 	req->req.actual = 0;
 	req->dtd_count = 0;
 
-
 	/* build dtds and push them to device queue */
-	status = fsl_req_to_dtd(req, gfp_flags);
-	if (status)
-		goto err_unmap;
-
-	spin_lock_irqsave(&udc->lock, flags);
-
-	/* re-check if the ep has not been disabled */
-	if (unlikely(!ep->desc)) {
-		spin_unlock_irqrestore(&udc->lock, flags);
-		status = -EINVAL;
-		goto err_unmap;
+	if (!fsl_req_to_dtd(req, gfp_flags)) {
+		spin_lock_irqsave(&udc->lock, flags);
+		fsl_queue_td(ep, req);
+	} else {
+		return -ENOMEM;
 	}
-
-	fsl_queue_td(ep, req);
 
 	/* Update ep0 state */
 	if ((ep_index(ep) == 0))
@@ -1435,7 +1426,7 @@ static int fsl_vbus_draw(struct usb_gadget *gadget, unsigned mA)
 	}
 
 	if (udc->transceiver)
-		return otg_set_power(udc->transceiver, mA);
+		return usb_phy_set_power(udc->transceiver, mA);
 	return -ENOTSUPP;
 }
 
@@ -2412,6 +2403,9 @@ static int fsl_stop(struct usb_gadget_driver *driver)
 
 	if (!driver || driver != udc_controller->driver || !driver->unbind)
 		return -EINVAL;
+
+	if (udc_controller->transceiver)
+		otg_set_peripheral(udc_controller->transceiver->otg, NULL);
 
 	/* stop DR, disable intr */
 	dr_controller_stop(udc_controller);

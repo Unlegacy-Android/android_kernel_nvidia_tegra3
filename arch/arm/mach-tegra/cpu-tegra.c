@@ -34,7 +34,6 @@
 #include <linux/debugfs.h>
 #include <linux/cpu.h>
 
-#include <asm/system.h>
 
 #include <mach/clk.h>
 #include <mach/edp.h>

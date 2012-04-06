@@ -875,6 +875,7 @@ void gpio_unexport(unsigned gpio)
 {
 	struct gpio_desc	*desc;
 	int			status = 0;
+	struct device		*dev = NULL;
 
 	if (!gpio_is_valid(gpio)) {
 		status = -EINVAL;
@@ -886,19 +887,20 @@ void gpio_unexport(unsigned gpio)
 	desc = &gpio_desc[gpio];
 
 	if (test_bit(FLAG_EXPORT, &desc->flags)) {
-		struct device	*dev = NULL;
 
 		dev = class_find_device(&gpio_class, NULL, desc, match_export);
 		if (dev) {
 			gpio_setup_irq(desc, dev, 0);
 			clear_bit(FLAG_EXPORT, &desc->flags);
-			put_device(dev);
-			device_unregister(dev);
 		} else
 			status = -ENODEV;
 	}
 
 	mutex_unlock(&sysfs_lock);
+	if (dev) {
+		device_unregister(dev);
+		put_device(dev);
+	}
 done:
 	if (status)
 		pr_debug("%s: gpio%d status %d\n", __func__, gpio, status);
@@ -1152,8 +1154,9 @@ EXPORT_SYMBOL_GPL(gpiochip_remove);
  * non-zero, this function will return to the caller and not iterate over any
  * more gpio_chips.
  */
-struct gpio_chip *gpiochip_find(void *data,
-				int (*match)(struct gpio_chip *chip, void *data))
+struct gpio_chip *gpiochip_find(const void *data,
+				int (*match)(struct gpio_chip *chip,
+					     const void *data))
 {
 	struct gpio_chip *chip = NULL;
 	unsigned long flags;
@@ -1578,6 +1581,7 @@ int __gpio_get_value(unsigned gpio)
 	int value;
 
 	chip = gpio_to_chip(gpio);
+	/* Should be using gpio_get_value_cansleep() */
 	WARN_ON(chip->can_sleep);
 	value = chip->get ? chip->get(chip, gpio - chip->base) : 0;
 	trace_gpio_value(gpio, 1, value);
@@ -1650,6 +1654,7 @@ void __gpio_set_value(unsigned gpio, int value)
 	struct gpio_chip	*chip;
 
 	chip = gpio_to_chip(gpio);
+	/* Should be using gpio_set_value_cansleep() */
 	WARN_ON(chip->can_sleep);
 	trace_gpio_value(gpio, 0, value);
 	if (test_bit(FLAG_OPEN_DRAIN,  &gpio_desc[gpio].flags))

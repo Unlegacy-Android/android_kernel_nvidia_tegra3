@@ -2,7 +2,6 @@ GCOV_PROFILE := y
 
 obj-y                                   += board-pinmux.o
 obj-y                                   += ahb.o
-obj-y                                   += apbio.o
 obj-y                                   += common.o
 obj-y                                   += devices.o
 obj-y                                   += board-info.o
@@ -14,10 +13,8 @@ obj-$(CONFIG_TEGRA_GRHOST)              += syncpt.o
 obj-y                                   += clock.o
 obj-y                                   += timer.o
 ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
-obj-y                                   += tegra2_clocks.o
 obj-y                                   += timer-t2.o
 else
-obj-y                                   += tegra3_clocks.o
 obj-y                                   += timer-t3.o
 endif
 obj-y                                   += pinmux.o
@@ -26,7 +23,6 @@ obj-y                                   += pm.o
 obj-$(CONFIG_TEGRA_WDT_RECOVERY)        += wdt-recovery.o
 obj-$(CONFIG_PM_SLEEP)                  += pm-irq.o
 obj-y                                   += gic.o
-obj-y                                   += sleep.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += sleep-t2.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += sleep-t3.o
 obj-y                                   += fuse.o
@@ -66,11 +62,16 @@ obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += pinmux-tegra20-tables.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pinmux-tegra30-tables.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += board-dt-tegra30.o
 obj-$(CONFIG_LOCAL_TIMERS)              += localtimer.o
-obj-$(CONFIG_SMP)                       += platsmp.o
 obj-$(CONFIG_HOTPLUG_CPU)               += hotplug.o
-obj-y                                   += headsmp.o
-obj-y                                   += reset.o
-obj-$(CONFIG_TEGRA_SYSTEM_DMA)          += dma.o
+obj-y					+= pmc.o
+obj-y					+= flowctrl.o
+obj-$(CONFIG_CPU_IDLE)			+= cpuidle.o
+obj-$(CONFIG_CPU_IDLE)			+= sleep.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_clocks.o
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= tegra30_clocks.o
+obj-$(CONFIG_SMP)			+= platsmp.o headsmp.o
+obj-$(CONFIG_SMP)                       += reset.o
+obj-$(CONFIG_TEGRA_SYSTEM_DMA)		+= dma.o apbio.o
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
 ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpu-tegra3.o
@@ -78,7 +79,6 @@ endif
 obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
 obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
 ifeq ($(CONFIG_CPU_IDLE),y)
-obj-y                                   += cpuidle.o
 ifeq ($(CONFIG_PM_SLEEP),y)
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += cpuidle-t2.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpuidle-t3.o

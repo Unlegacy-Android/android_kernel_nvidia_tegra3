@@ -33,6 +33,7 @@
 #include <mach/powergate.h>
 
 #include "clock.h"
+#include "fuse.h"
 
 #define PWRGATE_TOGGLE		0x30
 #define PWRGATE_TOGGLE_START	(1 << 8)
@@ -86,6 +87,16 @@ enum mc_client {
 #endif
 
 #define MAX_CLK_EN_NUM			4
+
+static int tegra_num_powerdomains;
+static int tegra_num_cpu_domains;
+static u8 *tegra_cpu_domains;
+static u8 tegra30_cpu_domains[] = {
+	TEGRA_POWERGATE_CPU0,
+	TEGRA_POWERGATE_CPU1,
+	TEGRA_POWERGATE_CPU2,
+	TEGRA_POWERGATE_CPU3,
+};
 
 static DEFINE_SPINLOCK(tegra_powergate_lock);
 
@@ -465,25 +476,25 @@ static int tegra_powergate_set(int id, bool new_state)
 
 static int unpowergate_module(int id)
 {
-	if (id < 0 || id >= TEGRA_NUM_POWERGATE)
+	if (id < 0 || id >= tegra_num_powerdomains)
 		return -EINVAL;
 	return tegra_powergate_set(id, true);
 }
 
 static int powergate_module(int id)
 {
-	if (id < 0 || id >= TEGRA_NUM_POWERGATE)
+	if (id < 0 || id >= tegra_num_powerdomains)
 		return -EINVAL;
 
 	mc_flush(id);
 	return tegra_powergate_set(id, false);
 }
 
-bool tegra_powergate_is_powered(int id)
+int tegra_powergate_is_powered(int id)
 {
 	u32 status;
 
-	if (id < 0 || id >= TEGRA_NUM_POWERGATE)
+	if (id < 0 || id >= tegra_num_powerdomains)
 		return -EINVAL;
 
 	status = pmc_read(PWRGATE_STATUS) & (1 << id);
@@ -493,7 +504,8 @@ bool tegra_powergate_is_powered(int id)
 int tegra_powergate_remove_clamping(int id)
 {
 	u32 mask;
-	if (id < 0 || id >= TEGRA_NUM_POWERGATE)
+
+	if (id < 0 || id >= tegra_num_powerdomains)
 		return -EINVAL;
 
 	/*
@@ -716,6 +728,34 @@ err_power:
 	return ret;
 }
 
+int tegra_cpu_powergate_id(int cpuid)
+{
+	if (cpuid > 0 && cpuid < tegra_num_cpu_domains)
+		return tegra_cpu_domains[cpuid];
+
+	return -EINVAL;
+}
+
+int __init tegra_powergate_init(void)
+{
+	switch (tegra_chip_id) {
+	case TEGRA20:
+		tegra_num_powerdomains = 7;
+		break;
+	case TEGRA30:
+		tegra_num_powerdomains = 14;
+		tegra_num_cpu_domains = 4;
+		tegra_cpu_domains = tegra30_cpu_domains;
+		break;
+	default:
+		/* Unknown Tegra variant. Disable powergating */
+		tegra_num_powerdomains = 0;
+		break;
+	}
+
+	return 0;
+}
+
 /*
  * Must be called with clk disabled, and returns with clk enabled
  * Unpowergates the partition and enables all required clks.
@@ -830,8 +870,8 @@ static int powergate_show(struct seq_file *s, void *data)
 	seq_printf(s, " powergate powered\n");
 	seq_printf(s, "------------------\n");
 
-	for (i = 0; i < TEGRA_NUM_POWERGATE; i++)
-		seq_printf(s, " %9s %7s\n", powergate_partition_info[i].name,
+	for (i = 0; i < tegra_num_powerdomains; i++)
+		seq_printf(s, " %9s %7s\n", powergate_name[i],
 			tegra_powergate_is_powered(i) ? "yes" : "no");
 	return 0;
 }

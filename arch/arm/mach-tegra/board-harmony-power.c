@@ -18,13 +18,11 @@
 #include <linux/i2c.h>
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
-#include <linux/io.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/fixed.h>
 #include <linux/mfd/tps6586x.h>
 #include <linux/io.h>
 
-#include <mach/iomap.h>
 #include <mach/irqs.h>
 
 #include "board-harmony.h"
@@ -101,8 +99,14 @@ static struct regulator_init_data vdd_1v5_initdata = {
 	.consumer_supplies = vdd_1v5_consumer_supply,
 	.num_consumer_supplies = 1,
 	.constraints = {
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
-		.always_on = 0,
+		.min_uV = 3300 * 1000,
+		.max_uV = 3300 * 1000,
+		.valid_modes_mask = (REGULATOR_MODE_NORMAL |
+				     REGULATOR_MODE_STANDBY),
+		.valid_ops_mask = (REGULATOR_CHANGE_MODE |
+				   REGULATOR_CHANGE_STATUS |
+				   REGULATOR_CHANGE_VOLTAGE),
+		.apply_uV = 1,
 	},
 };
 
@@ -328,7 +332,7 @@ int __init harmony_regulator_init(void)
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
 
-	i2c_register_board_info(4, harmony_regulators, 1);
+	i2c_register_board_info(3, harmony_regulators, 1);
 
 	return 0;
 }

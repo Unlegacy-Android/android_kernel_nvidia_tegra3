@@ -21,7 +21,8 @@
 #include <linux/string.h>
 #include <linux/uaccess.h>
 #include <linux/io.h>
-#include <linux/persistent_ram.h>
+
+#include "persistent_ram.h"
 #include "ram_console.h"
 
 static struct persistent_ram_zone *ram_console_zone;
@@ -50,7 +51,7 @@ void ram_console_enable_console(int enabled)
 		ram_console.flags &= ~CON_ENABLED;
 }
 
-static int __devinit ram_console_driver_probe(struct platform_device *pdev)
+static int __devinit ram_console_probe(struct platform_device *pdev)
 {
 	struct ram_console_platform_data *pdata = pdev->dev.platform_data;
 	struct persistent_ram_zone *prz;
@@ -75,7 +76,6 @@ static int __devinit ram_console_driver_probe(struct platform_device *pdev)
 }
 
 static struct platform_driver ram_console_driver = {
-	.probe = ram_console_driver_probe,
 	.driver		= {
 		.name	= "ram_console",
 	},
@@ -83,10 +83,12 @@ static struct platform_driver ram_console_driver = {
 
 static int __init ram_console_module_init(void)
 {
-	int err;
-	err = platform_driver_register(&ram_console_driver);
-	return err;
+	return platform_driver_probe(&ram_console_driver, ram_console_probe);
 }
+
+#ifndef CONFIG_PRINTK
+#define dmesg_restrict	0
+#endif
 
 static ssize_t ram_console_read_old(struct file *file, char __user *buf,
 				    size_t len, loff_t *offset)

@@ -104,7 +104,7 @@
 
 #define IO_ADDRESS(n) (IO_TO_VIRT(n))
 
-#if defined(CONFIG_TEGRA_PCI)
+#ifdef CONFIG_TEGRA_PCI
 extern void __iomem *tegra_pcie_io_base;
 
 static inline void __iomem *__io(unsigned long addr)
@@ -119,7 +119,6 @@ static inline void __iomem *__io(unsigned long addr)
 #endif
 
 #define __io(a)         __io(a)
-#define __mem_pci(a)    (a)
 
 #endif
 

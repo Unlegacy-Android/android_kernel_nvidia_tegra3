@@ -24,6 +24,7 @@
 #include <linux/interrupt.h>
 #include <linux/slab.h>
 #include <linux/err.h>
+#include <linux/export.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/gpio.h>
@@ -2521,6 +2522,7 @@ err0:
 	kfree(phy);
 	return ERR_PTR(err);
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_open);
 
 int tegra_usb_phy_power_on(struct tegra_usb_phy *phy, bool is_dpd)
 {
@@ -2551,6 +2553,7 @@ int tegra_usb_phy_power_on(struct tegra_usb_phy *phy, bool is_dpd)
 	phy->power_on = true;
 	return ret;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_power_on);
 
 void tegra_usb_phy_power_off(struct tegra_usb_phy *phy, bool is_dpd)
 {
@@ -2620,6 +2623,7 @@ void tegra_usb_phy_postresume(struct tegra_usb_phy *phy, bool is_dpd)
 	if (postresume[phy->usb_phy_type])
 		postresume[phy->usb_phy_type](phy, is_dpd);
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_power_off);
 
 void tegra_ehci_pre_reset(struct tegra_usb_phy *phy, bool is_dpd)
 {
@@ -2633,6 +2637,7 @@ void tegra_ehci_pre_reset(struct tegra_usb_phy *phy, bool is_dpd)
 	if (pre_reset[phy->usb_phy_type])
 		pre_reset[phy->usb_phy_type](phy, is_dpd);
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_preresume);
 
 void tegra_ehci_post_reset(struct tegra_usb_phy *phy, bool is_dpd)
 {
@@ -2646,6 +2651,7 @@ void tegra_ehci_post_reset(struct tegra_usb_phy *phy, bool is_dpd)
 	if (post_reset[phy->usb_phy_type])
 		post_reset[phy->usb_phy_type](phy, is_dpd);
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_postresume);
 
 void tegra_ehci_phy_restore_start(struct tegra_usb_phy *phy,
 				 enum tegra_usb_phy_port_speed port_speed)
@@ -2660,6 +2666,7 @@ void tegra_ehci_phy_restore_start(struct tegra_usb_phy *phy,
 	if (phy_restore_start[phy->usb_phy_type])
 		phy_restore_start[phy->usb_phy_type](phy, port_speed);
 }
+EXPORT_SYMBOL_GPL(tegra_ehci_phy_restore_start);
 
 void tegra_ehci_phy_restore_end(struct tegra_usb_phy *phy)
 {
@@ -2673,18 +2680,21 @@ void tegra_ehci_phy_restore_end(struct tegra_usb_phy *phy)
 	if (phy_restore_end[phy->usb_phy_type])
 		phy_restore_end[phy->usb_phy_type](phy);
 }
+EXPORT_SYMBOL_GPL(tegra_ehci_phy_restore_end);
 
 void tegra_usb_phy_clk_disable(struct tegra_usb_phy *phy)
 {
 	if (phy->usb_phy_type == TEGRA_USB_PHY_TYPE_UTMIP)
 		utmi_phy_clk_disable(phy);
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_clk_disable);
 
 void tegra_usb_phy_clk_enable(struct tegra_usb_phy *phy)
 {
 	if (phy->usb_phy_type == TEGRA_USB_PHY_TYPE_UTMIP)
 		utmi_phy_clk_enable(phy);
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_clk_enable);
 
 void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 {
@@ -2707,6 +2717,7 @@ void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 		free_irq(usb_phy_data[0].vbus_irq, phy);
 	kfree(phy);
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_close);
 
 int tegra_usb_phy_bus_connect(struct tegra_usb_phy *phy)
 {
@@ -3024,4 +3035,3 @@ bool tegra_usb_phy_is_remotewake_detected(struct tegra_usb_phy *phy)
 #endif
 	return false;
 }
-

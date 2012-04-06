@@ -13,6 +13,7 @@
 #include <linux/cpu_pm.h>
 
 #include <asm/cacheflush.h>
+#include <asm/cp15.h>
 
 #include <mach/iomap.h>
 

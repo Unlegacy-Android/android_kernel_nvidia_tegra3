@@ -1,5 +1,4 @@
 /*
- * include/linux/mfd/tps65090.h
  * Core driver interface for TI TPS65090 PMIC family
  *
  * Copyright (C) 2012 NVIDIA Corporation

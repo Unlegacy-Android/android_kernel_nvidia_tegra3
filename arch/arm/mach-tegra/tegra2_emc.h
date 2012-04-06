@@ -15,12 +15,8 @@
  *
  */
 
-#define TEGRA_EMC_NUM_REGS 46
-
-struct tegra_emc_table {
-	unsigned long rate;
-	u32 regs[TEGRA_EMC_NUM_REGS];
-};
+#ifndef __MACH_TEGRA_TEGRA2_EMC_H_
+#define __MACH_TEGRA_TEGRA2_EMC_H
 
 struct tegra_emc_chip {
 	const char *description;
@@ -34,3 +30,7 @@ struct tegra_emc_chip {
 };
 
 void tegra_init_emc(const struct tegra_emc_chip *chips, int chips_size);
+int tegra_emc_set_rate(unsigned long rate);
+long tegra_emc_round_rate(unsigned long rate);
+
+#endif

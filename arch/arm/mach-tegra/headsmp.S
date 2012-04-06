@@ -26,6 +26,23 @@
 #include <asm/page.h>
 
 #include <mach/iomap.h>
+
+#include "flowctrl.h"
+#include "reset.h"
+
+#define APB_MISC_GP_HIDREV	0x804
+#define PMC_SCRATCH41	0x140
+
+#define RESET_DATA(x)	((TEGRA_RESET_##x)*4)
+
+	.macro mov32, reg, val
+	movw	\reg, #:lower16:\val
+	movt	\reg, #:upper16:\val
+	.endm
+
+        .section ".text.head", "ax"
+	__CPUINIT
+
 #include <mach/io.h>
 
 #include "asm_macros.h"
@@ -183,15 +200,15 @@ ENTRY(__tegra_cpu_reset_handler_start)
  *
  * Register usage within the reset handler:
  *
- *	R7  = CPU present (to the OS) mask
- *	R8  = CPU in LP1 state mask
- *	R9  = CPU in LP2 state mask
- *	R10 = CPU number
- *	R11 = CPU mask
- *	R12 = pointer to reset handler data
+ *      R7  = CPU present (to the OS) mask
+ *      R8  = CPU in LP1 state mask
+ *      R9  = CPU in LP2 state mask
+ *      R10 = CPU number
+ *      R11 = CPU mask
+ *      R12 = pointer to reset handler data
  *
  * NOTE: This code is copied to IRAM. All code and data accesses
- *	 must be position-independent.
+ *       must be position-independent.
  */
 
 	.align L1_CACHE_SHIFT
@@ -286,11 +303,20 @@ __die:
 
 	mov32	r7, TEGRA_CLK_RESET_BASE
 
+	/* Are we on Tegra20? */
+	mov32	r6, TEGRA_APB_MISC_BASE
+	ldr	r0, [r6, #APB_MISC_GP_HIDREV]
+	and	r0, r0, #0xff00
+	cmp	r0, #(0x20 << 8)
+	bne	1f
+
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	mov32	r0, 0x1111
 	mov	r1, r0, lsl r10
 	str	r1, [r7, #0x340]		@ CLK_RST_CPU_CMPLX_SET
-#else
+#endif
+1:
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	mov32	r6, TEGRA_FLOW_CTRL_BASE
 
 	cmp	r10, #0
@@ -321,10 +347,11 @@ __die:
 	mov	r0, r11, lsl #8
 	str	r0, [r7, #348]			@ CLK_CPU_CMPLX_SET
 #endif
+
 	/* If the CPU still isn't dead, just spin here. */
 	b	.
-
 ENDPROC(__tegra_cpu_reset_handler)
+
 	.align L1_CACHE_SHIFT
 	.type	__tegra_cpu_reset_handler_data, %object
 	.globl	__tegra_cpu_reset_handler_data

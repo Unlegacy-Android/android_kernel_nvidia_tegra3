@@ -1,6 +1,4 @@
 /*
- * arch/arm/mach-tegra/apbio.c
- *
  * Copyright (C) 2010 NVIDIA Corporation.
  * Copyright (C) 2010 Google, Inc.
  *
@@ -29,24 +27,56 @@
 #include "apbio.h"
 
 static DEFINE_MUTEX(tegra_apb_dma_lock);
-
-#ifdef CONFIG_TEGRA_SYSTEM_DMA
 static struct tegra_dma_channel *tegra_apb_dma;
 static u32 *tegra_apb_bb;
 static dma_addr_t tegra_apb_bb_phys;
 static DECLARE_COMPLETION(tegra_apb_wait);
+
+bool tegra_apb_init(void)
+{
+	struct tegra_dma_channel *ch;
+
+	mutex_lock(&tegra_apb_dma_lock);
+
+	/* Check to see if we raced to setup */
+	if (tegra_apb_dma)
+		goto out;
+
+	ch = tegra_dma_allocate_channel(TEGRA_DMA_MODE_ONESHOT |
+		TEGRA_DMA_SHARED);
+
+	if (!ch)
+		goto out_fail;
+
+	tegra_apb_bb = dma_alloc_coherent(NULL, sizeof(u32),
+		&tegra_apb_bb_phys, GFP_KERNEL);
+	if (!tegra_apb_bb) {
+		pr_err("%s: can not allocate bounce buffer\n", __func__);
+		tegra_dma_free_channel(ch);
+		goto out_fail;
+	}
+
+	tegra_apb_dma = ch;
+out:
+	mutex_unlock(&tegra_apb_dma_lock);
+	return true;
+
+out_fail:
+	mutex_unlock(&tegra_apb_dma_lock);
+	return false;
+}
 
 static void apb_dma_complete(struct tegra_dma_req *req)
 {
 	complete(&tegra_apb_wait);
 }
 
-static inline u32 apb_readl(unsigned long offset)
+u32 tegra_apb_readl(unsigned long offset)
 {
 	struct tegra_dma_req req;
 	int ret;
 
-	if (!tegra_apb_dma)
+	if (!tegra_apb_dma && !tegra_apb_init())
 		return readl(IO_TO_VIRT(offset));
 
 	mutex_lock(&tegra_apb_dma_lock);
@@ -58,7 +88,7 @@ static inline u32 apb_readl(unsigned long offset)
 	req.source_addr = offset;
 	req.source_bus_width = 32;
 	req.source_wrap = 4;
-	req.req_sel = 0;
+	req.req_sel = TEGRA_DMA_REQ_SEL_CNTR;
 	req.size = 4;
 
 	INIT_COMPLETION(tegra_apb_wait);
@@ -66,7 +96,7 @@ static inline u32 apb_readl(unsigned long offset)
 	tegra_dma_enqueue_req(tegra_apb_dma, &req);
 
 	ret = wait_for_completion_timeout(&tegra_apb_wait,
-		msecs_to_jiffies(400));
+		msecs_to_jiffies(50));
 
 	if (WARN(ret == 0, "apb read dma timed out")) {
 		tegra_dma_dequeue_req(tegra_apb_dma, &req);
@@ -77,12 +107,12 @@ static inline u32 apb_readl(unsigned long offset)
 	return *((u32 *)tegra_apb_bb);
 }
 
-static inline void apb_writel(u32 value, unsigned long offset)
+void tegra_apb_writel(u32 value, unsigned long offset)
 {
 	struct tegra_dma_req req;
 	int ret;
 
-	if (!tegra_apb_dma) {
+	if (!tegra_apb_dma && !tegra_apb_init()) {
 		writel(value, IO_TO_VIRT(offset));
 		return;
 	}
@@ -97,7 +127,7 @@ static inline void apb_writel(u32 value, unsigned long offset)
 	req.source_addr = tegra_apb_bb_phys;
 	req.source_bus_width = 32;
 	req.source_wrap = 1;
-	req.req_sel = 0;
+	req.req_sel = TEGRA_DMA_REQ_SEL_CNTR;
 	req.size = 4;
 
 	INIT_COMPLETION(tegra_apb_wait);
@@ -105,54 +135,10 @@ static inline void apb_writel(u32 value, unsigned long offset)
 	tegra_dma_enqueue_req(tegra_apb_dma, &req);
 
 	ret = wait_for_completion_timeout(&tegra_apb_wait,
-		msecs_to_jiffies(400));
+		msecs_to_jiffies(50));
 
 	if (WARN(ret == 0, "apb write dma timed out"))
 		tegra_dma_dequeue_req(tegra_apb_dma, &req);
 
 	mutex_unlock(&tegra_apb_dma_lock);
 }
-#else
-static inline u32 apb_readl(unsigned long offset)
-{
-	return readl(IO_TO_VIRT(offset));
-}
-
-static inline void apb_writel(u32 value, unsigned long offset)
-{
-	writel(value, IO_TO_VIRT(offset));
-}
-#endif
-
-u32 tegra_apb_readl(unsigned long offset)
-{
-	return apb_readl(offset);
-}
-
-void tegra_apb_writel(u32 value, unsigned long offset)
-{
-	apb_writel(value, offset);
-}
-
-static int tegra_init_apb_dma(void)
-{
-#ifdef CONFIG_TEGRA_SYSTEM_DMA
-	tegra_apb_dma = tegra_dma_allocate_channel(TEGRA_DMA_MODE_ONESHOT |
-		TEGRA_DMA_SHARED, "apbio");
-	if (!tegra_apb_dma) {
-		pr_err("%s: can not allocate dma channel\n", __func__);
-		return -ENODEV;
-	}
-
-	tegra_apb_bb = dma_alloc_coherent(NULL, sizeof(u32),
-		&tegra_apb_bb_phys, GFP_KERNEL);
-	if (!tegra_apb_bb) {
-		pr_err("%s: can not allocate bounce buffer\n", __func__);
-		tegra_dma_free_channel(tegra_apb_dma);
-		tegra_apb_dma = NULL;
-		return -ENOMEM;
-	}
-#endif
-	return 0;
-}
-arch_initcall(tegra_init_apb_dma);

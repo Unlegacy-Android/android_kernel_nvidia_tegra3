@@ -31,7 +31,7 @@
  *  CHANGES:
  *
  *  2004.12.01	Major rewrite by tiwai, merged the work of pshou
- * 
+ *
  */
 
 #include <linux/delay.h>
@@ -85,7 +85,7 @@ module_param_array(model, charp, NULL, 0444);
 MODULE_PARM_DESC(model, "Use the given board model.");
 module_param_array(position_fix, int, NULL, 0444);
 MODULE_PARM_DESC(position_fix, "DMA pointer read method."
-		 "(0 = auto, 1 = LPIB, 2 = POSBUF, 3 = VIACOMBO).");
+		 "(0 = auto, 1 = LPIB, 2 = POSBUF, 3 = VIACOMBO, 4 = COMBO).");
 module_param_array(bdl_pos_adj, int, NULL, 0644);
 MODULE_PARM_DESC(bdl_pos_adj, "BDL position adjustment offset.");
 module_param_array(probe_mask, int, NULL, 0444);
@@ -95,7 +95,7 @@ MODULE_PARM_DESC(probe_only, "Only probing and no codec initialization.");
 module_param(single_cmd, bool, 0444);
 MODULE_PARM_DESC(single_cmd, "Use single command to communicate with codecs "
 		 "(for debugging only).");
-module_param(enable_msi, int, 0444);
+module_param(enable_msi, bint, 0444);
 MODULE_PARM_DESC(enable_msi, "Enable Message Signaled Interrupt (MSI)");
 #ifdef CONFIG_SND_HDA_PATCH_LOADER
 module_param_array(patch, charp, NULL, 0444);
@@ -122,8 +122,8 @@ module_param(power_save_controller, bool, 0644);
 MODULE_PARM_DESC(power_save_controller, "Reset controller in power save mode.");
 #endif
 
-static bool align_buffer_size = 1;
-module_param(align_buffer_size, bool, 0644);
+static int align_buffer_size = -1;
+module_param(align_buffer_size, bint, 0644);
 MODULE_PARM_DESC(align_buffer_size,
 		"Force buffer and period sizes to be multiple of 128 bytes.");
 
@@ -149,6 +149,7 @@ MODULE_SUPPORTED_DEVICE("{{Intel, ICH6},"
 			 "{Intel, PCH},"
 			 "{Intel, CPT},"
 			 "{Intel, PPT},"
+			 "{Intel, LPT},"
 			 "{Intel, PBG},"
 			 "{Intel, SCH},"
 			 "{ATI, SB450},"
@@ -330,6 +331,7 @@ enum {
 	POS_FIX_LPIB,
 	POS_FIX_POSBUF,
 	POS_FIX_VIACOMBO,
+	POS_FIX_COMBO,
 };
 
 /* Defines for ATI HD Audio support in SB450 south bridge */
@@ -556,6 +558,7 @@ enum {
 #define AZX_DCAPS_SYNC_WRITE	(1 << 19)	/* sync each cmd write */
 #define AZX_DCAPS_OLD_SSYNC	(1 << 20)	/* Old SSYNC reg for ICH */
 #define AZX_DCAPS_BUFSIZE	(1 << 21)	/* no buffer size alignment */
+#define AZX_DCAPS_ALIGN_BUFSIZE	(1 << 22)	/* buffer size alignment */
 
 /* quirks for ATI SB / AMD Hudson */
 #define AZX_DCAPS_PRESET_ATI_SB \
@@ -568,7 +571,8 @@ enum {
 
 /* quirks for Nvidia */
 #define AZX_DCAPS_PRESET_NVIDIA \
-	(AZX_DCAPS_NVIDIA_SNOOP | AZX_DCAPS_RIRB_DELAY | AZX_DCAPS_NO_MSI)
+	(AZX_DCAPS_NVIDIA_SNOOP | AZX_DCAPS_RIRB_DELAY | AZX_DCAPS_NO_MSI |\
+	 AZX_DCAPS_ALIGN_BUFSIZE)
 
 static char *driver_short_names[] __devinitdata = {
 	[AZX_DRIVER_ICH] = "HDA Intel",
@@ -582,8 +586,8 @@ static char *driver_short_names[] __devinitdata = {
 	[AZX_DRIVER_ULI] = "HDA ULI M5461",
 	[AZX_DRIVER_NVIDIA] = "HDA NVidia",
 	[AZX_DRIVER_NVIDIA_TEGRA] = "HDA NVIDIA Tegra",
-	[AZX_DRIVER_TERA] = "HDA Teradici", 
-	[AZX_DRIVER_CTX] = "HDA Creative", 
+	[AZX_DRIVER_TERA] = "HDA Teradici",
+	[AZX_DRIVER_CTX] = "HDA Creative",
 	[AZX_DRIVER_GENERIC] = "HD-Audio Generic",
 };
 
@@ -1112,7 +1116,7 @@ static int azx_reset(struct azx *chip, int full_reset)
 
 /*
  * Lowlevel interface
- */  
+ */
 
 /* enable interrupts */
 static void azx_int_enable(struct azx *chip)
@@ -1392,7 +1396,7 @@ static irqreturn_t azx_interrupt(int irq, void *dev_id)
 		spin_unlock(&chip->reg_lock);
 		return IRQ_NONE;
 	}
-	
+
 	for (i = 0; i < chip->num_streams; i++) {
 		azx_dev = &chip->azx_dev[i];
 		if (status & azx_dev->sd_int_sta_mask) {
@@ -1434,7 +1438,7 @@ static irqreturn_t azx_interrupt(int irq, void *dev_id)
 		azx_writeb(chip, STATESTS, 0x04);
 #endif
 	spin_unlock(&chip->reg_lock);
-	
+
 	return IRQ_HANDLED;
 }
 
@@ -2521,18 +2525,7 @@ static void azx_power_notify(struct hda_bus *bus)
  * power management
  */
 
-static int snd_hda_codecs_inuse(struct hda_bus *bus)
-{
-	struct hda_codec *codec;
-
-	list_for_each_entry(codec, &bus->codec_list, list) {
-		if (snd_hda_codec_needs_resume(codec))
-			return 1;
-	}
-	return 0;
-}
-
-static int azx_suspend(struct azx *chip, pm_message_t state)
+static int azx_suspend(struct pci_dev *pci, pm_message_t state)
 {
 	struct snd_card *card = chip->card;
 	struct azx_pcm *p;
@@ -2610,8 +2603,7 @@ static int azx_resume(struct azx *chip)
 		azx_init_platform(chip);
 #endif
 
-	if (snd_hda_codecs_inuse(chip->bus))
-		azx_init_chip(chip, 1);
+	azx_init_chip(chip, 1);
 
 	snd_hda_resume(chip->bus);
 	snd_power_change_state(card, SNDRV_CTL_POWER_D0);
@@ -2787,6 +2779,7 @@ static int __devinit check_position_fix(struct azx *chip, int fix)
 	case POS_FIX_LPIB:
 	case POS_FIX_POSBUF:
 	case POS_FIX_VIACOMBO:
+	case POS_FIX_COMBO:
 		return fix;
 	}
 
@@ -2990,6 +2983,12 @@ static int __devinit azx_create(struct snd_card *card, struct pci_dev *pci,
 
 	chip->position_fix[0] = chip->position_fix[1] =
 		check_position_fix(chip, position_fix[dev]);
+	/* combo mode uses LPIB for playback */
+	if (chip->position_fix[0] == POS_FIX_COMBO) {
+		chip->position_fix[0] = POS_FIX_LPIB;
+		chip->position_fix[1] = POS_FIX_AUTO;
+	}
+
 	check_probe_mask(chip, dev);
 
 	chip->single_cmd = single_cmd;
@@ -3135,9 +3134,16 @@ static int __devinit azx_create(struct snd_card *card, struct pci_dev *pci,
 	}
 
 	/* disable buffer size rounding to 128-byte multiples if supported */
-	chip->align_buffer_size = align_buffer_size;
-	if (chip->driver_caps & AZX_DCAPS_BUFSIZE)
-		chip->align_buffer_size = 0;
+	if (align_buffer_size >= 0)
+		chip->align_buffer_size = !!align_buffer_size;
+	else {
+		if (chip->driver_caps & AZX_DCAPS_BUFSIZE)
+			chip->align_buffer_size = 0;
+		else if (chip->driver_caps & AZX_DCAPS_ALIGN_BUFSIZE)
+			chip->align_buffer_size = 1;
+		else
+			chip->align_buffer_size = 1;
+	}
 
 	if (chip->pci) {
 		/* allow 64bit DMA address if supported by H/W */
@@ -3367,6 +3373,10 @@ static DEFINE_PCI_DEVICE_TABLE(azx_pci_ids) = {
 	  AZX_DCAPS_BUFSIZE},
 	/* Panther Point */
 	{ PCI_DEVICE(0x8086, 0x1e20),
+	  .driver_data = AZX_DRIVER_PCH | AZX_DCAPS_SCH_SNOOP |
+	  AZX_DCAPS_BUFSIZE},
+	/* Lynx Point */
+	{ PCI_DEVICE(0x8086, 0x8c20),
 	  .driver_data = AZX_DRIVER_PCH | AZX_DCAPS_SCH_SNOOP |
 	  AZX_DCAPS_BUFSIZE},
 	/* SCH */

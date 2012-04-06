@@ -18,9 +18,40 @@
  *
  */
 
+#ifndef __MACH_TEGRA_FUSE_H
+#define __MACH_TEGRA_FUSE_H
+
 #include <mach/hardware.h>
 
+enum tegra_revision {
+	TEGRA_REVISION_UNKNOWN = 0,
+	TEGRA_REVISION_A01,
+	TEGRA_REVISION_A02,
+	TEGRA_REVISION_A03,
+	TEGRA_REVISION_A03p,
+	TEGRA_REVISION_A04,
+	TEGRA_REVISION_MAX,
+};
+
+#define SKU_ID_T20	8
+#define SKU_ID_T25SE	20
+#define SKU_ID_AP25	23
+#define SKU_ID_T25	24
+#define SKU_ID_AP25E	27
+#define SKU_ID_T25E	28
+
+#define TEGRA20		0x20
+#define TEGRA30		0x30
+
 #define INVALID_PROCESS_ID	99 /* don't expect to have 100 process id's */
+
+extern int tegra_sku_id;
+extern int tegra_cpu_process_id;
+extern int tegra_core_process_id;
+extern int tegra_chip_id;
+extern enum tegra_revision tegra_revision;
+
+extern int tegra_bct_strapping;
 
 unsigned long long tegra_chip_uid(void);
 unsigned int tegra_spare_fuse(int bit);
@@ -47,7 +78,7 @@ static inline int tegra_package_id(void) { return -1; }
 static inline int tegra_cpu_speedo_id(void) { return 0; }
 static inline int tegra_cpu_speedo_mv(void) { return 1000; }
 static inline int tegra_core_speedo_mv(void) { return 1200; }
-#endif
+#endif /* CONFIG_ARCH_TEGRA_2x_SOC */
 
 #else
 
@@ -60,4 +91,6 @@ static inline int tegra_cpu_speedo_mv(void) { return 1000; }
 static inline int tegra_core_speedo_mv(void) { return 1200; }
 static inline void tegra_init_speedo_data(void) { }
 
-#endif
+#endif /* CONFIG_TEGRA_SILICON_PLATFORM */
+
+#endif /* MACH_TEGRA_FUSE_H */

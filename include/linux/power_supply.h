@@ -18,6 +18,8 @@
 #include <linux/workqueue.h>
 #include <linux/leds.h>
 
+struct device;
+
 /*
  * All voltages, currents, charges, energies, time and temperatures in uV,
  * µA, µAh, µWh, seconds and tenths of degree Celsius unless otherwise

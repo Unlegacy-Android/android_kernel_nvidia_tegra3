@@ -20,10 +20,11 @@
 #include <linux/io.h>
 #include <linux/list.h>
 #include <linux/memblock.h>
-#include <linux/persistent_ram.h>
 #include <linux/rslib.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
+
+#include "persistent_ram.h"
 
 struct persistent_ram_buffer {
 	uint32_t    sig;
@@ -356,8 +357,10 @@ static int persistent_ram_buffer_map(phys_addr_t start, phys_addr_t size,
 		return -ENOMEM;
 	}
 
-	for (i = 0; i < page_count; i++)
-		pages[i] = phys_to_page(page_start + i * PAGE_SIZE);
+	for (i = 0; i < page_count; i++) {
+		phys_addr_t addr = page_start + i * PAGE_SIZE;
+		pages[i] = pfn_to_page(addr >> PAGE_SHIFT);
+	}
 
 	prz->vaddr = vmap(pages, page_count, VM_MAP, prot);
 	kfree(pages);
@@ -422,16 +425,18 @@ struct persistent_ram_zone *__persistent_ram_init(struct device *dev, bool ecc)
 	if (prz->buffer->sig == PERSISTENT_RAM_SIG) {
 		if (buffer_size(prz) > prz->buffer_size ||
 		    buffer_start(prz) > buffer_size(prz))
-			pr_info("persistent_ram: found existing invalid buffer, size %d, start %d\n",
+			pr_info("persistent_ram: found existing invalid buffer,"
+				" size %ld, start %ld\n",
 			       buffer_size(prz), buffer_start(prz));
 		else {
-			pr_info("persistent_ram: found existing buffer, size %d, start %d\n",
+			pr_info("persistent_ram: found existing buffer,"
+				" size %ld, start %ld\n",
 			       buffer_size(prz), buffer_start(prz));
 			persistent_ram_save_old(prz);
 		}
 	} else {
-		pr_info("persistent_ram: no valid data in buffer (sig = 0x%08x)\n",
-			prz->buffer->sig);
+		pr_info("persistent_ram: no valid data in buffer"
+			" (sig = 0x%08x)\n", prz->buffer->sig);
 	}
 
 	prz->buffer->sig = PERSISTENT_RAM_SIG;
@@ -453,15 +458,15 @@ int __init persistent_ram_early_init(struct persistent_ram *ram)
 
 	ret = memblock_reserve(ram->start, ram->size);
 	if (ret) {
-		pr_err("Failed to reserve persistent memory from %08x-%08x\n",
-			ram->start, ram->start + ram->size - 1);
+		pr_err("Failed to reserve persistent memory from %08lx-%08lx\n",
+			(long)ram->start, (long)(ram->start + ram->size - 1));
 		return ret;
 	}
 
 	list_add_tail(&ram->node, &persistent_ram_list);
 
-	pr_info("Initialized persistent memory from %08x-%08x\n",
-		ram->start, ram->start + ram->size - 1);
+	pr_info("Initialized persistent memory from %08lx-%08lx\n",
+		(long)ram->start, (long)(ram->start + ram->size - 1));
 
 	return 0;
 }

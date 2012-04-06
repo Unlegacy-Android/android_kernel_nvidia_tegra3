@@ -33,6 +33,7 @@ config ANDROID_PERSISTENT_RAM
 
 config ANDROID_RAM_CONSOLE
 	bool "Android RAM buffer console"
+	depends on !S390 && !UML
 	select ANDROID_PERSISTENT_RAM
 	default n
 

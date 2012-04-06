@@ -30,4 +30,5 @@ obj-$(CONFIG_USB_NET_CX82310_ETH)	+= cx82310_eth.o
 obj-$(CONFIG_USB_NET_CDC_NCM)	+= cdc_ncm.o
 obj-$(CONFIG_USB_VL600)		+= lg-vl600.o
 obj-$(CONFIG_USB_NET_RAW_IP)	+= raw_ip_net.o
+obj-$(CONFIG_USB_NET_QMI_WWAN)	+= qmi_wwan.o
 

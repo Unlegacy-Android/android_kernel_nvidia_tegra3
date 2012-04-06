@@ -10,8 +10,9 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/device.h>
 #include <linux/slab.h>
-#include <linux/module.h>
+#include <linux/export.h>
 #include <linux/mutex.h>
 #include <linux/err.h>
 
@@ -125,6 +126,13 @@ static void regmap_format_16(void *buf, unsigned int val)
 	b[0] = cpu_to_be16(val);
 }
 
+static void regmap_format_32(void *buf, unsigned int val)
+{
+	__be32 *b = buf;
+
+	b[0] = cpu_to_be32(val);
+}
+
 static unsigned int regmap_parse_8(void *buf)
 {
 	u8 *b = buf;
@@ -137,6 +145,15 @@ static unsigned int regmap_parse_16(void *buf)
 	__be16 *b = buf;
 
 	b[0] = be16_to_cpu(b[0]);
+
+	return b[0];
+}
+
+static unsigned int regmap_parse_32(void *buf)
+{
+	__be32 *b = buf;
+
+	b[0] = be32_to_cpu(b[0]);
 
 	return b[0];
 }
@@ -239,6 +256,10 @@ struct regmap *regmap_init(struct device *dev,
 		map->format.format_reg = regmap_format_16;
 		break;
 
+	case 32:
+		map->format.format_reg = regmap_format_32;
+		break;
+
 	default:
 		goto err_map;
 	}
@@ -251,6 +272,10 @@ struct regmap *regmap_init(struct device *dev,
 	case 16:
 		map->format.format_val = regmap_format_16;
 		map->format.parse_val = regmap_parse_16;
+		break;
+	case 32:
+		map->format.format_val = regmap_format_32;
+		map->format.parse_val = regmap_parse_32;
 		break;
 	}
 
@@ -346,6 +371,8 @@ int regmap_reinit_cache(struct regmap *map, const struct regmap_config *config)
 	map->volatile_reg = config->volatile_reg;
 	map->precious_reg = config->precious_reg;
 	map->cache_type = config->cache_type;
+
+	regmap_debugfs_init(map);
 
 	map->cache_bypass = false;
 	map->cache_only = false;
@@ -687,16 +714,32 @@ EXPORT_SYMBOL_GPL(regmap_read);
 int regmap_raw_read(struct regmap *map, unsigned int reg, void *val,
 		    size_t val_len)
 {
-	size_t val_count = val_len / map->format.val_bytes;
-	int ret;
-
-	WARN_ON(!regmap_volatile_range(map, reg, val_count) &&
-		map->cache_type != REGCACHE_NONE);
+	size_t val_bytes = map->format.val_bytes;
+	size_t val_count = val_len / val_bytes;
+	unsigned int v;
+	int ret, i;
 
 	mutex_lock(&map->lock);
 
-	ret = _regmap_raw_read(map, reg, val, val_len);
+	if (regmap_volatile_range(map, reg, val_count) || map->cache_bypass ||
+	    map->cache_type == REGCACHE_NONE) {
+		/* Physical block read if there's no cache involved */
+		ret = _regmap_raw_read(map, reg, val, val_len);
 
+	} else {
+		/* Otherwise go word by word for the cache; should be low
+		 * cost as we expect to hit the cache.
+		 */
+		for (i = 0; i < val_count; i++) {
+			ret = _regmap_read(map, reg + i, &v);
+			if (ret != 0)
+				goto out;
+
+			map->format.format_val(val + (i * val_bytes), v);
+		}
+	}
+
+ out:
 	mutex_unlock(&map->lock);
 
 	return ret;
@@ -903,6 +946,21 @@ out:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(regmap_register_patch);
+
+/*
+ * regmap_get_val_bytes(): Report the size of a register value
+ *
+ * Report the size of a register value, mainly intended to for use by
+ * generic infrastructure built on top of regmap.
+ */
+int regmap_get_val_bytes(struct regmap *map)
+{
+	if (map->format.format_write)
+		return -EINVAL;
+
+	return map->format.val_bytes;
+}
+EXPORT_SYMBOL_GPL(regmap_get_val_bytes);
 
 static int __init regmap_initcall(void)
 {

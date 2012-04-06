@@ -30,6 +30,8 @@
 #define PLL_POST_LOCK_DELAY 50	/* Safety delay after lock is detected */
 #endif
 
+#include <mach/clk.h>
+
 #define DIV_BUS			(1 << 0)
 #define DIV_U71			(1 << 1)
 #define DIV_U71_FIXED		(1 << 2)
@@ -48,7 +50,7 @@
 #define PLLX			(1 << 15)
 #define MUX_PWM			(1 << 16)
 #define MUX8			(1 << 17)
-#define DIV_U151_UART		(1 << 18)
+#define DIV_U71_UART            (1 << 18)
 #define MUX_CLK_OUT		(1 << 19)
 #define PLLM			(1 << 20)
 #define DIV_U71_INT		(1 << 21)
@@ -95,6 +97,8 @@ struct clk_ops {
 	int		(*clk_cfg_ex)(struct clk *, enum tegra_clk_ex_param, u32);
 	void		(*reset)(struct clk *, bool);
 	int		(*shared_bus_update)(struct clk *);
+	int		(*clk_cfg_ex)(struct clk *,
+				enum tegra_clk_ex_param, u32);
 };
 
 struct clk_stats {
@@ -228,7 +232,7 @@ struct tegra_sku_rate_limit {
 };
 
 void tegra2_init_clocks(void);
-void tegra3_init_clocks(void);
+void tegra30_init_clocks(void);
 void tegra_common_init_clock(void);
 void tegra_init_max_rate(struct clk *c, unsigned long max_rate);
 void clk_init(struct clk *clk);

@@ -17,6 +17,8 @@
 #ifndef __LINUX_MFD_TPS65910_H
 #define __LINUX_MFD_TPS65910_H
 
+#include <linux/gpio.h>
+
 /* TPS chip id list */
 #define TPS65910			0
 #define TPS65911			1
@@ -263,7 +265,7 @@
 #define LDO_ST_MASK					0x03
 #define LDO_ST_SHIFT					0
 #define LDO_ST_ON_BIT					0x01
-#define LDO_ST_MODE_BIT					0x02	
+#define LDO_ST_MODE_BIT					0x02
 
 
 /* Registers LDO1 to LDO8 in tps65910 */
@@ -792,8 +794,8 @@ struct tps65910_board {
 	int irq_base;
 	int vmbch_threshold;
 	int vmbch2_threshold;
-	unsigned long regulator_ext_sleep_control[TPS65910_NUM_REGS];
 	bool en_gpio_sleep[TPS6591X_MAX_NUM_GPIO];
+	unsigned long regulator_ext_sleep_control[TPS65910_NUM_REGS];
 	struct regulator_init_data *tps65910_pmic_init_data[TPS65910_NUM_REGS];
 };
 

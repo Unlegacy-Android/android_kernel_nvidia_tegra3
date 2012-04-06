@@ -141,7 +141,6 @@ struct crypt_config {
 
 #define MIN_IOS        16
 #define MIN_POOL_PAGES 32
-#define MIN_BIO_PAGES  8
 
 static struct kmem_cache *_crypt_io_pool;
 
@@ -551,12 +550,11 @@ static struct bio *crypt_alloc_buffer(struct dm_crypt_io *io, unsigned size,
 		}
 
 		/*
-		 * if additional pages cannot be allocated without waiting,
-		 * return a partially allocated bio, the caller will then try
-		 * to allocate additional bios while submitting this partial bio
+		 * If additional pages cannot be allocated without waiting,
+		 * return a partially-allocated bio.  The caller will then try
+		 * to allocate more bios while submitting this partial bio.
 		 */
-		if (i == (MIN_BIO_PAGES - 1))
-			gfp_mask = (gfp_mask | __GFP_NOWARN) & ~__GFP_WAIT;
+		gfp_mask = (gfp_mask | __GFP_NOWARN) & ~__GFP_WAIT;
 
 		len = (size > PAGE_SIZE) ? PAGE_SIZE : size;
 
@@ -745,16 +743,14 @@ static void kcryptd_queue_io(struct dm_crypt_io *io)
 	queue_work(cc->io_queue, &io->work);
 }
 
-static void kcryptd_crypt_write_io_submit(struct dm_crypt_io *io,
-					  int error, int async)
+static void kcryptd_crypt_write_io_submit(struct dm_crypt_io *io, int async)
 {
 	struct bio *clone = io->ctx.bio_out;
 	struct crypt_config *cc = io->target->private;
 
-	if (unlikely(error < 0)) {
+	if (unlikely(io->error < 0)) {
 		crypt_free_buffer_pages(cc, clone);
 		bio_put(clone);
-		io->error = -EIO;
 		crypt_dec_pending(io);
 		return;
 	}
@@ -805,12 +801,16 @@ static void kcryptd_crypt_write_convert(struct dm_crypt_io *io)
 		sector += bio_sectors(clone);
 
 		crypt_inc_pending(io);
+
 		r = crypt_convert(cc, &io->ctx);
+		if (r < 0)
+			io->error = -EIO;
+
 		crypt_finished = atomic_dec_and_test(&io->ctx.pending);
 
 		/* Encryption was already finished, submit io now */
 		if (crypt_finished) {
-			kcryptd_crypt_write_io_submit(io, r, 0);
+			kcryptd_crypt_write_io_submit(io, 0);
 
 			/*
 			 * If there was an error, do not try next fragments.
@@ -861,11 +861,8 @@ static void kcryptd_crypt_write_convert(struct dm_crypt_io *io)
 	crypt_dec_pending(io);
 }
 
-static void kcryptd_crypt_read_done(struct dm_crypt_io *io, int error)
+static void kcryptd_crypt_read_done(struct dm_crypt_io *io)
 {
-	if (unlikely(error < 0))
-		io->error = -EIO;
-
 	crypt_dec_pending(io);
 }
 
@@ -880,9 +877,11 @@ static void kcryptd_crypt_read_convert(struct dm_crypt_io *io)
 			   io->sector);
 
 	r = crypt_convert(cc, &io->ctx);
+	if (r < 0)
+		io->error = -EIO;
 
 	if (atomic_dec_and_test(&io->ctx.pending))
-		kcryptd_crypt_read_done(io, r);
+		kcryptd_crypt_read_done(io);
 
 	crypt_dec_pending(io);
 }
@@ -906,9 +905,9 @@ static void kcryptd_async_done(struct crypto_async_request *async_req,
 		return;
 
 	if (bio_data_dir(io->base_bio) == READ)
-		kcryptd_crypt_read_done(io, error);
+		kcryptd_crypt_read_done(io);
 	else
-		kcryptd_crypt_write_io_submit(io, error, 1);
+		kcryptd_crypt_write_io_submit(io, 1);
 }
 
 static void kcryptd_crypt(struct work_struct *work)
@@ -1181,6 +1180,7 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 	int ret;
 	struct dm_arg_set as;
 	const char *opt_string;
+	char dummy;
 
 	static struct dm_arg _args[] = {
 		{0, 1, "Invalid number of feature args"},
@@ -1239,7 +1239,7 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 	}
 
 	ret = -EINVAL;
-	if (sscanf(argv[2], "%llu", &tmpll) != 1) {
+	if (sscanf(argv[2], "%llu%c", &tmpll, &dummy) != 1) {
 		ti->error = "Invalid iv_offset sector";
 		goto bad;
 	}
@@ -1250,7 +1250,7 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 		goto bad;
 	}
 
-	if (sscanf(argv[4], "%llu", &tmpll) != 1) {
+	if (sscanf(argv[4], "%llu%c", &tmpll, &dummy) != 1) {
 		ti->error = "Invalid device sector";
 		goto bad;
 	}

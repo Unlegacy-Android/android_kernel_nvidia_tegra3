@@ -279,6 +279,8 @@
 
 #define INT_GPIO_BASE			(INT_SYNCPT_THRESH_BASE + \
 					 INT_SYNCPT_THRESH_NR)
+
+/* Tegra30 has 8 banks of 32 GPIOs */
 #define INT_GPIO_NR			(32 * 8)
 
 #define INT_PCI_MSI_BASE		(INT_GPIO_BASE + \

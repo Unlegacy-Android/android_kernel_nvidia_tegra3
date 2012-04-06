@@ -786,7 +786,7 @@ int tegra_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
 	int ret = 0;
 	unsigned long flags;
 
-	clk_lock_save(c, &flags);
+	spin_lock_irqsave(&c->spinlock, flags);
 
 	if (!c->ops || !c->ops->clk_cfg_ex) {
 		ret = -ENOSYS;
@@ -795,7 +795,7 @@ int tegra_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
 	ret = c->ops->clk_cfg_ex(c, p, setting);
 
 out:
-	clk_unlock_restore(c, &flags);
+	spin_unlock_irqrestore(&c->spinlock, flags);
 	return ret;
 }
 

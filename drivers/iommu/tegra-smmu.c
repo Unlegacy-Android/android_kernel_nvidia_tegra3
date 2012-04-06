@@ -884,8 +884,7 @@ static int tegra_smmu_resume(struct device *dev)
 static int tegra_smmu_probe(struct platform_device *pdev)
 {
 	struct smmu_device *smmu;
-	struct resource *regs, *regs2;
-	struct tegra_smmu_window *window;
+	struct resource *regs, *regs2, *window;
 	struct device *dev = &pdev->dev;
 	int i, err = 0;
 
@@ -896,7 +895,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 
 	regs = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	regs2 = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	window = tegra_smmu_window(0);
+	window = platform_get_resource(pdev, IORESOURCE_MEM, 2);
 	if (!regs || !regs2 || !window) {
 		dev_err(dev, "No SMMU resources\n");
 		return -ENODEV;
@@ -911,7 +910,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	smmu->dev = dev;
 	smmu->num_as = SMMU_NUM_ASIDS;
 	smmu->iovmm_base = (unsigned long)window->start;
-	smmu->page_count = (window->end + 1 - window->start) >> SMMU_PAGE_SHIFT;
+	smmu->page_count = resource_size(window) >> SMMU_PAGE_SHIFT;
 	smmu->regs = devm_ioremap(dev, regs->start, resource_size(regs));
 	smmu->regs_ahbarb = devm_ioremap(dev, regs2->start,
 					 resource_size(regs2));
@@ -1012,7 +1011,7 @@ static struct platform_driver tegra_smmu_driver = {
 	.remove		= tegra_smmu_remove,
 	.driver = {
 		.owner	= THIS_MODULE,
-		.name	= "tegra_smmu",
+		.name	= "tegra-smmu",
 		.pm	= &tegra_smmu_pm_ops,
 	},
 };
@@ -1030,3 +1029,7 @@ static void __exit tegra_smmu_exit(void)
 
 subsys_initcall(tegra_smmu_init);
 module_exit(tegra_smmu_exit);
+
+MODULE_DESCRIPTION("IOMMU API for SMMU in Tegra30");
+MODULE_AUTHOR("Hiroshi DOYU <hdoyu@nvidia.com>");
+MODULE_LICENSE("GPL v2");

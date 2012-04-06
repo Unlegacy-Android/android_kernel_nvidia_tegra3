@@ -20,12 +20,17 @@
 #include <linux/bitops.h>
 
 #include <asm/cacheflush.h>
+#include <asm/hardware/cache-l2x0.h>
 
 #include <mach/iomap.h>
+#include <mach/irammap.h>
 
 #include "reset.h"
 #include "sleep.h"
 #include "pm.h"
+
+#define TEGRA_IRAM_RESET_BASE (TEGRA_IRAM_BASE + \
+				TEGRA_IRAM_RESET_HANDLER_OFFSET)
 
 static bool is_enabled;
 
@@ -55,12 +60,16 @@ static void tegra_cpu_reset_handler_enable(void)
 	wmb();
 	reg = readl(evp_cpu_reset);
 
-	/* Prevent further modifications to the physical reset vector.
-	   NOTE: Has no effect on chips prior to Tegra3. */
-	reg = readl(sb_ctrl);
-	reg |= 2;
-	writel(reg, sb_ctrl);
-	wmb();
+	/*
+	 * Prevent further modifications to the physical reset vector.
+	 *  NOTE: Has no effect on chips prior to Tegra30.
+	 */
+	if (tegra_chip_id != TEGRA20) {
+		reg = readl(sb_ctrl);
+		reg |= 2;
+		writel(reg, sb_ctrl);
+		wmb();
+	}
 #endif
 	is_enabled = true;
 }
@@ -96,6 +105,7 @@ void __init tegra_cpu_reset_handler_init(void)
 	__tegra_cpu_reset_handler_data[TEGRA_RESET_STARTUP_SECONDARY] =
 		virt_to_phys((void *)tegra_secondary_startup);
 #endif
+
 #ifdef CONFIG_PM_SLEEP
 	__tegra_cpu_reset_handler_data[TEGRA_RESET_STARTUP_LP1] =
 		TEGRA_IRAM_CODE_AREA;

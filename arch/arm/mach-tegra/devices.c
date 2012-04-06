@@ -700,18 +700,18 @@ static struct tegra_ulpi_config tegra_ehci2_ulpi_phy_config = {
 	.clk = "cdev2",
 };
 
-static struct tegra_ehci_platform_data tegra_ehci1_pdata = {
+struct tegra_ehci_platform_data tegra_ehci1_pdata = {
 	.operating_mode = TEGRA_USB_OTG,
 	.power_down_on_bus_suspend = 1,
 };
 
-static struct tegra_ehci_platform_data tegra_ehci2_pdata = {
+struct tegra_ehci_platform_data tegra_ehci2_pdata = {
 	.phy_config = &tegra_ehci2_ulpi_phy_config,
 	.operating_mode = TEGRA_USB_HOST,
 	.power_down_on_bus_suspend = 1,
 };
 
-static struct tegra_ehci_platform_data tegra_ehci3_pdata = {
+struct tegra_ehci_platform_data tegra_ehci3_pdata = {
 	.operating_mode = TEGRA_USB_HOST,
 	.power_down_on_bus_suspend = 1,
 };

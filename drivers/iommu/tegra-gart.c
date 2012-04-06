@@ -158,7 +158,7 @@ static int gart_iommu_attach_dev(struct iommu_domain *domain,
 	struct gart_client *client, *c;
 	int err = 0;
 
-	gart = gart_handle;
+	gart = dev_get_drvdata(dev->parent);
 	if (!gart)
 		return -EINVAL;
 	domain->priv = gart;
@@ -246,7 +246,7 @@ static int gart_iommu_map(struct iommu_domain *domain, unsigned long iova,
 	pfn = __phys_to_pfn(pa);
 	if (!pfn_valid(pfn)) {
 		dev_err(gart->dev, "Invalid page: %08x\n", pa);
-		spin_lock_irqsave(&gart->pte_lock, flags);
+		spin_unlock_irqrestore(&gart->pte_lock, flags);
 		return -EINVAL;
 	}
 	gart_set_pte(gart, iova, GART_PTE(pfn));
@@ -427,7 +427,7 @@ static struct platform_driver tegra_gart_driver = {
 	.remove		= tegra_gart_remove,
 	.driver = {
 		.owner	= THIS_MODULE,
-		.name	= "tegra_gart",
+		.name	= "tegra-gart",
 		.pm	= &tegra_gart_pm_ops,
 	},
 };
@@ -445,3 +445,7 @@ static void __exit tegra_gart_exit(void)
 
 subsys_initcall(tegra_gart_init);
 module_exit(tegra_gart_exit);
+
+MODULE_DESCRIPTION("IOMMU API for GART in Tegra20");
+MODULE_AUTHOR("Hiroshi DOYU <hdoyu@nvidia.com>");
+MODULE_LICENSE("GPL v2");

@@ -21,6 +21,7 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
 #include <linux/slab.h>
@@ -101,8 +102,17 @@ static struct tegra_sdhci_hw_ops tegra_3x_sdhci_ops = {
 };
 #endif
 
-struct tegra_sdhci_host {
+#define NVQUIRK_FORCE_SDHCI_SPEC_200	BIT(0)
+#define NVQUIRK_ENABLE_BLOCK_GAP_DET	BIT(1)
+
+struct sdhci_tegra_soc_data {
+	struct sdhci_pltfm_data *pdata;
+	u32 nvquirks;
+};
+
+struct sdhci_tegra {
 	struct tegra_sdhci_platform_data *pdata;
+	const struct sdhci_tegra_soc_data *soc_data;
 	bool	clk_enabled;
 	struct regulator *vdd_io_reg;
 	struct regulator *vdd_slot_reg;
@@ -137,7 +147,12 @@ static u32 tegra_sdhci_readl(struct sdhci_host *host, int reg)
 static u16 tegra_sdhci_readw(struct sdhci_host *host, int reg)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	if (unlikely(reg == SDHCI_HOST_VERSION)) {
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
+
+	if (unlikely((soc_data->nvquirks & NVQUIRK_FORCE_SDHCI_SPEC_200) &&
+			(reg == SDHCI_HOST_VERSION))) {
 		/* Erratum: Version register is invalid in HW. */
 		return SDHCI_SPEC_200;
 	}
@@ -147,6 +162,10 @@ static u16 tegra_sdhci_readw(struct sdhci_host *host, int reg)
 
 static void tegra_sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 {
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
+
 	/* Seems like we're getting spurious timeout and crc errors, so
 	 * disable signalling of them. In case of real errors software
 	 * timers should take care of eventually detecting them.
@@ -157,7 +176,8 @@ static void tegra_sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 	writel(val, host->ioaddr + reg);
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	if (unlikely(reg == SDHCI_INT_ENABLE)) {
+	if (unlikely((soc_data->nvquirks & NVQUIRK_ENABLE_BLOCK_GAP_DET) &&
+			(reg == SDHCI_INT_ENABLE))) {
 		/* Erratum: Must enable block gap interrupt detection */
 		u8 gap_ctrl = readb(host->ioaddr + SDHCI_BLOCK_GAP_CONTROL);
 		if (val & SDHCI_INT_CARD_INT)
@@ -172,16 +192,16 @@ static void tegra_sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 static unsigned int tegra_sdhci_get_cd(struct sdhci_host *sdhci)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 
 	return tegra_host->card_present;
 }
 
-static unsigned int tegra_sdhci_get_ro(struct sdhci_host *sdhci)
+static unsigned int tegra_sdhci_get_ro(struct sdhci_host *host)
 {
-	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
-	struct tegra_sdhci_platform_data *plat = tegra_host->pdata;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
 
 	if (!gpio_is_valid(plat->wp_gpio))
 		return -1;
@@ -194,7 +214,7 @@ static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci)
 	u16 misc_ctrl;
 	u32 vendor_ctrl;
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
 	struct tegra_sdhci_platform_data *plat;
 
@@ -266,7 +286,7 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 static void tegra_sdhci_reset_exit(struct sdhci_host *sdhci, u8 mask)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 
 	if (mask & SDHCI_RESET_ALL) {
 		if (tegra_host->hw_ops->sdhost_init)
@@ -308,7 +328,7 @@ static irqreturn_t carddetect_irq(int irq, void *data)
 {
 	struct sdhci_host *sdhost = (struct sdhci_host *)data;
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhost);
-	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	struct platform_device *pdev = to_platform_device(mmc_dev(sdhost->mmc));
 	struct tegra_sdhci_platform_data *plat;
 
@@ -341,8 +361,8 @@ static irqreturn_t carddetect_irq(int irq, void *data)
 static int tegra_sdhci_8bit(struct sdhci_host *host, int bus_width)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
-	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
-	struct tegra_sdhci_platform_data *plat = tegra_host->pdata;
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
 	u32 ctrl;
 
 	ctrl = sdhci_readb(host, SDHCI_HOST_CONTROL);
@@ -364,7 +384,7 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 	unsigned int clock)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	unsigned int clk_rate;
 
 	if (sdhci->mmc->card &&
@@ -481,7 +501,7 @@ out:
 static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	u8 ctrl;
 
 	pr_debug("%s %s %u enabled=%u\n", __func__,
@@ -518,7 +538,7 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 	unsigned int signal_voltage)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	unsigned int min_uV = SDHOST_HIGH_VOLT_MIN;
 	unsigned int max_uV = SDHOST_HIGH_VOLT_MAX;
 	unsigned int rc = 0;
@@ -824,7 +844,7 @@ out:
 static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 
 	tegra_sdhci_set_clock(sdhci, 0);
 
@@ -845,7 +865,7 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 
 	/* Enable the power rails if any */
 	if (tegra_host->card_present) {
@@ -888,7 +908,8 @@ static struct sdhci_ops tegra_sdhci_ops = {
 	.execute_freq_tuning = sdhci_tegra_execute_tuning,
 };
 
-static struct sdhci_pltfm_data sdhci_tegra_pdata = {
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+static struct sdhci_pltfm_data sdhci_tegra20_pdata = {
 	.quirks = SDHCI_QUIRK_BROKEN_TIMEOUT_VAL |
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 		  SDHCI_QUIRK_DATA_TIMEOUT_USES_SDCLK |
@@ -906,8 +927,35 @@ static struct sdhci_pltfm_data sdhci_tegra_pdata = {
 	.ops  = &tegra_sdhci_ops,
 };
 
+static struct sdhci_tegra_soc_data soc_data_tegra20 = {
+	.pdata = &sdhci_tegra20_pdata,
+	.nvquirks = NVQUIRK_FORCE_SDHCI_SPEC_200 |
+		    NVQUIRK_ENABLE_BLOCK_GAP_DET,
+};
+#endif
+
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+static struct sdhci_pltfm_data sdhci_tegra30_pdata = {
+	.quirks = SDHCI_QUIRK_BROKEN_TIMEOUT_VAL |
+		  SDHCI_QUIRK_DATA_TIMEOUT_USES_SDCLK |
+		  SDHCI_QUIRK_SINGLE_POWER_WRITE |
+		  SDHCI_QUIRK_NO_HISPD_BIT |
+		  SDHCI_QUIRK_BROKEN_ADMA_ZEROLEN_DESC,
+	.ops  = &tegra_sdhci_ops,
+};
+
+static struct sdhci_tegra_soc_data soc_data_tegra30 = {
+	.pdata = &sdhci_tegra30_pdata,
+};
+#endif
+
 static const struct of_device_id sdhci_tegra_dt_match[] __devinitdata = {
-	{ .compatible = "nvidia,tegra20-sdhci", },
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	{ .compatible = "nvidia,tegra30-sdhci", .data = &soc_data_tegra30 },
+#endif
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	{ .compatible = "nvidia,tegra20-sdhci", .data = &soc_data_tegra20 },
+#endif
 	{}
 };
 MODULE_DEVICE_TABLE(of, sdhci_dt_ids);
@@ -938,14 +986,23 @@ static struct tegra_sdhci_platform_data * __devinit sdhci_tegra_dt_parse_pdata(
 
 static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 {
+	const struct of_device_id *match;
+	const struct sdhci_tegra_soc_data *soc_data;
+	struct sdhci_host *host;
 	struct sdhci_pltfm_host *pltfm_host;
 	struct tegra_sdhci_platform_data *plat;
 	struct sdhci_host *host;
-	struct tegra_sdhci_host *tegra_host;
+	struct sdhci_tegra *tegra_host;
 	struct clk *clk;
 	int rc;
 
-	host = sdhci_pltfm_init(pdev, &sdhci_tegra_pdata);
+	match = of_match_device(sdhci_tegra_dt_match, &pdev->dev);
+	if (match)
+		soc_data = match->data;
+	else
+		soc_data = &soc_data_tegra20;
+
+	host = sdhci_pltfm_init(pdev, soc_data->pdata);
 	if (IS_ERR(host))
 		return PTR_ERR(host);
 
@@ -962,14 +1019,16 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 		goto err_no_plat;
 	}
 
-	tegra_host = kzalloc(sizeof(struct tegra_sdhci_host), GFP_KERNEL);
-	if (tegra_host == NULL) {
-		dev_err(mmc_dev(host->mmc), "failed to allocate tegra host\n");
+	tegra_host = devm_kzalloc(&pdev->dev, sizeof(*tegra_host), GFP_KERNEL);
+	if (!tegra_host) {
+		dev_err(mmc_dev(host->mmc), "failed to allocate tegra_host\n");
 		rc = -ENOMEM;
-		goto err_no_mem;
+		goto err_no_plat;
 	}
 
-	tegra_host->pdata = plat;
+	tegra_host->plat = plat;
+	tegra_host->soc_data = soc_data;
+
 	pltfm_host->priv = tegra_host;
 
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
@@ -1172,8 +1231,8 @@ static int __devexit sdhci_tegra_remove(struct platform_device *pdev)
 {
 	struct sdhci_host *host = platform_get_drvdata(pdev);
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
-	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
-	struct tegra_sdhci_platform_data *plat = tegra_host->pdata;
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
 	int dead = (readl(host->ioaddr + SDHCI_INT_STATUS) == 0xffffffff);
 
 	sdhci_remove_host(host, dead);
@@ -1230,5 +1289,5 @@ static struct platform_driver sdhci_tegra_driver = {
 module_platform_driver(sdhci_tegra_driver);
 
 MODULE_DESCRIPTION("SDHCI driver for Tegra");
-MODULE_AUTHOR(" Google, Inc.");
+MODULE_AUTHOR("Google, Inc.");
 MODULE_LICENSE("GPL v2");
