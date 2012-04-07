@@ -250,7 +250,7 @@ static __initdata struct tegra_clk_init_table tegra30_clk_init_table[] = {
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	{ "pll_p",	NULL,		0,		true },
 	{ "pll_p_out1",	"pll_p",	0,		false },
-	{ "pll_p_out2",	"pll_p",	48000000,	false },
+	{ "pll_p_out2",	"pll_p",	102000000,	false },
 	{ "pll_p_out3",	"pll_p",	0,		true },
 	{ "pll_m_out1",	"pll_m",	275000000,	false },
 	{ "pll_p_out4",	"pll_p",	102000000,	true },
@@ -300,6 +300,15 @@ static __initdata struct tegra_clk_init_table tegra30_clk_init_table[] = {
 #endif
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 static __initdata struct tegra_clk_init_table tegra11_clk_init_table[] = {
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
+	{ "pll_p_out2",	 "pll_p",	102000000,	false },
+	{ "sclk",	 "pll_p_out2",	102000000,	true },
+	{ "pll_p_out4",	 "pll_p",	204000000,	true },
+#else
+	{ "pll_p_out2",	"pll_p",	108000000,	false },
+	{ "sclk",	"pll_p_out2",	108000000,	true },
+	{ "pll_p_out4",	"pll_p",	216000000,	true },
+#endif
 	{ "cl_dvfs_ref", "pll_p",	54000000,	false },
 	{ "cl_dvfs_soc", "pll_p",	54000000,	false },
 	{ "cl_dvfs_ref", "clk_m",	13000000,	false },
