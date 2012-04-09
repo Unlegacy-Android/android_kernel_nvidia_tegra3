@@ -25,6 +25,7 @@
 #include <mach/pinmux.h>
 
 #define TEGRA_NR_GPIOS		INT_GPIO_NR
+#define TEGRA_GPIO_TO_IRQ(gpio)	(INT_GPIO_BASE + (gpio))
 
 struct tegra_gpio_table {
 	int	gpio;	/* GPIO number */
