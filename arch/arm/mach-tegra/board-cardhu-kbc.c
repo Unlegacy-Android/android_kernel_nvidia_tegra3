@@ -97,12 +97,11 @@ int __init cardhu_kbc_init(void)
 
 	for (i = 0; i < CARDHU_PM269_ROW_COUNT; i++) {
 		data->pin_cfg[i].num = i;
-		data->pin_cfg[i].is_row = true;
-		data->pin_cfg[i].en = true;
+		data->pin_cfg[i].type = PIN_CFG_ROW;
 	}
 	for (i = 0; i < CARDHU_PM269_COL_COUNT; i++) {
 		data->pin_cfg[i + KBC_PIN_GPIO_16].num = i;
-		data->pin_cfg[i + KBC_PIN_GPIO_16].en = true;
+		data->pin_cfg[i + KBC_PIN_GPIO_16].type = PIN_CFG_COL;
 	}
 
 	platform_device_register(&tegra_kbc_device);
