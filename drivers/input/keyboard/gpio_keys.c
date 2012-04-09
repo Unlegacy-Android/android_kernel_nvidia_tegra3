@@ -828,7 +828,7 @@ static int gpio_keys_resume(struct device *dev)
 		}
 
 		if (gpio_is_valid(bdata->button->gpio))
-			gpio_keys_report_event(&ddata->data[i]);
+			gpio_keys_gpio_report_event(&ddata->data[i]);
 	}
 	input_sync(ddata->input);
 
