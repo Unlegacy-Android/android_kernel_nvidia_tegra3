@@ -186,19 +186,31 @@ static struct syscore_ops tegra_timer_syscore_ops = {
 };
 
 #ifdef CONFIG_HAVE_ARM_TWD
+static DEFINE_TWD_LOCAL_TIMER(twd_local_timer,
+			      TEGRA_ARM_PERIF_BASE + 0x600,
+			      IRQ_LOCALTIMER);
+static void __iomem *tegra_twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
+
+static void __init tegra_twd_init(void)
+{
+	int err = twd_local_timer_register(&twd_local_timer);
+	if (err)
+		pr_err("twd_local_timer_register failed %d\n", err);
+}
+
 int tegra_twd_get_state(struct tegra_twd_context *context)
 {
-	context->twd_ctrl = readl(twd_base + TWD_TIMER_CONTROL);
-	context->twd_load = readl(twd_base + TWD_TIMER_LOAD);
-	context->twd_cnt = readl(twd_base + TWD_TIMER_COUNTER);
+	context->twd_ctrl = readl(tegra_twd_base + TWD_TIMER_CONTROL);
+	context->twd_load = readl(tegra_twd_base + TWD_TIMER_LOAD);
+	context->twd_cnt = readl(tegra_twd_base + TWD_TIMER_COUNTER);
 
 	return 0;
 }
 
 void tegra_twd_suspend(struct tegra_twd_context *context)
 {
-	context->twd_ctrl = readl(twd_base + TWD_TIMER_CONTROL);
-	context->twd_load = readl(twd_base + TWD_TIMER_LOAD);
+	context->twd_ctrl = readl(tegra_twd_base + TWD_TIMER_CONTROL);
+	context->twd_load = readl(tegra_twd_base + TWD_TIMER_LOAD);
 	if ((context->twd_load == 0) &&
 	    (context->twd_ctrl & TWD_TIMER_CONTROL_PERIODIC) &&
 	    (context->twd_ctrl & (TWD_TIMER_CONTROL_ENABLE |
@@ -206,7 +218,7 @@ void tegra_twd_suspend(struct tegra_twd_context *context)
 		WARN("%s: TWD enabled but counter was 0\n", __func__);
 		context->twd_load = 1;
 	}
-	__raw_writel(0, twd_base + TWD_TIMER_CONTROL);
+	__raw_writel(0, tegra_twd_base + TWD_TIMER_CONTROL);
 }
 
 void tegra_twd_resume(struct tegra_twd_context *context)
@@ -215,23 +227,14 @@ void tegra_twd_resume(struct tegra_twd_context *context)
 	       (context->twd_ctrl & TWD_TIMER_CONTROL_PERIODIC) &&
 	       (context->twd_ctrl & (TWD_TIMER_CONTROL_ENABLE |
 				     TWD_TIMER_CONTROL_IT_ENABLE)));
-	writel(context->twd_load, twd_base + TWD_TIMER_LOAD);
-	writel(context->twd_ctrl, twd_base + TWD_TIMER_CONTROL);
-}
-
-#ifdef CONFIG_HAVE_ARM_TWD
-static DEFINE_TWD_LOCAL_TIMER(twd_local_timer,
-			      TEGRA_ARM_PERIF_BASE + 0x600,
-			      IRQ_LOCALTIMER);
-
-static void __init tegra_twd_init(void)
-{
-	int err = twd_local_timer_register(&twd_local_timer);
-	if (err)
-		pr_err("twd_local_timer_register failed %d\n", err);
+	writel(context->twd_load, tegra_twd_base + TWD_TIMER_LOAD);
+	writel(context->twd_ctrl, tegra_twd_base + TWD_TIMER_CONTROL);
 }
 #else
 #define tegra_twd_init()	do {} while(0)
+#define tegra_twd_get_state	do {} while(0)
+#define tegra_twd_suspend	do {} while(0)
+#define tegra_twd_resume	do {} while(0)
 #endif
 
 static void __init tegra_init_timer(void)
@@ -259,10 +262,6 @@ static void __init tegra_init_timer(void)
 		pr_warn("Unable to get rtc-tegra clock\n");
 	else
 		clk_enable(clk);
-
-#ifdef CONFIG_HAVE_ARM_TWD
-	twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
-#endif
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	tegra2_init_timer(&system_timer, &tegra_timer_irq.irq, rate);
