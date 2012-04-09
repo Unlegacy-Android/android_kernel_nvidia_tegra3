@@ -43,7 +43,7 @@ bool tegra_apb_init(void)
 		goto out;
 
 	ch = tegra_dma_allocate_channel(TEGRA_DMA_MODE_ONESHOT |
-		TEGRA_DMA_SHARED);
+		TEGRA_DMA_SHARED, "apbio");
 
 	if (!ch)
 		goto out_fail;
