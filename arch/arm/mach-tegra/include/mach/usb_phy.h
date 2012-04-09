@@ -107,7 +107,6 @@ struct tegra_usb_phy {
 	struct regulator *reg_vbus;
 	enum tegra_usb_phy_type usb_phy_type;
 	bool regulator_on;
-	struct otg_transceiver *ulpi;
 	int initialized;
 	bool power_on;
 	bool remote_wakeup;

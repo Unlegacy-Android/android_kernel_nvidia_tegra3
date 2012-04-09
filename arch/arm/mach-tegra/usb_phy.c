@@ -1547,7 +1547,6 @@ static int utmi_phy_preresume(struct tegra_usb_phy *phy, bool remote_wakeup)
 static int utmi_phy_postresume(struct tegra_usb_phy *phy, bool is_dpd)
 {
 	unsigned long val;
-	void __iomem *base = phy->regs;
 	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 	unsigned  int inst = phy->instance;
 
@@ -1848,13 +1847,13 @@ static int ulpi_phy_power_on(struct tegra_usb_phy *phy, bool is_dpd)
 	ulpi_set_trimmer(base, 4, 4, 4);
 
 	/* Fix VbusInvalid due to floating VBUS */
-	ret = otg_io_write(phy->ulpi, 0x40, 0x08);
+	ret = usb_phy_io_write(phy->ulpi, 0x40, 0x08);
 	if (ret) {
 		pr_err("%s: ulpi write failed\n", __func__);
 		return ret;
 	}
 
-	ret = otg_io_write(phy->ulpi, 0x80, 0x0B);
+	ret = usb_phy_io_write(phy->ulpi, 0x80, 0x0B);
 	if (ret) {
 		pr_err("%s: ulpi write failed\n", __func__);
 		return ret;
@@ -2576,7 +2575,7 @@ void tegra_usb_phy_power_off(struct tegra_usb_phy *phy, bool is_dpd)
 
 	if (phy->reg_vdd && phy->regulator_on && is_dpd) {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-		if (tegra_get_revision() >= TEGRA_REVISION_A03)
+		if (tegra_revision >= TEGRA_REVISION_A03)
 #endif
 		regulator_disable(phy->reg_vdd);
 		phy->regulator_on = 0;
