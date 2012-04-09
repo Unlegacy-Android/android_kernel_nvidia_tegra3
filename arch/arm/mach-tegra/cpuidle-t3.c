@@ -45,9 +45,11 @@
 #include <asm/hardware/gic.h>
 #include <asm/localtimer.h>
 #include <asm/suspend.h>
+#include <asm/smp_twd.h>
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
+#include <mach/hardware.h>
 
 #include <trace/events/power.h>
 
@@ -60,6 +62,7 @@
 #include "reset.h"
 #include "sleep.h"
 #include "timer.h"
+#include "fuse.h"
 
 #define CLK_RST_CONTROLLER_CPU_CMPLX_STATUS \
 	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x470)
@@ -151,7 +154,7 @@ bool tegra3_lp2_is_allowed(struct cpuidle_device *dev,
 	/* On A01, LP2 on slave CPU's cause ranhdom CPU hangs.
 	 * Refer to Bug 804085.
 	 */
-	if ((tegra_get_revision() == TEGRA_REVISION_A01) &&
+	if ((tegra_revision == TEGRA_REVISION_A01) &&
 		num_online_cpus() > 1)
 		return false;
 
@@ -345,6 +348,7 @@ static bool tegra3_idle_enter_lp2_cpu_n(struct cpuidle_device *dev,
 	struct tegra_twd_context twd_context;
 	bool sleep_completed = false;
 	struct tick_sched *ts = tick_get_tick_sched(dev->cpu);
+	void __iomem *twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
 
 	if (!tegra_twd_get_state(&twd_context)) {
 		unsigned long twd_rate = clk_get_rate(twd_clk);

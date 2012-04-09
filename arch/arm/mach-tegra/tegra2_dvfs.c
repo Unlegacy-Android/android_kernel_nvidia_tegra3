@@ -294,8 +294,8 @@ void __init tegra2_init_dvfs(void)
 	struct dvfs *d;
 	int process_id;
 	int ret;
-	int cpu_process_id = tegra_cpu_process_id();
-	int core_process_id = tegra_core_process_id();
+	int cpu_process_id = tegra_cpu_process_id;
+	int core_process_id = tegra_core_process_id;
 	int speedo_id = tegra_soc_speedo_id();
 
 	BUG_ON(speedo_id >= ARRAY_SIZE(cpu_speedo_nominal_millivolts));

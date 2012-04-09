@@ -58,6 +58,7 @@
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/powergate.h>
+#include <mach/hardware.h>
 
 #include "board.h"
 #include "clock.h"
@@ -1025,7 +1026,7 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 	}
 
 	if ((tegra_get_chipid() == TEGRA_CHIPID_TEGRA3) &&
-	    (tegra_get_revision() == TEGRA_REVISION_A01) &&
+	    (tegra_revision == TEGRA_REVISION_A01) &&
 	    (plat->suspend_mode == TEGRA_SUSPEND_LP0)) {
 		/* Tegra 3 A01 supports only LP1 */
 		pr_warning("%s: Suspend mode LP0 is not supported on A01 "

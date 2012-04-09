@@ -48,7 +48,7 @@ enum tegra_revision {
 	TEGRA_REVISION_MAX,
 };
 
+extern enum tegra_revision tegra_revision;
 enum tegra_chipid tegra_get_chipid(void);
-enum tegra_revision tegra_get_revision(void);
 
 #endif

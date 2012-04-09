@@ -34,6 +34,7 @@
 #include <asm/hardware/gic.h>
 #include <asm/system.h>
 
+#include <mach/hardware.h>
 #include <mach/iomap.h>
 #include <mach/powergate.h>
 #include <mach/tegra_smmu.h>
@@ -923,7 +924,7 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 
 		if (FORCE_SMMU_BASE_FOR_TEGRA3_A01 ||
 			(tegra_get_chipid() == TEGRA_CHIPID_TEGRA3 &&
-			tegra_get_revision() == TEGRA_REVISION_A01)) {
+			tegra_revision == TEGRA_REVISION_A01)) {
 			smmu_window->start = TEGRA_SMMU_BASE_TEGRA3_A01;
 			smmu_window->end   = TEGRA_SMMU_BASE_TEGRA3_A01 +
 						TEGRA_SMMU_SIZE_TEGRA3_A01 - 1;

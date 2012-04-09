@@ -28,6 +28,7 @@
 
 #include <mach/iomap.h>
 #include <mach/tegra_fuse.h>
+#include <mach/hardware.h>
 
 #include "fuse.h"
 #include "apbio.h"
@@ -71,7 +72,6 @@ struct tegra_id {
 };
 
 static struct tegra_id tegra_id;
-static unsigned int tegra_chip_id;
 static unsigned int tegra_chip_rev;
 
 int tegra_sku_id;
@@ -101,9 +101,14 @@ static const char *tegra_revision_name[TEGRA_REVISION_MAX] = {
 	[TEGRA_REVISION_A04p]    = "A04 prime",
 };
 
-static inline u32 tegra_fuse_readl(unsigned long offset)
+u32 tegra_fuse_readl(unsigned long offset)
 {
 	return tegra_apb_readl(TEGRA_FUSE_BASE + offset);
+}
+
+void tegra_fuse_writel(u32 val, unsigned long offset)
+{
+	tegra_apb_writel(val, TEGRA_FUSE_BASE + offset);
 }
 
 static inline bool get_spare_fuse(int bit)
@@ -113,7 +118,7 @@ static inline bool get_spare_fuse(int bit)
 
 const char *tegra_get_revision_name(void)
 {
-	return tegra_revision_name[tegra_get_revision()];
+	return tegra_revision_name[tegra_revision];
 }
 
 static enum tegra_revision tegra_get_revision(u32 id)
@@ -326,16 +331,6 @@ unsigned int tegra_spare_fuse(int bit)
 	return tegra_fuse_readl(FUSE_SPARE_BIT + bit * 4);
 }
 
-int tegra_sku_id(void)
-{
-	static int sku_id = -1;
-	if (sku_id == -1) {
-		u32 reg = tegra_fuse_readl(FUSE_SKU_INFO);
-		sku_id = reg & 0xFF;
-	}
-	return sku_id;
-}
-
 int tegra_gpu_register_sets(void)
 {
 #ifdef CONFIG_ARCH_TEGRA_HAS_DUAL_3D
@@ -460,17 +455,6 @@ enum tegra_chipid tegra_get_chipid(void)
 	return tegra_id.chipid;
 }
 
-enum tegra_revision tegra_get_revision(void)
-{
-	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN) {
-		/* Boot loader did not pass a valid chip ID.
-		 * Get it from hardware */
-		tegra_get_tegraid_from_hw();
-	}
-
-	return tegra_id.revision;
-}
-
 static char chippriv[16]; /* Permanent buffer for private string */
 static int __init tegra_bootloader_tegraid(char *str)
 {
@@ -503,7 +487,7 @@ static unsigned int get_chip_id(char *val, struct kernel_param *kp)
 }
 static unsigned int get_chip_rev(char *val, struct kernel_param *kp)
 {
-	tegra_chip_rev = (unsigned int)tegra_get_revision();
+	tegra_chip_rev = (unsigned int)tegra_revision;
 	return param_get_uint(val, kp);
 }
 

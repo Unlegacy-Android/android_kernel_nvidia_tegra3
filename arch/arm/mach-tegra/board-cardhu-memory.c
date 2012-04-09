@@ -19,11 +19,12 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 
+#include <mach/hardware.h>
+
 #include "board.h"
 #include "board-cardhu.h"
 #include "tegra3_emc.h"
 #include "fuse.h"
-
 
 static const struct tegra_emc_table cardhu_emc_tables_h5tc2g[] = {
 	{
@@ -4891,7 +4892,7 @@ int cardhu_emc_init(void)
 	case BOARD_PM311:
 		break;
 	default:
-		if (tegra_get_revision() == TEGRA_REVISION_A01)
+		if (tegra_revision == TEGRA_REVISION_A01)
 			tegra_init_emc(cardhu_emc_tables_h5tc2g,
 				ARRAY_SIZE(cardhu_emc_tables_h5tc2g));
 		else if (MEMORY_TYPE(board.sku) == SKU_MEMORY_CARDHU_1GB_1R)

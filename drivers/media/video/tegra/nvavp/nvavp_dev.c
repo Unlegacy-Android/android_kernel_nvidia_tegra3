@@ -1168,7 +1168,7 @@ static int tegra_nvavp_probe(struct nvhost_device *ndev)
 
 		/* Tegra3 A01 has different SMMU address */
 		if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA3
-			&& tegra_get_revision() == TEGRA_REVISION_A01) {
+			&& tegra_revision == TEGRA_REVISION_A01) {
 			iovmm_addr = 0xeff00000;
 		}
 

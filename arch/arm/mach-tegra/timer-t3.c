@@ -37,14 +37,15 @@
 #include <asm/localtimer.h>
 #include <asm/sched_clock.h>
 
-#include <mach/hardware.h>
 #include <mach/iomap.h>
 #include <mach/irqs.h>
+#include <mach/hardware.h>
 
 #include "board.h"
 #include "clock.h"
 #include "cpuidle.h"
 #include "timer.h"
+#include "fuse.h"
 
 #define TEST_LP2_WAKE_TIMERS	0
 
@@ -290,7 +291,7 @@ void __init tegra3_init_timer(u32 *offset, int *irq, unsigned long rate)
 #ifdef CONFIG_SMP
 	/* For T30.A01 use INT_TMR_SHARED instead of INT_TMR6 for CPU3. */
 	if ((tegra_get_chipid() == TEGRA_CHIPID_TEGRA3) &&
-		(tegra_get_revision() == TEGRA_REVISION_A01))
+		(tegra_revision == TEGRA_REVISION_A01))
 			tegra_lp2wake_irq[3].irq = INT_TMR_SHARED;
 #endif
 

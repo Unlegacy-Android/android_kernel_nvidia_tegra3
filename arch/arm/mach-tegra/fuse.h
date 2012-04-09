@@ -21,18 +21,6 @@
 #ifndef __MACH_TEGRA_FUSE_H
 #define __MACH_TEGRA_FUSE_H
 
-#include <mach/hardware.h>
-
-enum tegra_revision {
-	TEGRA_REVISION_UNKNOWN = 0,
-	TEGRA_REVISION_A01,
-	TEGRA_REVISION_A02,
-	TEGRA_REVISION_A03,
-	TEGRA_REVISION_A03p,
-	TEGRA_REVISION_A04,
-	TEGRA_REVISION_MAX,
-};
-
 #define SKU_ID_T20	8
 #define SKU_ID_T25SE	20
 #define SKU_ID_AP25	23
@@ -49,22 +37,16 @@ extern int tegra_sku_id;
 extern int tegra_cpu_process_id;
 extern int tegra_core_process_id;
 extern int tegra_chip_id;
-extern enum tegra_revision tegra_revision;
 
 extern int tegra_bct_strapping;
 
 unsigned long long tegra_chip_uid(void);
 unsigned int tegra_spare_fuse(int bit);
-int tegra_sku_id(void);
 void tegra_init_fuse(void);
-u32 tegra_fuse_readl(unsigned long offset);
-void tegra_fuse_writel(u32 value, unsigned long offset);
 const char *tegra_get_revision_name(void);
 
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
 
-int tegra_cpu_process_id(void);
-int tegra_core_process_id(void);
 int tegra_soc_speedo_id(void);
 void tegra_init_speedo_data(void);
 
@@ -92,5 +74,8 @@ static inline int tegra_core_speedo_mv(void) { return 1200; }
 static inline void tegra_init_speedo_data(void) { }
 
 #endif /* CONFIG_TEGRA_SILICON_PLATFORM */
+
+u32 tegra_fuse_readl(unsigned long offset);
+void tegra_fuse_writel(u32 val, unsigned long offset);
 
 #endif /* MACH_TEGRA_FUSE_H */

@@ -23,6 +23,7 @@
 #include <linux/err.h>
 #include <mach/iomap.h>
 #include <mach/tegra_fuse.h>
+#include <mach/hardware.h>
 
 #include "fuse.h"
 
@@ -349,12 +350,7 @@ void tegra_init_speedo_data(void)
 	/* Package info: 4 bits - 0,3:reserved 1:MID 2:DSC */
 	package_id = tegra_fuse_readl(FUSE_PACKAGE_INFO) & 0x0F;
 
-	/* Arrays must be of equal size - each index corresponds to a SKU */
-	BUG_ON(ARRAY_SIZE(cpu_process_speedos) !=
-	       ARRAY_SIZE(core_process_speedos));
-
-	rev_sku_to_speedo_ids(tegra_get_revision(), tegra_sku_id());
-	BUG_ON(threshold_index >= ARRAY_SIZE(cpu_process_speedos));
+	rev_sku_to_speedo_ids(tegra_revision, tegra_sku_id);
 
 	fuse_speedo_calib(&cpu_speedo_val, &core_speedo_val);
 	pr_debug("%s CPU speedo value %u\n", __func__, cpu_speedo_val);
@@ -409,24 +405,6 @@ void tegra_init_speedo_data(void)
 		 cpu_speedo_id, soc_speedo_id);
 }
 
-int tegra_cpu_process_id(void)
-{
-	/* FIXME: remove when ready to deprecate invalid process-id boards */
-	if (cpu_process_id == INVALID_PROCESS_ID)
-		return 0;
-	else
-		return cpu_process_id;
-}
-
-int tegra_core_process_id(void)
-{
-	/* FIXME: remove when ready to deprecate invalid process-id boards */
-	if (core_process_id == INVALID_PROCESS_ID)
-		return 0;
-	else
-		return core_process_id;
-}
-
 int tegra_cpu_speedo_id(void)
 {
 	return cpu_speedo_id;
@@ -453,7 +431,6 @@ static const int cpu_speedo_nominal_millivolts[] =
 
 int tegra_cpu_speedo_mv(void)
 {
-	BUG_ON(cpu_speedo_id >= ARRAY_SIZE(cpu_speedo_nominal_millivolts));
 	return cpu_speedo_nominal_millivolts[cpu_speedo_id];
 }
 

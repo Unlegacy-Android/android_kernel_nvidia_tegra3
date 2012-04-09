@@ -591,8 +591,8 @@ void __init tegra3_init_dvfs(void)
 {
 	int cpu_speedo_id = tegra_cpu_speedo_id();
 	int soc_speedo_id = tegra_soc_speedo_id();
-	int cpu_process_id = tegra_cpu_process_id();
-	int core_process_id = tegra_core_process_id();
+	int cpu_process_id = tegra_cpu_process_id;
+	int core_process_id = tegra_core_process_id;
 
 	int i;
 	int core_nominal_mv_index;
