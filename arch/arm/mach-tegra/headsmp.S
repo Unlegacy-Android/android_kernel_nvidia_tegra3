@@ -35,11 +35,6 @@
 
 #define RESET_DATA(x)	((TEGRA_RESET_##x)*4)
 
-	.macro mov32, reg, val
-	movw	\reg, #:lower16:\val
-	movt	\reg, #:upper16:\val
-	.endm
-
         .section ".text.head", "ax"
 	__CPUINIT
 
