@@ -22,15 +22,26 @@
 #ifndef __MACH_TEGRA_CLOCK_H
 #define __MACH_TEGRA_CLOCK_H
 
+#ifndef __ASSEMBLY__
+
+#include <linux/clkdev.h>
+#include <linux/list.h>
+#include <linux/mutex.h>
+#include <linux/spinlock.h>
+#include <asm/cputime.h>
+
+#include <mach/clk.h>
+#define MAX_SAME_LIMIT_SKU_IDS	16
+
+struct clk;
+
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define USE_PLL_LOCK_BITS 0	/* Never use lock bits on Tegra2 */
 #else
-#define USE_PLL_LOCK_BITS 1	/* Use lock bits for PLL stabiliation */
+#define USE_PLL_LOCK_BITS 0	/* Use lock bits for PLL stabiliation */
 #define USE_PLLE_SS 1		/* Use spread spectrum coefficients for PLLE */
-#define PLL_POST_LOCK_DELAY 50	/* Safety delay after lock is detected */
+#define PLL_POST_LOCK_DELAY 100	/* Safety delay after lock is detected */
 #endif
-
-#include <mach/clk.h>
 
 #define DIV_BUS			(1 << 0)
 #define DIV_U71			(1 << 1)
@@ -60,19 +71,6 @@
 #define PERIPH_ON_APB		(1 << 29)
 #define PERIPH_ON_CBUS		(1 << 30)
 
-#ifndef __ASSEMBLY__
-
-#include <linux/clkdev.h>
-#include <linux/list.h>
-#include <linux/mutex.h>
-#include <linux/spinlock.h>
-#include <asm/cputime.h>
-
-#include <mach/clk.h>
-#define MAX_SAME_LIMIT_SKU_IDS	16
-
-struct clk;
-
 struct clk_mux_sel {
 	struct clk	*input;
 	u32		value;
@@ -94,7 +92,6 @@ struct clk_ops {
 	int		(*set_parent)(struct clk *, struct clk *);
 	int		(*set_rate)(struct clk *, unsigned long);
 	long		(*round_rate)(struct clk *, unsigned long);
-	int		(*clk_cfg_ex)(struct clk *, enum tegra_clk_ex_param, u32);
 	void		(*reset)(struct clk *, bool);
 	int		(*shared_bus_update)(struct clk *);
 	int		(*clk_cfg_ex)(struct clk *,
