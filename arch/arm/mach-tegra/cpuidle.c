@@ -61,21 +61,9 @@ static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
 struct cpuidle_driver tegra_idle_driver = {
 	.name = "tegra_idle",
 	.owner = THIS_MODULE,
-	.state_count = 1,
-	.states = {
-		[0] = {
-			.enter			= tegra_idle_enter_lp3,
-			.exit_latency		= 10,
-			.target_residency	= 10,
-			.power_usage		= 600,
-			.flags			= CPUIDLE_FLAG_TIME_VALID,
-			.name			= "LP3",
-			.desc			= "CPU flow-controlled",
-		},
-	},
 };
 
-static DEFINE_PER_CPU(struct cpuidle_device, tegra_idle_device);
+static DEFINE_PER_CPU(struct cpuidle_device *, tegra_idle_device);
 
 static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
 	struct cpuidle_driver *drv, int index)
@@ -215,7 +203,7 @@ static int tegra_cpuidle_register_device(unsigned int cpu)
 		kfree(dev);
 		return -EIO;
 	}
-	per_cpu(idle_devices, cpu) = dev;
+	per_cpu(tegra_idle_device, cpu) = dev;
 	return 0;
 }
 
@@ -240,8 +228,6 @@ static int __init tegra_cpuidle_init(void)
 {
 	unsigned int cpu;
 	int ret;
-	struct cpuidle_device *dev;
-	struct cpuidle_driver *drv = &tegra_idle_driver;
 
 	ret = cpuidle_register_driver(&tegra_idle_driver);
 	if (ret) {
@@ -260,11 +246,7 @@ static int __init tegra_cpuidle_init(void)
 #endif
 
 	for_each_possible_cpu(cpu) {
-		dev = &per_cpu(tegra_idle_device, cpu);
-		dev->cpu = cpu;
-
-		dev->state_count = drv->state_count;
-		ret = cpuidle_register_device(dev);
+		ret = tegra_cpuidle_register_device(cpu);
 		if (ret) {
 			pr_err("CPU%u: CPUidle device registration failed\n",
 				cpu);
@@ -280,7 +262,7 @@ device_initcall(tegra_cpuidle_init);
 static void __exit tegra_cpuidle_exit(void)
 {
 	unregister_pm_notifier(&tegra_cpuidle_pm_notifier);
-	cpuidle_unregister_driver(&tegra_idle);
+	cpuidle_unregister_driver(&tegra_idle_driver);
 }
 module_exit(tegra_cpuidle_exit);
 

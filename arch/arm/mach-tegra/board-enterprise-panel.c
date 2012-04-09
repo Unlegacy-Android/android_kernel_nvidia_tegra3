@@ -42,6 +42,7 @@
 #include "board-enterprise.h"
 #include "devices.h"
 #include "gpio-names.h"
+#include "fuse.h"
 
 #define DC_CTRL_MODE    TEGRA_DC_OUT_ONE_SHOT_MODE
 
@@ -116,7 +117,6 @@ static bool kernel_1st_panel_init = true;
 static int enterprise_backlight_notify(struct device *unused, int brightness)
 {
 	int cur_sd_brightness = atomic_read(&sd_brightness);
-	int orig_brightness = brightness;
 
 	/* SD brightness is a percentage, 8-bit value. */
 	brightness = (brightness * cur_sd_brightness) / 255;
@@ -760,7 +760,7 @@ int __init enterprise_panel_init(void)
 		pr_err("bl_output array does not have 256 elements\n");
 
 	enterprise_dsi.chip_id = tegra_get_chipid();
-	enterprise_dsi.chip_rev = tegra_get_revision();
+	enterprise_dsi.chip_rev = tegra_revision;
 
 #if defined(CONFIG_TEGRA_NVMAP)
 	enterprise_carveouts[1].base = tegra_carveout_start;

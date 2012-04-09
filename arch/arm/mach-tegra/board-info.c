@@ -36,6 +36,9 @@
 /* prodver is 2 character long XX so buffer size is set to 2+1 */
 #define PRODVER_BUF_SIZE 3
 
+extern unsigned int system_serial_low;
+extern unsigned int system_serial_high;
+
 static unsigned int board_serial_low;
 static unsigned int board_serial_high;
 static char prodinfo_buffer[PRODINFO_BUF_SIZE];

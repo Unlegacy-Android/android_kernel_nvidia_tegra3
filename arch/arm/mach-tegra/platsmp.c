@@ -43,7 +43,6 @@ bool tegra_all_cpus_booted;
 static DECLARE_BITMAP(tegra_cpu_init_bits, CONFIG_NR_CPUS) __read_mostly;
 const struct cpumask *const tegra_cpu_init_mask = to_cpumask(tegra_cpu_init_bits);
 #define tegra_cpu_init_map	(*(cpumask_t *)tegra_cpu_init_mask)
-static void __iomem *scu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE);
 
 #define CLK_RST_CONTROLLER_CLK_CPU_CMPLX \
 	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x4c)
@@ -161,7 +160,7 @@ static int tegra30_power_up_cpu(unsigned int cpu)
 
 	/* If this is the first boot, toggle powergates directly. */
 	if (!tegra_powergate_is_powered(pwrgateid)) {
-		ret = tegra_powergate_power_on(pwrgateid);
+		ret = tegra_unpowergate_partition(pwrgateid);
 		if (ret)
 			return ret;
 
