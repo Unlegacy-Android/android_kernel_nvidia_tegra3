@@ -490,7 +490,7 @@ static int powergate_module(int id)
 	return tegra_powergate_set(id, false);
 }
 
-int tegra_powergate_is_powered(int id)
+bool tegra_powergate_is_powered(int id)
 {
 	u32 status;
 
@@ -862,6 +862,16 @@ const char *tegra_powergate_get_name(int id)
 }
 
 #ifdef CONFIG_DEBUG_FS
+
+static const char * const powergate_name[] = {
+	[TEGRA_POWERGATE_CPU]   = "cpu",
+	[TEGRA_POWERGATE_3D]    = "3d",
+	[TEGRA_POWERGATE_VENC]  = "venc",
+	[TEGRA_POWERGATE_VDEC]  = "vdec",
+	[TEGRA_POWERGATE_PCIE]  = "pcie",
+	[TEGRA_POWERGATE_L2]    = "l2",
+	[TEGRA_POWERGATE_MPE]   = "mpe",
+};
 
 static int powergate_show(struct seq_file *s, void *data)
 {
