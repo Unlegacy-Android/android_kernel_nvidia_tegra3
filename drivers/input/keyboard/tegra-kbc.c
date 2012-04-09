@@ -906,8 +906,6 @@ static int tegra_kbc_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_kbc *kbc = platform_get_drvdata(pdev);
-	int timeout;
-	unsigned long int_st;
 
 	if (!kbc->is_open)
 		return 0;
