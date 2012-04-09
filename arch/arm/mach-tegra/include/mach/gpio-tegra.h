@@ -45,5 +45,6 @@ void tegra_gpio_disable(int gpio);
 void tegra_gpio_init_configure(unsigned gpio, bool is_input, int value);
 void tegra_gpio_set_tristate(int gpio, enum tegra_tristate ts);
 int tegra_gpio_get_bank_int_nr(int gpio);
+int tegra_gpio_resume_init(void);
 
 #endif

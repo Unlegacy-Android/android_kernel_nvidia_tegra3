@@ -37,6 +37,7 @@
 #include <mach/iomap.h>
 #include <mach/powergate.h>
 #include <mach/tegra_smmu.h>
+#include <mach/gpio-tegra.h>
 
 #include "apbio.h"
 #include "board.h"
@@ -507,6 +508,7 @@ void __init tegra20_init_early(void)
 	tegra_cpu_reset_handler_init();
 #endif
 	tegra_init_fuse();
+	tegra_gpio_resume_init();
 	tegra2_init_clocks();
 	tegra2_init_dvfs();
 	tegra_common_init_clock();
@@ -529,6 +531,7 @@ void __init tegra30_init_early(void)
 	tegra_cpu_reset_handler_init();
 #endif
 	tegra_init_fuse();
+	tegra_gpio_resume_init();
 	tegra30_init_clocks();
 	tegra3_init_dvfs();
 	tegra_common_init_clock();
