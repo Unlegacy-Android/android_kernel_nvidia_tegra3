@@ -36,6 +36,7 @@
 #include <asm/sched_clock.h>
 
 #include <mach/iomap.h>
+#include <mach/io.h>
 #include <mach/irqs.h>
 
 #include "board.h"
@@ -51,8 +52,6 @@ static u32 usec_config;
 static u32 usec_offset;
 static bool usec_suspended;
 
-static u32 system_timer;
-
 #define timer_writel(value, reg) \
 	__raw_writel(value, timer_reg_base + (reg))
 #define timer_readl(reg) \
@@ -64,7 +63,7 @@ static int tegra_timer_set_next_event(unsigned long cycles,
 	u32 reg;
 
 	reg = 0x80000000 | ((cycles > 1) ? (cycles-1) : 0);
-	timer_writel(reg, system_timer + TIMER_PTV);
+	timer_writel(reg, TIMER3_BASE + TIMER_PTV);
 
 	return 0;
 }
@@ -74,12 +73,12 @@ static void tegra_timer_set_mode(enum clock_event_mode mode,
 {
 	u32 reg;
 
-	timer_writel(0, system_timer + TIMER_PTV);
+	timer_writel(0, TIMER3_BASE + TIMER_PTV);
 
 	switch (mode) {
 	case CLOCK_EVT_MODE_PERIODIC:
 		reg = 0xC0000000 | ((1000000/HZ)-1);
-		timer_writel(reg, system_timer + TIMER_PTV);
+		timer_writel(reg, TIMER3_BASE + TIMER_PTV);
 		break;
 	case CLOCK_EVT_MODE_ONESHOT:
 		break;
@@ -150,7 +149,7 @@ void read_persistent_clock(struct timespec *ts)
 static irqreturn_t tegra_timer_interrupt(int irq, void *dev_id)
 {
 	struct clock_event_device *evt = (struct clock_event_device *)dev_id;
-	timer_writel(1<<30, system_timer + TIMER_PCR);
+	timer_writel(1<<30, TIMER3_BASE + TIMER_PCR);
 	evt->event_handler(evt);
 	return IRQ_HANDLED;
 }
@@ -160,6 +159,7 @@ static struct irqaction tegra_timer_irq = {
 	.flags		= IRQF_DISABLED | IRQF_TIMER | IRQF_TRIGGER_HIGH,
 	.handler	= tegra_timer_interrupt,
 	.dev_id		= &tegra_clockevent,
+	.irq		= INT_TMR3,
 };
 
 static int tegra_timer_suspend(void)
@@ -237,7 +237,7 @@ void tegra_twd_resume(struct tegra_twd_context *context)
 #define tegra_twd_resume	do {} while(0)
 #endif
 
-static void __init tegra_init_timer(void)
+void __init tegra_init_timer(void)
 {
 	struct clk *clk;
 	int ret;
@@ -263,10 +263,38 @@ static void __init tegra_init_timer(void)
 	else
 		clk_enable(clk);
 
+	switch (rate) {
+	case 12000000:
+		timer_writel(0x000b, TIMERUS_USEC_CFG);
+		break;
+	case 13000000:
+		timer_writel(0x000c, TIMERUS_USEC_CFG);
+		break;
+	case 19200000:
+		timer_writel(0x045f, TIMERUS_USEC_CFG);
+		break;
+	case 26000000:
+		timer_writel(0x0019, TIMERUS_USEC_CFG);
+		break;
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	case 16800000:
+		timer_writel(0x0453, TIMERUS_USEC_CFG);
+		break;
+	case 38400000:
+		timer_writel(0x04BF, TIMERUS_USEC_CFG);
+		break;
+	case 48000000:
+		timer_writel(0x002F, TIMERUS_USEC_CFG);
+		break;
+#endif
+	default:
+		WARN(1, "Unknown clock rate");
+	}
+
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	tegra2_init_timer(&system_timer, &tegra_timer_irq.irq, rate);
+	tegra20_init_timer();
 #else
-	tegra3_init_timer(&system_timer, &tegra_timer_irq.irq, rate);
+	tegra30_init_timer();
 #endif
 
 	setup_sched_clock(tegra_read_sched_clock, 32, 1000000);

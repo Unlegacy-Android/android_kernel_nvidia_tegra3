@@ -93,26 +93,9 @@ unsigned long tegra2_lp2_timer_remain(void)
 }
 #endif
 
-void __init tegra2_init_timer(u32 *offset, int *irq, unsigned long rate)
+void __init tegra20_init_timer(void)
 {
 	int ret;
-
-	switch (rate) {
-	case 12000000:
-		timer_writel(0x000b, TIMERUS_USEC_CFG);
-		break;
-	case 13000000:
-		timer_writel(0x000c, TIMERUS_USEC_CFG);
-		break;
-	case 19200000:
-		timer_writel(0x045f, TIMERUS_USEC_CFG);
-		break;
-	case 26000000:
-		timer_writel(0x0019, TIMERUS_USEC_CFG);
-		break;
-	default:
-		WARN(1, "Unknown clock rate");
-	}
 
 #ifdef CONFIG_PM_SLEEP
 	ret = setup_irq(tegra_lp2wake_irq.irq, &tegra_lp2wake_irq);
@@ -121,7 +104,4 @@ void __init tegra2_init_timer(u32 *offset, int *irq, unsigned long rate)
 		BUG();
 	}
 #endif
-
-	*offset = TIMER3_OFFSET;
-	*irq = INT_TMR3;
 }

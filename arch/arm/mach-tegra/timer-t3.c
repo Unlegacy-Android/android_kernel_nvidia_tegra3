@@ -259,34 +259,8 @@ void tegra3_lp2_timer_cancel_secondary(void)
 }
 #endif
 
-void __init tegra3_init_timer(u32 *offset, int *irq, unsigned long rate)
+void __init tegra30_init_timer(void)
 {
-	switch (rate) {
-	case 12000000:
-		timer_writel(0x000b, TIMERUS_USEC_CFG);
-		break;
-	case 13000000:
-		timer_writel(0x000c, TIMERUS_USEC_CFG);
-		break;
-	case 19200000:
-		timer_writel(0x045f, TIMERUS_USEC_CFG);
-		break;
-	case 26000000:
-		timer_writel(0x0019, TIMERUS_USEC_CFG);
-		break;
-	case 16800000:
-		timer_writel(0x0453, TIMERUS_USEC_CFG);
-		break;
-	case 38400000:
-		timer_writel(0x04BF, TIMERUS_USEC_CFG);
-		break;
-	case 48000000:
-		timer_writel(0x002F, TIMERUS_USEC_CFG);
-		break;
-	default:
-		WARN(1, "Unknown clock rate");
-	}
-
 #ifdef CONFIG_PM_SLEEP
 #ifdef CONFIG_SMP
 	/* For T30.A01 use INT_TMR_SHARED instead of INT_TMR6 for CPU3. */
@@ -297,9 +271,6 @@ void __init tegra3_init_timer(u32 *offset, int *irq, unsigned long rate)
 
 	tegra3_register_wake_timer(0);
 #endif
-
-	*offset = TIMER1_OFFSET;
-	*irq = INT_TMR1;
 }
 
 #if defined(CONFIG_PM_SLEEP) && defined(CONFIG_HOTPLUG_CPU)
