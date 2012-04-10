@@ -269,7 +269,8 @@ void __init tegra30_init_timer(void)
 			tegra_lp2wake_irq[3].irq = INT_TMR_SHARED;
 #endif
 
-	tegra3_register_wake_timer(0);
+	if (tegra3_resume_wake_timer(0))
+		WARN_ON("tegra3_resume_wake_timer failed");
 #endif
 }
 
