@@ -34,8 +34,6 @@
 #define INVALID_PROCESS_ID	99 /* don't expect to have 100 process id's */
 
 extern int tegra_sku_id;
-extern int tegra_cpu_process_id;
-extern int tegra_core_process_id;
 extern int tegra_chip_id;
 
 extern int tegra_bct_strapping;
@@ -49,6 +47,8 @@ const char *tegra_get_revision_name(void);
 
 int tegra_soc_speedo_id(void);
 void tegra_init_speedo_data(void);
+int tegra_cpu_process_id(void);
+int tegra_core_process_id(void);
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 int tegra_package_id(void);

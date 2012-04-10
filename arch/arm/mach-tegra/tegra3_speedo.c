@@ -405,6 +405,24 @@ void tegra_init_speedo_data(void)
 		 cpu_speedo_id, soc_speedo_id);
 }
 
+int tegra_cpu_process_id(void)
+{
+	/* FIXME: remove when ready to deprecate invalid process-id boards */
+	if (cpu_process_id == INVALID_PROCESS_ID)
+		return 0;
+	else
+		return cpu_process_id;
+}
+
+int tegra_core_process_id(void)
+{
+	/* FIXME: remove when ready to deprecate invalid process-id boards */
+	if (core_process_id == INVALID_PROCESS_ID)
+		return 0;
+	else
+		return core_process_id;
+}
+
 int tegra_cpu_speedo_id(void)
 {
 	return cpu_speedo_id;

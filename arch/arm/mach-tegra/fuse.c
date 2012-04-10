@@ -75,8 +75,6 @@ static struct tegra_id tegra_id;
 static unsigned int tegra_chip_rev;
 
 int tegra_sku_id;
-int tegra_cpu_process_id;
-int tegra_core_process_id;
 int tegra_chip_id;
 enum tegra_revision tegra_revision;
 
@@ -151,16 +149,8 @@ void tegra_init_fuse(void)
 	reg |= 1 << 28;
 	writel(reg, IO_TO_VIRT(TEGRA_CLK_RESET_BASE + 0x48));
 
-	tegra_init_speedo_data();
-
 	reg = tegra_fuse_readl(FUSE_SKU_INFO);
 	tegra_sku_id = reg & 0xFF;
-
-	reg = tegra_fuse_readl(FUSE_SPARE_BIT);
-	tegra_cpu_process_id = (reg >> 6) & 3;
-
-	reg = tegra_fuse_readl(FUSE_SPARE_BIT);
-	tegra_core_process_id = (reg >> 12) & 3;
 
 	reg = tegra_apb_readl(TEGRA_APB_MISC_BASE + STRAP_OPT);
 	tegra_bct_strapping = (reg & RAM_ID_MASK) >> RAM_CODE_SHIFT;
@@ -170,10 +160,12 @@ void tegra_init_fuse(void)
 
 	tegra_revision = tegra_get_revision(id);
 
-	pr_info("Tegra Revision: %s SKU: %d CPU Process: %d Core Process: %d\n",
+	tegra_init_speedo_data();
+
+	pr_info("Tegra Revision: %s SKU: 0x%x CPU Process: %d Core Process: %d\n",
 		tegra_revision_name[tegra_revision],
-		tegra_sku_id, tegra_cpu_process_id,
-		tegra_core_process_id);
+		tegra_sku_id, tegra_cpu_process_id(),
+		tegra_core_process_id());
 }
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
