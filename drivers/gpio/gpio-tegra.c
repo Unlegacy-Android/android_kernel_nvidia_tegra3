@@ -94,8 +94,11 @@ struct tegra_gpio_bank {
 
 static struct irq_domain *irq_domain;
 static void __iomem *regs;
-static u32 tegra_gpio_bank_count;
-static struct tegra_gpio_bank *tegra_gpio_banks;
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+static struct tegra_gpio_bank tegra_gpio_banks[7];
+#else
+static struct tegra_gpio_bank tegra_gpio_banks[8];
+#endif
 
 static inline void tegra_gpio_writel(u32 val, u32 reg)
 {
@@ -342,7 +345,7 @@ void tegra_gpio_resume(void)
 
 	local_irq_save(flags);
 
-	for (b = 0; b < tegra_gpio_bank_count; b++) {
+	for (b = 0; b < ARRAY_SIZE(tegra_gpio_banks); b++) {
 		struct tegra_gpio_bank *bank = &tegra_gpio_banks[b];
 
 		for (p = 0; p < ARRAY_SIZE(bank->oe); p++) {
@@ -365,7 +368,7 @@ int tegra_gpio_suspend(void)
 	int p;
 
 	local_irq_save(flags);
-	for (b = 0; b < tegra_gpio_bank_count; b++) {
+	for (b = 0; b < ARRAY_SIZE(tegra_gpio_banks); b++) {
 		struct tegra_gpio_bank *bank = &tegra_gpio_banks[b];
 
 		for (p = 0; p < ARRAY_SIZE(bank->oe); p++) {
@@ -441,26 +444,19 @@ static int __devinit tegra_gpio_probe(struct platform_device *pdev)
 	int i;
 	int j;
 
-	for (;;) {
-		res = platform_get_resource(pdev, IORESOURCE_IRQ, tegra_gpio_bank_count);
-		if (!res)
-			break;
-		tegra_gpio_bank_count++;
-	}
-	if (!tegra_gpio_bank_count) {
-		dev_err(&pdev->dev, "Missing IRQ resource\n");
-		return -ENODEV;
+	for (i = 0; i < ARRAY_SIZE(tegra_gpio_banks); i++) {
+		res = platform_get_resource(pdev, IORESOURCE_IRQ, i);
+		if (!res) {
+			dev_err(&pdev->dev, "Missing IRQ resource\n");
+			return -ENODEV;
+		}
+
+		bank = &tegra_gpio_banks[i];
+		bank->bank = i;
+		bank->irq = res->start;
 	}
 
-	tegra_gpio_chip.ngpio = tegra_gpio_bank_count * 32;
-
-	tegra_gpio_banks = devm_kzalloc(&pdev->dev,
-			tegra_gpio_bank_count * sizeof(*tegra_gpio_banks),
-			GFP_KERNEL);
-	if (!tegra_gpio_banks) {
-		dev_err(&pdev->dev, "Couldn't allocate bank structure\n");
-		return -ENODEV;
-	}
+	tegra_gpio_chip.ngpio = ARRAY_SIZE(tegra_gpio_banks) * 32;
 
 	irq_base = irq_alloc_descs(-1, 0, tegra_gpio_chip.ngpio, 0);
 	if (irq_base < 0) {
@@ -471,7 +467,7 @@ static int __devinit tegra_gpio_probe(struct platform_device *pdev)
 					   tegra_gpio_chip.ngpio, irq_base, 0,
 					   &irq_domain_simple_ops, NULL);
 
-	for (i = 0; i < tegra_gpio_bank_count; i++) {
+	for (i = 0; i < ARRAY_SIZE(tegra_gpio_banks); i++) {
 		res = platform_get_resource(pdev, IORESOURCE_IRQ, i);
 		if (!res) {
 			dev_err(&pdev->dev, "Missing IRQ resource\n");
@@ -495,7 +491,7 @@ static int __devinit tegra_gpio_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	for (i = 0; i < tegra_gpio_bank_count; i++) {
+	for (i = 0; i < ARRAY_SIZE(tegra_gpio_banks); i++) {
 		for (j = 0; j < 4; j++) {
 			int gpio = tegra_gpio_compose(i, j, 0);
 			tegra_gpio_writel(0x00, GPIO_INT_ENB(gpio));
@@ -522,7 +518,7 @@ static int __devinit tegra_gpio_probe(struct platform_device *pdev)
 		set_irq_flags(irq, IRQF_VALID);
 	}
 
-	for (i = 0; i < tegra_gpio_bank_count; i++) {
+	for (i = 0; i < ARRAY_SIZE(tegra_gpio_banks); i++) {
 		bank = &tegra_gpio_banks[i];
 
 		for (j = 0; j < 4; j++)
@@ -581,7 +577,7 @@ static int dbg_gpio_show(struct seq_file *s, void *unused)
 	int j;
 
 	seq_printf(s, "Bank:Port CNF OE OUT IN INT_STA INT_ENB INT_LVL\n");
-	for (i = 0; i < tegra_gpio_bank_count; i++) {
+	for (i = 0; i < ARRAY_SIZE(tegra_gpio_banks); i++) {
 		for (j = 0; j < 4; j++) {
 			int gpio = tegra_gpio_compose(i, j, 0);
 			seq_printf(s,
