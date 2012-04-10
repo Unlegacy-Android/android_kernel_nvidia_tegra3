@@ -1439,6 +1439,11 @@ static void __init tegra_cardhu_reserve(void)
 	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
+static const char *cardhu_dt_board_compat[] = {
+	"nvidia,cardhu",
+	NULL
+};
+
 MACHINE_START(CARDHU, "cardhu")
 	.atag_offset    = 0x100,
 	.soc		= &tegra_soc_desc,
@@ -1450,4 +1455,5 @@ MACHINE_START(CARDHU, "cardhu")
 	.timer          = &tegra_timer,
 	.init_machine   = tegra_cardhu_init,
 	.restart	= tegra_assert_system_reset,
+	.dt_compat	= cardhu_dt_board_compat,
 MACHINE_END
