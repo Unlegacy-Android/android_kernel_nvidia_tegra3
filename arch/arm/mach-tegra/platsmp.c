@@ -148,39 +148,55 @@ static int tegra20_power_up_cpu(unsigned int cpu)
 static int tegra30_power_up_cpu(unsigned int cpu)
 {
 	u32 reg;
-	int ret, pwrgateid;
+	int ret;
 	unsigned long timeout;
 
 	BUG_ON(cpu == smp_processor_id());
 	BUG_ON(is_lp_cluster());
 
-	pwrgateid = tegra_cpu_powergate_id(cpu);
-	if (pwrgateid < 0)
-		return pwrgateid;
+	/* If this cpu has booted this function is entered after
+	 * CPU has been already un-gated by flow controller. Wait
+	 * for confirmation that cpu is powered and remove clamps.
+	 * On first boot entry do not wait - go to direct ungate.
+	 */
+	if (cpu_isset(cpu, tegra_cpu_init_map)) {
+		timeout = jiffies + 5;
+		do {
+			if (is_cpu_powered(cpu))
+				goto remove_clamps;
+			udelay(10);
+		} while (time_before(jiffies, timeout));
+	}
 
-	/* If this is the first boot, toggle powergates directly. */
-	if (!tegra_powergate_is_powered(pwrgateid)) {
-		ret = tegra_unpowergate_partition(pwrgateid);
+	/* First boot or Flow controller did not work as expected. Try to
+	   directly toggle power gates. Error if direct power on also fails. */
+	if (!is_cpu_powered(cpu)) {
+		ret = tegra_unpowergate_partition(TEGRA_CPU_POWERGATE_ID(cpu));
 		if (ret)
-			return ret;
+			goto fail;
 
 		/* Wait for the power to come up. */
 		timeout = jiffies + 10*HZ;
-		while (tegra_powergate_is_powered(pwrgateid)) {
-			if (time_after(jiffies, timeout))
-				return -ETIMEDOUT;
+
+		do {
+			if (is_cpu_powered(cpu))
+				goto remove_clamps;
 			udelay(10);
-		}
+		} while (time_before(jiffies, timeout));
+		ret = -ETIMEDOUT;
+		goto fail;
 	}
 
+remove_clamps:
 	/* CPU partition is powered. Enable the CPU clock. */
 	writel(CPU_CLOCK(cpu), CLK_RST_CONTROLLER_CLK_CPU_CMPLX_CLR);
 	reg = readl(CLK_RST_CONTROLLER_CLK_CPU_CMPLX_CLR);
 	udelay(10);
 
 	/* Remove I/O clamps. */
-	ret = tegra_powergate_remove_clamping(pwrgateid);
+	ret = tegra_powergate_remove_clamping(TEGRA_CPU_POWERGATE_ID(cpu));
 	udelay(10);
+fail:
 
 	/* Clear flow controller CSR. */
 	flowctrl_write_cpu_csr(cpu, 0);
