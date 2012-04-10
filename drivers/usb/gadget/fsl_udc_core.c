@@ -2349,7 +2349,7 @@ static irqreturn_t fsl_udc_irq(int irq, void *_udc)
 		return status;
 	}
 
-#ifdef CONFIG_ARCH_TEGRA
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && defined(CONFIG_ARCH_TEGRA)
 	/* Fence read for coherency of AHB master intiated writes */
 	readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
 #endif
