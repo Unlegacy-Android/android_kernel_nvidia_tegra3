@@ -364,10 +364,13 @@ static void tegra_l2x0_disable(void)
 void tegra_init_cache(bool init)
 {
 	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PERIF_BASE) + 0x3000;
-	u32 aux_ctrl, cache_type;
+	u32 aux_ctrl;
+#ifndef CONFIG_TRUSTED_FOUNDATIONS
+	u32 cache_type;
 	u32 tag_latency, data_latency;
 	u32 speedo;
 	u32 tmp;
+#endif
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 	/* issue the SMC to enable the L2 */
@@ -509,17 +512,17 @@ void __init tegra20_init_early(void)
 	tegra_cpu_reset_handler_init();
 #endif
 	tegra_init_fuse();
-	tegra_gpio_resume_init();
 	tegra2_init_clocks();
 	tegra2_init_dvfs();
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra20_clk_init_table);
-	tegra_init_power();
 	tegra_init_cache(true);
 	tegra_pmc_init();
 	tegra_powergate_init();
+	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
+	tegra_gpio_resume_init();
 }
 #endif
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
@@ -532,17 +535,17 @@ void __init tegra30_init_early(void)
 	tegra_cpu_reset_handler_init();
 #endif
 	tegra_init_fuse();
-	tegra_gpio_resume_init();
 	tegra30_init_clocks();
 	tegra3_init_dvfs();
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra30_clk_init_table);
-	tegra_init_power();
 	tegra_init_cache(true);
 	tegra_pmc_init();
 	tegra_powergate_init();
+	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
+	tegra_gpio_resume_init();
 }
 #endif
 
