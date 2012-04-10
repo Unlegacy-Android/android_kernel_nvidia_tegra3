@@ -676,6 +676,14 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		else if (policy->min > policy->cur)
 			__cpufreq_driver_target(policy,
 					policy->min, CPUFREQ_RELATION_L);
+
+		/* reschedule the timer if we stopped it */
+		pcpu = &per_cpu(cpuinfo, policy->cpu);
+
+		if (pcpu && !timer_pending(&pcpu->cpu_timer))
+			mod_timer(&pcpu->cpu_timer,
+				jiffies + usecs_to_jiffies(timer_rate));
+
 		break;
 	}
 	return 0;
