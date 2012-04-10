@@ -285,7 +285,7 @@ static int tegra_otg_set_peripheral(struct usb_otg *otg,
 	struct tegra_otg_data *tegra;
 	unsigned long val;
 
-	tegra = (struct tegra_otg_data *)container_of(otg, struct tegra_otg_data, phy);
+	tegra = (struct tegra_otg_data *)container_of(otg->phy, struct tegra_otg_data, phy);
 	otg->gadget = gadget;
 
 	clk_enable(tegra->clk);
@@ -349,17 +349,9 @@ static int tegra_otg_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	tegra->pdev = pdev;
 	tegra->pdata = pdev->dev.platform_data;
 	ehci_pdata = tegra->pdata->ehci_pdata;
-	tegra->phy.label = "tegra-otg";
-	tegra->phy.otg->set_host = tegra_otg_set_host;
-	tegra->phy.otg->set_peripheral = tegra_otg_set_peripheral;
-
-	err = usb_set_transceiver(&tegra->phy);
-	if (err) {
-		dev_err(&pdev->dev, "usb_set_transceiver failed\n");
-		goto err_clk;
-	}
 
 	spin_lock_init(&tegra->lock);
 
@@ -390,14 +382,6 @@ static int tegra_otg_probe(struct platform_device *pdev)
 		goto err_io;
 	}
 
-	tegra->phy.otg->phy->state = OTG_STATE_A_SUSPEND;
-
-	err = usb_set_transceiver(&tegra->phy);
-	if (err) {
-		dev_err(&pdev->dev, "can't register transceiver (%d)\n", err);
-		goto err_otg;
-	}
-
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res) {
 		dev_err(&pdev->dev, "Failed to get IRQ\n");
@@ -414,21 +398,32 @@ static int tegra_otg_probe(struct platform_device *pdev)
 	}
 	INIT_WORK (&tegra->work, irq_work);
 
+	tegra->phy.label = "tegra-otg";
+	tegra->phy.otg->set_host = tegra_otg_set_host;
+	tegra->phy.otg->set_peripheral = tegra_otg_set_peripheral;
+	tegra->phy.state = OTG_STATE_A_SUSPEND;
+	tegra->phy.otg->phy = &tegra->phy;
+
+	err = usb_set_transceiver(&tegra->phy);
+	if (err) {
+		dev_err(&pdev->dev, "usb_set_transceiver failed\n");
+		goto err_clk;
+	}
+
 	if (!ehci_pdata->default_enable)
 		clk_disable(tegra->clk);
+
 	dev_info(&pdev->dev, "otg transceiver registered\n");
 	return 0;
 
 err_irq:
 	usb_set_transceiver(NULL);
-err_otg:
 	iounmap(tegra->regs);
 err_io:
 	clk_disable(tegra->clk);
 err_clken:
 	clk_put(tegra->clk);
 err_clk:
-	platform_set_drvdata(pdev, NULL);
 	return err;
 }
 
