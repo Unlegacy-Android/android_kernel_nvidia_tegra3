@@ -513,6 +513,7 @@ static int __devinit gpio_keys_setup_key(struct platform_device *pdev,
 		goto fail;
 	}
 
+	input_set_capability(input, button->type ?: EV_KEY, button->code);
 	return 0;
 
 fail:
@@ -784,6 +785,7 @@ static int __devexit gpio_keys_remove(struct platform_device *pdev)
 static int gpio_keys_suspend(struct device *dev)
 {
 	struct gpio_keys_drvdata *ddata = dev_get_drvdata(dev);
+	const struct gpio_keys_button *button;
 	int i;
 
 	if (device_may_wakeup(dev)) {
@@ -803,6 +805,7 @@ static int gpio_keys_resume(struct device *dev)
 	struct gpio_keys_drvdata *ddata = dev_get_drvdata(dev);
 	struct gpio_keys_platform_data *pdata = pdev->dev.platform_data;
 	int wakeup_key = KEY_RESERVED;
+	const struct gpio_keys_button *button;
 	int i;
 
 	if (pdata && pdata->wakeup_key)
