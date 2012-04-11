@@ -73,6 +73,7 @@ struct tps6591x_regulator_platform_data {
 	enum tps6591x_ext_control ectrl;
 	int slew_rate_uV_per_us;
 	unsigned int flags;
+	bool shutdown_state_off;
 };
 
 #endif	/* __REGULATOR_TPS6591X_H */
