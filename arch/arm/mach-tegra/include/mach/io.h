@@ -89,7 +89,7 @@
 #define IO_HOST1X_SIZE	SZ_8M
 
 #define IO_PPCS_PHYS	0x7C000000
-#define IO_PPCS_VIRT	0xFE100000
+#define IO_PPCS_VIRT	IOMEM(0xFE100000)
 #define IO_PPCS_SIZE	SZ_1M
 
 #define IO_TO_VIRT_BETWEEN(p, st, sz)	((p) >= (st) && (p) < ((st) + (sz)))
