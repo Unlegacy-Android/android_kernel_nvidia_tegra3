@@ -437,6 +437,15 @@ int snd_hdmi_get_eld(struct hdmi_eld *eld,
 	/* set ELD buffer */
 	buf = eld->eld_buffer;
 
+	codec->recv_dec_cap = 0;
+	for (i = 0; i < eld->sad_count; i++) {
+		if (eld->sad[i].format == AUDIO_CODING_TYPE_AC3) {
+			codec->recv_dec_cap |= (1 << AUDIO_CODING_TYPE_AC3);
+		} else if (eld->sad[i].format == AUDIO_CODING_TYPE_DTS) {
+			codec->recv_dec_cap |= (1 << AUDIO_CODING_TYPE_DTS);
+		}
+	}
+
 	for (i = 0; i < size; i++) {
 		unsigned int val = hdmi_get_eld_data(codec, nid, i);
 		/*
@@ -465,11 +474,6 @@ int snd_hdmi_get_eld(struct hdmi_eld *eld,
 	}
 
 	ret = hdmi_update_eld(eld, buf, size);
-	codec->ac3dec_capable = false;
-	for (i = 0; i < eld->sad_count; i++) {
-		if (eld->sad[i].format == AUDIO_CODING_TYPE_AC3)
-			codec->ac3dec_capable = true;
-	}
 
 error:
 	return ret;
