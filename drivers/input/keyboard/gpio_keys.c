@@ -513,7 +513,6 @@ static int __devinit gpio_keys_setup_key(struct platform_device *pdev,
 		goto fail;
 	}
 
-	input_set_capability(input, button->type ?: EV_KEY, button->code);
 	return 0;
 
 fail:
@@ -785,7 +784,6 @@ static int __devexit gpio_keys_remove(struct platform_device *pdev)
 static int gpio_keys_suspend(struct device *dev)
 {
 	struct gpio_keys_drvdata *ddata = dev_get_drvdata(dev);
-	const struct gpio_keys_button *button;
 	int i;
 
 	if (device_may_wakeup(dev)) {
@@ -805,7 +803,6 @@ static int gpio_keys_resume(struct device *dev)
 	struct gpio_keys_drvdata *ddata = dev_get_drvdata(dev);
 	struct gpio_keys_platform_data *pdata = pdev->dev.platform_data;
 	int wakeup_key = KEY_RESERVED;
-	const struct gpio_keys_button *button;
 	int i;
 
 	if (pdata && pdata->wakeup_key)
@@ -813,25 +810,20 @@ static int gpio_keys_resume(struct device *dev)
 
 	for (i = 0; i < ddata->n_buttons; i++) {
 		struct gpio_button_data *bdata = &ddata->data[i];
-		if (bdata->button->wakeup && device_may_wakeup(dev))
+		if (bdata->button->wakeup && device_may_wakeup(dev)) {
 			disable_irq_wake(bdata->irq);
 
-		struct gpio_keys_button *button = ddata->data[i].button;
-		if (button->wakeup && device_may_wakeup(dev)) {
-			int irq = gpio_to_irq(button->gpio);
-			disable_irq_wake(irq);
+			if (wakeup_key == bdata->button->code) {
+				unsigned int type = bdata->button->type ?: EV_KEY;
 
-			if (wakeup_key == button->code) {
-				unsigned int type = button->type ?: EV_KEY;
-
-				input_event(ddata->input, type, button->code, 1);
-				input_event(ddata->input, type, button->code, 0);
+				input_event(ddata->input, type, bdata->button->code, 1);
+				input_event(ddata->input, type, bdata->button->code, 0);
 				input_sync(ddata->input);
 			}
 		}
 
 		if (gpio_is_valid(bdata->button->gpio))
-			gpio_keys_gpio_report_event(&ddata->data[i]);
+			gpio_keys_gpio_report_event(bdata);
 	}
 	input_sync(ddata->input);
 
