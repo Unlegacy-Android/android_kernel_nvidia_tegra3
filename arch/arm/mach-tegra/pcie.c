@@ -241,9 +241,13 @@
 #define MMIO_BASE		(TEGRA_PCIE_BASE + SZ_4M)
 #define MMIO_SIZE		SZ_64K
 #define MEM_BASE_0		(TEGRA_PCIE_BASE + SZ_256M)
-#define MEM_SIZE		SZ_256M
-#define PREFETCH_MEM_BASE_0	(MEM_BASE_0 + MEM_SIZE)
-#define PREFETCH_MEM_SIZE	SZ_512M
+#define MEM_SIZE_0		SZ_128M
+#define MEM_BASE_1		(MEM_BASE_0 + MEM_SIZE_0)
+#define MEM_SIZE_1		SZ_128M
+#define PREFETCH_MEM_BASE_0	(MEM_BASE_0 + MEM_SIZE_0)
+#define PREFETCH_MEM_SIZE_0	SZ_128M
+#define PREFETCH_MEM_BASE_1	(PREFETCH_MEM_BASE_0 + PREFETCH_MEM_SIZE_0)
+#define PREFETCH_MEM_SIZE_1	SZ_128M
 
 #else
 
@@ -327,12 +331,12 @@ struct tegra_pcie_info {
 	struct tegra_pci_platform_data *plat_data;
 };
 
+static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+
 #define pmc_writel(value, reg) \
 	__raw_writel(value, reg_pmc_base + (reg))
 #define pmc_readl(reg) \
 	__raw_readl(reg_pmc_base + (reg))
-
-static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 
 static struct tegra_pcie_info tegra_pcie = {
 	.res_mmio = {
@@ -553,15 +557,15 @@ static void __init tegra_pcie_preinit(void)
 
 	pcie_mem_space.name = "PCIe MEM Space";
 	pcie_mem_space.start = MEM_BASE_0;
-	pcie_mem_space.end = MEM_BASE_0 + MEM_SIZE - 1;
+	pcie_mem_space.end = MEM_BASE_0 + MEM_SIZE_0 + MEM_SIZE_1 - 1;
 	pcie_mem_space.flags = IORESOURCE_MEM;
 	if (request_resource(&iomem_resource, &pcie_mem_space))
 		panic("can't allocate PCIe MEM space");
 
 	pcie_prefetch_mem_space.name = "PCIe PREFETCH MEM Space";
 	pcie_prefetch_mem_space.start = PREFETCH_MEM_BASE_0;
-	pcie_prefetch_mem_space.end = PREFETCH_MEM_BASE_0 + PREFETCH_MEM_SIZE
-					- 1;
+	pcie_prefetch_mem_space.end = PREFETCH_MEM_BASE_0 + PREFETCH_MEM_SIZE_0
+					+ PREFETCH_MEM_SIZE_0 - 1;
 	pcie_prefetch_mem_space.flags = IORESOURCE_MEM | IORESOURCE_PREFETCH;
 	if (request_resource(&iomem_resource, &pcie_prefetch_mem_space))
 		panic("can't allocate PCIe PREFETCH MEM space");
@@ -743,7 +747,7 @@ static void tegra_pcie_setup_translations(void)
 
 	/* Bar 3: prefetchable memory BAR */
 	fpci_bar = (((PREFETCH_MEM_BASE_0 >> 12) & 0x0fffffff) << 4) | 0x1;
-	size =  PREFETCH_MEM_SIZE;
+	size =  PREFETCH_MEM_SIZE_0 + PREFETCH_MEM_SIZE_1;
 	axi_address = PREFETCH_MEM_BASE_0;
 	afi_writel(axi_address, AFI_AXI_BAR3_START);
 	afi_writel(size >> 12, AFI_AXI_BAR3_SZ);
@@ -751,7 +755,7 @@ static void tegra_pcie_setup_translations(void)
 
 	/* Bar 4: non prefetchable memory BAR */
 	fpci_bar = (((MEM_BASE_0 >> 12)	& 0x0FFFFFFF) << 4) | 0x1;
-	size = MEM_SIZE;
+	size = MEM_SIZE_0 + MEM_SIZE_1;
 	axi_address = MEM_BASE_0;
 	afi_writel(axi_address, AFI_AXI_BAR4_START);
 	afi_writel(size >> 12, AFI_AXI_BAR4_SZ);
