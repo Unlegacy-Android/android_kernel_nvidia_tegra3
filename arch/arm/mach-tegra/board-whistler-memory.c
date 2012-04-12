@@ -18,6 +18,7 @@
 
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/platform_data/tegra_emc.h>
 
 #include "board-whistler.h"
 #include "tegra2_emc.h"
@@ -619,7 +620,7 @@ static const struct tegra_emc_chip whistler_ap25_emc_chips[] = {
 
 int __init whistler_emc_init(void)
 {
-	int sku_id = tegra_sku_id();
+	int sku_id = tegra_sku_id;
 
 	if (sku_id == TEGRA25_SKU)
 		tegra_init_emc(whistler_ap25_emc_chips,
