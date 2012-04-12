@@ -96,7 +96,7 @@
 
 #define DEFAULT_RNG_BLK_SZ	16
 
-/* As of now only 5 commands are USED for AES encryption/Decryption */
+/* As of now only 4 commands are USED for AES encryption/Decryption */
 #define AES_HW_MAX_ICQ_LENGTH	4
 
 #define ICQBITSHIFT_BLKCNT	0
@@ -374,7 +374,7 @@ start:
 		 TEGRA_AES_CMDQ_CTRL_DST_STM_SEL_FIELD |
 		 TEGRA_AES_CMDQ_CTRL_ICMDQEN_FIELD;
 	aes_writel(eng, value, TEGRA_AES_CMDQUE_CONTROL);
-	dev_dbg(dd->dev, "cmd_q_ctrl=0x%x", value);
+	dev_dbg(aes_dev->dev, "cmd_q_ctrl=0x%x", value);
 
 	value = (0x1 << TEGRA_AES_SECURE_INPUT_ALG_SEL_SHIFT) |
 		((eng->ctx->keylen * 8) <<
@@ -401,7 +401,7 @@ start:
 				<< TEGRA_AES_SECURE_CORE_SEL_SHIFT);
 	}
 
-	dev_dbg(dd->dev, "secure_in_sel=0x%x", value);
+	dev_dbg(aes_dev->dev, "secure_in_sel=0x%x", value);
 	aes_writel(eng, value, TEGRA_AES_SECURE_INPUT_SELECT);
 
 	aes_writel(eng, out_addr, TEGRA_AES_SECURE_DEST_ADDR);
@@ -420,13 +420,13 @@ start:
 		msecs_to_jiffies(150));
 	if (ret == 0) {
 		dev_err(aes_dev->dev, "engine%d timed out (0x%x)\n",
-			eng->res_id, aes_readl(eng, INTR_STATUS));
+			eng->res_id, aes_readl(eng, TEGRA_AES_INTR_STATUS));
 		disable_irq(eng->irq);
 		return -ETIMEDOUT;
 	}
 
 	disable_irq(eng->irq);
-	aes_writel(eng, cmdq[AES_HW_MA_ICQ_LENGTH - 1], TEGRA_AES_ICMDQUE_WR);
+	aes_writel(eng, cmdq[AES_HW_MAX_ICQ_LENGTH - 1], TEGRA_AES_ICMDQUE_WR);
 
 	if ((eng->status != 0) && (retries-- > 0)) {
 		qlen = 0;
@@ -471,7 +471,7 @@ static int aes_set_key(struct tegra_aes_engine *eng, int slot_num)
 {
 	struct tegra_aes_dev *dd = aes_dev;
 	u32 value, cmdq[2];
-	int i, eng_busy, icq_empty, dma_busy;
+	int eng_busy, icq_empty, dma_busy;
 
 	if (!eng) {
 		dev_err(dd->dev, "%s: context invalid\n", __func__);
@@ -525,9 +525,9 @@ static int aes_set_key(struct tegra_aes_engine *eng, int slot_num)
 
 		/* set iram access cfg bit 0 if address >128K */
 		if (dd->bsea.iram_phys > 0x00020000)
-			aes_writel(eng, BIT(0), IRAM_ACCESS_CFG);
+			aes_writel(eng, BIT(0), TEGRA_AES_IRAM_ACCESS_CFG);
 		else
-			aes_writel(eng, 0, IRAM_ACCESS_CFG);
+			aes_writel(eng, 0, TEGRA_AES_IRAM_ACCESS_CFG);
 
 		/* settable command to get key into internal registers */
 		value = CMD_SETTABLE << CMDQ_OPCODE_SHIFT  |
@@ -830,17 +830,17 @@ static void bsea_workqueue_handler(struct work_struct *work)
 static irqreturn_t aes_bsev_irq(int irq, void *dev_id)
 {
 	struct tegra_aes_dev *dd = (struct tegra_aes_dev *)dev_id;
-	u32 value = aes_readl(&dd->bsev, INTR_STATUS);
+	u32 value = aes_readl(&dd->bsev, TEGRA_AES_INTR_STATUS);
 
 	dev_dbg(dd->dev, "bsev irq_stat: 0x%x", value);
 	dd->bsev.status = 0;
-	if (value & INT_ERROR_MASK) {
-		aes_writel(&dd->bsev, INT_ERROR_MASK, INTR_STATUS);
-		dd->bsev.status = value & INT_ERROR_MASK;
+	if (value & TEGRA_AES_INT_ERROR_MASK) {
+		aes_writel(&dd->bsev, TEGRA_AES_INT_ERROR_MASK, TEGRA_AES_INTR_STATUS);
+		dd->bsev.status = value & TEGRA_AES_INT_ERROR_MASK;
 	}
 
-	value = aes_readl(&dd->bsev, INTR_STATUS);
-	if (!(value & ENGINE_BUSY_FIELD))
+	value = aes_readl(&dd->bsev, TEGRA_AES_INTR_STATUS);
+	if (!(value & TEGRA_AES_ENGINE_BUSY_FIELD))
 		complete(&dd->bsev.op_complete);
 
 	return IRQ_HANDLED;
@@ -849,17 +849,17 @@ static irqreturn_t aes_bsev_irq(int irq, void *dev_id)
 static irqreturn_t aes_bsea_irq(int irq, void *dev_id)
 {
 	struct tegra_aes_dev *dd = (struct tegra_aes_dev *)dev_id;
-	u32 value = aes_readl(&dd->bsea, INTR_STATUS);
+	u32 value = aes_readl(&dd->bsea, TEGRA_AES_INTR_STATUS);
 
 	dev_dbg(dd->dev, "bsea irq_stat: 0x%x", value);
 	dd->bsea.status = 0;
-	if (value & INT_ERROR_MASK) {
-		aes_writel(&dd->bsea, INT_ERROR_MASK, INTR_STATUS);
-		dd->bsea.status = value & INT_ERROR_MASK;
+	if (value & TEGRA_AES_INT_ERROR_MASK) {
+		aes_writel(&dd->bsea, TEGRA_AES_INT_ERROR_MASK, TEGRA_AES_INTR_STATUS);
+		dd->bsea.status = value & TEGRA_AES_INT_ERROR_MASK;
 	}
 
-	value = aes_readl(&dd->bsea, INTR_STATUS);
-	if (!(value & ENGINE_BUSY_FIELD))
+	value = aes_readl(&dd->bsea, TEGRA_AES_INTR_STATUS);
+	if (!(value & TEGRA_AES_ENGINE_BUSY_FIELD))
 		complete(&dd->bsea.op_complete);
 
 	return IRQ_HANDLED;
@@ -1155,7 +1155,7 @@ static int tegra_aes_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct tegra_aes_dev *dd;
-	struct resource *res[2];
+	struct resource *res;
 	int err = -ENOMEM, i = 0, j;
 
 	dd = devm_kzalloc(dev, sizeof(struct tegra_aes_dev), GFP_KERNEL);
