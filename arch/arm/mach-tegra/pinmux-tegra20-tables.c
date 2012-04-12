@@ -27,6 +27,7 @@
 #include <linux/init.h>
 #include <linux/string.h>
 #include <linux/syscore_ops.h>
+#include <linux/bug.h>
 
 #include <mach/iomap.h>
 #include <mach/pinmux.h>
