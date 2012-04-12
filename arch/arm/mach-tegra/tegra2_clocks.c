@@ -910,21 +910,6 @@ static struct clk_ops tegra_pll_ops = {
 	.set_rate		= tegra2_pll_clk_set_rate,
 };
 
-static void tegra2_pllx_clk_init(struct clk *c)
-{
-	tegra2_pll_clk_init(c);
-
-	if (tegra_sku_id == 7)
-		c->max_rate = 750000000;
-}
-
-static struct clk_ops tegra_pllx_ops = {
-	.init     = tegra2_pllx_clk_init,
-	.enable   = tegra2_pll_clk_enable,
-	.disable  = tegra2_pll_clk_disable,
-	.set_rate = tegra2_pll_clk_set_rate,
-};
-
 static int tegra2_plle_clk_enable(struct clk *c)
 {
 	u32 val;
@@ -1630,7 +1615,7 @@ static int tegra2_clk_shared_bus_update(struct clk *bus)
 	struct clk *c;
 	unsigned long old_rate;
 	unsigned long rate = bus->min_rate;
-	int sku_id = tegra_sku_id();
+	int sku_id = tegra_sku_id;
 
 	list_for_each_entry(c, &bus->shared_bus_list,
 			u.shared_bus_user.node) {
@@ -2725,7 +2710,7 @@ static void tegra2_init_sku_limits(void)
 {
 	int i, j;
 	struct clk *c;
-	int sku_id = tegra_sku_id();
+	int sku_id = tegra_sku_id;
 
 	for (i = 0; i < ARRAY_SIZE(sku_limits); i++) {
 		struct tegra_sku_rate_limit *limit = &sku_limits[i];
