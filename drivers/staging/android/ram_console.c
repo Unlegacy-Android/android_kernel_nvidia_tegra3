@@ -79,11 +79,12 @@ static struct platform_driver ram_console_driver = {
 	.driver		= {
 		.name	= "ram_console",
 	},
+	.probe = ram_console_probe,
 };
 
 static int __init ram_console_module_init(void)
 {
-	return platform_driver_probe(&ram_console_driver, ram_console_probe);
+	return platform_driver_register(&ram_console_driver);
 }
 
 #ifndef CONFIG_PRINTK
