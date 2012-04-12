@@ -30,11 +30,14 @@
 #include <linux/gpio.h>
 #include <linux/usb/otg.h>
 #include <linux/usb/ulpi.h>
+
 #include <asm/mach-types.h>
+
 #include <mach/gpio-tegra.h>
 #include <mach/usb_phy.h>
 #include <mach/iomap.h>
 #include <mach/pinmux.h>
+#include <mach/hardware.h>
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #include <mach/pinmux-tegra20.h>
 #endif
@@ -43,7 +46,6 @@
 #endif
 
 #include "fuse.h"
-
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define USB_USBCMD		0x140
@@ -1547,10 +1549,11 @@ static int utmi_phy_preresume(struct tegra_usb_phy *phy, bool remote_wakeup)
 static int utmi_phy_postresume(struct tegra_usb_phy *phy, bool is_dpd)
 {
 	unsigned long val;
+	void __iomem *base = phy->regs;
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 	unsigned  int inst = phy->instance;
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	val = readl(pmc_base + PMC_SLEEP_CFG);
 	/* if PMC is not disabled by now then disable it */
 	if (val & UTMIP_MASTER_ENABLE(inst)) {
@@ -1874,20 +1877,20 @@ static int ulpi_phy_power_off(struct tegra_usb_phy *phy, bool is_dpd)
 	int ret;
 
 	/* Disable VbusValid, SessEnd comparators */
-	ret = otg_io_write(phy->ulpi, 0x00, 0x0D);
+	ret = usb_phy_io_write(phy->ulpi, 0x00, 0x0D);
 	if (ret)
 		pr_err("%s: ulpi write 0x0D failed\n", __func__);
 
-	ret = otg_io_write(phy->ulpi, 0x00, 0x10);
+	ret = usb_phy_io_write(phy->ulpi, 0x00, 0x10);
 	if (ret)
 		pr_err("%s: ulpi write 0x10 failed\n", __func__);
 
 	/* Disable IdFloat comparator */
-	ret = otg_io_write(phy->ulpi, 0x00, 0x19);
+	ret = usb_phy_io_write(phy->ulpi, 0x00, 0x19);
 	if (ret)
 		pr_err("%s: ulpi write 0x19 failed\n", __func__);
 
-	ret = otg_io_write(phy->ulpi, 0x00, 0x1D);
+	ret = usb_phy_io_write(phy->ulpi, 0x00, 0x1D);
 	if (ret)
 		pr_err("%s: ulpi write 0x1D failed\n", __func__);
 
