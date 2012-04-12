@@ -125,12 +125,12 @@ int __init whistler_kbc_init(void)
 	pr_info("KBC: whistler_kbc_init\n");
 	for (i = 0; i < WHISTLER_ROW_COUNT; i++) {
 		data->pin_cfg[i].num = i;
-		data->pin_cfg[i].is_row = true;
-		data->pin_cfg[i].en = true;
+		data->pin_cfg[i].type = PIN_CFG_ROW;
 	}
+
 	for (i = 0; i < WHISTLER_COL_COUNT; i++) {
 		data->pin_cfg[i + KBC_PIN_GPIO_16].num = i;
-		data->pin_cfg[i + KBC_PIN_GPIO_16].en = true;
+		data->pin_cfg[i + KBC_PIN_GPIO_16].type = PIN_CFG_COL;
 	}
 
 	platform_device_register(&whistler_kbc_device);

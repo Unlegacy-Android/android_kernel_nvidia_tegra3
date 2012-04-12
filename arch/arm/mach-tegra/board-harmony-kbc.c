@@ -362,7 +362,7 @@ int __init harmony_kbc_init(void)
 	BUG_ON((KBC_MAX_ROW + KBC_MAX_COL) > KBC_MAX_GPIO);
 	for (i = 0; i < KBC_MAX_ROW; i++) {
 		data->pin_cfg[i].num = i;
-		data->pin_cfg[i].is_row = true;
+		data->pin_cfg[i].type = PIN_CFG_ROW;
 	}
 
 	for (i = 0; i < KBC_MAX_COL; i++)
