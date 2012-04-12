@@ -425,6 +425,7 @@ static struct platform_device *whistler_devices[] __initdata = {
 	&tegra_pcm_device,
 	&whistler_audio_device1,
 	&whistler_audio_device2,
+	&tegra_emc_device,
 };
 
 static struct synaptics_i2c_rmi_platform_data synaptics_pdata = {

@@ -65,6 +65,7 @@
 #include "fuse.h"
 #include "wakeups-t2.h"
 #include "pm.h"
+#include "tegra2_emc.h"
 
 static struct tegra_utmip_config utmi_phy_config[] = {
 	[0] = {
@@ -437,6 +438,7 @@ static struct platform_device *ventana_devices[] __initdata = {
 	&ventana_bcm4329_rfkill_device,
 	&tegra_pcm_device,
 	&ventana_audio_device,
+	&tegra_emc_device,
 };
 
 
