@@ -21,6 +21,7 @@
 #include <linux/kernel.h>
 #include <linux/io.h>
 #include <linux/err.h>
+#include <linux/bug.h>
 
 #include <mach/iomap.h>
 
@@ -75,7 +76,7 @@ void tegra_init_speedo_data(void)
 {
 	u32 reg, val;
 	int i, bit, rev;
-	int sku = tegra_sku_id();
+	int sku = tegra_sku_id;
 	void __iomem *apb_misc = IO_ADDRESS(TEGRA_APB_MISC_BASE);
 
 	reg = readl(apb_misc + CHIP_ID);
