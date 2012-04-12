@@ -42,6 +42,7 @@
 #include <linux/regmap.h>
 #include <linux/spi/spi.h>
 #include <linux/slab.h>
+
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -1470,15 +1471,16 @@ static int wm8753_resume(struct snd_soc_codec *codec)
 	int i;
 
 	/* Sync reg_cache with the hardware */
-	for (i = 1; i < ARRAY_SIZE(wm8753_reg); i++) {
+	for (i = 1; i < ARRAY_SIZE(wm8753_reg_defaults); i++) {
 		if (i == WM8753_RESET)
 			continue;
 
 		/* No point in writing hardware default values back */
-		if (reg_cache[i] == wm8753_reg[i])
+		if (reg_cache[i] == wm8753_reg_defaults[i].def)
 			continue;
 
-	regcache_sync(wm8753->regmap);
+		snd_soc_write(codec, i, reg_cache[i]);
+	}
 
 	wm8753_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
@@ -1728,7 +1730,6 @@ static __devinit int wm8753_i2c_probe(struct i2c_client *i2c,
 		return -ENOMEM;
 
 	i2c_set_clientdata(i2c, wm8753);
-	wm8753->control_type = SND_SOC_I2C;
 	wm8753->irq = i2c->irq;
 
 	wm8753->regmap = regmap_init_i2c(i2c, &wm8753_regmap);
