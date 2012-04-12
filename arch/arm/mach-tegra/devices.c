@@ -38,6 +38,21 @@
 #include "gpio-names.h"
 #include "devices.h"
 
+static struct resource emc_resource[] = {
+	[0] = {
+		.start	= TEGRA_EMC_BASE,
+		.end	= TEGRA_EMC_BASE + TEGRA_EMC_SIZE-1,
+		.flags	= IORESOURCE_MEM,
+	}
+};
+
+struct platform_device tegra_emc_device = {
+	.name		= "tegra-emc",
+	.id		= -1,
+	.resource	= emc_resource,
+	.num_resources	= ARRAY_SIZE(emc_resource),
+};
+
 static struct resource gpio_resource[] = {
 	[0] = {
 		.start	= TEGRA_GPIO_BASE,
