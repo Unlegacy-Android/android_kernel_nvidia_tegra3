@@ -109,7 +109,6 @@ static int is_g_cluster_available(unsigned int cpu)
 #endif
 }
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 static bool is_cpu_powered(unsigned int cpu)
 {
 	if (is_lp_cluster())
@@ -117,7 +116,6 @@ static bool is_cpu_powered(unsigned int cpu)
 	else
 		return tegra_powergate_is_powered(TEGRA_CPU_POWERGATE_ID(cpu));
 }
-#endif
 
 void __cpuinit platform_secondary_init(unsigned int cpu)
 {
