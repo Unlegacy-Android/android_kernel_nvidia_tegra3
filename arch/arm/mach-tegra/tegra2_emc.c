@@ -44,6 +44,8 @@ module_param(emc_enable, bool, 0644);
 
 static struct platform_device *emc_pdev;
 static void __iomem *emc_regbase;
+static const struct tegra_emc_table *tegra_emc_table;
+static int tegra_emc_table_size;
 
 static unsigned long tegra_emc_max_bus_rate;  /* 2 * 1000 * maximum emc_clock rate */
 static unsigned long tegra_emc_min_bus_rate;  /* 2 * 1000 * minimum emc_clock rate */
@@ -176,6 +178,7 @@ long tegra_emc_round_rate(unsigned long rate)
 	if (best < 0)
 		return -EINVAL;
 
+round_out:
 	pr_debug("%s: using %lu\n", __func__, pdata->tables[best].rate);
 
 	return pdata->tables[best].rate * 2 * 1000;
