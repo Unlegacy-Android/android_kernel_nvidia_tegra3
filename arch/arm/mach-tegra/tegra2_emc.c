@@ -456,4 +456,4 @@ static int __init tegra_emc_init(void)
 {
 	return platform_driver_register(&tegra_emc_driver);
 }
-device_initcall(tegra_emc_init);
+postcore_initcall(tegra_emc_init);
