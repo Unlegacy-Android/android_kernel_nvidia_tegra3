@@ -23,6 +23,7 @@
 #include "board-ventana.h"
 #include "tegra2_emc.h"
 #include "board.h"
+#include "devices.h"
 
 static const struct tegra_emc_table ventana_emc_tables_elpida_300Mhz[] = {
 	{
@@ -540,54 +541,52 @@ static const struct tegra_emc_table ventana_emc_tables_elpida_400Mhz[] = {
 	}
 };
 
-static const struct tegra_emc_chip ventana_emc_chips[] = {
-	{
-		.description = "Elpida 300MHz",
-		.mem_manufacturer_id = 0x0303,
-		.mem_revision_id1 = -1,
-		.mem_revision_id2 = -1,
-		.mem_pid = -1,
-		.table = ventana_emc_tables_elpida_300Mhz,
-		.table_size = ARRAY_SIZE(ventana_emc_tables_elpida_300Mhz)
-	},
+static const struct tegra_emc_pdata ventana_emc_chip = {
+	.description = "Elpida 300MHz",
+	.mem_manufacturer_id = 0x0303,
+	.mem_revision_id1 = -1,
+	.mem_revision_id2 = -1,
+	.mem_pid = -1,
+	.tables = ventana_emc_tables_elpida_300Mhz,
+	.num_tables = ARRAY_SIZE(ventana_emc_tables_elpida_300Mhz)
 };
 
-static const struct tegra_emc_chip ventana_t25_emc_chips[] = {
-	{
-		.description = "Elpida 400MHz",
-		.mem_manufacturer_id = 0x0303,
-		.mem_revision_id1 = -1,
-		.mem_revision_id2 = -1,
-		.mem_pid = -1,
-		.table = ventana_emc_tables_elpida_400Mhz,
-		.table_size = ARRAY_SIZE(ventana_emc_tables_elpida_400Mhz)
-	},
+static const struct tegra_emc_pdata ventana_t25_emc_chip = {
+	.description = "Elpida 400MHz",
+	.mem_manufacturer_id = 0x0303,
+	.mem_revision_id1 = -1,
+	.mem_revision_id2 = -1,
+	.mem_pid = -1,
+	.tables = ventana_emc_tables_elpida_400Mhz,
+	.num_tables = ARRAY_SIZE(ventana_emc_tables_elpida_400Mhz)
 };
 
-static const struct tegra_emc_chip ventana_siblings_emc_chips[] = {
+static const struct tegra_emc_pdata ventana_siblings_emc_chip = {
 };
 
 #define TEGRA25_SKU		0x0B00
-#define board_is_ventana(bi) (bi.board_id == 0x24b || bi.board_id == 0x252)
 
 int ventana_emc_init(void)
 {
 	struct board_info BoardInfo;
+	struct tegra_emc_pdata *emc_platdata;
 
 	tegra_get_board_info(&BoardInfo);
 
-	if (board_is_ventana(BoardInfo)) {
+	if (BoardInfo.board_id == 0x24b || BoardInfo.board_id == 0x252) {
 		if (BoardInfo.sku == TEGRA25_SKU)
-			tegra_init_emc(ventana_t25_emc_chips,
-				       ARRAY_SIZE(ventana_t25_emc_chips));
+			emc_platdata = &ventana_t25_emc_chip;
 		else
-			tegra_init_emc(ventana_emc_chips,
-				       ARRAY_SIZE(ventana_emc_chips));
+			emc_platdata = &ventana_emc_chip;
 	} else {
 		pr_info("ventana_emc_init: using ventana_siblings_emc_chips\n");
-		tegra_init_emc(ventana_siblings_emc_chips,
-			       ARRAY_SIZE(ventana_siblings_emc_chips));
+		emc_platdata = &ventana_siblings_emc_chip;
 	}
+
+	tegra_emc_device.dev.platform_data = emc_platdata;
+	platform_device_register(&tegra_emc_device);
+
+	tegra_emc_init();
 
 	return 0;
 }

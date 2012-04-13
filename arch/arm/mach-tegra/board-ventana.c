@@ -438,7 +438,6 @@ static struct platform_device *ventana_devices[] __initdata = {
 	&ventana_bcm4329_rfkill_device,
 	&tegra_pcm_device,
 	&ventana_audio_device,
-	&tegra_emc_device,
 };
 
 
@@ -578,6 +577,7 @@ static void __init tegra_ventana_init(void)
 	struct board_info BoardInfo;
 
 	tegra_clk_init_from_table(ventana_clk_init_table);
+	ventana_emc_init();
 	tegra_enable_pinmux();
 	ventana_pinmux_init();
 	ventana_i2c_init();
@@ -611,7 +611,6 @@ static void __init tegra_ventana_init(void)
 	ventana_panel_init();
 	ventana_sensors_init();
 	ventana_bt_rfkill();
-	ventana_emc_init();
 
 	ventana_setup_bluesleep();
 	tegra_release_bootloader_fb();
