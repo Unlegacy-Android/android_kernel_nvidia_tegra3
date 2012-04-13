@@ -24,6 +24,7 @@
 #include "tegra2_emc.h"
 #include "board.h"
 #include "fuse.h"
+#include "devices.h"
 
 static const struct tegra_emc_table whistler_emc_tables_elpida_300Mhz[] = {
 	{
@@ -592,28 +593,24 @@ static const struct tegra_emc_table whistler_emc_tables_elpida_380Mhz[] = {
 	}
 };
 
-static const struct tegra_emc_chip whistler_emc_chips[] = {
-	{
-		.description = "Elpida 300MHz",
-		.mem_manufacturer_id = 0x0303,
-		.mem_revision_id1 = -1,
-		.mem_revision_id2 = -1,
-		.mem_pid = -1,
-		.table = whistler_emc_tables_elpida_300Mhz,
-		.table_size = ARRAY_SIZE(whistler_emc_tables_elpida_300Mhz)
-	},
+static const struct tegra_emc_pdata whistler_emc_chip = {
+	.description = "Elpida 300MHz",
+	.mem_manufacturer_id = 0x0303,
+	.mem_revision_id1 = -1,
+	.mem_revision_id2 = -1,
+	.mem_pid = -1,
+	.tables = whistler_emc_tables_elpida_300Mhz,
+	.num_tables = ARRAY_SIZE(whistler_emc_tables_elpida_300Mhz)
 };
 
-static const struct tegra_emc_chip whistler_ap25_emc_chips[] = {
-	{
-		.description = "Elpida 380MHz",
-		.mem_manufacturer_id = 0x0303,
-		.mem_revision_id1 = -1,
-		.mem_revision_id2 = -1,
-		.mem_pid = -1,
-		.table = whistler_emc_tables_elpida_380Mhz,
-		.table_size = ARRAY_SIZE(whistler_emc_tables_elpida_380Mhz)
-	},
+static const struct tegra_emc_pdata whistler_ap25_emc_chip = {
+	.description = "Elpida 380MHz",
+	.mem_manufacturer_id = 0x0303,
+	.mem_revision_id1 = -1,
+	.mem_revision_id2 = -1,
+	.mem_pid = -1,
+	.tables = whistler_emc_tables_elpida_380Mhz,
+	.num_tables = ARRAY_SIZE(whistler_emc_tables_elpida_380Mhz)
 };
 
 #define TEGRA25_SKU 0x17
@@ -621,13 +618,17 @@ static const struct tegra_emc_chip whistler_ap25_emc_chips[] = {
 int __init whistler_emc_init(void)
 {
 	int sku_id = tegra_sku_id;
+	struct tegra_emc_pdata *emc_platdata;
 
 	if (sku_id == TEGRA25_SKU)
-		tegra_init_emc(whistler_ap25_emc_chips,
-				ARRAY_SIZE(whistler_ap25_emc_chips));
+		emc_platdata = &whistler_ap25_emc_chip;
 	else
-		tegra_init_emc(whistler_emc_chips,
-				ARRAY_SIZE(whistler_emc_chips));
+		emc_platdata = &whistler_emc_chip;
+
+	tegra_emc_device.dev.platform_data = emc_platdata;
+	platform_device_register(&tegra_emc_device);
+
+	tegra_emc_init();
 
 	return 0;
 }
