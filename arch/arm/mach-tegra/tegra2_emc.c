@@ -226,14 +226,15 @@ int tegra_emc_set_rate(unsigned long rate)
 	return 0;
 }
 
-void tegra_init_emc(const struct tegra_emc_chip *chips, int chips_size)
+static void tegra_emc_match_chip_data(struct platform_device *pdev)
 {
 	int i;
 	int vid;
 	int rev_id1;
 	int rev_id2;
 	int pid;
-	int chip_matched = -1;
+	struct tegra_emc_pdata *pchips = pdev->dev.platform_data;
+	int chips_size = pchips->num_tables;
 
 	vid = tegra_emc_read_mrr(5);
 	rev_id1 = tegra_emc_read_mrr(6);
@@ -241,44 +242,40 @@ void tegra_init_emc(const struct tegra_emc_chip *chips, int chips_size)
 	pid = tegra_emc_read_mrr(8);
 
 	for (i = 0; i < chips_size; i++) {
-		if (chips[i].mem_manufacturer_id >= 0) {
-			if (chips[i].mem_manufacturer_id != vid)
+		if (pchips[i].mem_manufacturer_id >= 0) {
+			if (pchips[i].mem_manufacturer_id != vid)
 				continue;
 		}
-		if (chips[i].mem_revision_id1 >= 0) {
-			if (chips[i].mem_revision_id1 != rev_id1)
+		if (pchips[i].mem_revision_id1 >= 0) {
+			if (pchips[i].mem_revision_id1 != rev_id1)
 				continue;
 		}
-		if (chips[i].mem_revision_id2 >= 0) {
-			if (chips[i].mem_revision_id2 != rev_id2)
+		if (pchips[i].mem_revision_id2 >= 0) {
+			if (pchips[i].mem_revision_id2 != rev_id2)
 				continue;
 		}
-		if (chips[i].mem_pid >= 0) {
-			if (chips[i].mem_pid != pid)
+		if (pchips[i].mem_pid >= 0) {
+			if (pchips[i].mem_pid != pid)
 				continue;
 		}
 
-		chip_matched = i;
-		break;
-	}
-
-	if (chip_matched >= 0) {
 		pr_info("%s: %s memory found\n", __func__,
-			chips[chip_matched].description);
-		tegra_emc_table = chips[chip_matched].table;
-		tegra_emc_table_size = chips[chip_matched].table_size;
+			pchips[i].description);
+		tegra_emc_table = pchips[i].tables;
+		tegra_emc_table_size = pchips[i].num_tables;
 
 		tegra_emc_min_bus_rate = tegra_emc_table[0].rate * 2 * 1000;
 		tegra_emc_max_bus_rate = tegra_emc_table[tegra_emc_table_size - 1].rate * 2 * 1000;
-
-	} else {
-		pr_err("%s: Memory not recognized, memory scaling disabled\n",
-			__func__);
-		pr_info("%s: Memory vid     = 0x%04x", __func__, vid);
-		pr_info("%s: Memory rev_id1 = 0x%04x", __func__, rev_id1);
-		pr_info("%s: Memory rev_id2 = 0x%04x", __func__, rev_id2);
-		pr_info("%s: Memory pid     = 0x%04x", __func__, pid);
+		goto out;
 	}
+
+	pr_err("%s: Memory not recognized, memory scaling disabled\n",
+		__func__);
+out:
+	pr_info("%s: Memory vid     = 0x%04x", __func__, vid);
+	pr_info("%s: Memory rev_id1 = 0x%04x", __func__, rev_id1);
+	pr_info("%s: Memory rev_id2 = 0x%04x", __func__, rev_id2);
+	pr_info("%s: Memory pid     = 0x%04x", __func__, pid);
 }
 
 #ifdef CONFIG_OF
@@ -425,6 +422,9 @@ static int __devinit tegra_emc_probe(struct platform_device *pdev)
 
 	pdata = pdev->dev.platform_data;
 
+	if (pdata)
+		tegra_emc_match_chip_data(pdev);
+
 	if (!pdata)
 		pdata = tegra_emc_dt_parse_pdata(pdev);
 
@@ -452,8 +452,7 @@ static struct platform_driver tegra_emc_driver = {
 	.probe          = tegra_emc_probe,
 };
 
-static int __init tegra_emc_init(void)
+int __init tegra_emc_init(void)
 {
 	return platform_driver_register(&tegra_emc_driver);
 }
-postcore_initcall(tegra_emc_init);
