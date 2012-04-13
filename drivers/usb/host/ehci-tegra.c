@@ -568,7 +568,6 @@ static int tegra_usb_suspend(struct usb_hcd *hcd, bool is_dpd)
 static int tegra_usb_resume(struct usb_hcd *hcd, bool is_dpd)
 {
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
-	struct usb_device *udev = hcd->self.root_hub;
 	struct ehci_hcd	*ehci = hcd_to_ehci(hcd);
 	struct ehci_regs __iomem *hw = ehci->regs;
 	unsigned long val;
@@ -1272,10 +1271,8 @@ fail:
 fail_phy:
 	iounmap(hcd->regs);
 fail_io:
-	clk_disable(tegra->emc_clk);
 	clk_put(tegra->emc_clk);
 fail_emc_clk:
-	clk_disable(tegra->sclk_clk);
 	clk_put(tegra->sclk_clk);
 fail_sclk_clk:
 	clk_disable(tegra->clk);
