@@ -53,7 +53,7 @@ endif
 
 ifneq ($(CONFIG_BCMDHD_CFG80211),)
 bcmdhd-objs += wl_cfg80211.o wl_cfgp2p.o wl_linux_mon.o dhd_cfg80211.o
-DHDCFLAGS += -DWL_CFG80211
+DHDCFLAGS += -DWL_CFG80211 -DWL_CFG80211_STA_EVENT -DWL_ENABLE_P2P_IF
 endif
 
 EXTRA_CFLAGS = $(DHDCFLAGS)
