@@ -15,7 +15,7 @@
 #include <linux/percpu.h>
 #include <linux/slab.h>
 #include <linux/syscore_ops.h>
-#include <asm/cpu_pm.h>
+#include <linux/cpu_pm.h>
 #include <asm/fiq.h>
 #include <asm/fiq_glue.h>
 
