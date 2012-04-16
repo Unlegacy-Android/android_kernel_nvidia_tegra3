@@ -569,6 +569,12 @@ static ssize_t trace_info_show(struct kobject *kobj,
 		datalen = -1;
 	}
 
+	etm_unlock(&tracer);
+	etm_ctrl = etm_readl(&tracer, ETMR_CTRL);
+	etm_st = etm_readl(&tracer, ETMR_STATUS);
+	etm_lock(&tracer);
+	mutex_unlock(&tracer.mutex);
+
 	ret = sprintf(buf, "Trace buffer len: %d\nComparator pairs: %d\n"
 			"ETBR_WRITEADDR:\t%08x\n"
 			"ETBR_READADDR:\t%08x\n"
@@ -737,7 +743,6 @@ static int __devinit etm_probe(struct amba_device *dev, const struct amba_id *id
 
 	amba_set_drvdata(dev, t->etm_regs[t->etm_regs_count]);
 
-	mutex_init(&t->mutex);
 	t->dev = &dev->dev;
 	t->flags = TRACER_CYCLE_ACC | TRACER_TRACE_DATA;
 	t->etm_portsz = 1;
