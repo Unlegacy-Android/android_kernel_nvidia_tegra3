@@ -43,6 +43,7 @@
 #include <linux/init.h>
 #include <linux/fs.h>
 #include <linux/proc_fs.h>
+#include <linux/smp_lock.h>
 #include <linux/pagemap.h>
 #include <linux/mtd/mtd.h>
 #include <linux/interrupt.h>
@@ -1272,7 +1273,7 @@ static int yaffs_writepage(struct page *page, struct writeback_control *wbc)
 	return (n_written == n_bytes) ? 0 : -ENOSPC;
 }
 
-/* Space holding and freeing is done to ensure we have space available for 
+/* Space holding and freeing is done to ensure we have space available for
  * write_begin/end.
  * For now we just assume few parallel writes and check against a small
  * number.
@@ -1603,7 +1604,7 @@ static int yaffs_do_sync_fs(struct super_block *sb, int request_checkpoint)
  * yaffs_bg_start() launches the background thread.
  * yaffs_bg_stop() cleans up the background thread.
  *
- * NB: 
+ * NB:
  * The thread should only run after the yaffs is initialised
  * The thread should be stopped before yaffs is unmounted.
  * The thread should not do any writing while the fs is in read only.
@@ -2261,7 +2262,7 @@ static struct super_block *yaffs_internal_read_super(int yaffs_version,
 		param->read_chunk_tags_fn = nandmtd2_read_chunk_tags;
 		param->bad_block_fn = nandmtd2_mark_block_bad;
 		param->query_block_fn = nandmtd2_query_block;
-		yaffs_dev_to_lc(dev)->spare_buffer = 
+		yaffs_dev_to_lc(dev)->spare_buffer =
 		                kmalloc(mtd->oobsize, GFP_NOFS);
 		param->is_yaffs2 = 1;
 		param->total_bytes_per_chunk = mtd->writesize;
@@ -2374,19 +2375,19 @@ static int yaffs_internal_read_super_mtd(struct super_block *sb, void *data,
 	return yaffs_internal_read_super(1, sb, data, silent) ? 0 : -EINVAL;
 }
 
-static struct dentry *yaffs_read_super(struct file_system_type *fs,
+static int yaffs_read_super(struct file_system_type *fs,
 			    int flags, const char *dev_name,
-			    void *data)
+			    void *data, struct vfsmount *mnt)
 {
 
-	return mount_bdev(fs, flags, dev_name, data,
-			   yaffs_internal_read_super_mtd);
+	return get_sb_bdev(fs, flags, dev_name, data,
+			   yaffs_internal_read_super_mtd, mnt);
 }
 
 static struct file_system_type yaffs_fs_type = {
 	.owner = THIS_MODULE,
 	.name = "yaffs",
-	.mount = yaffs_read_super,
+	.get_sb = yaffs_read_super,
 	.kill_sb = kill_block_super,
 	.fs_flags = FS_REQUIRES_DEV,
 };
@@ -2399,17 +2400,18 @@ static int yaffs2_internal_read_super_mtd(struct super_block *sb, void *data,
 	return yaffs_internal_read_super(2, sb, data, silent) ? 0 : -EINVAL;
 }
 
-static struct dentry *yaffs2_read_super(struct file_system_type *fs,
-			     int flags, const char *dev_name, void *data)
+static int yaffs2_read_super(struct file_system_type *fs,
+			     int flags, const char *dev_name, void *data,
+			     struct vfsmount *mnt)
 {
-	return mount_bdev(fs, flags, dev_name, data,
-			   yaffs2_internal_read_super_mtd);
+	return get_sb_bdev(fs, flags, dev_name, data,
+			   yaffs2_internal_read_super_mtd, mnt);
 }
 
 static struct file_system_type yaffs2_fs_type = {
 	.owner = THIS_MODULE,
 	.name = "yaffs2",
-	.mount = yaffs2_read_super,
+	.get_sb = yaffs2_read_super,
 	.kill_sb = kill_block_super,
 	.fs_flags = FS_REQUIRES_DEV,
 };
@@ -2560,7 +2562,7 @@ static struct {
 	char *mask_name;
 	unsigned mask_bitfield;
 } mask_flags[] = {
-	{"allocate", YAFFS_TRACE_ALLOCATE}, 
+	{"allocate", YAFFS_TRACE_ALLOCATE},
 	{"always", YAFFS_TRACE_ALWAYS},
 	{"background", YAFFS_TRACE_BACKGROUND},
 	{"bad_blocks", YAFFS_TRACE_BAD_BLOCKS},
