@@ -9,7 +9,6 @@ struct cache_detail;
 struct sunrpc_net {
 	struct proc_dir_entry *proc_net_rpc;
 	struct cache_detail *ip_map_cache;
-	struct cache_detail *unix_gid_cache;
 	struct cache_detail *rsc_cache;
 	struct cache_detail *rsi_cache;
 

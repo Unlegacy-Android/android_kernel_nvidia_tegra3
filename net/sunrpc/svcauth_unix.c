@@ -436,6 +436,7 @@ struct unix_gid {
 	uid_t			uid;
 	struct group_info	*gi;
 };
+static struct cache_head	*gid_table[GID_HASHMAX];
 
 static void unix_gid_put(struct kref *kref)
 {
@@ -493,7 +494,8 @@ static int unix_gid_upcall(struct cache_detail *cd, struct cache_head *h)
 	return sunrpc_cache_pipe_upcall(cd, h, unix_gid_request);
 }
 
-static struct unix_gid *unix_gid_lookup(struct cache_detail *cd, uid_t uid);
+static struct unix_gid *unix_gid_lookup(uid_t uid);
+extern struct cache_detail unix_gid_cache;
 
 static int unix_gid_parse(struct cache_detail *cd,
 			char *mesg, int mlen)
@@ -537,19 +539,19 @@ static int unix_gid_parse(struct cache_detail *cd,
 		GROUP_AT(ug.gi, i) = gid;
 	}
 
-	ugp = unix_gid_lookup(cd, uid);
+	ugp = unix_gid_lookup(uid);
 	if (ugp) {
 		struct cache_head *ch;
 		ug.h.flags = 0;
 		ug.h.expiry_time = expiry;
-		ch = sunrpc_cache_update(cd,
+		ch = sunrpc_cache_update(&unix_gid_cache,
 					 &ug.h, &ugp->h,
 					 hash_long(uid, GID_HASHBITS));
 		if (!ch)
 			err = -ENOMEM;
 		else {
 			err = 0;
-			cache_put(ch, cd);
+			cache_put(ch, &unix_gid_cache);
 		}
 	} else
 		err = -ENOMEM;
@@ -585,9 +587,10 @@ static int unix_gid_show(struct seq_file *m,
 	return 0;
 }
 
-static struct cache_detail unix_gid_cache_template = {
+struct cache_detail unix_gid_cache = {
 	.owner		= THIS_MODULE,
 	.hash_size	= GID_HASHMAX,
+	.hash_table	= gid_table,
 	.name		= "auth.unix.gid",
 	.cache_put	= unix_gid_put,
 	.cache_upcall	= unix_gid_upcall,
@@ -599,42 +602,14 @@ static struct cache_detail unix_gid_cache_template = {
 	.alloc		= unix_gid_alloc,
 };
 
-int unix_gid_cache_create(struct net *net)
-{
-	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-	struct cache_detail *cd;
-	int err;
-
-	cd = cache_create_net(&unix_gid_cache_template, net);
-	if (IS_ERR(cd))
-		return PTR_ERR(cd);
-	err = cache_register_net(cd, net);
-	if (err) {
-		cache_destroy_net(cd, net);
-		return err;
-	}
-	sn->unix_gid_cache = cd;
-	return 0;
-}
-
-void unix_gid_cache_destroy(struct net *net)
-{
-	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-	struct cache_detail *cd = sn->unix_gid_cache;
-
-	sn->unix_gid_cache = NULL;
-	cache_purge(cd);
-	cache_unregister_net(cd, net);
-	cache_destroy_net(cd, net);
-}
-
-static struct unix_gid *unix_gid_lookup(struct cache_detail *cd, uid_t uid)
+static struct unix_gid *unix_gid_lookup(uid_t uid)
 {
 	struct unix_gid ug;
 	struct cache_head *ch;
 
 	ug.uid = uid;
-	ch = sunrpc_cache_lookup(cd, &ug.h, hash_long(uid, GID_HASHBITS));
+	ch = sunrpc_cache_lookup(&unix_gid_cache, &ug.h,
+				 hash_long(uid, GID_HASHBITS));
 	if (ch)
 		return container_of(ch, struct unix_gid, h);
 	else
@@ -646,13 +621,11 @@ static struct group_info *unix_gid_find(uid_t uid, struct svc_rqst *rqstp)
 	struct unix_gid *ug;
 	struct group_info *gi;
 	int ret;
-	struct sunrpc_net *sn = net_generic(rqstp->rq_xprt->xpt_net,
-					    sunrpc_net_id);
 
-	ug = unix_gid_lookup(sn->unix_gid_cache, uid);
+	ug = unix_gid_lookup(uid);
 	if (!ug)
 		return ERR_PTR(-EAGAIN);
-	ret = cache_check(sn->unix_gid_cache, &ug->h, &rqstp->rq_chandle);
+	ret = cache_check(&unix_gid_cache, &ug->h, &rqstp->rq_chandle);
 	switch (ret) {
 	case -ENOENT:
 		return ERR_PTR(-ENOENT);
@@ -660,7 +633,7 @@ static struct group_info *unix_gid_find(uid_t uid, struct svc_rqst *rqstp)
 		return ERR_PTR(-ESHUTDOWN);
 	case 0:
 		gi = get_group_info(ug->gi);
-		cache_put(&ug->h, sn->unix_gid_cache);
+		cache_put(&ug->h, &unix_gid_cache);
 		return gi;
 	default:
 		return ERR_PTR(-EAGAIN);
