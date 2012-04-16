@@ -1329,10 +1329,8 @@ int hci_add_link_key(struct hci_dev *hdev, struct hci_conn *conn, int new_key,
 
 	mgmt_new_link_key(hdev, key, persistent);
 
-	if (!persistent) {
-		list_del(&key->list);
-		kfree(key);
-	}
+	if (conn)
+		conn->flush_key = !persistent;
 
 	return 0;
 }

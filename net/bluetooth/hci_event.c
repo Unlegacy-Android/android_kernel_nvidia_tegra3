@@ -1912,6 +1912,8 @@ static inline void hci_disconn_complete_evt(struct hci_dev *hdev, struct sk_buff
 	}
 
 	if (ev->status == 0) {
+		if (conn->type == ACL_LINK && conn->flush_key)
+			hci_remove_link_key(hdev, &conn->dst);
 		hci_proto_disconn_cfm(conn, ev->reason);
 		hci_conn_del(conn);
 	}
