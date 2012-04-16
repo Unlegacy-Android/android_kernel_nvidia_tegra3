@@ -108,6 +108,15 @@ static int trace_start_etm(struct tracectx *t, int id)
 	u32 v;
 	unsigned long timeout = TRACER_TIMEOUT;
 
+	etb_unlock(t);
+
+	etb_writel(t, 0, ETBR_WRITEADDR);
+	etb_writel(t, 0, ETBR_FORMATTERCTRL);
+	etb_writel(t, 1, ETBR_CTRL);
+
+	etb_lock(t);
+
+	/* configure etm */
 	v = ETMCTRL_OPTS | ETMCTRL_PROGRAM | ETMCTRL_PORTSIZE(t->etm_portsz);
 
 	if (t->flags & TRACER_CYCLE_ACC)
