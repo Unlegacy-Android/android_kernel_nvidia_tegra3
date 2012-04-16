@@ -373,7 +373,21 @@ static struct hlist_head *css_set_hash(struct cgroup_subsys_state *css[])
 	return &css_set_table[index];
 }
 
-static void free_css_set_work(struct work_struct *work)
+/* We don't maintain the lists running through each css_set to its
+ * task until after the first call to cgroup_iter_start(). This
+ * reduces the fork()/exit() overhead for people who have cgroups
+ * compiled into their kernel but not actually in use */
+static int use_task_css_set_links __read_mostly;
+
+/*
+ * refcounted get/put for css_set objects
+ */
+static inline void get_css_set(struct css_set *cg)
+{
+	atomic_inc(&cg->refcount);
+}
+
+static void put_css_set(struct css_set *cg)
 {
 	struct css_set *cg = container_of(work, struct css_set, work);
 	struct cg_cgroup_link *link;
@@ -385,10 +399,8 @@ static void free_css_set_work(struct work_struct *work)
 		struct cgroup *cgrp = link->cgrp;
 		list_del(&link->cg_link_list);
 		list_del(&link->cgrp_link_list);
-		if (atomic_dec_and_test(&cgrp->count)) {
+		if (atomic_dec_and_test(&cgrp->count))
 			check_for_release(cgrp);
-			cgroup_wakeup_rmdir_waiter(cgrp);
-		}
 		kfree(link);
 	}
 	write_unlock(&css_set_lock);
@@ -409,36 +421,6 @@ static void free_css_set_rcu(struct rcu_head *obj)
  * reduces the fork()/exit() overhead for people who have cgroups
  * compiled into their kernel but not actually in use */
 static int use_task_css_set_links __read_mostly;
-
-/*
- * refcounted get/put for css_set objects
- */
-static inline void get_css_set(struct css_set *cg)
-{
-	atomic_inc(&cg->refcount);
-}
-
-static void put_css_set(struct css_set *cg)
-{
-	/*
-	 * Ensure that the refcount doesn't hit zero while any readers
-	 * can see it. Similar to atomic_dec_and_lock(), but for an
-	 * rwlock
-	 */
-	if (atomic_add_unless(&cg->refcount, -1, 1))
-		return;
-	write_lock(&css_set_lock);
-	if (!atomic_dec_and_test(&cg->refcount)) {
-		write_unlock(&css_set_lock);
-		return;
-	}
-
-	hlist_del(&cg->hlist);
-	css_set_count--;
-
-	write_unlock(&css_set_lock);
-	call_rcu(&cg->rcu_head, free_css_set_rcu);
-}
 
 /*
  * compare_css_sets - helper function for find_existing_css_set().
@@ -1933,7 +1915,9 @@ int cgroup_attach_task(struct cgroup *cgrp, struct task_struct *tsk)
 		if (ss->attach)
 			ss->attach(cgrp, &tset);
 	}
+
 	set_bit(CGRP_RELEASABLE, &cgrp->flags);
+	synchronize_rcu();
 
 	/*
 	 * wake up rmdir() waiter. the rmdir should fail since the cgroup
