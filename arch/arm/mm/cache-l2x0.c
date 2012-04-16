@@ -363,9 +363,7 @@ static void l2x0_unlock(u32 cache_id)
 void l2x0_init(void __iomem *base, u32 aux_val, u32 aux_mask)
 {
 	u32 aux;
-	u32 cache_id;
 	u32 way_size = 0;
-	int ways;
 	const char *type;
 
 	l2x0_base = base;
@@ -435,8 +433,8 @@ void l2x0_init(void __iomem *base, u32 aux_val, u32 aux_mask)
 	outer_cache.disable = l2x0_disable;
 	outer_cache.set_debug = l2x0_set_debug;
 
-	pr_info_once("%s cache controller enabled\n", type);
-	pr_info_once("l2x0: %d ways, CACHE_ID 0x%08x, AUX_CTRL 0x%08x, Cache size: %d B\n",
+	printk(KERN_INFO "%s cache controller enabled\n", type);
+	printk(KERN_INFO "l2x0: %d ways, CACHE_ID 0x%08x, AUX_CTRL 0x%08x, Cache size: %d B\n",
 			l2x0_ways, l2x0_cache_id, aux, l2x0_size);
 }
 
