@@ -492,7 +492,6 @@ extern int dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifindex, wl_ioctl_t *ioc, void *
 extern int dhd_wl_ioctl_cmd(dhd_pub_t *dhd_pub, int cmd, void *arg, int len, uint8 set,
                             int ifindex);
 
-extern void dhd_common_deinit(dhd_pub_t *dhd_pub, dhd_cmn_t *sa_cmn);
 extern void dhd_common_init(osl_t *osh);
 
 extern int dhd_do_driver_init(struct net_device *net);
