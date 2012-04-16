@@ -43,12 +43,8 @@ struct tracectx {
 	unsigned long	flags;
 	int		ncmppairs;
 	int		etm_portsz;
-	u32		etb_fc;
 	unsigned long	range_start;
 	unsigned long	range_end;
-	unsigned long	data_range_start;
-	unsigned long	data_range_end;
-	bool		dump_initial_etb;
 	struct device	*dev;
 	struct clk	*emu_clk;
 	struct mutex	mutex;
@@ -138,25 +134,14 @@ static int trace_start_etm(struct tracectx *t, int id)
 	}
 
 	if (t->range_start || t->range_end)
-		etm_setup_address_range(t, id, 1,
+		etm_setup_address_range(t, 1,
 					t->range_start, t->range_end, 0, 0);
 	else
-		etm_writel(t, id, ETMTE_INCLEXCL, ETMR_TRACEENCTRL);
+		etm_writel(t, ETMTE_INCLEXCL, ETMR_TRACEENCTRL);
 
-	etm_writel(t, id, 0, ETMR_TRACEENCTRL2);
-	etm_writel(t, id, 0, ETMR_TRACESSCTRL);
-	etm_writel(t, id, 0x6f, ETMR_TRACEENEVT);
-
-	etm_writel(t, id, 0, ETMR_VIEWDATACTRL1);
-	etm_writel(t, id, 0, ETMR_VIEWDATACTRL2);
-
-	if (t->data_range_start || t->data_range_end)
-		etm_setup_address_range(t, id, 2, t->data_range_start,
-					t->data_range_end, 0, 1);
-	else
-		etm_writel(t, id, ETMVDC3_EXCLONLY, ETMR_VIEWDATACTRL3);
-
-	etm_writel(t, id, 0x6f, ETMR_VIEWDATAEVT);
+	etm_writel(t, 0, ETMR_TRACEENCTRL2);
+	etm_writel(t, 0, ETMR_TRACESSCTRL);
+	etm_writel(t, 0x6f, ETMR_TRACEENEVT);
 
 	v &= ~ETMCTRL_PROGRAM;
 	v |= ETMCTRL_PORTSEL;
@@ -665,48 +650,6 @@ static ssize_t trace_range_store(struct kobject *kobj,
 static struct kobj_attribute trace_range_attr =
 	__ATTR(trace_range, 0644, trace_range_show, trace_range_store);
 
-static ssize_t trace_data_range_show(struct kobject *kobj,
-				  struct kobj_attribute *attr,
-				  char *buf)
-{
-	unsigned long range_start;
-	u64 range_end;
-	mutex_lock(&tracer.mutex);
-	range_start = tracer.data_range_start;
-	range_end = tracer.data_range_end;
-	if (!range_end && (tracer.flags & TRACER_TRACE_DATA))
-		range_end = 0x100000000ULL;
-	mutex_unlock(&tracer.mutex);
-	return sprintf(buf, "%08lx %08llx\n", range_start, range_end);
-}
-
-static ssize_t trace_data_range_store(struct kobject *kobj,
-				   struct kobj_attribute *attr,
-				   const char *buf, size_t n)
-{
-	unsigned long range_start;
-	u64 range_end;
-
-	if (sscanf(buf, "%lx %llx", &range_start, &range_end) != 2)
-		return -EINVAL;
-
-	mutex_lock(&tracer.mutex);
-	tracer.data_range_start = range_start;
-	tracer.data_range_end = (unsigned long)range_end;
-	if (range_end)
-		tracer.flags |= TRACER_TRACE_DATA;
-	else
-		tracer.flags &= ~TRACER_TRACE_DATA;
-	mutex_unlock(&tracer.mutex);
-
-	return n;
-}
-
-
-static struct kobj_attribute trace_data_range_attr =
-	__ATTR(trace_data_range, 0644,
-		trace_data_range_show, trace_data_range_store);
-
 static int __devinit etm_probe(struct amba_device *dev, const struct amba_id *id)
 {
 	struct tracectx *t = &tracer;
@@ -770,18 +713,7 @@ static int __devinit etm_probe(struct amba_device *dev, const struct amba_id *id
 	if (ret)
 		dev_dbg(&dev->dev, "Failed to create trace_range in sysfs\n");
 
-	ret = sysfs_create_file(&dev->dev.kobj, &trace_data_range_attr.attr);
-	if (ret)
-		dev_dbg(&dev->dev,
-			"Failed to create trace_data_range in sysfs\n");
-
-	dev_dbg(&dev->dev, "ETM AMBA driver initialized.\n");
-
-	/* Enable formatter if there are multiple trace sources */
-	if (new_count > 1)
-		t->etb_fc = ETBFF_ENFCONT | ETBFF_ENFTC;
-
-	t->etm_regs_count = new_count;
+	dev_dbg(t->dev, "ETM AMBA driver initialized.\n");
 
 out:
 	mutex_unlock(&t->mutex);
@@ -827,6 +759,11 @@ static int etm_remove(struct amba_device *dev)
 
 	iounmap(etm_regs);
 	amba_release_regions(dev);
+
+	sysfs_remove_file(&dev->dev.kobj, &trace_running_attr.attr);
+	sysfs_remove_file(&dev->dev.kobj, &trace_info_attr.attr);
+	sysfs_remove_file(&dev->dev.kobj, &trace_mode_attr.attr);
+	sysfs_remove_file(&dev->dev.kobj, &trace_range_attr.attr);
 
 	return 0;
 }
