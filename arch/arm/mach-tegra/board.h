@@ -81,8 +81,6 @@ void __init tegra_init_irq(void);
 void __init tegra_dt_init_irq(void);
 void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	unsigned long fb2_size);
-void __init tegra_ram_console_debug_reserve(unsigned long ram_console_size);
-void __init tegra_ram_console_debug_init(void);
 void __init tegra_release_bootloader_fb(void);
 void __init tegra_protected_aperture_init(unsigned long aperture);
 int  __init tegra_init_board_info(void);
@@ -91,6 +89,16 @@ void tegra_move_framebuffer(unsigned long to, unsigned long from,
 bool is_tegra_debug_uartport_hs(void);
 int get_tegra_uart_debug_port_id(void);
 int arb_lost_recovery(int scl_gpio, int sda_gpio);
+
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+void __init tegra_ram_console_debug_reserve(unsigned long ram_console_size);
+void __init tegra_ram_console_debug_init(void);
+#else
+static inline void __init tegra_ram_console_debug_reserve(unsigned long ram_console_size)
+{}
+static inline void __init tegra_ram_console_debug_init(void)
+{}
+#endif
 
 extern unsigned long tegra_bootloader_fb_start;
 extern unsigned long tegra_bootloader_fb_size;

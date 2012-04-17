@@ -1469,7 +1469,6 @@ static void __init tegra_cardhu_init(void)
 	cardhu_sensors_init();
 	cardhu_setup_bluesleep();
 	cardhu_sata_init();
-	//audio_wired_jack_init();
 	cardhu_pins_state_init();
 	cardhu_emc_init();
 	tegra_release_bootloader_fb();
@@ -1496,7 +1495,6 @@ static void __init tegra_cardhu_reserve(void)
 #else
 	tegra_reserve(SZ_128M, SZ_8M, SZ_8M);
 #endif
-	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
 static const char *cardhu_dt_board_compat[] = {

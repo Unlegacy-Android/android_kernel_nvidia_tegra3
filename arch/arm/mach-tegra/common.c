@@ -31,6 +31,7 @@
 #include <linux/sched.h>
 #include <linux/cpufreq.h>
 #include <linux/of.h>
+#include <linux/persistent_ram.h>
 
 #include <asm/soc.h>
 #include <asm/hardware/cache-l2x0.h>
@@ -606,6 +607,7 @@ void __init tegra20_init_early(void)
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
 	tegra_gpio_resume_init();
+	tegra_ram_console_debug_reserve(SZ_1M);
 }
 #endif
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
@@ -629,6 +631,7 @@ void __init tegra30_init_early(void)
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
 	tegra_gpio_resume_init();
+	tegra_ram_console_debug_reserve(SZ_1M);
 }
 #endif
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
@@ -1179,6 +1182,36 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	}
 }
 
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+static struct persistent_ram_descriptor desc = {
+	.name = "ram_console",
+};
+
+static struct persistent_ram ram = {
+	.descs = &desc,
+	.num_descs = 1,
+};
+
+void __init tegra_ram_console_debug_reserve(unsigned long ram_console_size)
+{
+	int ret;
+
+	ram.start = memblock_end_of_DRAM() - ram_console_size;
+	ram.size = ram_console_size;
+	ram.descs->size = ram_console_size;
+
+	INIT_LIST_HEAD(&ram.node);
+
+	ret = persistent_ram_early_init(&ram);
+	if (ret)
+		goto fail;
+
+	return;
+
+fail:
+	pr_err("Failed to reserve memory block for ram console\n");
+}
+
 static struct resource ram_console_resources[] = {
 	{
 		.flags = IORESOURCE_MEM,
@@ -1192,28 +1225,6 @@ static struct platform_device ram_console_device = {
 	.resource	= ram_console_resources,
 };
 
-void __init tegra_ram_console_debug_reserve(unsigned long ram_console_size)
-{
-	struct resource *res;
-	long ret;
-
-	res = platform_get_resource(&ram_console_device, IORESOURCE_MEM, 0);
-	if (!res)
-		goto fail;
-	res->start = memblock_end_of_DRAM() - ram_console_size;
-	res->end = res->start + ram_console_size - 1;
-	ret = memblock_remove(res->start, ram_console_size);
-	if (ret)
-		goto fail;
-
-	return;
-
-fail:
-	ram_console_device.resource = NULL;
-	ram_console_device.num_resources = 0;
-	pr_err("Failed to reserve memory block for ram console\n");
-}
-
 void __init tegra_ram_console_debug_init(void)
 {
 	int err;
@@ -1223,6 +1234,7 @@ void __init tegra_ram_console_debug_init(void)
 		pr_err("%s: ram console registration failed (%d)!\n",
 			__func__, err);
 }
+#endif
 
 void __init tegra_release_bootloader_fb(void)
 {
