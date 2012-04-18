@@ -2,7 +2,7 @@
  * EHCI-compliant USB host controller driver for NVIDIA Tegra SoCs
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2009 - 2011 NVIDIA Corporation
+ * Copyright (C) 2009 - 2012 NVIDIA Corporation
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1305,8 +1305,9 @@ fail_hcd:
 }
 
 #ifdef CONFIG_PM
-static int tegra_ehci_resume(struct platform_device *pdev)
+static int tegra_ehci_resume_noirq(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
 	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
 	int ret;
@@ -1327,8 +1328,9 @@ static int tegra_ehci_resume(struct platform_device *pdev)
 	return ret;
 }
 
-static int tegra_ehci_suspend(struct platform_device *pdev, pm_message_t state)
+static int tegra_ehci_suspend_noirq(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
 	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
 	int ret;
@@ -1366,6 +1368,12 @@ static int tegra_ehci_suspend(struct platform_device *pdev, pm_message_t state)
 	mutex_unlock(&tegra->tegra_ehci_hcd_mutex);
 	return ret;
 }
+
+static struct dev_pm_ops tegra_ehci_dev_pm_ops = {
+	.suspend_noirq = tegra_ehci_suspend_noirq,
+	.resume_noirq = tegra_ehci_resume_noirq,
+};
+
 #endif
 
 static int tegra_ehci_remove(struct platform_device *pdev)
@@ -1430,13 +1438,12 @@ static struct of_device_id tegra_ehci_of_match[] __devinitdata = {
 static struct platform_driver tegra_ehci_driver = {
 	.probe		= tegra_ehci_probe,
 	.remove		= tegra_ehci_remove,
-#ifdef CONFIG_PM
-	.suspend	= tegra_ehci_suspend,
-	.resume		= tegra_ehci_resume,
-#endif
 	.shutdown	= tegra_ehci_hcd_shutdown,
 	.driver		= {
 		.name	= "tegra-ehci",
 		.of_match_table = tegra_ehci_of_match,
+#ifdef CONFIG_PM
+		.pm	= &tegra_ehci_dev_pm_ops,
+#endif
 	}
 };
