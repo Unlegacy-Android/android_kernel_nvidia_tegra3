@@ -576,7 +576,7 @@ static int acm_port_activate(struct tty_port *port, struct tty_struct *tty)
 	acm->control->needs_remote_wakeup = 0;
 
 	if (acm_submit_read_urbs(acm, GFP_KERNEL))
-		goto bail_out;
+		goto error_submit_urb;
 
 	acm->ctrlurb->dev = acm->dev;
 	if (usb_submit_urb(acm->ctrlurb, GFP_KERNEL)) {
