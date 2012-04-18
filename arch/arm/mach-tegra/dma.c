@@ -1114,6 +1114,9 @@ static irqreturn_t dma_isr(int irq, void *data)
 
 int __init tegra_dma_init(void)
 {
+#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
+	return -ENODEV;
+#else
 	int ret = 0;
 	int i;
 	unsigned int irq;
@@ -1191,6 +1194,7 @@ fail:
 			free_irq(ch->irq, ch);
 	}
 	return ret;
+#endif
 }
 postcore_initcall(tegra_dma_init);
 
