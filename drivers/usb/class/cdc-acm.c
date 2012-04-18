@@ -575,6 +575,9 @@ static int acm_port_activate(struct tty_port *port, struct tty_struct *tty)
 	set_bit(TTY_NO_WRITE_SPLIT, &tty->flags);
 	acm->control->needs_remote_wakeup = 0;
 
+	if (acm_submit_read_urbs(acm, GFP_KERNEL))
+		goto bail_out;
+
 	acm->ctrlurb->dev = acm->dev;
 	if (usb_submit_urb(acm->ctrlurb, GFP_KERNEL)) {
 		dev_err(&acm->control->dev,
@@ -1366,6 +1369,7 @@ static void acm_disconnect(struct usb_interface *intf)
 	struct acm *acm = usb_get_intfdata(intf);
 	struct usb_device *usb_dev = interface_to_usbdev(intf);
 	struct tty_struct *tty;
+	struct urb *res;
 	int i;
 
 	dev_dbg(&intf->dev, "%s\n", __func__);
@@ -1395,7 +1399,9 @@ static void acm_disconnect(struct usb_interface *intf)
 
 	stop_data_traffic(acm);
 
-	usb_kill_anchored_urbs(&acm->deferred);
+	/* decrement ref count of anchored urbs */
+	while ((res = usb_get_from_anchor(&acm->deferred)))
+		usb_put_urb(res);
 	usb_free_urb(acm->ctrlurb);
 	for (i = 0; i < ACM_NW; i++)
 		usb_free_urb(acm->wb[i].urb);
