@@ -135,11 +135,11 @@ static const struct file_operations tegra30_i2s_debug_fops = {
 	.release = single_release,
 };
 
-static void tegra30_i2s_debug_add(struct tegra30_i2s *i2s, int id)
+static void tegra30_i2s_debug_add(struct tegra30_i2s *i2s)
 {
 	char name[] = DRV_NAME ".0";
 
-	snprintf(name, sizeof(name), DRV_NAME".%1d", id);
+	snprintf(name, sizeof(name), DRV_NAME);
 	i2s->debug = debugfs_create_file(name, S_IRUGO, snd_soc_debugfs_root,
 						i2s, &tegra30_i2s_debug_fops);
 }
@@ -150,7 +150,7 @@ static void tegra30_i2s_debug_remove(struct tegra30_i2s *i2s)
 		debugfs_remove(i2s->debug);
 }
 #else
-static inline void tegra30_i2s_debug_add(struct tegra30_i2s *i2s, int id)
+static inline void tegra30_i2s_debug_add(struct tegra30_i2s *i2s)
 {
 }
 
