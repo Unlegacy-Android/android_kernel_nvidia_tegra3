@@ -386,7 +386,7 @@ static int regcache_rbtree_sync(struct regmap *map, unsigned int min,
 		if (rbnode->base_reg + rbnode->blklen < min)
 			continue;
 
-		if (min > rbnode->base_reg)
+		if (min < rbnode->base_reg + rbnode->blklen)
 			base = min - rbnode->base_reg;
 		else
 			base = 0;
