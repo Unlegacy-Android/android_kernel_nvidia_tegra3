@@ -511,8 +511,8 @@ static int ak8975_probe(struct i2c_client *client,
 		goto exit_gpio;
 	}
 	data = iio_priv(indio_dev);
-
 	i2c_set_clientdata(client, indio_dev);
+
 	data->client = client;
 	mutex_init(&data->lock);
 	data->eoc_irq = client->irq;
