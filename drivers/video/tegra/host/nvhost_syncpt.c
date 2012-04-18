@@ -21,6 +21,7 @@
 #include <linux/nvhost_ioctl.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/stat.h>
 #include "nvhost_syncpt.h"
 #include "dev.h"
 
