@@ -215,8 +215,8 @@ EXPORT_SYMBOL_GPL(register_otg_callback);
 static void tegra_change_otg_state(struct tegra_otg_data *tegra,
 				enum usb_otg_state to)
 {
-	struct otg_transceiver *otg = &tegra->otg;
-	enum usb_otg_state from = otg->state;
+	struct usb_otg *otg = tegra->phy.otg;
+	enum usb_otg_state from = otg->phy->state;
 
 	if(!tegra->interrupt_mode){
 		DBG("OTG: Vbus detection is disabled");
@@ -227,8 +227,8 @@ static void tegra_change_otg_state(struct tegra_otg_data *tegra,
 		__LINE__, tegra_state_name(from), tegra_state_name(to));
 
 	if (to != OTG_STATE_UNDEFINED && from != to) {
-		otg->state = to;
-		dev_info(tegra->otg.dev, "%s --> %s\n", tegra_state_name(from),
+		otg->phy->state = to;
+		dev_info(&tegra->pdev->dev, "%s --> %s\n", tegra_state_name(from),
 					      tegra_state_name(to));
 
 		if (from == OTG_STATE_A_SUSPEND) {
@@ -366,16 +366,6 @@ static int tegra_otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
 	clk_disable(tegra->clk);
 
-	return 0;
-}
-
-static int tegra_otg_set_power(struct otg_transceiver *otg, unsigned mA)
-{
-	return 0;
-}
-
-static int tegra_otg_set_suspend(struct otg_transceiver *otg, int suspend)
-{
 	return 0;
 }
 
