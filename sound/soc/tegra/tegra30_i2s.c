@@ -878,7 +878,7 @@ static __devinit int tegra30_i2s_platform_probe(struct platform_device *pdev)
 		goto err_unmap;
 	}
 
-	tegra30_i2s_debug_add(i2s, pdev->id);
+	tegra30_i2s_debug_add(i2s);
 
 	return 0;
 
