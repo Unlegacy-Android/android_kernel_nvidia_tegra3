@@ -421,6 +421,7 @@ static int tegra_ehci_hub_control(
 		temp &= ~(PORT_RWC_BITS | PORT_WAKE_BITS);
 		/* start resume signaling */
 		ehci_writel(ehci, temp | PORT_RESUME, status_reg);
+		set_bit(wIndex-1, &ehci->resuming_ports);
 
 		ehci->reset_done[wIndex-1] = jiffies + msecs_to_jiffies(25);
 		/* whoever resumes must GetPortStatus to complete it!! */
@@ -471,7 +472,7 @@ static int tegra_ehci_hub_control(
 				if (hsic && (wIndex == 0))
 					tegra_usb_phy_bus_reset(tegra->phy);
 			}
-
+			clear_bit(wIndex-1, &ehci->resuming_ports);
 			break;
 		}
 		case USB_PORT_FEAT_POWER:
