@@ -899,19 +899,19 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 }
 
 static struct sdhci_ops tegra_sdhci_ops = {
-	.get_ro     = tegra_sdhci_get_ro,
-	.get_cd     = tegra_sdhci_get_cd,
-	.read_l     = tegra_sdhci_readl,
-	.read_w     = tegra_sdhci_readw,
-	.write_l    = tegra_sdhci_writel,
-	.platform_8bit_width = tegra_sdhci_8bit,
-	.set_clock  = tegra_sdhci_set_clock,
-	.platform_suspend    = tegra_sdhci_suspend,
-	.platform_resume     = tegra_sdhci_resume,
-	.platform_reset_exit = tegra_sdhci_reset_exit,
-	.set_uhs_signaling = tegra_sdhci_set_uhs_signaling,
-	.switch_signal_voltage = tegra_sdhci_signal_voltage_switch,
-	.execute_freq_tuning = sdhci_tegra_execute_tuning,
+	.get_ro			= tegra_sdhci_get_ro,
+	.get_cd			= tegra_sdhci_get_cd,
+	.read_l			= tegra_sdhci_readl,
+	.read_w			= tegra_sdhci_readw,
+	.write_l		= tegra_sdhci_writel,
+	.platform_8bit_width	= tegra_sdhci_8bit,
+	.set_clock		= tegra_sdhci_set_clock,
+	.suspend		= tegra_sdhci_suspend,
+	.resume			= tegra_sdhci_resume,
+	.platform_reset_exit	= tegra_sdhci_reset_exit,
+	.set_uhs_signaling	= tegra_sdhci_set_uhs_signaling,
+	.switch_signal_voltage	= tegra_sdhci_signal_voltage_switch,
+	.execute_freq_tuning	= sdhci_tegra_execute_tuning,
 };
 
 static struct sdhci_pltfm_data sdhci_tegra20_pdata = {
