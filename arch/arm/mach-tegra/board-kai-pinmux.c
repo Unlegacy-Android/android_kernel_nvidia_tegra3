@@ -491,18 +491,11 @@ static void __init kai_gpio_init_configure(void)
 	}
 }
 
-static struct platform_device *pinmux_devices[] = {
-	&tegra_gpio_device,
-	&tegra_pinmux_device,
-};
-
 int __init kai_pinmux_init(void)
 {
 	struct board_info board_info;
 	tegra_get_board_info(&board_info);
 	BUG_ON(board_info.board_id != BOARD_E1565);
-
-	platform_add_devices(pinmux_devices, ARRAY_SIZE(pinmux_devices));
 
 	tegra30_default_pinmux();
 
