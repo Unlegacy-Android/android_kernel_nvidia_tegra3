@@ -55,25 +55,12 @@
 #define GPIO_INT_LVL(x)		(GPIO_REG(x) + 0x60)
 #define GPIO_INT_CLR(x)		(GPIO_REG(x) + 0x70)
 
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
-#define GPIO_REG(x)		(GPIO_BANK(x) * 0x80 + GPIO_PORT(x) * 4)
-
-#define GPIO_MSK_CNF(x)		(GPIO_REG(x) + 0x800)
-#define GPIO_MSK_OE(x)		(GPIO_REG(x) + 0x810)
-#define GPIO_MSK_OUT(x)		(GPIO_REG(x) + 0X820)
-#define GPIO_MSK_INT_STA(x)	(GPIO_REG(x) + 0x840)
-#define GPIO_MSK_INT_ENB(x)	(GPIO_REG(x) + 0x850)
-#define GPIO_MSK_INT_LVL(x)	(GPIO_REG(x) + 0x860)
-#else
-#define GPIO_REG(x)		(GPIO_BANK(x) * 0x100 + GPIO_PORT(x) * 4)
-
 #define GPIO_MSK_CNF(x)		(GPIO_REG(x) + tegra_gpio_upper_offset + 0x00)
 #define GPIO_MSK_OE(x)		(GPIO_REG(x) + tegra_gpio_upper_offset + 0x10)
 #define GPIO_MSK_OUT(x)		(GPIO_REG(x) + tegra_gpio_upper_offset + 0X20)
 #define GPIO_MSK_INT_STA(x)	(GPIO_REG(x) + tegra_gpio_upper_offset + 0x40)
 #define GPIO_MSK_INT_ENB(x)	(GPIO_REG(x) + tegra_gpio_upper_offset + 0x50)
 #define GPIO_MSK_INT_LVL(x)	(GPIO_REG(x) + tegra_gpio_upper_offset + 0x60)
-#endif
 
 #define GPIO_INT_LVL_MASK		0x010101
 #define GPIO_INT_LVL_EDGE_RISING	0x000101
