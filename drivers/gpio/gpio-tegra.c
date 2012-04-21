@@ -465,7 +465,11 @@ static int __devinit tegra_gpio_probe(struct platform_device *pdev)
 	if (match)
 		config = (struct tegra_gpio_soc_config *)match->data;
 	else
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 		config = &tegra20_gpio_config;
+#else
+		config = &tegra30_gpio_config;
+#endif
 
 	tegra_gpio_bank_stride = config->bank_stride;
 	tegra_gpio_upper_offset = config->upper_offset;
