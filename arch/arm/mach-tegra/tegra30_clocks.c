@@ -406,7 +406,7 @@ static inline u32 periph_clk_to_reg(
 	return reg;
 }
 
-unsigned long clk_measure_input_freq(void)
+static unsigned long clk_measure_input_freq(void)
 {
 	u32 clock_autodetect;
 	clk_writel(OSC_FREQ_DET_TRIG | 1, OSC_FREQ_DET);
