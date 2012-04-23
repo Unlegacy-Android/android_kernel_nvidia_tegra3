@@ -1678,8 +1678,8 @@ static int utmi_phy_preresume(struct tegra_usb_phy *phy, bool remote_wakeup)
 static int utmi_phy_postresume(struct tegra_usb_phy *phy, bool is_dpd)
 {
 	unsigned long val;
-	void __iomem *base = phy->regs;
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 	unsigned  int inst = phy->instance;
 
@@ -1690,6 +1690,8 @@ static int utmi_phy_postresume(struct tegra_usb_phy *phy, bool is_dpd)
 	}
 	utmi_phy_disable_obs_bus(phy);
 #else
+	void __iomem *base = phy->regs;
+
 	val = readl(base + USB_USBCMD);
 	if (val & USB_USBCMD_RS) {
 		val &= ~USB_USBCMD_RS;

@@ -396,6 +396,8 @@ void tegra_init_cache(bool init)
 		tag_latency = 0x221;
 		data_latency = 0x221;
 	} else {
+		u32 speedo;
+
 		/* relax l2-cache latency for speedos 4,5,6 (T33's chips) */
 		speedo = tegra_cpu_speedo_id();
 		if (speedo == 4 || speedo == 5 || speedo == 6 ||
@@ -428,6 +430,8 @@ void tegra_init_cache(bool init)
 	if (init) {
 		l2x0_init(p, aux_ctrl, 0x8200c3fe);
 	} else {
+		u32 tmp;
+
 		tmp = aux_ctrl;
 		aux_ctrl = readl(p + L2X0_AUX_CTRL);
 		aux_ctrl &= 0x8200c3fe;
