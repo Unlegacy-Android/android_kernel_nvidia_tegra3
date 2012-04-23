@@ -56,7 +56,7 @@ static unsigned int tegra_lp2_min_residency;
 extern void tegra_cpu_wfi(void);
 
 static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
-				struct cpuidle_driver *drv, int index);
+				int index);
 
 struct cpuidle_driver tegra_idle_driver = {
 	.name = "tegra_idle",
@@ -66,7 +66,7 @@ struct cpuidle_driver tegra_idle_driver = {
 static DEFINE_PER_CPU(struct cpuidle_device *, tegra_idle_device);
 
 static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
-	struct cpuidle_driver *drv, int index)
+	int index)
 {
 	ktime_t enter, exit;
 	s64 us;
@@ -185,7 +185,6 @@ static int tegra_cpuidle_register_device(unsigned int cpu)
 	snprintf(state->name, CPUIDLE_NAME_LEN, "LP2");
 	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU power-gate");
 	state->exit_latency = tegra_cpu_power_good_time();
-
 	state->target_residency = tegra_cpu_power_off_time() +
 		tegra_cpu_power_good_time();
 	if (state->target_residency < tegra_lp2_min_residency)
@@ -193,7 +192,6 @@ static int tegra_cpuidle_register_device(unsigned int cpu)
 	state->power_usage = 0;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 	state->enter = tegra_idle_enter_lp2;
-
 	dev->power_specified = 1;
 	dev->state_count++;
 #endif
