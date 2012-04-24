@@ -2,7 +2,7 @@
  * tegra_pcm.h - Definitions for Tegra PCM driver
  *
  * Author: Stephen Warren <swarren@nvidia.com>
- * Copyright (C) 2010 - NVIDIA, Inc.
+ * Copyright (C) 2010-2012 - NVIDIA, Inc.
  *
  * Based on code copyright/by:
  *
@@ -32,8 +32,13 @@
 #define __TEGRA_PCM_H__
 
 #include <mach/dma.h>
+#include <linux/nvmap.h>
 
 #define MAX_DMA_REQ_COUNT 2
+
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#define TEGRA30_USE_SMMU 0
+#endif
 
 struct tegra_pcm_dma_params {
 	unsigned long addr;
@@ -55,6 +60,13 @@ struct tegra_runtime_data {
 	int dma_req_count;
 	int disable_intr;
 };
+
+#ifdef TEGRA30_USE_SMMU
+struct tegra_smmu_data {
+	struct nvmap_client *pcm_nvmap_client;
+	struct nvmap_handle_ref *pcm_nvmap_handle;
+};
+#endif
 
 int tegra_pcm_trigger(struct snd_pcm_substream *substream, int cmd);
 int tegra_pcm_allocate(struct snd_pcm_substream *substream,

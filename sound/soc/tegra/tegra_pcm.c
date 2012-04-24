@@ -117,6 +117,10 @@ static void setup_dma_tx_request(struct tegra_dma_req *req,
 	req->source_wrap = 0;
 	req->dest_bus_width = dmap->width;
 	req->req_sel = dmap->req_sel;
+	req->use_smmu = false;
+#ifdef TEGRA30_USE_SMMU
+	req->use_smmu = true;
+#endif
 }
 
 static void setup_dma_rx_request(struct tegra_dma_req *req,
@@ -130,6 +134,10 @@ static void setup_dma_rx_request(struct tegra_dma_req *req,
 	req->source_wrap = dmap->wrap;
 	req->dest_bus_width = 32;
 	req->req_sel = dmap->req_sel;
+	req->use_smmu = false;
+#ifdef TEGRA30_USE_SMMU
+	req->use_smmu = true;
+#endif
 }
 
 int tegra_pcm_allocate(struct snd_pcm_substream *substream,
@@ -351,15 +359,33 @@ static int tegra_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 {
 	struct snd_pcm_substream *substream = pcm->streams[stream].substream;
 	struct snd_dma_buffer *buf = &substream->dma_buffer;
+#ifdef TEGRA30_USE_SMMU
+	unsigned char *vaddr;
+	phys_addr_t paddr;
+	struct tegra_smmu_data *ptsd;
 
+	ptsd = kzalloc(sizeof(struct tegra_smmu_data), GFP_KERNEL);
+	ptsd->pcm_nvmap_client = nvmap_create_client(nvmap_dev, "Audio_SMMU");
+	ptsd->pcm_nvmap_handle = nvmap_alloc(ptsd->pcm_nvmap_client,
+				 size,
+				 32,
+				 NVMAP_HANDLE_WRITE_COMBINE,
+				 NVMAP_HEAP_IOVMM);
+
+	vaddr = (unsigned char *) nvmap_mmap(ptsd->pcm_nvmap_handle);
+	paddr = nvmap_pin(ptsd->pcm_nvmap_client, ptsd->pcm_nvmap_handle);
+	buf->area = vaddr;
+	buf->addr = paddr;
+	buf->private_data = ptsd;
+#else
 	buf->area = dma_alloc_writecombine(pcm->card->dev, size,
 						&buf->addr, GFP_KERNEL);
 	if (!buf->area)
 		return -ENOMEM;
-
+	buf->private_data = NULL;
+#endif
 	buf->dev.type = SNDRV_DMA_TYPE_DEV;
 	buf->dev.dev = pcm->card->dev;
-	buf->private_data = NULL;
 	buf->bytes = size;
 
 	return 0;
@@ -369,6 +395,9 @@ void tegra_pcm_deallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 {
 	struct snd_pcm_substream *substream;
 	struct snd_dma_buffer *buf;
+#ifdef TEGRA30_USE_SMMU
+	struct tegra_smmu_data *ptsd;
+#endif
 
 	substream = pcm->streams[stream].substream;
 	if (!substream)
@@ -378,8 +407,19 @@ void tegra_pcm_deallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 	if (!buf->area)
 		return;
 
+#ifdef TEGRA30_USE_SMMU
+	if (!buf->private_data)
+		return;
+	ptsd = (struct tegra_smmu_data *)buf->private_data;
+	nvmap_unpin(ptsd->pcm_nvmap_client, ptsd->pcm_nvmap_handle);
+	nvmap_munmap(ptsd->pcm_nvmap_handle, buf->area);
+	nvmap_free(ptsd->pcm_nvmap_client, ptsd->pcm_nvmap_handle);
+	kfree(ptsd);
+	buf->private_data = NULL;
+#else
 	dma_free_writecombine(pcm->card->dev, buf->bytes,
 				buf->area, buf->addr);
+#endif
 	buf->area = NULL;
 }
 
