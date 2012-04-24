@@ -2706,6 +2706,8 @@ int tegra_usb_phy_power_on(struct tegra_usb_phy *phy, bool is_dpd)
 	if (phy->reg_vdd && !phy->regulator_on) {
 		regulator_enable(phy->reg_vdd);
 		phy->regulator_on = 1;
+		/* Add delay for VBUS power gating */
+		mdelay(15);
 	}
 
 	if (power_on[phy->usb_phy_type])
