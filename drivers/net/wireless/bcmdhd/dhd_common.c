@@ -186,15 +186,11 @@ dhd_common_init(osl_t *osh)
 {
 #ifdef CONFIG_BCMDHD_FW_PATH
 	bcm_strncpy_s(fw_path, sizeof(fw_path), CONFIG_BCMDHD_FW_PATH, MOD_PARAM_PATHLEN-1);
-#elif defined(CONFIG_BCMDHD_FW_DIR)  /* CONFIG_BCMDHD_FW_PATH */
-	sprintf(fw_path, "%s/bcm%x/fw_bcmdhd.bin", CONFIG_BCMDHD_FW_DIR, MOD_PARAM_PATHLEN-1);
 #else
 	fw_path[0] = '\0';
-#endif /* CONFIG_BCMDHD_FW_DIR */
+#endif /* CONFIG_BCMDHD_FW_PATH */
 #ifdef CONFIG_BCMDHD_NVRAM_PATH
 	bcm_strncpy_s(nv_path, sizeof(nv_path), CONFIG_BCMDHD_NVRAM_PATH, MOD_PARAM_PATHLEN-1);
-#elif defined(CONFIG_BCMDHD_NVRAM_DIR) /* CONFIG_BCMDHD_NVRAM_PATH */
-	sprintf(nv_path, "%s/nvram_%x.txt", CONFIG_BCMDHD_NVRAM_DIR, MOD_PARAM_PATHLEN-1);
 #else
 	nv_path[0] = '\0';
 #endif /* CONFIG_BCMDHD_NVRAM_PATH */
