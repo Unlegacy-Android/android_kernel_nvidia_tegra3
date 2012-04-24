@@ -473,19 +473,6 @@ static int __devinit tegra_gpio_probe(struct platform_device *pdev)
 
 	tegra_gpio_bank_stride = config->bank_stride;
 	tegra_gpio_upper_offset = config->upper_offset;
-
-	for (i = 0; i < ARRAY_SIZE(tegra_gpio_banks); i++) {
-		res = platform_get_resource(pdev, IORESOURCE_IRQ, i);
-		if (!res) {
-			dev_err(&pdev->dev, "Missing IRQ resource\n");
-			return -ENODEV;
-		}
-
-		bank = &tegra_gpio_banks[i];
-		bank->bank = i;
-		bank->irq = res->start;
-	}
-
 	tegra_gpio_chip.ngpio = ARRAY_SIZE(tegra_gpio_banks) * 32;
 
 	irq_base = irq_alloc_descs(-1, 0, tegra_gpio_chip.ngpio, 0);
