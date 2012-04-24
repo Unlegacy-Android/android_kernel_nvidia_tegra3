@@ -190,6 +190,7 @@ static int tegra_gpio_get(struct gpio_chip *chip, unsigned offset)
 static int tegra_gpio_direction_input(struct gpio_chip *chip, unsigned offset)
 {
 	tegra_gpio_mask_write(GPIO_MSK_OE(offset), offset, 0);
+	tegra_gpio_enable(offset);
 	return 0;
 }
 
@@ -198,6 +199,7 @@ static int tegra_gpio_direction_output(struct gpio_chip *chip, unsigned offset,
 {
 	tegra_gpio_set(chip, offset, value);
 	tegra_gpio_mask_write(GPIO_MSK_OE(offset), offset, 1);
+	tegra_gpio_enable(offset);
 	return 0;
 }
 
@@ -212,8 +214,20 @@ static int tegra_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
 	return irq_find_mapping(irq_domain, offset);
 }
 
+static int tegra_gpio_request(struct gpio_chip *chip, unsigned offset)
+{
+	return 0;
+}
+
+static void tegra_gpio_free(struct gpio_chip *chip, unsigned offset)
+{
+	tegra_gpio_disable(offset);
+}
+
 static struct gpio_chip tegra_gpio_chip = {
 	.label			= "tegra-gpio",
+	.request		= tegra_gpio_request,
+	.free			= tegra_gpio_free,
 	.direction_input	= tegra_gpio_direction_input,
 	.get			= tegra_gpio_get,
 	.direction_output	= tegra_gpio_direction_output,
