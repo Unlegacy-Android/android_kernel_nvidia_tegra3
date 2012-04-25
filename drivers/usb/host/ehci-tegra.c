@@ -1261,7 +1261,6 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 		err = -ENODEV;
 		goto fail;
 	}
-	set_irq_flags(irq, IRQF_VALID);
 	tegra->irq = irq;
 
 #ifdef CONFIG_USB_OTG_UTILS
