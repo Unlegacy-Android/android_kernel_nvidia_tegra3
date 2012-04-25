@@ -797,7 +797,7 @@ static struct snd_soc_dai_link tegra_wm8753_dai[] = {
 	{
 		.name = "WM8753",
 		.stream_name = "WM8753 PCM HIFI",
-		.codec_name = "wm8753-codec.4-001a",
+		.codec_name = "wm8753.4-001a",
 		.platform_name = "tegra-pcm-audio",
 		.cpu_dai_name = "tegra20-i2s.0",
 		.codec_dai_name = "wm8753-hifi",
@@ -827,7 +827,7 @@ static struct snd_soc_dai_link tegra_wm8753_dai[] = {
 	{
 		.name = "VOICE CALL",
 		.stream_name = "VOICE CALL PCM",
-		.codec_name = "wm8753-codec.4-001a",
+		.codec_name = "wm8753.4-001a",
 		.platform_name = "tegra-pcm-audio",
 		.cpu_dai_name = "dit-hifi",
 		.codec_dai_name = "wm8753-voice",
