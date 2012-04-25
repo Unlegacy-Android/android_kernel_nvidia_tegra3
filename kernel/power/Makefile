@@ -12,4 +12,5 @@ obj-$(CONFIG_HIBERNATION)	+= hibernate.o snapshot.o swap.o user.o \
 obj-$(CONFIG_USER_WAKELOCK)	+= userwakelock.o
 obj-$(CONFIG_SUSPEND_TIME)	+= suspend_time.o
 
+obj-y   += fbearlysuspend.o
 obj-$(CONFIG_MAGIC_SYSRQ)	+= poweroff.o
