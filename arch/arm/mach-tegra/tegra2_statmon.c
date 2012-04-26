@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra2_statmon.c
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -405,7 +405,7 @@ static int tegra2_stat_mon_init(void)
 
 	mutex_init(&stat_mon->stat_mon_lock);
 
-	/* /sys/devices/system/tegra2_statmon */
+	/* /sys/class/system/tegra2_statmon */
 	rc = sysdev_class_register(&tegra2_statmon_sysclass);
 	if (rc) {
 		pr_err("%s : Couldn't create statmon sysfs entry\n", __func__);
