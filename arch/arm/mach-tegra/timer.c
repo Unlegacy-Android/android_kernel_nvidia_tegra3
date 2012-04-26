@@ -7,7 +7,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation.
+ * Copyright (C) 2010-2012 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -52,6 +52,12 @@ static u32 usec_config;
 static u32 usec_offset;
 static bool usec_suspended;
 
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+static u32 system_timer = (TEGRA_TMR3_BASE - TEGRA_TMR1_BASE);
+#else
+static u32 system_timer = 0;
+#endif
+
 #define timer_writel(value, reg) \
 	__raw_writel(value, timer_reg_base + (reg))
 #define timer_readl(reg) \
@@ -63,7 +69,7 @@ static int tegra_timer_set_next_event(unsigned long cycles,
 	u32 reg;
 
 	reg = 0x80000000 | ((cycles > 1) ? (cycles-1) : 0);
-	timer_writel(reg, TIMER3_BASE + TIMER_PTV);
+	timer_writel(reg, system_timer + TIMER_PTV);
 
 	return 0;
 }
@@ -73,12 +79,12 @@ static void tegra_timer_set_mode(enum clock_event_mode mode,
 {
 	u32 reg;
 
-	timer_writel(0, TIMER3_BASE + TIMER_PTV);
+	timer_writel(0, system_timer + TIMER_PTV);
 
 	switch (mode) {
 	case CLOCK_EVT_MODE_PERIODIC:
 		reg = 0xC0000000 | ((1000000/HZ)-1);
-		timer_writel(reg, TIMER3_BASE + TIMER_PTV);
+		timer_writel(reg, system_timer + TIMER_PTV);
 		break;
 	case CLOCK_EVT_MODE_ONESHOT:
 		break;
@@ -149,7 +155,7 @@ void read_persistent_clock(struct timespec *ts)
 static irqreturn_t tegra_timer_interrupt(int irq, void *dev_id)
 {
 	struct clock_event_device *evt = (struct clock_event_device *)dev_id;
-	timer_writel(1<<30, TIMER3_BASE + TIMER_PCR);
+	timer_writel(1<<30, system_timer + TIMER_PCR);
 	evt->event_handler(evt);
 	return IRQ_HANDLED;
 }
@@ -159,7 +165,11 @@ static struct irqaction tegra_timer_irq = {
 	.flags		= IRQF_DISABLED | IRQF_TIMER | IRQF_TRIGGER_HIGH,
 	.handler	= tegra_timer_interrupt,
 	.dev_id		= &tegra_clockevent,
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	.irq		= INT_TMR3,
+#else
+	.irq		= INT_TMR1,
+#endif
 };
 
 static int tegra_timer_suspend(void)
