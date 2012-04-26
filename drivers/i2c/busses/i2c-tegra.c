@@ -193,7 +193,7 @@ struct tegra_i2c_dev {
 	bool is_high_speed_enable;
 	u16 hs_master_code;
 	int (*arb_recovery)(int scl_gpio, int sda_gpio);
-	struct tegra_i2c_bus busses[TEGRA_I2C_MAX_BUS];
+	struct tegra_i2c_bus busses[1];
 };
 
 static void dvc_writel(struct tegra_i2c_dev *i2c_dev, u32 val, unsigned long reg)
