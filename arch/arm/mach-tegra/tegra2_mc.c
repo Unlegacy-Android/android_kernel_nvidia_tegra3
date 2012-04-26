@@ -3,7 +3,7 @@
  *
  * Memory controller bandwidth profiling interface
  *
- * Copyright (c) 2009-2011, NVIDIA Corporation.
+ * Copyright (c) 2009-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 #include <linux/kobject.h>
 #include <linux/string.h>
 #include <linux/sysfs.h>
-#include <linux/sysdev.h>
+#include <linux/device.h>
 #include <linux/ktime.h>
 #include <linux/hrtimer.h>
 #include <linux/parser.h>
@@ -62,7 +62,7 @@ static struct tegra_mc_counter mc_counter0 = MC_COUNTER_INITIALIZER();
 static struct tegra_mc_counter mc_counter1 = MC_COUNTER_INITIALIZER();
 static struct tegra_mc_counter emc_llp_counter = MC_COUNTER_INITIALIZER();
 
-/* /sys/devices/system/tegra_mc */
+/* /sys/class/system/tegra_mc */
 static bool sample_enable	= SAMPLE_ENABLE_DEFAULT;
 static u16 sample_quantum	= SAMPLE_QUANTUM_DEFAULT;
 static u8 sample_log[SAMPLE_LOG_SIZE];
@@ -85,19 +85,18 @@ static bool sampling(void)
 	return ret;
 }
 
-static struct sysdev_class tegra_mc_sysclass = {
+static struct class tegra_mc_class = {
 	.name = "tegra_mc",
 };
 
-static ssize_t tegra_mc_enable_show(struct sysdev_class *class,
-	struct sysdev_class_attribute *attr, char *buf)
+static ssize_t tegra_mc_enable_show(struct class *class,
+	struct class_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%d\n", sample_enable);
 }
 
-static ssize_t tegra_mc_enable_store(struct sysdev_class *class,
-	struct sysdev_class_attribute *attr,
-	const char *buf, size_t count)
+static ssize_t tegra_mc_enable_store(struct class *class,
+	struct class_attribute *attr, const char *buf, size_t count)
 {
 	int value, i;
 	struct tegra_mc_counter *counters[] = {
@@ -143,8 +142,8 @@ static ssize_t tegra_mc_enable_store(struct sysdev_class *class,
 	return count;
 }
 
-static ssize_t tegra_mc_log_show(struct sysdev_class *class,
-	struct sysdev_class_attribute *attr, char *buf)
+static ssize_t tegra_mc_log_show(struct class *class,
+	struct class_attribute *attr, char *buf)
 {
 	int index = 0, count = 0;
 	unsigned long flags;
@@ -172,22 +171,21 @@ static ssize_t tegra_mc_log_show(struct sysdev_class *class,
 	return index;
 }
 
-static ssize_t tegra_mc_log_store(struct sysdev_class *class,
-	struct sysdev_class_attribute *attr,
+static ssize_t tegra_mc_log_store(struct class *class,
+	struct class_attribute *attr,
 	const char *buf, size_t count)
 {
 	return -EPERM;
 }
 
-static ssize_t tegra_mc_quantum_show(struct sysdev_class *class,
-	struct sysdev_class_attribute *attr, char *buf)
+static ssize_t tegra_mc_quantum_show(struct class *class,
+	struct class_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%d\n", sample_quantum);
 }
 
-static ssize_t tegra_mc_quantum_store(struct sysdev_class *class,
-	struct sysdev_class_attribute *attr,
-	const char *buf, size_t count)
+static ssize_t tegra_mc_quantum_store(struct class *class,
+	struct class_attribute *attr, const char *buf, size_t count)
 {
 	int value;
 
@@ -201,7 +199,7 @@ static ssize_t tegra_mc_quantum_store(struct sysdev_class *class,
 }
 
 #define TEGRA_MC_EXPAND(_attr,_mode) \
-	static SYSDEV_CLASS_ATTR( \
+	static CLASS_ATTR( \
 	  _attr, _mode, tegra_mc_##_attr##_show, tegra_mc_##_attr##_store);
 
 #define TEGRA_MC_ATTRIBUTES(_attr1,_mode1,_attr2,_mode2,_attr3,_mode3) \
@@ -214,14 +212,14 @@ TEGRA_MC_ATTRIBUTES(enable,0666,log,0444,quantum,0666)
 #undef TEGRA_MC_EXPAND
 
 #define TEGRA_MC_EXPAND(_attr,_mode) \
-	&attr_##_attr,
+	&class_attr_##_attr,
 
-static struct sysdev_class_attribute *tegra_mc_attrs[] = {
+static struct class_attribute *tegra_mc_attrs[] = {
 	TEGRA_MC_ATTRIBUTES(enable,0666,log,0444,quantum,0666)
 	NULL
 };
 
-/* /sys/devices/system/tegra_mc/client */
+/* /sys/class/system/tegra_mc/client */
 static bool tegra_mc_client_0_enabled = CLIENT_ENABLED_DEFAULT;
 static u8 tegra_mc_client_0_on_schedule_buffer[CLIENT_ON_SCHEDULE_LENGTH];
 static struct kobject *tegra_mc_client_kobj, *tegra_mc_client_0_kobj;
@@ -454,7 +452,7 @@ static struct attribute_group tegra_mc_client_0_attr_group = {
 	.attrs = tegra_mc_client_0_attrs
 };
 
-/* /sys/devices/system/tegra_mc/dram */
+/* /sys/class/system/tegra_mc/dram */
 #define dram_counters(_x)					 \
 	_x(activate_cnt, ACTIVATE_CNT)				 \
 	_x(read_cnt, READ_CNT)					 \
@@ -896,7 +894,7 @@ static enum hrtimer_restart sample_timer_function(struct hrtimer *handle)
 #define REGISTER_SYSFS(_name, _val)					\
 	tegra_mc_dram_##_name##_kobj =					\
 		kobject_create_and_add(#_name, tegra_mc_dram_kobj);	\
-	sysfs_create_group(tegra_mc_dram_##_name##_kobj,		\
+	rc = sysfs_create_group(tegra_mc_dram_##_name##_kobj,		\
 			   &tegra_mc_dram_##_name##_attr_group);
 
 static int tegra_mc_init(void)
@@ -904,23 +902,23 @@ static int tegra_mc_init(void)
 	int i;
 	int rc;
 
-	/* /sys/devices/system/tegra_mc */
-	rc = sysdev_class_register(&tegra_mc_sysclass);
+	/* /sys/class/system/tegra_mc */
+	rc = class_register(&tegra_mc_class);
 	if(rc)
 		goto out;
 
 	for (i = 0;  i < ARRAY_SIZE(tegra_mc_attrs)-1; i++) {
-		rc = sysdev_class_create_file(&tegra_mc_sysclass,
+		rc = class_create_file(&tegra_mc_class,
 			tegra_mc_attrs[i]);
 		if(rc) {
-			printk("\n sysdev_class_create_file : failed \n");
+			printk("\n class_create_file : failed \n");
 			goto out_unreg_class;
 		}
 	}
 
-	/* /sys/devices/system/tegra_mc/client */
+	/* /sys/class/system/tegra_mc/client */
 	tegra_mc_client_kobj = kobject_create_and_add("client",
-		&tegra_mc_sysclass.kset.kobj);
+		tegra_mc_class.dev_kobj);
 	if(!tegra_mc_client_kobj)
 		goto out_remove_sysdev_files;
 
@@ -934,9 +932,9 @@ static int tegra_mc_init(void)
 	if(rc)
 		goto out_put_kobject_client_0;
 
-	/* /sys/devices/system/tegra_mc/dram */
+	/* /sys/class/system/tegra_mc/dram */
 	tegra_mc_dram_kobj = kobject_create_and_add("dram",
-		&tegra_mc_sysclass.kset.kobj);
+		tegra_mc_class.dev_kobj);
 	if(!tegra_mc_dram_kobj)
 		goto out_remove_group_client_0;
 
@@ -970,11 +968,11 @@ out_put_kobject_client:
 
 out_remove_sysdev_files:
 	for (i = 0;  i < ARRAY_SIZE(tegra_mc_attrs)-1; i++) {
-		sysdev_class_remove_file(&tegra_mc_sysclass, tegra_mc_attrs[i]);
+		class_remove_file(&tegra_mc_class, tegra_mc_attrs[i]);
 	}
 
 out_unreg_class:
-	sysdev_class_unregister(&tegra_mc_sysclass);
+	class_unregister(&tegra_mc_class);
 
 out:
 	return rc;
@@ -995,21 +993,21 @@ static void tegra_mc_exit(void)
 	/* hrtimer */
 	hrtimer_cancel(&sample_timer);
 
-	/* /sys/devices/system/tegra_mc/client */
+	/* /sys/class/system/tegra_mc/client */
 	sysfs_remove_group(tegra_mc_client_0_kobj,
 		&tegra_mc_client_0_attr_group);
 	kobject_put(tegra_mc_client_0_kobj);
 	kobject_put(tegra_mc_client_kobj);
 
-	/* /sys/devices/system/tegra_mc/dram */
+	/* /sys/class/system/tegra_mc/dram */
 	dram_counters(REMOVE_SYSFS)
 	kobject_put(tegra_mc_dram_kobj);
 
-	/* /sys/devices/system/tegra_mc */
+	/* /sys/class/system/tegra_mc */
 	for (i = 0;  i < ARRAY_SIZE(tegra_mc_attrs)-1; i++) {
-		sysdev_class_remove_file(&tegra_mc_sysclass, tegra_mc_attrs[i]);
+		class_remove_file(&tegra_mc_class, tegra_mc_attrs[i]);
 	}
-	sysdev_class_unregister(&tegra_mc_sysclass);
+	class_unregister(&tegra_mc_class);
 }
 
 module_init(tegra_mc_init);
