@@ -26,8 +26,8 @@
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/err.h>
-#include <linux/sysdev.h>
 #include <linux/bitops.h>
+#include <linux/device.h>
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
@@ -267,14 +267,14 @@ int tegra2_statmon_start(void)
 	return 0;
 }
 
-static ssize_t tegra2_statmon_enable_show(struct sysdev_class *class,
-	struct sysdev_class_attribute *attr, char *buf)
+static ssize_t tegra2_statmon_enable_show(struct class *class,
+	struct class_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%d\n", stat_mon->avp_sampler.enable);
 }
 
-static ssize_t tegra2_statmon_enable_store(struct sysdev_class *class,
-	struct sysdev_class_attribute *attr, const char *buf, size_t count)
+static ssize_t tegra2_statmon_enable_store(struct class *class,
+	struct class_attribute *attr, const char *buf, size_t count)
 {
 	int value;
 
@@ -297,14 +297,14 @@ static ssize_t tegra2_statmon_enable_store(struct sysdev_class *class,
 	return 0;
 }
 
-static ssize_t tegra2_statmon_sample_time_show(struct sysdev_class *class,
-	struct sysdev_class_attribute *attr, char *buf)
+static ssize_t tegra2_statmon_sample_time_show(struct class *class,
+	struct class_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%d\n", stat_mon->avp_sampler.sample_time);
 }
 
-static ssize_t tegra2_statmon_sample_time_store(struct sysdev_class *class,
-	struct sysdev_class_attribute *attr,
+static ssize_t tegra2_statmon_sample_time_store(struct class *class,
+	struct class_attribute *attr,
 	const char *buf, size_t count)
 {
 	int value;
@@ -317,20 +317,20 @@ static ssize_t tegra2_statmon_sample_time_store(struct sysdev_class *class,
 	return count;
 }
 
-static struct sysdev_class tegra2_statmon_sysclass = {
+static struct class tegra2_statmon_class = {
 	.name = "tegra2_statmon",
 };
 
 #define TEGRA2_STATMON_ATTRIBUTE_EXPAND(_attr, _mode) \
-	static SYSDEV_CLASS_ATTR(_attr, _mode, \
+	static CLASS_ATTR(_attr, _mode, \
 		tegra2_statmon_##_attr##_show, tegra2_statmon_##_attr##_store)
 
 TEGRA2_STATMON_ATTRIBUTE_EXPAND(enable, 0666);
 TEGRA2_STATMON_ATTRIBUTE_EXPAND(sample_time, 0666);
 
-#define TEGRA2_STATMON_ATTRIBUTE(_name) (&attr_##_name)
+#define TEGRA2_STATMON_ATTRIBUTE(_name) (&class_attr_##_name)
 
-static struct sysdev_class_attribute *tegra2_statmon_attrs[] = {
+static struct class_attribute *tegra2_statmon_attrs[] = {
 	TEGRA2_STATMON_ATTRIBUTE(enable),
 	TEGRA2_STATMON_ATTRIBUTE(sample_time),
 	NULL,
@@ -405,19 +405,19 @@ static int tegra2_stat_mon_init(void)
 
 	mutex_init(&stat_mon->stat_mon_lock);
 
-	/* /sys/class/system/tegra2_statmon */
-	rc = sysdev_class_register(&tegra2_statmon_sysclass);
+	/* /sys/devices/system/tegra2_statmon */
+	rc = class_register(&tegra2_statmon_class);
 	if (rc) {
 		pr_err("%s : Couldn't create statmon sysfs entry\n", __func__);
 		return 0;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(tegra2_statmon_attrs) - 1; i++) {
-		rc = sysdev_class_create_file(&tegra2_statmon_sysclass,
+		rc = class_create_file(&tegra2_statmon_class,
 			tegra2_statmon_attrs[i]);
 		if (rc) {
 			pr_err("%s: Failed to create sys class\n", __func__);
-			sysdev_class_unregister(&tegra2_statmon_sysclass);
+			class_unregister(&tegra2_statmon_class);
 			kfree(stat_mon);
 			return 0;
 		}
