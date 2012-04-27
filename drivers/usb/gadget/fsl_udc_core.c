@@ -1977,7 +1977,7 @@ static int process_ep_req(struct fsl_udc *udc, int pipe,
 	actual = curr_req->req.length;
 
 	for (j = 0; j < curr_req->dtd_count; j++) {
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && defined(CONFIG_ARCH_TEGRA)
+#if defined(CONFIG_ARCH_TEGRA)
 		/* Fence read for coherency of AHB master intiated writes */
 		readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
 #endif
@@ -2349,7 +2349,7 @@ static irqreturn_t fsl_udc_irq(int irq, void *_udc)
 		return status;
 	}
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && defined(CONFIG_ARCH_TEGRA)
+#if defined(CONFIG_ARCH_TEGRA)
 	/* Fence read for coherency of AHB master intiated writes */
 	readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
 #endif
