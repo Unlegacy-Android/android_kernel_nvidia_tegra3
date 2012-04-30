@@ -32,6 +32,7 @@
 #include <linux/err.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>
+#include <linux/earlysuspend.h>
 #include <linux/suspend.h>
 #include <linux/slab.h>
 #include <linux/serial_reg.h>

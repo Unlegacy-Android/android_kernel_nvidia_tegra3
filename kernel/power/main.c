@@ -21,6 +21,7 @@
 DEFINE_MUTEX(pm_mutex);
 
 #ifdef CONFIG_PM_SLEEP
+struct workqueue_struct *suspend_work_queue;
 
 /* Routines for PM-transition notifications */
 
@@ -273,7 +274,11 @@ static ssize_t state_store(struct kobject *kobj, struct kobj_attribute *attr,
 			   const char *buf, size_t n)
 {
 #ifdef CONFIG_SUSPEND
+#ifdef CONFIG_EARLYSUSPEND
+	suspend_state_t state = PM_SUSPEND_ON;
+#else
 	suspend_state_t state = PM_SUSPEND_STANDBY;
+#endif
 	const char * const *s;
 #endif
 	char *p;
@@ -291,11 +296,18 @@ static ssize_t state_store(struct kobject *kobj, struct kobj_attribute *attr,
 
 #ifdef CONFIG_SUSPEND
 	for (s = &pm_states[state]; state < PM_SUSPEND_MAX; s++, state++) {
-		if (*s && len == strlen(*s) && !strncmp(buf, *s, len)) {
-			error = pm_suspend(state);
+		if (*s && len == strlen(*s) && !strncmp(buf, *s, len))
 			break;
-		}
 	}
+	if (state < PM_SUSPEND_MAX && *s)
+#ifdef CONFIG_EARLYSUSPEND
+		if (state == PM_SUSPEND_ON || valid_state(state)) {
+			error = 0;
+			request_suspend_state(state);
+		}
+#else
+		error = enter_state(state);
+#endif
 #endif
 
  Exit:
@@ -445,15 +457,28 @@ static inline int pm_start_workqueue(void) { return 0; }
 
 static int __init pm_init(void)
 {
-	int error = pm_start_workqueue();
-	if (error)
-		return error;
+	int ret;
+
+	suspend_work_queue = create_singlethread_workqueue("suspend");
+        if (suspend_work_queue == NULL)
+                return -ENOMEM;
+
+	ret = pm_start_workqueue();
+	if (ret)
+		goto error;
+
 	hibernate_image_size_init();
 	hibernate_reserved_size_init();
 	power_kobj = kobject_create_and_add("power", NULL);
-	if (!power_kobj)
-		return -ENOMEM;
+	if (!power_kobj) {
+		ret = -ENOMEM;
+		goto error;
+	}
 	return sysfs_create_group(power_kobj, &attr_group);
+
+error:
+	destroy_workqueue(suspend_work_queue);
+	return ret;
 }
 
 core_initcall(pm_init);
