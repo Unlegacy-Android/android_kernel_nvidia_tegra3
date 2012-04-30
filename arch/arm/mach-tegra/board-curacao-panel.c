@@ -43,7 +43,11 @@
 
 #if PANEL_ENABLE
 
+#ifndef CONFIG_TEGRA_DSI_GANGED_MODE
 #define DSI_PANEL_218	1
+#else
+#define DSI_PANEL_218	0
+#endif
 
 #define DSI_PANEL_RESET	1
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
@@ -126,12 +130,28 @@ static struct resource curacao_disp1_resources[] = {
 		.end	= 0,	/* Filled in by curacao_panel_init() */
 		.flags	= IORESOURCE_MEM,
 	},
+
+#ifndef CONFIG_TEGRA_DSI_GANGED_MODE
 	{
 		.name	= "dsi_regs",
 		.start	= TEGRA_DSI_BASE,
 		.end	= TEGRA_DSI_BASE + TEGRA_DSI_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
 	},
+#else
+	{
+		.name	= "ganged_dsia_regs",
+		.start	= TEGRA_DSI_BASE,
+		.end	= TEGRA_DSI_BASE + TEGRA_DSI_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "ganged_dsib_regs",
+		.start	= TEGRA_DSIB_BASE,
+		.end	= TEGRA_DSIB_BASE + TEGRA_DSIB_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+#endif
 };
 
 static struct tegra_dc_sd_settings curacao_sd_settings = {
@@ -177,7 +197,7 @@ static struct tegra_dc_sd_settings curacao_sd_settings = {
 };
 
 static struct tegra_dc_mode curacao_panel_modes[] = {
-#if defined(CONFIG_TEGRA_SIMULATION_PLATFORM)
+#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 	{
 		.pclk = 18000000,
 		.h_ref_to_sync = 11,
@@ -190,6 +210,22 @@ static struct tegra_dc_mode curacao_panel_modes[] = {
 		.v_active = 320,
 		.h_front_porch = 16,
 		.v_front_porch = 4,
+	},
+#else
+#if !defined(CONFIG_TEGRA_SILICON_PLATFORM) && \
+	defined(CONFIG_TEGRA_DSI_GANGED_MODE)
+	{
+		.pclk = 27000000,
+		.h_ref_to_sync = 1,
+		.v_ref_to_sync = 1,
+		.h_sync_width = 64,
+		.v_sync_width = 2,
+		.h_back_porch = 16,
+		.v_back_porch = 33,
+		.h_active = 640,
+		.v_active = 480,
+		.h_front_porch = 132,
+		.v_front_porch = 10,
 	},
 #else
 	{
@@ -206,6 +242,7 @@ static struct tegra_dc_mode curacao_panel_modes[] = {
 		.v_front_porch = 4,
 	},
 #endif
+#endif
 };
 
 static struct tegra_fb_data curacao_fb_data = {
@@ -215,8 +252,14 @@ static struct tegra_fb_data curacao_fb_data = {
 	.yres		= 320,
 	.bits_per_pixel = 16,
 #else
+#if !defined(CONFIG_TEGRA_SILICON_PLATFORM) && \
+	defined(CONFIG_TEGRA_DSI_GANGED_MODE)
+	.xres		= 640,
+	.yres		= 480,
+#else
 	.xres		= 864,
 	.yres		= 480,
+#endif
 	.bits_per_pixel = 32,
 #endif
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
@@ -270,7 +313,11 @@ static struct tegra_dsi_out curacao_dsi = {
 #if DSI_PANEL_218
 	.n_data_lanes = 2,
 #else
+#ifdef CONFIG_TEGRA_DSI_GANGED_MODE
+	.n_data_lanes = 8,
+#else
 	.n_data_lanes = 4,
+#endif
 #endif
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
 	.refresh_rate = 60,
@@ -279,7 +326,6 @@ static struct tegra_dsi_out curacao_dsi = {
 	.dsi_instance = 0,
 	.controller_vs = DSI_VS_1,
 
-	.source_invert = true,
 	.panel_reset = DSI_PANEL_RESET,
 	.power_saving_suspend = true,
 
@@ -295,8 +341,15 @@ static struct tegra_dsi_out curacao_dsi = {
 	.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
 	.dsi_suspend_cmd = dsi_suspend_cmd,
 
-	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
 	.lp_cmd_mode_freq_khz = 20000,
+
+#ifdef CONFIG_TEGRA_DSI_GANGED_MODE
+	.video_data_type = TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE,
+	.video_burst_mode = TEGRA_DSI_VIDEO_NONE_BURST_MODE,
+	.ganged_type = TEGRA_DSI_GANGED_SYMMETRIC_LEFT_RIGHT,
+#else
+	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
+#endif
 
 	/* TODO: Get the vender recommended freq */
 	.lp_read_cmd_mode_freq_khz = 200000,
@@ -361,12 +414,27 @@ static struct resource curacao_disp2_resources[] = {
 		.end	= 0,	/* Filled in by curacao_panel_init() */
 		.flags	= IORESOURCE_MEM,
 	},
+#ifndef CONFIG_TEGRA_DSI_GANGED_MODE
 	{
 		.name	= "dsi_regs",
 		.start	= TEGRA_DSI_BASE,
 		.end	= TEGRA_DSI_BASE + TEGRA_DSI_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
 	},
+#else
+	{
+		.name	= "ganged_dsia_regs",
+		.start	= TEGRA_DSI_BASE,
+		.end	= TEGRA_DSI_BASE + TEGRA_DSI_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "ganged_dsib_regs",
+		.start	= TEGRA_DSIB_BASE,
+		.end	= TEGRA_DSIB_BASE + TEGRA_DSIB_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+#endif
 };
 
 static struct tegra_dc_out curacao_disp2_out = {
