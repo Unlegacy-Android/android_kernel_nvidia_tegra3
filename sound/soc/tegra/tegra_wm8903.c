@@ -807,7 +807,12 @@ static __devinit int tegra_wm8903_driver_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto err;
 	}
+
 	machine->pcm_dev = ERR_PTR(-EINVAL);
+
+	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev, card);
+	if (ret)
+		goto err;
 
 	if (machine_is_cardhu() || machine_is_ventana()) {
 		machine->spk_reg = regulator_get(&pdev->dev, "vdd_spk_amp");
@@ -923,7 +928,7 @@ static __devinit int tegra_wm8903_driver_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev);
+	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev, card);
 	if (ret)
 		goto err_unregister;
 
