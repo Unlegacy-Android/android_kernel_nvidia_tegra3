@@ -1033,7 +1033,7 @@ static int dbg_pinmux_show(struct seq_file *s, void *unused)
 		len = strlen(pingroups[i].name);
 		dbg_pad_field(s, 15 - len);
 
-		if (pingroups[i].mux_reg <= 0) {
+		if (pingroups[i].mux_reg < 0) {
 			seq_printf(s, "TEGRA_MUX_NONE");
 			len = strlen("NONE");
 		} else {
@@ -1045,7 +1045,7 @@ static int dbg_pinmux_show(struct seq_file *s, void *unused)
 				seq_printf(s, "TEGRA_MUX_INVALID");
 				len = 7;
 			} else if (pingroups[i].funcs[mux] & TEGRA_MUX_RSVD) {
-				seq_printf(s, "TEGRA_MUX_RSVD%1lu", mux+1);
+				seq_printf(s, "TEGRA_MUX_RSVD%1lu", mux);
 				len = 5;
 			} else {
 				BUG_ON(!tegra_mux_names[pingroups[i].funcs[mux]]);
@@ -1066,7 +1066,7 @@ static int dbg_pinmux_show(struct seq_file *s, void *unused)
 			dbg_pad_field(s, 6 - len);
 		}
 #endif
-		if (pingroups[i].pupd_reg <= 0) {
+		if (pingroups[i].pupd_reg < 0) {
 			seq_printf(s, "TEGRA_PUPD_NORMAL");
 			len = strlen("NORMAL");
 		} else {
@@ -1078,7 +1078,7 @@ static int dbg_pinmux_show(struct seq_file *s, void *unused)
 		}
 		dbg_pad_field(s, 9 - len);
 
-		if (pingroups[i].tri_reg <= 0) {
+		if (pingroups[i].tri_reg < 0) {
 			seq_printf(s, "TEGRA_TRI_NORMAL");
 		} else {
 			reg = pg_readl(pingroups[i].tri_bank,
