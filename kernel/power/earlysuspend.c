@@ -39,7 +39,7 @@ static void late_resume(struct work_struct *work);
 static void suspend(struct work_struct *work);
 static DECLARE_WORK(early_suspend_work, early_suspend);
 static DECLARE_WORK(late_resume_work, late_resume);
-static DECLARE_WORK(suspend_work, suspend);
+static DECLARE_DELAYED_WORK(suspend_work, suspend);
 static DEFINE_SPINLOCK(state_lock);
 enum {
 	SUSPEND_REQUESTED = 0x1,
@@ -76,7 +76,18 @@ EXPORT_SYMBOL(unregister_early_suspend);
 
 static void suspend(struct work_struct *work)
 {
-	 pm_suspend(requested_suspend_state);
+	if (debug_mask & DEBUG_SUSPEND)
+		pr_info("early_suspend: suspend\n");
+	pm_suspend(requested_suspend_state);
+
+	/*
+	 * Check if we made it till late_resume. If not then this is not
+	 * actual resume. Suspend again.
+	 */
+	mutex_lock(&early_suspend_lock);
+	if (state & SUSPENDED)
+		queue_delayed_work(suspend_work_queue, &suspend_work, HZ);
+	mutex_unlock(&early_suspend_lock);
 }
 
 static void early_suspend(struct work_struct *work)
@@ -109,13 +120,13 @@ static void early_suspend(struct work_struct *work)
 			pos->suspend(pos);
 		}
 	}
-	mutex_unlock(&early_suspend_lock);
 
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("early_suspend: sync\n");
 
 	sys_sync();
-	queue_work(suspend_work_queue, &suspend_work);
+	queue_delayed_work(suspend_work_queue, &suspend_work, HZ);
+	mutex_unlock(&early_suspend_lock);
 }
 
 static void late_resume(struct work_struct *work)
