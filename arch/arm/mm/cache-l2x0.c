@@ -43,6 +43,8 @@ static inline bool is_pl310_rev(int rev)
 			(L2X0_CACHE_ID_PART_L310 | rev);
 }
 
+static unsigned long sync_reg_offset = L2X0_CACHE_SYNC;
+
 struct l2x0_regs l2x0_saved_regs;
 
 struct l2x0_of_data {
@@ -71,12 +73,7 @@ static inline void cache_sync(void)
 {
 	void __iomem *base = l2x0_base;
 
-#ifdef CONFIG_PL310_ERRATA_753970
-	/* write to an unmmapped register */
-	writel_relaxed(0, base + L2X0_DUMMY_REG);
-#else
-	writel_relaxed(0, base + L2X0_CACHE_SYNC);
-#endif
+	writel_relaxed(0, base + sync_reg_offset);
 	cache_wait(base + L2X0_CACHE_SYNC, 1);
 }
 
@@ -384,6 +381,10 @@ void l2x0_init(void __iomem *base, u32 aux_val, u32 aux_mask)
 		else
 			l2x0_ways = 8;
 		type = "L310";
+#ifdef CONFIG_PL310_ERRATA_753970
+		/* Unmapped register. */
+		sync_reg_offset = L2X0_DUMMY_REG;
+#endif
 		break;
 	case L2X0_CACHE_ID_PART_L210:
 		l2x0_ways = (aux >> 13) & 0xf;
