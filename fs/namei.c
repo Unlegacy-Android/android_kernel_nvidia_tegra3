@@ -1447,7 +1447,7 @@ unsigned int full_name_hash(const unsigned char *name, unsigned int len)
 	unsigned long hash = 0;
 
 	for (;;) {
-		a = *(unsigned long *)name;
+		a = load_unaligned_zeropad(name);
 		if (len < sizeof(unsigned long))
 			break;
 		hash += a;
@@ -1488,7 +1488,7 @@ static inline unsigned long hash_name(const char *name, unsigned int *hashp)
 	do {
 		hash = (hash + a) * 9;
 		len += sizeof(unsigned long);
-		a = *(unsigned long *)(name+len);
+		a = load_unaligned_zeropad(name+len);
 		/* Do we have any NUL or '/' bytes in this word? */
 		mask = has_zero(a) | has_zero(a ^ SLASHBYTES);
 	} while (!mask);
