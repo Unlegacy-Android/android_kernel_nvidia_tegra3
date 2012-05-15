@@ -12,7 +12,10 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * File contents: support functions for PCI/PCIe
  */
+
 #include <linux/delay.h>
 #include <linux/pci.h>
 
@@ -20,6 +23,7 @@
 #include <chipcommon.h>
 #include <brcmu_utils.h>
 #include <brcm_hw_ids.h>
+#include <soc.h>
 #include "types.h"
 #include "pub.h"
 #include "pmu.h"
@@ -28,48 +32,68 @@
 #include "aiutils.h"
 
 /* slow_clk_ctl */
-#define SCC_SS_MASK		0x00000007	/* slow clock source mask */
-#define	SCC_SS_LPO		0x00000000	/* source of slow clock is LPO */
-#define	SCC_SS_XTAL		0x00000001	/* source of slow clock is crystal */
-#define	SCC_SS_PCI		0x00000002	/* source of slow clock is PCI */
-#define SCC_LF			0x00000200	/* LPOFreqSel, 1: 160Khz, 0: 32KHz */
-#define SCC_LP			0x00000400	/* LPOPowerDown, 1: LPO is disabled,
-						 * 0: LPO is enabled
-						 */
-#define SCC_FS			0x00000800	/* ForceSlowClk, 1: sb/cores running on slow clock,
-						 * 0: power logic control
-						 */
-#define SCC_IP			0x00001000	/* IgnorePllOffReq, 1/0: power logic ignores/honors
-						 * PLL clock disable requests from core
-						 */
-#define SCC_XC			0x00002000	/* XtalControlEn, 1/0: power logic does/doesn't
-						 * disable crystal when appropriate
-						 */
-#define SCC_XP			0x00004000	/* XtalPU (RO), 1/0: crystal running/disabled */
-#define SCC_CD_MASK		0xffff0000	/* ClockDivider (SlowClk = 1/(4+divisor)) */
+ /* slow clock source mask */
+#define SCC_SS_MASK		0x00000007
+ /* source of slow clock is LPO */
+#define	SCC_SS_LPO		0x00000000
+ /* source of slow clock is crystal */
+#define	SCC_SS_XTAL		0x00000001
+ /* source of slow clock is PCI */
+#define	SCC_SS_PCI		0x00000002
+ /* LPOFreqSel, 1: 160Khz, 0: 32KHz */
+#define SCC_LF			0x00000200
+ /* LPOPowerDown, 1: LPO is disabled, 0: LPO is enabled */
+#define SCC_LP			0x00000400
+ /* ForceSlowClk, 1: sb/cores running on slow clock, 0: power logic control */
+#define SCC_FS			0x00000800
+ /* IgnorePllOffReq, 1/0:
+  *  power logic ignores/honors PLL clock disable requests from core
+  */
+#define SCC_IP			0x00001000
+ /* XtalControlEn, 1/0:
+  *  power logic does/doesn't disable crystal when appropriate
+  */
+#define SCC_XC			0x00002000
+ /* XtalPU (RO), 1/0: crystal running/disabled */
+#define SCC_XP			0x00004000
+ /* ClockDivider (SlowClk = 1/(4+divisor)) */
+#define SCC_CD_MASK		0xffff0000
 #define SCC_CD_SHIFT		16
 
 /* system_clk_ctl */
-#define	SYCC_IE			0x00000001	/* ILPen: Enable Idle Low Power */
-#define	SYCC_AE			0x00000002	/* ALPen: Enable Active Low Power */
-#define	SYCC_FP			0x00000004	/* ForcePLLOn */
-#define	SYCC_AR			0x00000008	/* Force ALP (or HT if ALPen is not set */
-#define	SYCC_HR			0x00000010	/* Force HT */
-#define SYCC_CD_MASK		0xffff0000	/* ClkDiv  (ILP = 1/(4 * (divisor + 1)) */
+ /* ILPen: Enable Idle Low Power */
+#define	SYCC_IE			0x00000001
+ /* ALPen: Enable Active Low Power */
+#define	SYCC_AE			0x00000002
+ /* ForcePLLOn */
+#define	SYCC_FP			0x00000004
+ /* Force ALP (or HT if ALPen is not set */
+#define	SYCC_AR			0x00000008
+ /* Force HT */
+#define	SYCC_HR			0x00000010
+ /* ClkDiv  (ILP = 1/(4 * (divisor + 1)) */
+#define SYCC_CD_MASK		0xffff0000
 #define SYCC_CD_SHIFT		16
 
 #define CST4329_SPROM_OTP_SEL_MASK	0x00000003
-#define CST4329_DEFCIS_SEL		0	/* OTP is powered up, use def. CIS, no SPROM */
-#define CST4329_SPROM_SEL		1	/* OTP is powered up, SPROM is present */
-#define CST4329_OTP_SEL			2	/* OTP is powered up, no SPROM */
-#define CST4329_OTP_PWRDN		3	/* OTP is powered down, SPROM is present */
+ /* OTP is powered up, use def. CIS, no SPROM */
+#define CST4329_DEFCIS_SEL		0
+ /* OTP is powered up, SPROM is present */
+#define CST4329_SPROM_SEL		1
+ /* OTP is powered up, no SPROM */
+#define CST4329_OTP_SEL			2
+ /* OTP is powered down, SPROM is present */
+#define CST4329_OTP_PWRDN		3
+
 #define CST4329_SPI_SDIO_MODE_MASK	0x00000004
 #define CST4329_SPI_SDIO_MODE_SHIFT	2
 
 /* 43224 chip-specific ChipControl register bits */
 #define CCTRL43224_GPIO_TOGGLE          0x8000
-#define CCTRL_43224A0_12MA_LED_DRIVE    0x00F000F0	/* 12 mA drive strength */
-#define CCTRL_43224B0_12MA_LED_DRIVE    0xF0	/* 12 mA drive strength for later 43224s */
+ /* 12 mA drive strength */
+#define CCTRL_43224A0_12MA_LED_DRIVE    0x00F000F0
+ /* 12 mA drive strength for later 43224s */
+#define CCTRL_43224B0_12MA_LED_DRIVE    0xF0
 
 /* 43236 Chip specific ChipStatus register bits */
 #define CST43236_SFLASH_MASK		0x00000040
@@ -78,29 +102,44 @@
 #define CST43236_BP_CLK			0x00000200	/* 120/96Mbps */
 #define CST43236_BOOT_MASK		0x00001800
 #define CST43236_BOOT_SHIFT		11
-#define CST43236_BOOT_FROM_SRAM		0	/* boot from SRAM, ARM in reset */
-#define CST43236_BOOT_FROM_ROM		1	/* boot from ROM */
-#define CST43236_BOOT_FROM_FLASH	2	/* boot from FLASH */
+#define CST43236_BOOT_FROM_SRAM		0 /* boot from SRAM, ARM in reset */
+#define CST43236_BOOT_FROM_ROM		1 /* boot from ROM */
+#define CST43236_BOOT_FROM_FLASH	2 /* boot from FLASH */
 #define CST43236_BOOT_FROM_INVALID	3
 
 /* 4331 chip-specific ChipControl register bits */
-#define CCTRL4331_BT_COEXIST		(1<<0)	/* 0 disable */
-#define CCTRL4331_SECI			(1<<1)	/* 0 SECI is disabled (JATG functional) */
-#define CCTRL4331_EXT_LNA		(1<<2)	/* 0 disable */
-#define CCTRL4331_SPROM_GPIO13_15       (1<<3)	/* sprom/gpio13-15 mux */
-#define CCTRL4331_EXTPA_EN		(1<<4)	/* 0 ext pa disable, 1 ext pa enabled */
-#define CCTRL4331_GPIOCLK_ON_SPROMCS	(1<<5)	/* set drive out GPIO_CLK on sprom_cs pin */
-#define CCTRL4331_PCIE_MDIO_ON_SPROMCS	(1<<6)	/* use sprom_cs pin as PCIE mdio interface */
-#define CCTRL4331_EXTPA_ON_GPIO2_5	(1<<7)	/* aband extpa will be at gpio2/5 and sprom_dout */
-#define CCTRL4331_OVR_PIPEAUXCLKEN	(1<<8)	/* override core control on pipe_AuxClkEnable */
-#define CCTRL4331_OVR_PIPEAUXPWRDOWN	(1<<9)	/* override core control on pipe_AuxPowerDown */
-#define CCTRL4331_PCIE_AUXCLKEN		(1<<10)	/* pcie_auxclkenable */
-#define CCTRL4331_PCIE_PIPE_PLLDOWN	(1<<11)	/* pcie_pipe_pllpowerdown */
-#define CCTRL4331_BT_SHD0_ON_GPIO4	(1<<16)	/* enable bt_shd0 at gpio4 */
-#define CCTRL4331_BT_SHD1_ON_GPIO5	(1<<17)	/* enable bt_shd1 at gpio5 */
+ /* 0 disable */
+#define CCTRL4331_BT_COEXIST		(1<<0)
+ /* 0 SECI is disabled (JTAG functional) */
+#define CCTRL4331_SECI			(1<<1)
+ /* 0 disable */
+#define CCTRL4331_EXT_LNA		(1<<2)
+ /* sprom/gpio13-15 mux */
+#define CCTRL4331_SPROM_GPIO13_15       (1<<3)
+ /* 0 ext pa disable, 1 ext pa enabled */
+#define CCTRL4331_EXTPA_EN		(1<<4)
+ /* set drive out GPIO_CLK on sprom_cs pin */
+#define CCTRL4331_GPIOCLK_ON_SPROMCS	(1<<5)
+ /* use sprom_cs pin as PCIE mdio interface */
+#define CCTRL4331_PCIE_MDIO_ON_SPROMCS	(1<<6)
+ /* aband extpa will be at gpio2/5 and sprom_dout */
+#define CCTRL4331_EXTPA_ON_GPIO2_5	(1<<7)
+ /* override core control on pipe_AuxClkEnable */
+#define CCTRL4331_OVR_PIPEAUXCLKEN	(1<<8)
+ /* override core control on pipe_AuxPowerDown */
+#define CCTRL4331_OVR_PIPEAUXPWRDOWN	(1<<9)
+ /* pcie_auxclkenable */
+#define CCTRL4331_PCIE_AUXCLKEN		(1<<10)
+ /* pcie_pipe_pllpowerdown */
+#define CCTRL4331_PCIE_PIPE_PLLDOWN	(1<<11)
+ /* enable bt_shd0 at gpio4 */
+#define CCTRL4331_BT_SHD0_ON_GPIO4	(1<<16)
+ /* enable bt_shd1 at gpio5 */
+#define CCTRL4331_BT_SHD1_ON_GPIO5	(1<<17)
 
 /* 4331 Chip specific ChipStatus register bits */
-#define	CST4331_XTAL_FREQ		0x00000001	/* crystal frequency 20/40Mhz */
+ /* crystal frequency 20/40Mhz */
+#define	CST4331_XTAL_FREQ		0x00000001
 #define	CST4331_SPROM_PRESENT		0x00000002
 #define	CST4331_OTP_PRESENT		0x00000004
 #define	CST4331_LDO_RF			0x00000008
@@ -110,19 +149,26 @@
 #define	CST4319_SPI_CPULESSUSB		0x00000001
 #define	CST4319_SPI_CLK_POL		0x00000002
 #define	CST4319_SPI_CLK_PH		0x00000008
-#define	CST4319_SPROM_OTP_SEL_MASK	0x000000c0	/* gpio [7:6], SDIO CIS selection */
+ /* gpio [7:6], SDIO CIS selection */
+#define	CST4319_SPROM_OTP_SEL_MASK	0x000000c0
 #define	CST4319_SPROM_OTP_SEL_SHIFT	6
-#define	CST4319_DEFCIS_SEL		0x00000000	/* use default CIS, OTP is powered up */
-#define	CST4319_SPROM_SEL		0x00000040	/* use SPROM, OTP is powered up */
-#define	CST4319_OTP_SEL			0x00000080	/* use OTP, OTP is powered up */
-#define	CST4319_OTP_PWRDN		0x000000c0	/* use SPROM, OTP is powered down */
-#define	CST4319_SDIO_USB_MODE		0x00000100	/* gpio [8], sdio/usb mode */
+ /* use default CIS, OTP is powered up */
+#define	CST4319_DEFCIS_SEL		0x00000000
+ /* use SPROM, OTP is powered up */
+#define	CST4319_SPROM_SEL		0x00000040
+ /* use OTP, OTP is powered up */
+#define	CST4319_OTP_SEL			0x00000080
+ /* use SPROM, OTP is powered down */
+#define	CST4319_OTP_PWRDN		0x000000c0
+ /* gpio [8], sdio/usb mode */
+#define	CST4319_SDIO_USB_MODE		0x00000100
 #define	CST4319_REMAP_SEL_MASK		0x00000600
 #define	CST4319_ILPDIV_EN		0x00000800
 #define	CST4319_XTAL_PD_POL		0x00001000
 #define	CST4319_LPO_SEL			0x00002000
 #define	CST4319_RES_INIT_MODE		0x0000c000
-#define	CST4319_PALDO_EXTPNP		0x00010000	/* PALDO is configured with external PNP */
+ /* PALDO is configured with external PNP */
+#define	CST4319_PALDO_EXTPNP		0x00010000
 #define	CST4319_CBUCK_MODE_MASK		0x00060000
 #define CST4319_CBUCK_MODE_BURST	0x00020000
 #define CST4319_CBUCK_MODE_LPBURST	0x00060000
@@ -153,11 +199,8 @@
 #define	CST4313_SPROM_OTP_SEL_SHIFT		0
 
 /* 4313 Chip specific ChipControl register bits */
-#define CCTRL_4313_12MA_LED_DRIVE    0x00000007	/* 12 mA drive strengh for later 4313 */
-
-#define BCM47162_DMP() ((sih->chip == BCM47162_CHIP_ID) && \
-		(sih->chiprev == 0) && \
-		(sii->coreid[sii->curidx] == MIPS74K_CORE_ID))
+ /* 12 mA drive strengh for later 4313 */
+#define CCTRL_4313_12MA_LED_DRIVE    0x00000007
 
 /* Manufacturer Ids */
 #define	MFGID_ARM		0x43b
@@ -227,9 +270,12 @@
 #define	SD_SG32			0x00000008
 #define	SD_SZ_ALIGN		0x00000fff
 
-#define	PCI_CFG_GPIO_SCS	0x10	/* PCI config space bit 4 for 4306c0 slow clock source */
-#define PCI_CFG_GPIO_XTAL	0x40	/* PCI config space GPIO 14 for Xtal power-up */
-#define PCI_CFG_GPIO_PLL	0x80	/* PCI config space GPIO 15 for PLL power-down */
+/* PCI config space bit 4 for 4306c0 slow clock source */
+#define	PCI_CFG_GPIO_SCS	0x10
+/* PCI config space GPIO 14 for Xtal power-up */
+#define PCI_CFG_GPIO_XTAL	0x40
+/* PCI config space GPIO 15 for PLL power-down */
+#define PCI_CFG_GPIO_PLL	0x80
 
 /* power control defines */
 #define PLL_DELAY		150	/* us pll on delay */
@@ -238,6 +284,82 @@
 
 /* resetctrl */
 #define	AIRC_RESET		1
+
+#define	NOREV		-1	/* Invalid rev */
+
+/* GPIO Based LED powersave defines */
+#define DEFAULT_GPIO_ONTIME	10	/* Default: 10% on */
+#define DEFAULT_GPIO_OFFTIME	90	/* Default: 10% on */
+
+/* When Srom support present, fields in sromcontrol */
+#define	SRC_START		0x80000000
+#define	SRC_BUSY		0x80000000
+#define	SRC_OPCODE		0x60000000
+#define	SRC_OP_READ		0x00000000
+#define	SRC_OP_WRITE		0x20000000
+#define	SRC_OP_WRDIS		0x40000000
+#define	SRC_OP_WREN		0x60000000
+#define	SRC_OTPSEL		0x00000010
+#define	SRC_LOCK		0x00000008
+#define	SRC_SIZE_MASK		0x00000006
+#define	SRC_SIZE_1K		0x00000000
+#define	SRC_SIZE_4K		0x00000002
+#define	SRC_SIZE_16K		0x00000004
+#define	SRC_SIZE_SHIFT		1
+#define	SRC_PRESENT		0x00000001
+
+/* External PA enable mask */
+#define GPIO_CTRL_EPA_EN_MASK 0x40
+
+#define DEFAULT_GPIOTIMERVAL \
+	((DEFAULT_GPIO_ONTIME << GPIO_ONTIME_SHIFT) | DEFAULT_GPIO_OFFTIME)
+
+#define	BADIDX		(SI_MAXCORES + 1)
+
+/* Newer chips can access PCI/PCIE and CC core without requiring to change
+ * PCI BAR0 WIN
+ */
+#define SI_FAST(si) (((si)->pub.buscoretype == PCIE_CORE_ID) ||	\
+		     (((si)->pub.buscoretype == PCI_CORE_ID) && \
+		      (si)->pub.buscorerev >= 13))
+
+#define CCREGS_FAST(si) (((char __iomem *)((si)->curmap) + \
+			  PCI_16KB0_CCREGS_OFFSET))
+
+#define	IS_SIM(chippkg)	\
+	((chippkg == HDLSIM_PKG_ID) || (chippkg == HWSIM_PKG_ID))
+
+/*
+ * Macros to disable/restore function core(D11, ENET, ILINE20, etc) interrupts
+ * before after core switching to avoid invalid register accesss inside ISR.
+ */
+#define INTR_OFF(si, intr_val) \
+	if ((si)->intrsoff_fn && \
+	    (si)->coreid[(si)->curidx] == (si)->dev_coreid) \
+		intr_val = (*(si)->intrsoff_fn)((si)->intr_arg)
+
+#define INTR_RESTORE(si, intr_val) \
+	if ((si)->intrsrestore_fn && \
+	    (si)->coreid[(si)->curidx] == (si)->dev_coreid) \
+		(*(si)->intrsrestore_fn)((si)->intr_arg, intr_val)
+
+#define PCI(si)		((si)->pub.buscoretype == PCI_CORE_ID)
+#define PCIE(si)	((si)->pub.buscoretype == PCIE_CORE_ID)
+
+#define PCI_FORCEHT(si)	(PCIE(si) && (si->pub.chip == BCM4716_CHIP_ID))
+
+#ifdef BCMDBG
+#define	SI_MSG(args)	printk args
+#else
+#define	SI_MSG(args)
+#endif				/* BCMDBG */
+
+#define	GOODCOREADDR(x, b) \
+	(((x) >= (b)) && ((x) < ((b) + SI_MAXCORES * SI_CORE_SIZE)) && \
+		IS_ALIGNED((x), SI_CORE_SIZE))
+
+#define PCIEREGS(si) ((__iomem char *)((si)->curmap) + \
+			PCI_16KB0_PCIREGS_OFFSET)
 
 struct aidmp {
 	u32 oobselina30;	/* 0x000 */
@@ -360,7 +482,7 @@ struct aidmp {
 /* EROM parsing */
 
 static u32
-get_erom_ent(struct si_pub *sih, u32 **eromptr, u32 mask, u32 match)
+get_erom_ent(struct si_pub *sih, u32 __iomem **eromptr, u32 mask, u32 match)
 {
 	u32 ent;
 	uint inv = 0, nom = 0;
@@ -386,16 +508,11 @@ get_erom_ent(struct si_pub *sih, u32 **eromptr, u32 mask, u32 match)
 		nom++;
 	}
 
-	SI_VMSG(("%s: Returning ent 0x%08x\n", __func__, ent));
-	if (inv + nom) {
-		SI_VMSG(("  after %d invalid and %d non-matching entries\n",
-			 inv, nom));
-	}
 	return ent;
 }
 
 static u32
-get_asd(struct si_pub *sih, u32 **eromptr, uint sp, uint ad, uint st,
+get_asd(struct si_pub *sih, u32 __iomem **eromptr, uint sp, uint ad, uint st,
 	u32 *addrl, u32 *addrh, u32 *sizel, u32 *sizeh)
 {
 	u32 asd, sz, szd;
@@ -423,9 +540,6 @@ get_asd(struct si_pub *sih, u32 **eromptr, uint sp, uint ad, uint st,
 	} else
 		*sizel = AD_SZ_BASE << (sz >> AD_SZ_SHIFT);
 
-	SI_VMSG(("  SP %d, ad %d: st = %d, 0x%08x_0x%08x @ 0x%08x_0x%08x\n",
-		 sp, ad, st, *sizeh, *sizel, *addrh, *addrl));
-
 	return asd;
 }
 
@@ -434,45 +548,28 @@ static void ai_hwfixup(struct si_info *sii)
 }
 
 /* parse the enumeration rom to identify all cores */
-void ai_scan(struct si_pub *sih, void *regs)
+static void ai_scan(struct si_pub *sih, struct chipcregs __iomem *cc)
 {
-	struct si_info *sii = SI_INFO(sih);
-	chipcregs_t *cc = (chipcregs_t *) regs;
-	u32 erombase, *eromptr, *eromlim;
+	struct si_info *sii = (struct si_info *)sih;
+
+	u32 erombase;
+	u32 __iomem *eromptr, *eromlim;
+	void __iomem *regs = cc;
 
 	erombase = R_REG(&cc->eromptr);
 
-	switch (sih->bustype) {
-	case SI_BUS:
-		eromptr = (u32 *) REG_MAP(erombase, SI_CORE_SIZE);
-		break;
+	/* Set wrappers address */
+	sii->curwrap = (void *)((unsigned long)cc + SI_CORE_SIZE);
 
-	case PCI_BUS:
-		/* Set wrappers address */
-		sii->curwrap = (void *)((unsigned long)regs + SI_CORE_SIZE);
-
-		/* Now point the window at the erom */
-		pci_write_config_dword(sii->pbus, PCI_BAR0_WIN, erombase);
-		eromptr = regs;
-		break;
-
-	case SPI_BUS:
-	case SDIO_BUS:
-		eromptr = (u32 *)(unsigned long)erombase;
-		break;
-
-	default:
-		SI_ERROR(("Don't know how to do AXI enumertion on bus %d\n",
-			  sih->bustype));
-		return;
-	}
+	/* Now point the window at the erom */
+	pci_write_config_dword(sii->pbus, PCI_BAR0_WIN, erombase);
+	eromptr = regs;
 	eromlim = eromptr + (ER_REMAPCONTROL / sizeof(u32));
 
-	SI_VMSG(("ai_scan: regs = 0x%p, erombase = 0x%08x, eromptr = 0x%p, eromlim = 0x%p\n", regs, erombase, eromptr, eromlim));
 	while (eromptr < eromlim) {
 		u32 cia, cib, cid, mfg, crev, nmw, nsw, nmp, nsp;
 		u32 mpd, asd, addrl, addrh, sizel, sizeh;
-		u32 *base;
+		u32 __iomem *base;
 		uint i, j, idx;
 		bool br;
 
@@ -481,8 +578,7 @@ void ai_scan(struct si_pub *sih, void *regs)
 		/* Grok a component */
 		cia = get_erom_ent(sih, &eromptr, ER_TAG, ER_CI);
 		if (cia == (ER_END | ER_VALID)) {
-			SI_VMSG(("Found END of erom after %d cores\n",
-				 sii->numcores));
+			/*  Found END of erom */
 			ai_hwfixup(sii);
 			return;
 		}
@@ -490,7 +586,7 @@ void ai_scan(struct si_pub *sih, void *regs)
 		cib = get_erom_ent(sih, &eromptr, 0, 0);
 
 		if ((cib & ER_TAG) != ER_CI) {
-			SI_ERROR(("CIA not followed by CIB\n"));
+			/* CIA not followed by CIB */
 			goto error;
 		}
 
@@ -502,8 +598,6 @@ void ai_scan(struct si_pub *sih, void *regs)
 		nmp = (cib & CIB_NMP_MASK) >> CIB_NMP_SHIFT;
 		nsp = (cib & CIB_NSP_MASK) >> CIB_NSP_SHIFT;
 
-		SI_VMSG(("Found component 0x%04x/0x%04x rev %d at erom addr 0x%p, with nmw = %d, " "nsw = %d, nmp = %d & nsp = %d\n", mfg, cid, crev, base, nmw, nsw, nmp, nsp));
-
 		if (((mfg == MFGID_ARM) && (cid == DEF_AI_COMP)) || (nsp == 0))
 			continue;
 		if ((nmw + nsw == 0)) {
@@ -511,9 +605,8 @@ void ai_scan(struct si_pub *sih, void *regs)
 			if (cid == OOB_ROUTER_CORE_ID) {
 				asd = get_asd(sih, &eromptr, 0, 0, AD_ST_SLAVE,
 					      &addrl, &addrh, &sizel, &sizeh);
-				if (asd != 0) {
+				if (asd != 0)
 					sii->oob_router = addrl;
-				}
 			}
 			continue;
 		}
@@ -527,12 +620,9 @@ void ai_scan(struct si_pub *sih, void *regs)
 		for (i = 0; i < nmp; i++) {
 			mpd = get_erom_ent(sih, &eromptr, ER_VALID, ER_VALID);
 			if ((mpd & ER_TAG) != ER_MP) {
-				SI_ERROR(("Not enough MP entries for component 0x%x\n", cid));
+				/* Not enough MP entries for component */
 				goto error;
 			}
-			SI_VMSG(("  Master port %d, mp: %d id: %d\n", i,
-				 (mpd & MPD_MP_MASK) >> MPD_MP_SHIFT,
-				 (mpd & MPD_MUI_MASK) >> MPD_MUI_SHIFT));
 		}
 
 		/* First Slave Address Descriptor should be port 0:
@@ -550,7 +640,7 @@ void ai_scan(struct si_pub *sih, void *regs)
 				br = true;
 			else if ((addrh != 0) || (sizeh != 0)
 				 || (sizel != SI_CORE_SIZE)) {
-				SI_ERROR(("First Slave ASD for core 0x%04x malformed " "(0x%08x)\n", cid, asd));
+				/* First Slave ASD for core malformed */
 				goto error;
 			}
 		}
@@ -578,8 +668,7 @@ void ai_scan(struct si_pub *sih, void *regs)
 					    &addrl, &addrh, &sizel, &sizeh);
 			} while (asd != 0);
 			if (j == 0) {
-				SI_ERROR((" SP %d has no address descriptors\n",
-					  i));
+				/* SP has no address descriptors */
 				goto error;
 			}
 		}
@@ -590,11 +679,11 @@ void ai_scan(struct si_pub *sih, void *regs)
 			    get_asd(sih, &eromptr, i, 0, AD_ST_MWRAP, &addrl,
 				    &addrh, &sizel, &sizeh);
 			if (asd == 0) {
-				SI_ERROR(("Missing descriptor for MW %d\n", i));
+				/* Missing descriptor for MW */
 				goto error;
 			}
 			if ((sizeh != 0) || (sizel != SI_CORE_SIZE)) {
-				SI_ERROR(("Master wrapper %d is not 4KB\n", i));
+				/* Master wrapper %d is not 4KB */
 				goto error;
 			}
 			if (i == 0)
@@ -608,11 +697,11 @@ void ai_scan(struct si_pub *sih, void *regs)
 			    get_asd(sih, &eromptr, fwp + i, 0, AD_ST_SWRAP,
 				    &addrl, &addrh, &sizel, &sizeh);
 			if (asd == 0) {
-				SI_ERROR(("Missing descriptor for SW %d\n", i));
+				/* Missing descriptor for SW */
 				goto error;
 			}
 			if ((sizeh != 0) || (sizel != SI_CORE_SIZE)) {
-				SI_ERROR(("Slave wrapper %d is not 4KB\n", i));
+				/* Slave wrapper is not 4KB */
 				goto error;
 			}
 			if ((nmw == 0) && (i == 0))
@@ -627,62 +716,35 @@ void ai_scan(struct si_pub *sih, void *regs)
 		sii->numcores++;
 	}
 
-	SI_ERROR(("Reached end of erom without finding END"));
-
  error:
+	/* Reached end of erom without finding END */
 	sii->numcores = 0;
 	return;
 }
 
-/* This function changes the logical "focus" to the indicated core.
- * Return the current core's virtual address.
+/*
+ * This function changes the logical "focus" to the indicated core.
+ * Return the current core's virtual address. Since each core starts with the
+ * same set of registers (BIST, clock control, etc), the returned address
+ * contains the first register of this 'common' register block (not to be
+ * confused with 'common core').
  */
-void *ai_setcoreidx(struct si_pub *sih, uint coreidx)
+void __iomem *ai_setcoreidx(struct si_pub *sih, uint coreidx)
 {
-	struct si_info *sii = SI_INFO(sih);
+	struct si_info *sii = (struct si_info *)sih;
 	u32 addr = sii->coresba[coreidx];
 	u32 wrap = sii->wrapba[coreidx];
-	void *regs;
 
 	if (coreidx >= sii->numcores)
 		return NULL;
 
-	switch (sih->bustype) {
-	case SI_BUS:
-		/* map new one */
-		if (!sii->regs[coreidx]) {
-			sii->regs[coreidx] = REG_MAP(addr, SI_CORE_SIZE);
-		}
-		sii->curmap = regs = sii->regs[coreidx];
-		if (!sii->wrappers[coreidx]) {
-			sii->wrappers[coreidx] = REG_MAP(wrap, SI_CORE_SIZE);
-		}
-		sii->curwrap = sii->wrappers[coreidx];
-		break;
-
-	case PCI_BUS:
-		/* point bar0 window */
-		pci_write_config_dword(sii->pbus, PCI_BAR0_WIN, addr);
-		regs = sii->curmap;
-		/* point bar0 2nd 4KB window */
-		pci_write_config_dword(sii->pbus, PCI_BAR0_WIN2, wrap);
-		break;
-
-	case SPI_BUS:
-	case SDIO_BUS:
-		sii->curmap = regs = (void *)(unsigned long)addr;
-		sii->curwrap = (void *)(unsigned long)wrap;
-		break;
-
-	default:
-		regs = NULL;
-		break;
-	}
-
-	sii->curmap = regs;
+	/* point bar0 window */
+	pci_write_config_dword(sii->pbus, PCI_BAR0_WIN, addr);
+	/* point bar0 2nd 4KB window */
+	pci_write_config_dword(sii->pbus, PCI_BAR0_WIN2, wrap);
 	sii->curidx = coreidx;
 
-	return regs;
+	return sii->curmap;
 }
 
 /* Return the number of address spaces in current core */
@@ -697,7 +759,7 @@ u32 ai_addrspace(struct si_pub *sih, uint asidx)
 	struct si_info *sii;
 	uint cidx;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 	cidx = sii->curidx;
 
 	if (asidx == 0)
@@ -705,7 +767,7 @@ u32 ai_addrspace(struct si_pub *sih, uint asidx)
 	else if (asidx == 1)
 		return sii->coresba2[cidx];
 	else {
-		SI_ERROR(("%s: Need to parse the erom again to find addr space %d\n", __func__, asidx));
+		/* Need to parse the erom again to find addr space */
 		return 0;
 	}
 }
@@ -716,7 +778,7 @@ u32 ai_addrspacesize(struct si_pub *sih, uint asidx)
 	struct si_info *sii;
 	uint cidx;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 	cidx = sii->curidx;
 
 	if (asidx == 0)
@@ -724,7 +786,7 @@ u32 ai_addrspacesize(struct si_pub *sih, uint asidx)
 	else if (asidx == 1)
 		return sii->coresba2_size[cidx];
 	else {
-		SI_ERROR(("%s: Need to parse the erom again to find addr space %d\n", __func__, asidx));
+		/* Need to parse the erom again to find addr */
 		return 0;
 	}
 }
@@ -734,11 +796,7 @@ uint ai_flag(struct si_pub *sih)
 	struct si_info *sii;
 	struct aidmp *ai;
 
-	sii = SI_INFO(sih);
-	if (BCM47162_DMP()) {
-		SI_ERROR(("%s: Attempting to read MIPS DMP registers on 47162a0", __func__));
-		return sii->curidx;
-	}
+	sii = (struct si_info *)sih;
 	ai = sii->curwrap;
 
 	return R_REG(&ai->oobselouta30) & 0x1f;
@@ -753,7 +811,7 @@ uint ai_corevendor(struct si_pub *sih)
 	struct si_info *sii;
 	u32 cia;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 	cia = sii->cia[sii->curidx];
 	return (cia & CIA_MFG_MASK) >> CIA_MFG_SHIFT;
 }
@@ -763,7 +821,7 @@ uint ai_corerev(struct si_pub *sih)
 	struct si_info *sii;
 	u32 cib;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 	cib = sii->cib[sii->curidx];
 	return (cib & CIB_REV_MASK) >> CIB_REV_SHIFT;
 }
@@ -773,7 +831,7 @@ bool ai_iscoreup(struct si_pub *sih)
 	struct si_info *sii;
 	struct aidmp *ai;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 	ai = sii->curwrap;
 
 	return (((R_REG(&ai->ioctrl) & (SICF_FGC | SICF_CLOCK_EN)) ==
@@ -787,13 +845,7 @@ void ai_core_cflags_wo(struct si_pub *sih, u32 mask, u32 val)
 	struct aidmp *ai;
 	u32 w;
 
-	sii = SI_INFO(sih);
-
-	if (BCM47162_DMP()) {
-		SI_ERROR(("%s: Accessing MIPS DMP register (ioctrl) on 47162a0",
-			  __func__));
-		return;
-	}
+	sii = (struct si_info *)sih;
 
 	ai = sii->curwrap;
 
@@ -809,13 +861,7 @@ u32 ai_core_cflags(struct si_pub *sih, u32 mask, u32 val)
 	struct aidmp *ai;
 	u32 w;
 
-	sii = SI_INFO(sih);
-	if (BCM47162_DMP()) {
-		SI_ERROR(("%s: Accessing MIPS DMP register (ioctrl) on 47162a0",
-			  __func__));
-		return 0;
-	}
-
+	sii = (struct si_info *)sih;
 	ai = sii->curwrap;
 
 	if (mask || val) {
@@ -826,18 +872,35 @@ u32 ai_core_cflags(struct si_pub *sih, u32 mask, u32 val)
 	return R_REG(&ai->ioctrl);
 }
 
+/* return true if PCIE capability exists in the pci config space */
+static bool ai_ispcie(struct si_info *sii)
+{
+	u8 cap_ptr;
+
+	cap_ptr =
+	    pcicore_find_pci_capability(sii->pbus, PCI_CAP_ID_EXP, NULL,
+					NULL);
+	if (!cap_ptr)
+		return false;
+
+	return true;
+}
+
+static bool ai_buscore_prep(struct si_info *sii)
+{
+	/* kludge to enable the clock on the 4306 which lacks a slowclock */
+	if (!ai_ispcie(sii))
+		ai_clkctl_xtal(&sii->pub, XTAL | PLL, ON);
+	return true;
+}
+
 u32 ai_core_sflags(struct si_pub *sih, u32 mask, u32 val)
 {
 	struct si_info *sii;
 	struct aidmp *ai;
 	u32 w;
 
-	sii = SI_INFO(sih);
-	if (BCM47162_DMP()) {
-		SI_ERROR(("%s: Accessing MIPS DMP register (iostatus) on 47162a0", __func__));
-		return 0;
-	}
-
+	sii = (struct si_info *)sih;
 	ai = sii->curwrap;
 
 	if (mask || val) {
@@ -848,74 +911,13 @@ u32 ai_core_sflags(struct si_pub *sih, u32 mask, u32 val)
 	return R_REG(&ai->iostatus);
 }
 
-/* *************** from siutils.c ************** */
-/* local prototypes */
-static struct si_info *ai_doattach(struct si_info *sii, void *regs,
-			      uint bustype, void *sdh, char **vars,
-			      uint *varsz);
-static bool ai_buscore_prep(struct si_info *sii, uint bustype);
-static bool ai_buscore_setup(struct si_info *sii, chipcregs_t *cc, uint bustype,
-			     u32 savewin, uint *origidx, void *regs);
-static void ai_nvram_process(struct si_info *sii, char *pvars);
-
-/* dev path concatenation util */
-static char *ai_devpathvar(struct si_pub *sih, char *var, int len,
-			   const char *name);
-static bool _ai_clkctl_cc(struct si_info *sii, uint mode);
-static bool ai_ispcie(struct si_info *sii);
-
-/* global variable to indicate reservation/release of gpio's */
-static u32 ai_gpioreservation;
-
-/*
- * Allocate a si handle.
- * devid - pci device id (used to determine chip#)
- * osh - opaque OS handle
- * regs - virtual address of initial core registers
- * bustype - pci/sb/sdio/etc
- * vars - pointer to a pointer area for "environment" variables
- * varsz - pointer to int to return the size of the vars
- */
-struct si_pub *ai_attach(void *regs, uint bustype,
-		void *sdh, char **vars, uint *varsz)
-{
-	struct si_info *sii;
-
-	/* alloc struct si_info */
-	sii = kmalloc(sizeof(struct si_info), GFP_ATOMIC);
-	if (sii == NULL) {
-		SI_ERROR(("si_attach: malloc failed!\n"));
-		return NULL;
-	}
-
-	if (ai_doattach(sii, regs, bustype, sdh, vars, varsz) ==
-	    NULL) {
-		kfree(sii);
-		return NULL;
-	}
-	sii->vars = vars ? *vars : NULL;
-	sii->varsz = varsz ? *varsz : 0;
-
-	return (struct si_pub *) sii;
-}
-
-/* global kernel resource */
-static struct si_info ksii;
-
-static bool ai_buscore_prep(struct si_info *sii, uint bustype)
-{
-	/* kludge to enable the clock on the 4306 which lacks a slowclock */
-	if (bustype == PCI_BUS && !ai_ispcie(sii))
-		ai_clkctl_xtal(&sii->pub, XTAL | PLL, ON);
-	return true;
-}
-
-static bool ai_buscore_setup(struct si_info *sii, chipcregs_t *cc, uint bustype,
-			     u32 savewin, uint *origidx, void *regs)
+static bool
+ai_buscore_setup(struct si_info *sii, u32 savewin, uint *origidx)
 {
 	bool pci, pcie;
 	uint i;
 	uint pciidx, pcieidx, pcirev, pcierev;
+	struct chipcregs __iomem *cc;
 
 	cc = ai_setcoreidx(&sii->pub, SI_CC_IDX);
 
@@ -955,25 +957,19 @@ static bool ai_buscore_setup(struct si_info *sii, chipcregs_t *cc, uint bustype,
 		cid = ai_coreid(&sii->pub);
 		crev = ai_corerev(&sii->pub);
 
-		/* Display cores found */
-		SI_VMSG(("CORE[%d]: id 0x%x rev %d base 0x%x regs 0x%p\n",
-			 i, cid, crev, sii->coresba[i], sii->regs[i]));
-
-		if (bustype == PCI_BUS) {
-			if (cid == PCI_CORE_ID) {
-				pciidx = i;
-				pcirev = crev;
-				pci = true;
-			} else if (cid == PCIE_CORE_ID) {
-				pcieidx = i;
-				pcierev = crev;
-				pcie = true;
-			}
+		if (cid == PCI_CORE_ID) {
+			pciidx = i;
+			pcirev = crev;
+			pci = true;
+		} else if (cid == PCIE_CORE_ID) {
+			pcieidx = i;
+			pcierev = crev;
+			pcie = true;
 		}
 
 		/* find the core idx before entering this func. */
 		if ((savewin && (savewin == sii->coresba[i])) ||
-		    (regs == sii->regs[i]))
+		    (cc == sii->regs[i]))
 			*origidx = i;
 	}
 
@@ -993,24 +989,18 @@ static bool ai_buscore_setup(struct si_info *sii, chipcregs_t *cc, uint bustype,
 		sii->pub.buscoreidx = pcieidx;
 	}
 
-	SI_VMSG(("Buscore id/type/rev %d/0x%x/%d\n", sii->pub.buscoreidx,
-		 sii->pub.buscoretype, sii->pub.buscorerev));
-
 	/* fixup necessary chip/core configurations */
-	if (sii->pub.bustype == PCI_BUS) {
-		if (SI_FAST(sii)) {
-			if (!sii->pch) {
-				sii->pch = (void *)pcicore_init(
-					&sii->pub, sii->pbus,
-					(void *)PCIEREGS(sii));
-				if (sii->pch == NULL)
-					return false;
-			}
+	if (SI_FAST(sii)) {
+		if (!sii->pch) {
+			sii->pch = pcicore_init(&sii->pub, sii->pbus,
+						(__iomem void *)PCIEREGS(sii));
+			if (sii->pch == NULL)
+				return false;
 		}
-		if (ai_pci_fixcfg(&sii->pub)) {
-			SI_ERROR(("si_doattach: si_pci_fixcfg failed\n"));
-			return false;
-		}
+	}
+	if (ai_pci_fixcfg(&sii->pub)) {
+		/* si_doattach: si_pci_fixcfg failed */
+		return false;
 	}
 
 	/* return to the original core */
@@ -1019,63 +1009,27 @@ static bool ai_buscore_setup(struct si_info *sii, chipcregs_t *cc, uint bustype,
 	return true;
 }
 
-static __used void ai_nvram_process(struct si_info *sii, char *pvars)
+/*
+ * get boardtype and boardrev
+ */
+static __used void ai_nvram_process(struct si_info *sii)
 {
 	uint w = 0;
 
-	/* get boardtype and boardrev */
-	switch (sii->pub.bustype) {
-	case PCI_BUS:
-		/* do a pci config read to get subsystem id and subvendor id */
-		pci_read_config_dword(sii->pbus, PCI_SUBSYSTEM_VENDOR_ID, &w);
-		/* Let nvram variables override subsystem Vend/ID */
-		sii->pub.boardvendor = (u16)ai_getdevpathintvar(&sii->pub,
-			"boardvendor");
-		if (sii->pub.boardvendor == 0)
-			sii->pub.boardvendor = w & 0xffff;
-		else
-			SI_ERROR(("Overriding boardvendor: 0x%x instead of "
-				  "0x%x\n", sii->pub.boardvendor, w & 0xffff));
-		sii->pub.boardtype = (u16)ai_getdevpathintvar(&sii->pub,
-			"boardtype");
-		if (sii->pub.boardtype == 0)
-			sii->pub.boardtype = (w >> 16) & 0xffff;
-		else
-			SI_ERROR(("Overriding boardtype: 0x%x instead of 0x%x\n"
-				  , sii->pub.boardtype, (w >> 16) & 0xffff));
-		break;
+	/* do a pci config read to get subsystem id and subvendor id */
+	pci_read_config_dword(sii->pbus, PCI_SUBSYSTEM_VENDOR_ID, &w);
 
-		sii->pub.boardvendor = getintvar(pvars, "manfid");
-		sii->pub.boardtype = getintvar(pvars, "prodid");
-		break;
-
-	case SI_BUS:
-	case JTAG_BUS:
-		sii->pub.boardvendor = PCI_VENDOR_ID_BROADCOM;
-		sii->pub.boardtype = getintvar(pvars, "prodid");
-		if (pvars == NULL || (sii->pub.boardtype == 0)) {
-			sii->pub.boardtype = getintvar(NULL, "boardtype");
-			if (sii->pub.boardtype == 0)
-				sii->pub.boardtype = 0xffff;
-		}
-		break;
-	}
-
-	if (sii->pub.boardtype == 0) {
-		SI_ERROR(("si_doattach: unknown board type\n"));
-	}
-
-	sii->pub.boardflags = getintvar(pvars, "boardflags");
+	sii->pub.boardvendor = w & 0xffff;
+	sii->pub.boardtype = (w >> 16) & 0xffff;
+	sii->pub.boardflags = getintvar(&sii->pub, BRCMS_SROM_BOARDFLAGS);
 }
 
 static struct si_info *ai_doattach(struct si_info *sii,
-			      void *regs, uint bustype, void *pbus,
-			      char **vars, uint *varsz)
+				   void __iomem *regs, struct pci_dev *pbus)
 {
 	struct si_pub *sih = &sii->pub;
 	u32 w, savewin;
-	chipcregs_t *cc;
-	char *pvars = NULL;
+	struct chipcregs __iomem *cc;
 	uint socitype;
 	uint origidx;
 
@@ -1088,37 +1042,18 @@ static struct si_info *ai_doattach(struct si_info *sii,
 	sii->curmap = regs;
 	sii->pbus = pbus;
 
-	/* check to see if we are a si core mimic'ing a pci core */
-	if (bustype == PCI_BUS) {
-		pci_read_config_dword(sii->pbus, PCI_SPROM_CONTROL,  &w);
-		if (w == 0xffffffff) {
-			SI_ERROR(("%s: incoming bus is PCI but it's a lie, "
-				" switching to SI devid:0x%x\n",
-				__func__, devid));
-			bustype = SI_BUS;
-		}
-	}
-
 	/* find Chipcommon address */
-	if (bustype == PCI_BUS) {
-		pci_read_config_dword(sii->pbus, PCI_BAR0_WIN, &savewin);
-		if (!GOODCOREADDR(savewin, SI_ENUM_BASE))
-			savewin = SI_ENUM_BASE;
-		pci_write_config_dword(sii->pbus, PCI_BAR0_WIN,
-				       SI_ENUM_BASE);
-		cc = (chipcregs_t *) regs;
-	} else {
-		cc = (chipcregs_t *) REG_MAP(SI_ENUM_BASE, SI_CORE_SIZE);
-	}
+	pci_read_config_dword(sii->pbus, PCI_BAR0_WIN, &savewin);
+	if (!GOODCOREADDR(savewin, SI_ENUM_BASE))
+		savewin = SI_ENUM_BASE;
 
-	sih->bustype = bustype;
+	pci_write_config_dword(sii->pbus, PCI_BAR0_WIN,
+			       SI_ENUM_BASE);
+	cc = (struct chipcregs __iomem *) regs;
 
 	/* bus/core/clk setup for register access */
-	if (!ai_buscore_prep(sii, bustype)) {
-		SI_ERROR(("si_doattach: si_core_clk_prep failed %d\n",
-			  bustype));
+	if (!ai_buscore_prep(sii))
 		return NULL;
-	}
 
 	/*
 	 * ChipID recognition.
@@ -1134,67 +1069,59 @@ static struct si_info *ai_doattach(struct si_info *sii,
 	sih->chiprev = (w & CID_REV_MASK) >> CID_REV_SHIFT;
 	sih->chippkg = (w & CID_PKG_MASK) >> CID_PKG_SHIFT;
 
-	sih->issim = IS_SIM(sih->chippkg);
+	sih->issim = false;
 
 	/* scan for cores */
 	if (socitype == SOCI_AI) {
 		SI_MSG(("Found chip type AI (0x%08x)\n", w));
 		/* pass chipc address instead of original core base */
-		ai_scan(&sii->pub, (void *)cc);
+		ai_scan(&sii->pub, cc);
 	} else {
-		SI_ERROR(("Found chip of unknown type (0x%08x)\n", w));
+		/* Found chip of unknown type */
 		return NULL;
 	}
 	/* no cores found, bail out */
-	if (sii->numcores == 0) {
-		SI_ERROR(("si_doattach: could not find any cores\n"));
+	if (sii->numcores == 0)
 		return NULL;
-	}
+
 	/* bus/core/clk setup */
 	origidx = SI_CC_IDX;
-	if (!ai_buscore_setup(sii, cc, bustype, savewin, &origidx, regs)) {
-		SI_ERROR(("si_doattach: si_buscore_setup failed\n"));
+	if (!ai_buscore_setup(sii, savewin, &origidx))
 		goto exit;
-	}
 
 	/* Init nvram from sprom/otp if they exist */
-	if (srom_var_init
-	    (&sii->pub, bustype, regs, vars, varsz)) {
-		SI_ERROR(("si_doattach: srom_var_init failed: bad srom\n"));
+	if (srom_var_init(&sii->pub, cc))
 		goto exit;
-	}
-	pvars = vars ? *vars : NULL;
-	ai_nvram_process(sii, pvars);
+
+	ai_nvram_process(sii);
 
 	/* === NVRAM, clock is ready === */
-	cc = (chipcregs_t *) ai_setcore(sih, CC_CORE_ID, 0);
+	cc = (struct chipcregs __iomem *) ai_setcore(sih, CC_CORE_ID, 0);
 	W_REG(&cc->gpiopullup, 0);
 	W_REG(&cc->gpiopulldown, 0);
 	ai_setcoreidx(sih, origidx);
 
 	/* PMU specific initializations */
-	if (PMUCTL_ENAB(sih)) {
+	if (sih->cccaps & CC_CAP_PMU) {
 		u32 xtalfreq;
 		si_pmu_init(sih);
 		si_pmu_chip_init(sih);
-		xtalfreq = getintvar(pvars, "xtalfreq");
-		/* If xtalfreq var not available, try to measure it */
-		if (xtalfreq == 0)
-			xtalfreq = si_pmu_measure_alpclk(sih);
+
+		xtalfreq = si_pmu_measure_alpclk(sih);
 		si_pmu_pll_init(sih, xtalfreq);
 		si_pmu_res_init(sih);
 		si_pmu_swreg_init(sih);
 	}
 
 	/* setup the GPIO based LED powersave register */
-	w = getintvar(pvars, "leddc");
+	w = getintvar(sih, BRCMS_SROM_LEDDC);
 	if (w == 0)
 		w = DEFAULT_GPIOTIMERVAL;
-	ai_corereg(sih, SI_CC_IDX, offsetof(chipcregs_t, gpiotimerval), ~0, w);
+	ai_corereg(sih, SI_CC_IDX, offsetof(struct chipcregs, gpiotimerval),
+		   ~0, w);
 
-	if (PCIE(sii)) {
-		pcicore_attach(sii->pch, pvars, SI_DOATTACH);
-	}
+	if (PCIE(sii))
+		pcicore_attach(sii->pch, SI_DOATTACH);
 
 	if (sih->chip == BCM43224_CHIP_ID) {
 		/*
@@ -1204,7 +1131,7 @@ static struct si_info *ai_doattach(struct si_info *sii,
 		if (sih->chiprev == 0) {
 			SI_MSG(("Applying 43224A0 WARs\n"));
 			ai_corereg(sih, SI_CC_IDX,
-				   offsetof(chipcregs_t, chipcontrol),
+				   offsetof(struct chipcregs, chipcontrol),
 				   CCTRL43224_GPIO_TOGGLE,
 				   CCTRL43224_GPIO_TOGGLE);
 			si_pmu_chipcontrol(sih, 0, CCTRL_43224A0_12MA_LED_DRIVE,
@@ -1228,45 +1155,58 @@ static struct si_info *ai_doattach(struct si_info *sii,
 	}
 
 	return sii;
+
  exit:
-	if (sih->bustype == PCI_BUS) {
-		if (sii->pch)
-			pcicore_deinit(sii->pch);
-		sii->pch = NULL;
-	}
+	if (sii->pch)
+		pcicore_deinit(sii->pch);
+	sii->pch = NULL;
 
 	return NULL;
+}
+
+/*
+ * Allocate a si handle.
+ * devid - pci device id (used to determine chip#)
+ * osh - opaque OS handle
+ * regs - virtual address of initial core registers
+ */
+struct si_pub *
+ai_attach(void __iomem *regs, struct pci_dev *sdh)
+{
+	struct si_info *sii;
+
+	/* alloc struct si_info */
+	sii = kmalloc(sizeof(struct si_info), GFP_ATOMIC);
+	if (sii == NULL)
+		return NULL;
+
+	if (ai_doattach(sii, regs, sdh) == NULL) {
+		kfree(sii);
+		return NULL;
+	}
+
+	return (struct si_pub *) sii;
 }
 
 /* may be called with core in reset */
 void ai_detach(struct si_pub *sih)
 {
 	struct si_info *sii;
-	uint idx;
 
 	struct si_pub *si_local = NULL;
 	memcpy(&si_local, &sih, sizeof(struct si_pub **));
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 
 	if (sii == NULL)
 		return;
 
-	if (sih->bustype == SI_BUS)
-		for (idx = 0; idx < SI_MAXCORES; idx++)
-			if (sii->regs[idx]) {
-				iounmap(sii->regs[idx]);
-				sii->regs[idx] = NULL;
-			}
+	if (sii->pch)
+		pcicore_deinit(sii->pch);
+	sii->pch = NULL;
 
-	if (sih->bustype == PCI_BUS) {
-		if (sii->pch)
-			pcicore_deinit(sii->pch);
-		sii->pch = NULL;
-	}
-
-	if (sii != &ksii)
-		kfree(sii);
+	srom_free_vars(sih);
+	kfree(sii);
 }
 
 /* register driver interrupt disabling and restoring callback functions */
@@ -1277,11 +1217,11 @@ ai_register_intr_callback(struct si_pub *sih, void *intrsoff_fn,
 {
 	struct si_info *sii;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 	sii->intr_arg = intr_arg;
-	sii->intrsoff_fn = (si_intrsoff_t) intrsoff_fn;
-	sii->intrsrestore_fn = (si_intrsrestore_t) intrsrestore_fn;
-	sii->intrsenabled_fn = (si_intrsenabled_t) intrsenabled_fn;
+	sii->intrsoff_fn = (u32 (*)(void *)) intrsoff_fn;
+	sii->intrsrestore_fn = (void (*) (void *, u32)) intrsrestore_fn;
+	sii->intrsenabled_fn = (bool (*)(void *)) intrsenabled_fn;
 	/* save current core id.  when this function called, the current core
 	 * must be the core which provides driver functions(il, et, wl, etc.)
 	 */
@@ -1292,7 +1232,7 @@ void ai_deregister_intr_callback(struct si_pub *sih)
 {
 	struct si_info *sii;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 	sii->intrsoff_fn = NULL;
 }
 
@@ -1300,7 +1240,7 @@ uint ai_coreid(struct si_pub *sih)
 {
 	struct si_info *sii;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 	return sii->coreid[sii->curidx];
 }
 
@@ -1308,7 +1248,7 @@ uint ai_coreidx(struct si_pub *sih)
 {
 	struct si_info *sii;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 	return sii->curidx;
 }
 
@@ -1324,7 +1264,7 @@ uint ai_findcoreidx(struct si_pub *sih, uint coreid, uint coreunit)
 	uint found;
 	uint i;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 
 	found = 0;
 
@@ -1344,25 +1284,25 @@ uint ai_findcoreidx(struct si_pub *sih, uint coreid, uint coreunit)
  * Moreover, callers should keep interrupts off during switching
  * out of and back to d11 core.
  */
-void *ai_setcore(struct si_pub *sih, uint coreid, uint coreunit)
+void __iomem *ai_setcore(struct si_pub *sih, uint coreid, uint coreunit)
 {
 	uint idx;
 
 	idx = ai_findcoreidx(sih, coreid, coreunit);
-	if (!GOODIDX(idx))
+	if (idx >= SI_MAXCORES)
 		return NULL;
 
 	return ai_setcoreidx(sih, idx);
 }
 
 /* Turn off interrupt as required by ai_setcore, before switch core */
-void *ai_switch_core(struct si_pub *sih, uint coreid, uint *origidx,
-		     uint *intr_val)
+void __iomem *ai_switch_core(struct si_pub *sih, uint coreid, uint *origidx,
+			     uint *intr_val)
 {
-	void *cc;
+	void __iomem *cc;
 	struct si_info *sii;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 
 	if (SI_FAST(sii)) {
 		/* Overloading the origidx variable to remember the coreid,
@@ -1371,9 +1311,9 @@ void *ai_switch_core(struct si_pub *sih, uint coreid, uint *origidx,
 		 */
 		*origidx = coreid;
 		if (coreid == CC_CORE_ID)
-			return (void *)CCREGS_FAST(sii);
+			return CCREGS_FAST(sii);
 		else if (coreid == sih->buscoretype)
-			return (void *)PCIEREGS(sii);
+			return PCIEREGS(sii);
 	}
 	INTR_OFF(sii, *intr_val);
 	*origidx = sii->curidx;
@@ -1386,7 +1326,7 @@ void ai_restore_core(struct si_pub *sih, uint coreid, uint intr_val)
 {
 	struct si_info *sii;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 	if (SI_FAST(sii)
 	    && ((coreid == CC_CORE_ID) || (coreid == sih->buscoretype)))
 		return;
@@ -1397,7 +1337,7 @@ void ai_restore_core(struct si_pub *sih, uint coreid, uint intr_val)
 
 void ai_write_wrapperreg(struct si_pub *sih, u32 offset, u32 val)
 {
-	struct si_info *sii = SI_INFO(sih);
+	struct si_info *sii = (struct si_info *)sih;
 	u32 *w = (u32 *) sii->curwrap;
 	W_REG(w + (offset / 4), val);
 	return;
@@ -1417,54 +1357,40 @@ uint ai_corereg(struct si_pub *sih, uint coreidx, uint regoff, uint mask,
 		uint val)
 {
 	uint origidx = 0;
-	u32 *r = NULL;
+	u32 __iomem *r = NULL;
 	uint w;
 	uint intr_val = 0;
 	bool fast = false;
 	struct si_info *sii;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 
 	if (coreidx >= SI_MAXCORES)
 		return 0;
 
-	if (sih->bustype == SI_BUS) {
-		/* If internal bus, we can always get at everything */
+	/*
+	 * If pci/pcie, we can get at pci/pcie regs
+	 * and on newer cores to chipc
+	 */
+	if ((sii->coreid[coreidx] == CC_CORE_ID) && SI_FAST(sii)) {
+		/* Chipc registers are mapped at 12KB */
 		fast = true;
-		/* map if does not exist */
-		if (!sii->regs[coreidx]) {
-			sii->regs[coreidx] = REG_MAP(sii->coresba[coreidx],
-						     SI_CORE_SIZE);
-		}
-		r = (u32 *) ((unsigned char *) sii->regs[coreidx] + regoff);
-	} else if (sih->bustype == PCI_BUS) {
+		r = (u32 __iomem *)((__iomem char *)sii->curmap +
+				    PCI_16KB0_CCREGS_OFFSET + regoff);
+	} else if (sii->pub.buscoreidx == coreidx) {
 		/*
-		 * If pci/pcie, we can get at pci/pcie regs
-		 * and on newer cores to chipc
+		 * pci registers are at either in the last 2KB of
+		 * an 8KB window or, in pcie and pci rev 13 at 8KB
 		 */
-		if ((sii->coreid[coreidx] == CC_CORE_ID) && SI_FAST(sii)) {
-			/* Chipc registers are mapped at 12KB */
-
-			fast = true;
-			r = (u32 *) ((char *)sii->curmap +
-					PCI_16KB0_CCREGS_OFFSET + regoff);
-		} else if (sii->pub.buscoreidx == coreidx) {
-			/*
-			 * pci registers are at either in the last 2KB of
-			 * an 8KB window or, in pcie and pci rev 13 at 8KB
-			 */
-			fast = true;
-			if (SI_FAST(sii))
-				r = (u32 *) ((char *)sii->curmap +
-						PCI_16KB0_PCIREGS_OFFSET +
-						regoff);
-			else
-				r = (u32 *) ((char *)sii->curmap +
-						((regoff >= SBCONFIGOFF) ?
-						 PCI_BAR0_PCISBR_OFFSET :
-						 PCI_BAR0_PCIREGS_OFFSET) +
-						regoff);
-		}
+		fast = true;
+		if (SI_FAST(sii))
+			r = (u32 __iomem *)((__iomem char *)sii->curmap +
+				    PCI_16KB0_PCIREGS_OFFSET + regoff);
+		else
+			r = (u32 __iomem *)((__iomem char *)sii->curmap +
+				    ((regoff >= SBCONFIGOFF) ?
+				      PCI_BAR0_PCISBR_OFFSET :
+				      PCI_BAR0_PCIREGS_OFFSET) + regoff);
 	}
 
 	if (!fast) {
@@ -1474,8 +1400,8 @@ uint ai_corereg(struct si_pub *sih, uint coreidx, uint regoff, uint mask,
 		origidx = ai_coreidx(&sii->pub);
 
 		/* switch core */
-		r = (u32 *) ((unsigned char *) ai_setcoreidx(&sii->pub, coreidx)
-				+ regoff);
+		r = (u32 __iomem *) ((unsigned char __iomem *)
+			ai_setcoreidx(&sii->pub, coreidx) + regoff);
 	}
 
 	/* mask and set */
@@ -1504,7 +1430,7 @@ void ai_core_disable(struct si_pub *sih, u32 bits)
 	u32 dummy;
 	struct aidmp *ai;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 
 	ai = sii->curwrap;
 
@@ -1531,7 +1457,7 @@ void ai_core_reset(struct si_pub *sih, u32 bits, u32 resetbits)
 	struct aidmp *ai;
 	u32 dummy;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 	ai = sii->curwrap;
 
 	/*
@@ -1556,19 +1482,18 @@ void ai_core_reset(struct si_pub *sih, u32 bits, u32 resetbits)
 /* return the slow clock source - LPO, XTAL, or PCI */
 static uint ai_slowclk_src(struct si_info *sii)
 {
-	chipcregs_t *cc;
+	struct chipcregs __iomem *cc;
 	u32 val;
 
 	if (sii->pub.ccrev < 6) {
-		if (sii->pub.bustype == PCI_BUS) {
-			pci_read_config_dword(sii->pbus, PCI_GPIO_OUT,
-					      &val);
-			if (val & PCI_CFG_GPIO_SCS)
-				return SCC_SS_PCI;
-		}
+		pci_read_config_dword(sii->pbus, PCI_GPIO_OUT,
+				      &val);
+		if (val & PCI_CFG_GPIO_SCS)
+			return SCC_SS_PCI;
 		return SCC_SS_XTAL;
 	} else if (sii->pub.ccrev < 10) {
-		cc = (chipcregs_t *) ai_setcoreidx(&sii->pub, sii->curidx);
+		cc = (struct chipcregs __iomem *)
+			ai_setcoreidx(&sii->pub, sii->curidx);
 		return R_REG(&cc->slow_clk_ctl) & SCC_SS_MASK;
 	} else			/* Insta-clock */
 		return SCC_SS_XTAL;
@@ -1578,7 +1503,8 @@ static uint ai_slowclk_src(struct si_info *sii)
 * return the ILP (slowclock) min or max frequency
 * precondition: we've established the chip has dynamic clk control
 */
-static uint ai_slowclk_freq(struct si_info *sii, bool max_freq, chipcregs_t *cc)
+static uint ai_slowclk_freq(struct si_info *sii, bool max_freq,
+			    struct chipcregs __iomem *cc)
 {
 	u32 slowclk;
 	uint div;
@@ -1612,9 +1538,9 @@ static uint ai_slowclk_freq(struct si_info *sii, bool max_freq, chipcregs_t *cc)
 	return 0;
 }
 
-static void ai_clkctl_setdelay(struct si_info *sii, void *chipcregs)
+static void
+ai_clkctl_setdelay(struct si_info *sii, struct chipcregs __iomem *cc)
 {
-	chipcregs_t *cc = (chipcregs_t *) chipcregs;
 	uint slowmaxfreq, pll_delay, slowclk;
 	uint pll_on_delay, fref_sel_delay;
 
@@ -1646,21 +1572,22 @@ void ai_clkctl_init(struct si_pub *sih)
 {
 	struct si_info *sii;
 	uint origidx = 0;
-	chipcregs_t *cc;
+	struct chipcregs __iomem *cc;
 	bool fast;
 
-	if (!CCCTL_ENAB(sih))
+	if (!(sih->cccaps & CC_CAP_PWR_CTL))
 		return;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 	fast = SI_FAST(sii);
 	if (!fast) {
 		origidx = sii->curidx;
-		cc = (chipcregs_t *) ai_setcore(sih, CC_CORE_ID, 0);
+		cc = (struct chipcregs __iomem *)
+			ai_setcore(sih, CC_CORE_ID, 0);
 		if (cc == NULL)
 			return;
 	} else {
-		cc = (chipcregs_t *) CCREGS_FAST(sii);
+		cc = (struct chipcregs __iomem *) CCREGS_FAST(sii);
 		if (cc == NULL)
 			return;
 	}
@@ -1670,7 +1597,7 @@ void ai_clkctl_init(struct si_pub *sih)
 		SET_REG(&cc->system_clk_ctl, SYCC_CD_MASK,
 			(ILP_DIV_1MHZ << SYCC_CD_SHIFT));
 
-	ai_clkctl_setdelay(sii, (void *)cc);
+	ai_clkctl_setdelay(sii, cc);
 
 	if (!fast)
 		ai_setcoreidx(sih, origidx);
@@ -1684,21 +1611,21 @@ u16 ai_clkctl_fast_pwrup_delay(struct si_pub *sih)
 {
 	struct si_info *sii;
 	uint origidx = 0;
-	chipcregs_t *cc;
+	struct chipcregs __iomem *cc;
 	uint slowminfreq;
 	u16 fpdelay;
 	uint intr_val = 0;
 	bool fast;
 
-	sii = SI_INFO(sih);
-	if (PMUCTL_ENAB(sih)) {
+	sii = (struct si_info *)sih;
+	if (sih->cccaps & CC_CAP_PMU) {
 		INTR_OFF(sii, intr_val);
 		fpdelay = si_pmu_fast_pwrup_delay(sih);
 		INTR_RESTORE(sii, intr_val);
 		return fpdelay;
 	}
 
-	if (!CCCTL_ENAB(sih))
+	if (!(sih->cccaps & CC_CAP_PWR_CTL))
 		return 0;
 
 	fast = SI_FAST(sii);
@@ -1706,11 +1633,12 @@ u16 ai_clkctl_fast_pwrup_delay(struct si_pub *sih)
 	if (!fast) {
 		origidx = sii->curidx;
 		INTR_OFF(sii, intr_val);
-		cc = (chipcregs_t *) ai_setcore(sih, CC_CORE_ID, 0);
+		cc = (struct chipcregs __iomem *)
+			ai_setcore(sih, CC_CORE_ID, 0);
 		if (cc == NULL)
 			goto done;
 	} else {
-		cc = (chipcregs_t *) CCREGS_FAST(sii);
+		cc = (struct chipcregs __iomem *) CCREGS_FAST(sii);
 		if (cc == NULL)
 			goto done;
 	}
@@ -1733,99 +1661,68 @@ int ai_clkctl_xtal(struct si_pub *sih, uint what, bool on)
 	struct si_info *sii;
 	u32 in, out, outen;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 
-	switch (sih->bustype) {
+	/* pcie core doesn't have any mapping to control the xtal pu */
+	if (PCIE(sii))
+		return -1;
 
-	case PCI_BUS:
-		/* pcie core doesn't have any mapping to control the xtal pu */
-		if (PCIE(sii))
-			return -1;
+	pci_read_config_dword(sii->pbus, PCI_GPIO_IN, &in);
+	pci_read_config_dword(sii->pbus, PCI_GPIO_OUT, &out);
+	pci_read_config_dword(sii->pbus, PCI_GPIO_OUTEN, &outen);
 
-		pci_read_config_dword(sii->pbus, PCI_GPIO_IN, &in);
-		pci_read_config_dword(sii->pbus, PCI_GPIO_OUT, &out);
-		pci_read_config_dword(sii->pbus, PCI_GPIO_OUTEN, &outen);
+	/*
+	 * Avoid glitching the clock if GPRS is already using it.
+	 * We can't actually read the state of the PLLPD so we infer it
+	 * by the value of XTAL_PU which *is* readable via gpioin.
+	 */
+	if (on && (in & PCI_CFG_GPIO_XTAL))
+		return 0;
 
-		/*
-		 * Avoid glitching the clock if GPRS is already using it.
-		 * We can't actually read the state of the PLLPD so we infer it
-		 * by the value of XTAL_PU which *is* readable via gpioin.
-		 */
-		if (on && (in & PCI_CFG_GPIO_XTAL))
-			return 0;
+	if (what & XTAL)
+		outen |= PCI_CFG_GPIO_XTAL;
+	if (what & PLL)
+		outen |= PCI_CFG_GPIO_PLL;
 
-		if (what & XTAL)
-			outen |= PCI_CFG_GPIO_XTAL;
-		if (what & PLL)
-			outen |= PCI_CFG_GPIO_PLL;
-
-		if (on) {
-			/* turn primary xtal on */
-			if (what & XTAL) {
-				out |= PCI_CFG_GPIO_XTAL;
-				if (what & PLL)
-					out |= PCI_CFG_GPIO_PLL;
-				pci_write_config_dword(sii->pbus,
-						       PCI_GPIO_OUT, out);
-				pci_write_config_dword(sii->pbus,
-						       PCI_GPIO_OUTEN, outen);
-				udelay(XTAL_ON_DELAY);
-			}
-
-			/* turn pll on */
-			if (what & PLL) {
-				out &= ~PCI_CFG_GPIO_PLL;
-				pci_write_config_dword(sii->pbus,
-						       PCI_GPIO_OUT, out);
-				mdelay(2);
-			}
-		} else {
-			if (what & XTAL)
-				out &= ~PCI_CFG_GPIO_XTAL;
+	if (on) {
+		/* turn primary xtal on */
+		if (what & XTAL) {
+			out |= PCI_CFG_GPIO_XTAL;
 			if (what & PLL)
 				out |= PCI_CFG_GPIO_PLL;
 			pci_write_config_dword(sii->pbus,
 					       PCI_GPIO_OUT, out);
 			pci_write_config_dword(sii->pbus,
 					       PCI_GPIO_OUTEN, outen);
+			udelay(XTAL_ON_DELAY);
 		}
 
-	default:
-		return -1;
+		/* turn pll on */
+		if (what & PLL) {
+			out &= ~PCI_CFG_GPIO_PLL;
+			pci_write_config_dword(sii->pbus,
+					       PCI_GPIO_OUT, out);
+			mdelay(2);
+		}
+	} else {
+		if (what & XTAL)
+			out &= ~PCI_CFG_GPIO_XTAL;
+		if (what & PLL)
+			out |= PCI_CFG_GPIO_PLL;
+		pci_write_config_dword(sii->pbus,
+				       PCI_GPIO_OUT, out);
+		pci_write_config_dword(sii->pbus,
+				       PCI_GPIO_OUTEN, outen);
 	}
 
 	return 0;
-}
-
-/*
- *  clock control policy function throught chipcommon
- *
- *    set dynamic clk control mode (forceslow, forcefast, dynamic)
- *    returns true if we are forcing fast clock
- *    this is a wrapper over the next internal function
- *      to allow flexible policy settings for outside caller
- */
-bool ai_clkctl_cc(struct si_pub *sih, uint mode)
-{
-	struct si_info *sii;
-
-	sii = SI_INFO(sih);
-
-	/* chipcommon cores prior to rev6 don't support dynamic clock control */
-	if (sih->ccrev < 6)
-		return false;
-
-	if (PCI_FORCEHT(sii))
-		return mode == CLK_FAST;
-
-	return _ai_clkctl_cc(sii, mode);
 }
 
 /* clk control mechanism through chipcommon, no policy checking */
 static bool _ai_clkctl_cc(struct si_info *sii, uint mode)
 {
 	uint origidx = 0;
-	chipcregs_t *cc;
+	struct chipcregs __iomem *cc;
 	u32 scc;
 	uint intr_val = 0;
 	bool fast = SI_FAST(sii);
@@ -1837,20 +1734,15 @@ static bool _ai_clkctl_cc(struct si_info *sii, uint mode)
 	if (!fast) {
 		INTR_OFF(sii, intr_val);
 		origidx = sii->curidx;
-
-		if ((sii->pub.bustype == SI_BUS) &&
-		    ai_setcore(&sii->pub, MIPS33_CORE_ID, 0) &&
-		    (ai_corerev(&sii->pub) <= 7) && (sii->pub.ccrev >= 10))
-			goto done;
-
-		cc = (chipcregs_t *) ai_setcore(&sii->pub, CC_CORE_ID, 0);
+		cc = (struct chipcregs __iomem *)
+					ai_setcore(&sii->pub, CC_CORE_ID, 0);
 	} else {
-		cc = (chipcregs_t *) CCREGS_FAST(sii);
+		cc = (struct chipcregs __iomem *) CCREGS_FAST(sii);
 		if (cc == NULL)
 			goto done;
 	}
 
-	if (!CCCTL_ENAB(&sii->pub) && (sii->pub.ccrev < 20))
+	if (!(sii->pub.cccaps & CC_CAP_PWR_CTL) && (sii->pub.ccrev < 20))
 		goto done;
 
 	switch (mode) {
@@ -1870,7 +1762,7 @@ static bool _ai_clkctl_cc(struct si_info *sii, uint mode)
 		}
 
 		/* wait for the PLL */
-		if (PMUCTL_ENAB(&sii->pub)) {
+		if (sii->pub.cccaps & CC_CAP_PMU) {
 			u32 htavail = CCS_HTAVAIL;
 			SPINWAIT(((R_REG(&cc->clk_ctl_st) & htavail)
 				  == 0), PMU_MAX_TRANSITION_DLY);
@@ -1913,7 +1805,31 @@ static bool _ai_clkctl_cc(struct si_info *sii, uint mode)
 	return mode == CLK_FAST;
 }
 
-/* Build device path. Support SI, PCI, and JTAG for now. */
+/*
+ *  clock control policy function throught chipcommon
+ *
+ *    set dynamic clk control mode (forceslow, forcefast, dynamic)
+ *    returns true if we are forcing fast clock
+ *    this is a wrapper over the next internal function
+ *      to allow flexible policy settings for outside caller
+ */
+bool ai_clkctl_cc(struct si_pub *sih, uint mode)
+{
+	struct si_info *sii;
+
+	sii = (struct si_info *)sih;
+
+	/* chipcommon cores prior to rev6 don't support dynamic clock control */
+	if (sih->ccrev < 6)
+		return false;
+
+	if (PCI_FORCEHT(sii))
+		return mode == CLK_FAST;
+
+	return _ai_clkctl_cc(sii, mode);
+}
+
+/* Build device path */
 int ai_devpath(struct si_pub *sih, char *path, int size)
 {
 	int slen;
@@ -1921,22 +1837,10 @@ int ai_devpath(struct si_pub *sih, char *path, int size)
 	if (!path || size <= 0)
 		return -1;
 
-	switch (sih->bustype) {
-	case SI_BUS:
-	case JTAG_BUS:
-		slen = snprintf(path, (size_t) size, "sb/%u/", ai_coreidx(sih));
-		break;
-	case PCI_BUS:
-		slen = snprintf(path, (size_t) size, "pci/%u/%u/",
-			((struct pci_dev *)((SI_INFO(sih))->pbus))->bus->number,
-			PCI_SLOT(
-			    ((struct pci_dev *)((SI_INFO(sih))->pbus))->devfn));
-		break;
-
-	default:
-		slen = -1;
-		break;
-	}
+	slen = snprintf(path, (size_t) size, "pci/%u/%u/",
+		((struct si_info *)sih)->pbus->bus->number,
+		PCI_SLOT(((struct pci_dev *)
+				(((struct si_info *)(sih))->pbus))->devfn));
 
 	if (slen < 0 || slen >= size) {
 		path[0] = '\0';
@@ -1946,95 +1850,11 @@ int ai_devpath(struct si_pub *sih, char *path, int size)
 	return 0;
 }
 
-/* Get a variable, but only if it has a devpath prefix */
-char *ai_getdevpathvar(struct si_pub *sih, const char *name)
-{
-	char varname[SI_DEVPATH_BUFSZ + 32];
-
-	ai_devpathvar(sih, varname, sizeof(varname), name);
-
-	return getvar(NULL, varname);
-}
-
-/* Get a variable, but only if it has a devpath prefix */
-int ai_getdevpathintvar(struct si_pub *sih, const char *name)
-{
-#if defined(BCMBUSTYPE) && (BCMBUSTYPE == SI_BUS)
-	return getintvar(NULL, name);
-#else
-	char varname[SI_DEVPATH_BUFSZ + 32];
-
-	ai_devpathvar(sih, varname, sizeof(varname), name);
-
-	return getintvar(NULL, varname);
-#endif
-}
-
-char *ai_getnvramflvar(struct si_pub *sih, const char *name)
-{
-	return getvar(NULL, name);
-}
-
-/* Concatenate the dev path with a varname into the given 'var' buffer
- * and return the 'var' pointer. Nothing is done to the arguments if
- * len == 0 or var is NULL, var is still returned. On overflow, the
- * first char will be set to '\0'.
- */
-static char *ai_devpathvar(struct si_pub *sih, char *var, int len,
-			   const char *name)
-{
-	uint path_len;
-
-	if (!var || len <= 0)
-		return var;
-
-	if (ai_devpath(sih, var, len) == 0) {
-		path_len = strlen(var);
-
-		if (strlen(name) + 1 > (uint) (len - path_len))
-			var[0] = '\0';
-		else
-			strncpy(var + path_len, name, len - path_len - 1);
-	}
-
-	return var;
-}
-
-/* return true if PCIE capability exists in the pci config space */
-static bool ai_ispcie(struct si_info *sii)
-{
-	u8 cap_ptr;
-
-	if (sii->pub.bustype != PCI_BUS)
-		return false;
-
-	cap_ptr =
-	    pcicore_find_pci_capability(sii->pbus, PCI_CAP_ID_EXP, NULL,
-					NULL);
-	if (!cap_ptr)
-		return false;
-
-	return true;
-}
-
-bool ai_pci_war16165(struct si_pub *sih)
-{
-	struct si_info *sii;
-
-	sii = SI_INFO(sih);
-
-	return PCI(sii) && (sih->buscorerev <= 10);
-}
-
 void ai_pci_up(struct si_pub *sih)
 {
 	struct si_info *sii;
 
-	sii = SI_INFO(sih);
-
-	/* if not pci bus, we're done */
-	if (sih->bustype != PCI_BUS)
-		return;
+	sii = (struct si_info *)sih;
 
 	if (PCI_FORCEHT(sii))
 		_ai_clkctl_cc(sii, CLK_FAST);
@@ -2049,7 +1869,7 @@ void ai_pci_sleep(struct si_pub *sih)
 {
 	struct si_info *sii;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 
 	pcicore_sleep(sii->pch);
 }
@@ -2059,11 +1879,7 @@ void ai_pci_down(struct si_pub *sih)
 {
 	struct si_info *sii;
 
-	sii = SI_INFO(sih);
-
-	/* if not pci bus, we're done */
-	if (sih->bustype != PCI_BUS)
-		return;
+	sii = (struct si_info *)sih;
 
 	/* release FORCEHT since chip is going to "down" state */
 	if (PCI_FORCEHT(sii))
@@ -2079,14 +1895,11 @@ void ai_pci_down(struct si_pub *sih)
 void ai_pci_setup(struct si_pub *sih, uint coremask)
 {
 	struct si_info *sii;
-	void *regs = NULL;
+	struct sbpciregs __iomem *regs = NULL;
 	u32 siflag = 0, w;
 	uint idx = 0;
 
-	sii = SI_INFO(sih);
-
-	if (sii->pub.bustype != PCI_BUS)
-		return;
+	sii = (struct si_info *)sih;
 
 	if (PCI(sii)) {
 		/* get current core index */
@@ -2128,9 +1941,8 @@ void ai_pci_setup(struct si_pub *sih, uint coremask)
 int ai_pci_fixcfg(struct si_pub *sih)
 {
 	uint origidx;
-	void *regs = NULL;
-
-	struct si_info *sii = SI_INFO(sih);
+	void __iomem *regs = NULL;
+	struct si_info *sii = (struct si_info *)sih;
 
 	/* Fixup PI in SROM shadow area to enable the correct PCI core access */
 	/* save the current index */
@@ -2138,7 +1950,11 @@ int ai_pci_fixcfg(struct si_pub *sih)
 
 	/* check 'pi' is correct and fix it if not */
 	regs = ai_setcore(&sii->pub, sii->pub.buscoretype, 0);
-	pcicore_fixcfg(sii->pch, regs);
+	if (sii->pub.buscoretype == PCIE_CORE_ID)
+		pcicore_fixcfg_pcie(sii->pch,
+				    (struct sbpcieregs __iomem *)regs);
+	else if (sii->pub.buscoretype == PCI_CORE_ID)
+		pcicore_fixcfg_pci(sii->pch, (struct sbpciregs __iomem *)regs);
 
 	/* restore the original index */
 	ai_setcoreidx(&sii->pub, origidx);
@@ -2152,47 +1968,34 @@ u32 ai_gpiocontrol(struct si_pub *sih, u32 mask, u32 val, u8 priority)
 {
 	uint regoff;
 
-	regoff = 0;
-
-	/* gpios could be shared on router platforms
-	 * ignore reservation if it's high priority (e.g., test apps)
-	 */
-	if ((priority != GPIO_HI_PRIORITY) &&
-	    (sih->bustype == SI_BUS) && (val || mask)) {
-		mask = priority ? (ai_gpioreservation & mask) :
-		    ((ai_gpioreservation | mask) & ~(ai_gpioreservation));
-		val &= mask;
-	}
-
-	regoff = offsetof(chipcregs_t, gpiocontrol);
+	regoff = offsetof(struct chipcregs, gpiocontrol);
 	return ai_corereg(sih, SI_CC_IDX, regoff, mask, val);
 }
 
 void ai_chipcontrl_epa4331(struct si_pub *sih, bool on)
 {
 	struct si_info *sii;
-	chipcregs_t *cc;
+	struct chipcregs __iomem *cc;
 	uint origidx;
 	u32 val;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 	origidx = ai_coreidx(sih);
 
-	cc = (chipcregs_t *) ai_setcore(sih, CC_CORE_ID, 0);
+	cc = (struct chipcregs __iomem *) ai_setcore(sih, CC_CORE_ID, 0);
 
 	val = R_REG(&cc->chipcontrol);
 
 	if (on) {
-		if (sih->chippkg == 9 || sih->chippkg == 0xb) {
+		if (sih->chippkg == 9 || sih->chippkg == 0xb)
 			/* Ext PA Controls for 4331 12x9 Package */
 			W_REG(&cc->chipcontrol, val |
-			      (CCTRL4331_EXTPA_EN |
-			       CCTRL4331_EXTPA_ON_GPIO2_5));
-		} else {
+			      CCTRL4331_EXTPA_EN |
+			      CCTRL4331_EXTPA_ON_GPIO2_5);
+		else
 			/* Ext PA Controls for 4331 12x12 Package */
 			W_REG(&cc->chipcontrol,
-			      val | (CCTRL4331_EXTPA_EN));
-		}
+			      val | CCTRL4331_EXTPA_EN);
 	} else {
 		val &= ~(CCTRL4331_EXTPA_EN | CCTRL4331_EXTPA_ON_GPIO2_5);
 		W_REG(&cc->chipcontrol, val);
@@ -2205,13 +2008,13 @@ void ai_chipcontrl_epa4331(struct si_pub *sih, bool on)
 void ai_epa_4313war(struct si_pub *sih)
 {
 	struct si_info *sii;
-	chipcregs_t *cc;
+	struct chipcregs __iomem *cc;
 	uint origidx;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 	origidx = ai_coreidx(sih);
 
-	cc = (chipcregs_t *) ai_setcore(sih, CC_CORE_ID, 0);
+	cc = ai_setcore(sih, CC_CORE_ID, 0);
 
 	/* EPA Fix */
 	W_REG(&cc->gpiocontrol,
@@ -2226,15 +2029,12 @@ bool ai_deviceremoved(struct si_pub *sih)
 	u32 w;
 	struct si_info *sii;
 
-	sii = SI_INFO(sih);
+	sii = (struct si_info *)sih;
 
-	switch (sih->bustype) {
-	case PCI_BUS:
-		pci_read_config_dword(sii->pbus, PCI_VENDOR_ID, &w);
-		if ((w & 0xFFFF) != PCI_VENDOR_ID_BROADCOM)
-			return true;
-		break;
-	}
+	pci_read_config_dword(sii->pbus, PCI_VENDOR_ID, &w);
+	if ((w & 0xFFFF) != PCI_VENDOR_ID_BROADCOM)
+		return true;
+
 	return false;
 }
 
@@ -2243,13 +2043,13 @@ bool ai_is_sprom_available(struct si_pub *sih)
 	if (sih->ccrev >= 31) {
 		struct si_info *sii;
 		uint origidx;
-		chipcregs_t *cc;
+		struct chipcregs __iomem *cc;
 		u32 sromctrl;
 
 		if ((sih->cccaps & CC_CAP_SROM) == 0)
 			return false;
 
-		sii = SI_INFO(sih);
+		sii = (struct si_info *)sih;
 		origidx = sii->curidx;
 		cc = ai_setcoreidx(sih, SI_CC_IDX);
 		sromctrl = R_REG(&cc->sromcontrol);

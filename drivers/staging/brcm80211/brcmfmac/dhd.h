@@ -23,10 +23,9 @@
 
 #define BRCMF_VERSION_STR		"4.218.248.5"
 
-#define	BRCMF_C_IOCTL_SMLEN	256	/* "small" ioctl buffer required */
-#define BRCMF_C_IOCTL_MEDLEN	1536	/* "med" ioctl buffer required */
-#define	BRCMF_C_IOCTL_MAXLEN	8192
-
+/*******************************************************************************
+ * IO codes that are interpreted by dongle firmware
+ ******************************************************************************/
 #define BRCMF_C_UP				2
 #define BRCMF_C_SET_PROMISC			10
 #define BRCMF_C_GET_RATE			12
@@ -83,17 +82,10 @@
 #define	WLC_PHY_TYPE_LCN	8
 #define	WLC_PHY_TYPE_NULL	0xf
 
-#define BRCMF_PKT_FILTER_FIXED_LEN	offsetof(struct brcmf_pkt_filter, u)
-#define BRCMF_PKT_FILTER_PATTERN_FIXED_LEN	\
-	offsetof(struct brcmf_pkt_filter_pattern, mask_and_pattern)
-
 #define BRCMF_EVENTING_MASK_LEN	16
 
 #define TOE_TX_CSUM_OL		0x00000001
 #define TOE_RX_CSUM_OL		0x00000002
-
-/* maximum channels returned by the get valid channels iovar */
-#define WL_NUMCHANNELS		64
 
 #define	BRCMF_BSS_INFO_VERSION	108 /* current ver of brcmf_bss_info struct */
 
@@ -117,11 +109,16 @@
 #define BRCMF_SCAN_RESULTS_ABORTED	3
 #define BRCMF_SCAN_RESULTS_NO_MEM	4
 
-#define WL_SOFT_KEY	(1 << 0)	/* Indicates this key is using soft encrypt */
-#define BRCMF_PRIMARY_KEY	(1 << 1)	/* primary (ie tx) key */
-#define WL_KF_RES_4	(1 << 4)	/* Reserved for backward compat */
-#define WL_KF_RES_5	(1 << 5)	/* Reserved for backward compat */
-#define WL_IBSS_PEER_GROUP_KEY	(1 << 6)	/* Indicates a group key for a IBSS PEER */
+/* Indicates this key is using soft encrypt */
+#define WL_SOFT_KEY	(1 << 0)
+/* primary (ie tx) key */
+#define BRCMF_PRIMARY_KEY	(1 << 1)
+/* Reserved for backward compat */
+#define WL_KF_RES_4	(1 << 4)
+/* Reserved for backward compat */
+#define WL_KF_RES_5	(1 << 5)
+/* Indicates a group key for a IBSS PEER */
+#define WL_IBSS_PEER_GROUP_KEY	(1 << 6)
 
 /* For supporting multiple interfaces */
 #define BRCMF_MAX_IFS	16
@@ -136,13 +133,13 @@
 #define BRCMF_EVENT_MSG_GROUP		0x04
 
 struct brcmf_event_msg {
-	u16 version;
-	u16 flags;
-	u32 event_type;
-	u32 status;
-	u32 reason;
-	u32 auth_type;
-	u32 datalen;
+	__be16 version;
+	__be16 flags;
+	__be32 event_type;
+	__be32 status;
+	__be32 reason;
+	__be32 auth_type;
+	__be32 datalen;
 	u8 addr[ETH_ALEN];
 	char ifname[IFNAMSIZ];
 } __packed;
@@ -173,6 +170,7 @@ struct dngl_stats {
 	unsigned long multicast;	/* multicast packets received */
 };
 
+/* event codes sent by the dongle to this driver */
 #define BRCMF_E_SET_SSID			0
 #define BRCMF_E_JOIN				1
 #define BRCMF_E_START				2
@@ -332,30 +330,35 @@ enum brcmf_bus_state {
  * start matching, the pattern to match, the size of the pattern, and a bitmask
  * that indicates which bits within the pattern should be matched.
  */
-struct brcmf_pkt_filter_pattern {
-	u32 offset;		/* Offset within received packet to start pattern matching.
-				 * Offset '0' is the first byte of the ethernet header.
-				 */
-	u32 size_bytes;	/* Size of the pattern.  Bitmask must be the same size. */
-	u8 mask_and_pattern[1];	/* Variable length mask and pattern data.  mask starts
-					 * at offset 0.  Pattern immediately follows mask.
-					 */
+struct brcmf_pkt_filter_pattern_le {
+	/*
+	 * Offset within received packet to start pattern matching.
+	 * Offset '0' is the first byte of the ethernet header.
+	 */
+	__le32 offset;
+	/* Size of the pattern.  Bitmask must be the same size.*/
+	__le32 size_bytes;
+	/*
+	 * Variable length mask and pattern data. mask starts at offset 0.
+	 * Pattern immediately follows mask.
+	 */
+	u8 mask_and_pattern[1];
 };
 
 /* IOVAR "pkt_filter_add" parameter. Used to install packet filters. */
-struct brcmf_pkt_filter {
-	u32 id;		/* Unique filter id, specified by app. */
-	u32 type;		/* Filter type (WL_PKT_FILTER_TYPE_xxx). */
-	u32 negate_match;	/* Negate the result of filter matches */
+struct brcmf_pkt_filter_le {
+	__le32 id;		/* Unique filter id, specified by app. */
+	__le32 type;		/* Filter type (WL_PKT_FILTER_TYPE_xxx). */
+	__le32 negate_match;	/* Negate the result of filter matches */
 	union {			/* Filter definitions */
-		struct brcmf_pkt_filter_pattern pattern; /* Filter pattern */
+		struct brcmf_pkt_filter_pattern_le pattern; /* Filter pattern */
 	} u;
 };
 
 /* IOVAR "pkt_filter_enable" parameter. */
-struct brcmf_pkt_filter_enable {
-	u32 id;		/* Unique filter id */
-	u32 enable;		/* Enable/disable bool */
+struct brcmf_pkt_filter_enable_le {
+	__le32 id;		/* Unique filter id */
+	__le32 enable;		/* Enable/disable bool */
 };
 
 /* BSS info structure
@@ -363,38 +366,46 @@ struct brcmf_pkt_filter_enable {
  * next bss_info structure in a vector (in struct brcmf_scan_results)
  */
 struct brcmf_bss_info {
-	u32 version;		/* version field */
-	u32 length;		/* byte length of data in this record,
+	__le32 version;		/* version field */
+	__le32 length;		/* byte length of data in this record,
 				 * starting at version and including IEs
 				 */
 	u8 BSSID[ETH_ALEN];
-	u16 beacon_period;	/* units are Kusec */
-	u16 capability;	/* Capability information */
+	__le16 beacon_period;	/* units are Kusec */
+	__le16 capability;	/* Capability information */
 	u8 SSID_len;
 	u8 SSID[32];
 	struct {
-		uint count;	/* # rates in this set */
-		u8 rates[16];	/* rates in 500kbps units w/hi bit set if basic */
+		__le32 count;   /* # rates in this set */
+		u8 rates[16]; /* rates in 500kbps units w/hi bit set if basic */
 	} rateset;		/* supported rates */
-	chanspec_t chanspec;	/* chanspec for bss */
-	u16 atim_window;	/* units are Kusec */
+	__le16 chanspec;	/* chanspec for bss */
+	__le16 atim_window;	/* units are Kusec */
 	u8 dtim_period;	/* DTIM period */
-	s16 RSSI;		/* receive signal strength (in dBm) */
+	__le16 RSSI;		/* receive signal strength (in dBm) */
 	s8 phy_noise;		/* noise (in dBm) */
 
 	u8 n_cap;		/* BSS is 802.11N Capable */
-	u32 nbss_cap;	/* 802.11N BSS Capabilities (based on HT_CAP_*) */
+	/* 802.11N BSS Capabilities (based on HT_CAP_*): */
+	__le32 nbss_cap;
 	u8 ctl_ch;		/* 802.11N BSS control channel number */
-	u32 reserved32[1];	/* Reserved for expansion of BSS properties */
+	__le32 reserved32[1];	/* Reserved for expansion of BSS properties */
 	u8 flags;		/* flags */
 	u8 reserved[3];	/* Reserved for expansion of BSS properties */
 	u8 basic_mcs[MCSSET_LEN];	/* 802.11N BSS required MCS set */
 
-	u16 ie_offset;	/* offset at which IEs start, from beginning */
-	u32 ie_length;	/* byte length of Information Elements */
-	s16 SNR;		/* average SNR of during frame reception */
+	__le16 ie_offset;	/* offset at which IEs start, from beginning */
+	__le32 ie_length;	/* byte length of Information Elements */
+	__le16 SNR;		/* average SNR of during frame reception */
 	/* Add new fields here */
 	/* variable length Information Elements */
+};
+
+struct brcm_rateset_le {
+	/* # rates in this set */
+	__le32 count;
+	/* rates in 500kbps units w/hi bit set if basic */
+	u8 rates[WL_NUMRATES];
 };
 
 struct brcmf_ssid {
@@ -402,24 +413,29 @@ struct brcmf_ssid {
 	unsigned char SSID[32];
 };
 
-struct brcmf_scan_params {
-	struct brcmf_ssid ssid;	/* default: {0, ""} */
+struct brcmf_ssid_le {
+	__le32 SSID_len;
+	unsigned char SSID[32];
+};
+
+struct brcmf_scan_params_le {
+	struct brcmf_ssid_le ssid_le;	/* default: {0, ""} */
 	u8 bssid[ETH_ALEN];	/* default: bcast */
 	s8 bss_type;		/* default: any,
 				 * DOT11_BSSTYPE_ANY/INFRASTRUCTURE/INDEPENDENT
 				 */
 	u8 scan_type;	/* flags, 0 use default */
-	s32 nprobes;		/* -1 use default, number of probes per channel */
-	s32 active_time;	/* -1 use default, dwell time per channel for
+	__le32 nprobes;	  /* -1 use default, number of probes per channel */
+	__le32 active_time;	/* -1 use default, dwell time per channel for
 				 * active scanning
 				 */
-	s32 passive_time;	/* -1 use default, dwell time per channel
+	__le32 passive_time;	/* -1 use default, dwell time per channel
 				 * for passive scanning
 				 */
-	s32 home_time;	/* -1 use default, dwell time for the home channel
-				 * between channel scans
+	__le32 home_time;	/* -1 use default, dwell time for the
+				 * home channel between channel scans
 				 */
-	s32 channel_num;	/* count of channels and ssids that follow
+	__le32 channel_num;	/* count of channels and ssids that follow
 				 *
 				 * low half is count of channels in
 				 * channel_list, 0 means default (use all
@@ -435,21 +451,16 @@ struct brcmf_scan_params {
 				 * fixed parameter portion is assumed, otherwise
 				 * ssid in the fixed portion is ignored
 				 */
-	u16 channel_list[1];	/* list of chanspecs */
+	__le16 channel_list[1];	/* list of chanspecs */
 };
 
 /* incremental scan struct */
-struct brcmf_iscan_params {
-	u32 version;
-	u16 action;
-	u16 scan_duration;
-	struct brcmf_scan_params params;
+struct brcmf_iscan_params_le {
+	__le32 version;
+	__le16 action;
+	__le16 scan_duration;
+	struct brcmf_scan_params_le params_le;
 };
-
-/* 3 fields + size of brcmf_scan_params, not including variable length array */
-#define BRCMF_ISCAN_PARAMS_FIXED_SIZE \
-	(offsetof(struct brcmf_iscan_params, params) + \
-	 sizeof(struct brcmf_ssid))
 
 struct brcmf_scan_results {
 	u32 buflen;
@@ -458,21 +469,28 @@ struct brcmf_scan_results {
 	struct brcmf_bss_info bss_info[1];
 };
 
-/* used for association with a specific BSSID and chanspec list */
-struct brcmf_assoc_params {
-	u8 bssid[ETH_ALEN];	/* 00:00:00:00:00:00: broadcast scan */
-	s32 chanspec_num;	/* 0: all available channels,
-				 * otherwise count of chanspecs in chanspec_list
-				 */
-	chanspec_t chanspec_list[1];	/* list of chanspecs */
+struct brcmf_scan_results_le {
+	__le32 buflen;
+	__le32 version;
+	__le32 count;
+	struct brcmf_bss_info bss_info[1];
 };
-#define BRCMF_ASSOC_PARAMS_FIXED_SIZE \
-	(sizeof(struct brcmf_assoc_params) - sizeof(chanspec_t))
+
+/* used for association with a specific BSSID and chanspec list */
+struct brcmf_assoc_params_le {
+	/* 00:00:00:00:00:00: broadcast scan */
+	u8 bssid[ETH_ALEN];
+	/* 0: all available channels, otherwise count of chanspecs in
+	 * chanspec_list */
+	__le32 chanspec_num;
+	/* list of chanspecs */
+	__le16 chanspec_list[1];
+};
 
 /* used for join with or without a specific bssid and channel list */
 struct brcmf_join_params {
-	struct brcmf_ssid ssid;
-	struct brcmf_assoc_params params;
+	struct brcmf_ssid_le ssid_le;
+	struct brcmf_assoc_params_le params_le;
 };
 
 /* size of brcmf_scan_results not including variable length array */
@@ -481,8 +499,14 @@ struct brcmf_join_params {
 
 /* incremental scan results struct */
 struct brcmf_iscan_results {
-	u32 status;
-	struct brcmf_scan_results results;
+	union {
+		u32 status;
+		__le32 status_le;
+	};
+	union {
+		struct brcmf_scan_results results;
+		struct brcmf_scan_results_le results_le;
+	};
 };
 
 /* size of brcmf_iscan_results not including variable length array */
@@ -495,40 +519,61 @@ struct brcmf_wsec_key {
 	u32 len;		/* key length */
 	u8 data[WLAN_MAX_KEY_LEN];	/* key data */
 	u32 pad_1[18];
-	u32 algo;		/* CRYPTO_ALGO_AES_CCM, CRYPTO_ALGO_WEP128, etc */
-	u32 flags;		/* misc flags */
-	u32 pad_2[2];
-	int pad_3;
-	int iv_initialized;	/* has IV been initialized already? */
-	int pad_4;
+	u32 algo;	/* CRYPTO_ALGO_AES_CCM, CRYPTO_ALGO_WEP128, etc */
+	u32 flags;	/* misc flags */
+	u32 pad_2[3];
+	u32 iv_initialized;	/* has IV been initialized already? */
+	u32 pad_3;
 	/* Rx IV */
 	struct {
 		u32 hi;	/* upper 32 bits of IV */
 		u16 lo;	/* lower 16 bits of IV */
 	} rxiv;
-	u32 pad_5[2];
+	u32 pad_4[2];
+	u8 ea[ETH_ALEN];	/* per station */
+};
+
+/*
+ * dongle requires same struct as above but with fields in little endian order
+ */
+struct brcmf_wsec_key_le {
+	__le32 index;		/* key index */
+	__le32 len;		/* key length */
+	u8 data[WLAN_MAX_KEY_LEN];	/* key data */
+	__le32 pad_1[18];
+	__le32 algo;	/* CRYPTO_ALGO_AES_CCM, CRYPTO_ALGO_WEP128, etc */
+	__le32 flags;	/* misc flags */
+	__le32 pad_2[3];
+	__le32 iv_initialized;	/* has IV been initialized already? */
+	__le32 pad_3;
+	/* Rx IV */
+	struct {
+		__le32 hi;	/* upper 32 bits of IV */
+		__le16 lo;	/* lower 16 bits of IV */
+	} rxiv;
+	__le32 pad_4[2];
 	u8 ea[ETH_ALEN];	/* per station */
 };
 
 /* Used to get specific STA parameters */
-struct brcmf_scb_val {
-	u32 val;
+struct brcmf_scb_val_le {
+	__le32 val;
 	u8 ea[ETH_ALEN];
 };
 
 /* channel encoding */
-struct brcmf_channel_info {
-	int hw_channel;
-	int target_channel;
-	int scan_channel;
+struct brcmf_channel_info_le {
+	__le32 hw_channel;
+	__le32 target_channel;
+	__le32 scan_channel;
 };
 
-/* Linux network driver ioctl encoding */
-struct brcmf_ioctl {
-	uint cmd;		/* common ioctl definition */
+/* Bus independent dongle command */
+struct brcmf_dcmd {
+	uint cmd;		/* common dongle cmd definition */
 	void *buf;		/* pointer to user buffer */
 	uint len;		/* length of user buffer */
-	u8 set;		/* get or set request (optional) */
+	u8 set;			/* get or set request (optional) */
 	uint used;		/* bytes read or written (optional) */
 	uint needed;		/* bytes needed (optional) */
 };
@@ -537,6 +582,7 @@ struct brcmf_ioctl {
 struct brcmf_bus;		/* device bus info */
 struct brcmf_proto;	/* device communication protocol info */
 struct brcmf_info;	/* device driver info */
+struct brcmf_cfg80211_dev; /* cfg80211 device info */
 
 /* Common structure for module and instance linkage */
 struct brcmf_pub {
@@ -544,11 +590,11 @@ struct brcmf_pub {
 	struct brcmf_bus *bus;
 	struct brcmf_proto *prot;
 	struct brcmf_info *info;
+	struct brcmf_cfg80211_dev *config;
 
 	/* Internal brcmf items */
 	bool up;		/* Driver up/down (to OS) */
 	bool txoff;		/* Transmit flow-controlled */
-	bool dongle_reset;	/* true = DEVRESET put dongle into reset */
 	enum brcmf_bus_state busstate;
 	uint hdrlen;		/* Total BRCMF header length (proto + bus) */
 	uint maxctl;		/* Max size rxctl request from proto to bus */
@@ -558,32 +604,45 @@ struct brcmf_pub {
 	/* Dongle media info */
 	bool iswl;		/* Dongle-resident driver is wl */
 	unsigned long drv_version;	/* Version of dongle-resident driver */
-	u8 mac[ETH_ALEN];			/* MAC address obtained from dongle */
+	u8 mac[ETH_ALEN];		/* MAC address obtained from dongle */
 	struct dngl_stats dstats;	/* Stats for dongle-based data */
 
 	/* Additional stats for the bus level */
-	unsigned long tx_packets;	/* Data packets sent to dongle */
-	unsigned long tx_multicast;	/* Multicast data packets sent to dongle */
-	unsigned long tx_errors;	/* Errors in sending data to dongle */
-	unsigned long tx_ctlpkts;	/* Control packets sent to dongle */
-	unsigned long tx_ctlerrs;	/* Errors sending control frames to dongle */
-	unsigned long rx_packets;	/* Packets sent up the network interface */
-	unsigned long rx_multicast;	/* Multicast packets sent up the network
-					 interface */
-	unsigned long rx_errors;	/* Errors processing rx data packets */
-	unsigned long rx_ctlpkts;	/* Control frames processed from dongle */
-	unsigned long rx_ctlerrs;	/* Errors in processing rx control frames */
-	unsigned long rx_dropped;	/* Packets dropped locally (no memory) */
-	unsigned long rx_flushed;	/* Packets flushed due to
-				unscheduled sendup thread */
-	unsigned long wd_dpc_sched;	/* Number of times dpc scheduled by
-					 watchdog timer */
 
-	unsigned long rx_readahead_cnt;	/* Number of packets where header read-ahead
-					 was used. */
-	unsigned long tx_realloc;	/* Number of tx packets we had to realloc for
-					 headroom */
-	unsigned long fc_packets;	/* Number of flow control pkts recvd */
+	/* Data packets sent to dongle */
+	unsigned long tx_packets;
+	/* Multicast data packets sent to dongle */
+	unsigned long tx_multicast;
+	/* Errors in sending data to dongle */
+	unsigned long tx_errors;
+	/* Control packets sent to dongle */
+	unsigned long tx_ctlpkts;
+	/* Errors sending control frames to dongle */
+	unsigned long tx_ctlerrs;
+	/* Packets sent up the network interface */
+	unsigned long rx_packets;
+	/* Multicast packets sent up the network interface */
+	unsigned long rx_multicast;
+	/* Errors processing rx data packets */
+	unsigned long rx_errors;
+	/* Control frames processed from dongle */
+	unsigned long rx_ctlpkts;
+
+	/* Errors in processing rx control frames */
+	unsigned long rx_ctlerrs;
+	/* Packets dropped locally (no memory) */
+	unsigned long rx_dropped;
+	/* Packets flushed due to unscheduled sendup thread */
+	unsigned long rx_flushed;
+	/* Number of times dpc scheduled by watchdog timer */
+	unsigned long wd_dpc_sched;
+
+	/* Number of packets where header read-ahead was used. */
+	unsigned long rx_readahead_cnt;
+	/* Number of tx packets we had to realloc for headroom */
+	unsigned long tx_realloc;
+	/* Number of flow control pkts recvd */
+	unsigned long fc_packets;
 
 	/* Last error return */
 	int bcmerror;
@@ -614,146 +673,15 @@ struct brcmf_if_event {
 	u8 bssidx;
 };
 
-struct brcmf_timeout {
-	u32 limit;		/* Expiration time (usec) */
-	u32 increment;	/* Current expiration increment (usec) */
-	u32 elapsed;		/* Current elapsed time (usec) */
-	u32 tick;		/* O/S tick time (usec) */
-};
-
 struct bcmevent_name {
 	uint event;
 	const char *name;
 };
 
-#if defined(CONFIG_PM_SLEEP)
-extern atomic_t brcmf_mmc_suspend;
-#define BRCMF_PM_RESUME_WAIT_INIT(a) DECLARE_WAIT_QUEUE_HEAD(a);
-#define _BRCMF_PM_RESUME_WAIT(a, b) do { \
-		int retry = 0; \
-		while (atomic_read(&brcmf_mmc_suspend) && retry++ != b) { \
-			wait_event_timeout(a, false, HZ/100); \
-		} \
-	}	while (0)
-#define BRCMF_PM_RESUME_WAIT(a)	_BRCMF_PM_RESUME_WAIT(a, 30)
-#define BRCMF_PM_RESUME_RETURN_ERROR(a)	\
-	do { if (atomic_read(&brcmf_mmc_suspend)) return a; } while (0)
-
-#define BRCMF_SPINWAIT_SLEEP_INIT(a) DECLARE_WAIT_QUEUE_HEAD(a);
-#define BRCMF_SPINWAIT_SLEEP(a, exp, us) do { \
-		uint countdown = (us) + 9999; \
-		while ((exp) && (countdown >= 10000)) { \
-			wait_event_timeout(a, false, HZ/100); \
-			countdown -= 10000; \
-		} \
-	} while (0)
-
-#else
-
-#define BRCMF_PM_RESUME_WAIT_INIT(a)
-#define BRCMF_PM_RESUME_WAIT(a)
-#define BRCMF_PM_RESUME_RETURN_ERROR(a)
-
-#define BRCMF_SPINWAIT_SLEEP_INIT(a)
-#define BRCMF_SPINWAIT_SLEEP(a, exp, us)  do { \
-		uint countdown = (us) + 9; \
-		while ((exp) && (countdown >= 10)) { \
-			udelay(10);  \
-			countdown -= 10;  \
-		} \
-	} while (0)
-
-#endif	/* defined(CONFIG_PM_SLEEP) */
-
-/*
- * Insmod parameters for debug/test
- */
-
-/* Use interrupts */
-extern uint brcmf_intr;
-
-/* Use polling */
-extern uint brcmf_poll;
-
-/* ARP offload agent mode */
-extern uint brcmf_arp_mode;
-
-/* ARP offload enable */
-extern uint brcmf_arp_enable;
-
-/* Pkt filte enable control */
-extern uint brcmf_pkt_filter_enable;
-
-/*  Pkt filter init setup */
-extern uint brcmf_pkt_filter_init;
-
-/* Pkt filter mode control */
-extern uint brcmf_master_mode;
-
-/* Roaming mode control */
-extern uint brcmf_roam;
-
-/* Roaming mode control */
-extern uint brcmf_radio_up;
-
-/* Initial idletime ticks (may be -1 for immediate idle, 0 for no idle) */
-extern int brcmf_idletime;
-#define BRCMF_IDLETIME_TICKS 1
-
-/* SDIO Drive Strength */
-extern uint brcmf_sdiod_drive_strength;
-
-/* Override to force tx queueing all the time */
-extern uint brcmf_force_tx_queueing;
-
-#ifdef SDTEST
-/* Echo packet generator (SDIO), pkts/s */
-extern uint brcmf_pktgen;
-
-/* Echo packet len (0 => sawtooth, max 1800) */
-extern uint brcmf_pktgen_len;
-#define BRCMF_MAX_PKTGEN_LEN 1800
-#endif
-
 extern const struct bcmevent_name bcmevent_names[];
-extern const int bcmevent_names_size;
 
-
-static inline void MUTEX_LOCK_INIT(struct brcmf_pub *drvr)
-{
-}
-
-static inline void MUTEX_LOCK(struct brcmf_pub *drvr)
-{
-}
-
-static inline void MUTEX_UNLOCK(struct brcmf_pub *drvr)
-{
-}
-
-static inline void MUTEX_LOCK_SOFTAP_SET_INIT(struct brcmf_pub *drvr)
-{
-}
-
-static inline void MUTEX_LOCK_SOFTAP_SET(struct brcmf_pub *drvr)
-{
-}
-
-static inline void MUTEX_UNLOCK_SOFTAP_SET(struct brcmf_pub *drvr)
-{
-}
-
-static inline void MUTEX_LOCK_WL_SCAN_SET_INIT(void)
-{
-}
-
-static inline void MUTEX_LOCK_WL_SCAN_SET(void)
-{
-}
-
-static inline void MUTEX_UNLOCK_WL_SCAN_SET(void)
-{
-}
+extern uint brcmf_c_mkiovar(char *name, char *data, uint datalen,
+			  char *buf, uint len);
 
 /* Indication from bus module regarding presence/insertion of dongle.
  * Return struct brcmf_pub pointer, used as handle to OS module in later calls.
@@ -763,7 +691,9 @@ static inline void MUTEX_UNLOCK_WL_SCAN_SET(void)
 extern struct brcmf_pub *brcmf_attach(struct brcmf_bus *bus,
 				      uint bus_hdrlen);
 extern int brcmf_net_attach(struct brcmf_pub *drvr, int idx);
-extern int brcmf_netdev_wait_pend8021x(struct net_device *dev);
+extern int brcmf_netdev_wait_pend8021x(struct net_device *ndev);
+
+extern s32 brcmf_exec_dcmd(struct net_device *dev, u32 cmd, void *arg, u32 len);
 
 /* Indication from bus module regarding removal/absence of dongle */
 extern void brcmf_detach(struct brcmf_pub *drvr);
@@ -785,24 +715,16 @@ extern char *brcmf_ifname(struct brcmf_pub *drvr, int idx);
 extern void brcmf_txcomplete(struct brcmf_pub *drvr, struct sk_buff *txp,
 			     bool success);
 
-/* Query ioctl */
-extern int brcmf_proto_cdc_query_ioctl(struct brcmf_pub *drvr, int ifidx,
+/* Query dongle */
+extern int brcmf_proto_cdc_query_dcmd(struct brcmf_pub *drvr, int ifidx,
 				       uint cmd, void *buf, uint len);
 
 /* OS independent layer functions */
 extern int brcmf_os_proto_block(struct brcmf_pub *drvr);
 extern int brcmf_os_proto_unblock(struct brcmf_pub *drvr);
-extern int brcmf_os_ioctl_resp_wait(struct brcmf_pub *drvr, uint *condition,
-				  bool *pending);
-extern int brcmf_os_ioctl_resp_wake(struct brcmf_pub *drvr);
-extern unsigned int brcmf_os_get_ioctl_resp_timeout(void);
-extern void brcmf_os_set_ioctl_resp_timeout(unsigned int timeout_msec);
 #ifdef BCMDBG
-extern int brcmf_write_to_file(struct brcmf_pub *drvr, u8 *buf, int size);
+extern int brcmf_write_to_file(struct brcmf_pub *drvr, const u8 *buf, int size);
 #endif				/* BCMDBG */
-
-extern void brcmf_timeout_start(struct brcmf_timeout *tmo, uint usec);
-extern int brcmf_timeout_expired(struct brcmf_timeout *tmo);
 
 extern int brcmf_ifname2idx(struct brcmf_info *drvr_priv, char *name);
 extern int brcmf_c_host_event(struct brcmf_info *drvr_priv, int *idx,
@@ -811,44 +733,24 @@ extern int brcmf_c_host_event(struct brcmf_info *drvr_priv, int *idx,
 
 extern void brcmf_c_init(void);
 
-extern int brcmf_add_if(struct brcmf_info *drvr_priv, int ifidx, void *handle,
-		      char *name, u8 *mac_addr, u32 flags, u8 bssidx);
+extern int brcmf_add_if(struct brcmf_info *drvr_priv, int ifidx,
+			struct net_device *ndev, char *name, u8 *mac_addr,
+			u32 flags, u8 bssidx);
 extern void brcmf_del_if(struct brcmf_info *drvr_priv, int ifidx);
 
 /* Send packet to dongle via data channel */
 extern int brcmf_sendpkt(struct brcmf_pub *drvr, int ifidx,\
 			 struct sk_buff *pkt);
 
-extern int brcmf_bus_devreset(struct brcmf_pub *drvr, u8 flag);
 extern int brcmf_bus_start(struct brcmf_pub *drvr);
 
 extern void brcmf_c_pktfilter_offload_set(struct brcmf_pub *drvr, char *arg);
 extern void brcmf_c_pktfilter_offload_enable(struct brcmf_pub *drvr, char *arg,
 					     int enable, int master_mode);
 
-/* Linux network driver ioctl encoding */
-struct brcmf_c_ioctl {
-	uint cmd;		/* common ioctl definition */
-	void *buf;		/* pointer to user buffer */
-	uint len;		/* length of user buffer */
-	bool set;		/* get or set request (optional) */
-	uint used;		/* bytes read or written (optional) */
-	uint needed;		/* bytes needed (optional) */
-	uint driver;		/* to identify target driver */
-};
-
-/* per-driver magic numbers */
-#define BRCMF_IOCTL_MAGIC		0x00444944
-
-/* bump this number if you change the ioctl interface */
-#define BRCMF_IOCTL_VERSION	1
-#define	BRCMF_IOCTL_MAXLEN	8192	/* max length ioctl buffer required */
-
-/* common ioctl definitions */
-#define BRCMF_GET_MAGIC				0
-#define BRCMF_GET_VERSION				1
-#define BRCMF_GET_VAR				2
-#define BRCMF_SET_VAR				3
+#define	BRCMF_DCMD_SMLEN	256	/* "small" cmd buffer required */
+#define BRCMF_DCMD_MEDLEN	1536	/* "med" cmd buffer required */
+#define	BRCMF_DCMD_MAXLEN	8192	/* max length cmd buffer required */
 
 /* message levels */
 #define BRCMF_ERROR_VAL	0x0001
@@ -865,40 +767,10 @@ struct brcmf_c_ioctl {
 #define BRCMF_BTA_VAL	0x1000
 #define BRCMF_ISCAN_VAL 0x2000
 
-#ifdef SDTEST
-/* For pktgen iovar */
-struct brcmf_pktgen {
-	uint version;		/* To allow structure change tracking */
-	uint freq;		/* Max ticks between tx/rx attempts */
-	uint count;		/* Test packets to send/rcv each attempt */
-	uint print;		/* Print counts every <print> attempts */
-	uint total;		/* Total packets (or bursts) */
-	uint minlen;		/* Minimum length of packets to send */
-	uint maxlen;		/* Maximum length of packets to send */
-	uint numsent;		/* Count of test packets sent */
-	uint numrcvd;		/* Count of test packets received */
-	uint numfail;		/* Count of test send failures */
-	uint mode;		/* Test mode (type of test packets) */
-	uint stop;		/* Stop after this many tx failures */
-};
-
-/* Version in case structure changes */
-#define BRCMF_PKTGEN_VERSION	2
-
-/* Type of test packets to use */
-#define BRCMF_PKTGEN_ECHO	1	/* Send echo requests */
-#define BRCMF_PKTGEN_SEND	2	/* Send discard packets */
-#define BRCMF_PKTGEN_RXBURST	3	/* Request dongle send N packets */
-#define BRCMF_PKTGEN_RECV		4	/* Continuous rx from continuous
-					 tx dongle */
-#endif				/* SDTEST */
-
 /* Enter idle immediately (no timeout) */
 #define BRCMF_IDLE_IMMEDIATE	(-1)
-
-/* Values for idleclock iovar: other values are the sd_divisor to use
-	 when idle */
 #define BRCMF_IDLE_ACTIVE	0	/* Do not request any SD clock change
 				 when idle */
+#define BRCMF_IDLE_INTERVAL	1
 
 #endif				/* _BRCMF_H_ */

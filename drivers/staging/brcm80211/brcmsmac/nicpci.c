@@ -127,6 +127,18 @@
 /* PCIE protocol TLP diagnostic registers */
 #define PCIE_TLP_WORKAROUNDSREG		0x004	/* TLP Workarounds */
 
+/* Sonics to PCI translation types */
+#define	SBTOPCI_PREF	0x4		/* prefetch enable */
+#define	SBTOPCI_BURST	0x8		/* burst enable */
+#define	SBTOPCI_RC_READMULTI	0x20	/* memory read multiple */
+
+#define PCI_CLKRUN_DSBL	0x8000	/* Bit 15 forceClkrun */
+
+/* PCI core index in SROM shadow area */
+#define SRSH_PI_OFFSET	0	/* first word */
+#define SRSH_PI_MASK	0xf000	/* bit 15:12 */
+#define SRSH_PI_SHIFT	12	/* bit 15:12 */
+
 /* Sonics side: PCI core and host control registers */
 struct sbpciregs {
 	u32 control;		/* PCI control */
@@ -194,8 +206,8 @@ struct sbpcieregs {
 
 struct pcicore_info {
 	union {
-		struct sbpcieregs *pcieregs;
-		struct sbpciregs *pciregs;
+		struct sbpcieregs __iomem *pcieregs;
+		struct sbpciregs __iomem *pciregs;
 	} regs;			/* Memory mapped register to the core */
 
 	struct si_pub *sih;	/* System interconnect handle */
@@ -211,52 +223,30 @@ struct pcicore_info {
 	bool pmecap;		/* Capable of generating PME */
 };
 
-/* debug/trace */
-#define	PCI_ERROR(args)
-#define PCIE_PUB(sih)							\
-	(((sih)->bustype == PCI_BUS) &&					\
-	 ((sih)->buscoretype == PCIE_CORE_ID))
-
-/* routines to access mdio slave device registers */
-static bool pcie_mdiosetblock(struct pcicore_info *pi, uint blk);
-static int pcie_mdioop(struct pcicore_info *pi, uint physmedia, uint regaddr,
-		       bool write, uint *val);
-static int pcie_mdiowrite(struct pcicore_info *pi, uint physmedia, uint readdr,
-			  uint val);
-static int pcie_mdioread(struct pcicore_info *pi, uint physmedia, uint readdr,
-			 uint *ret_val);
-
-static void pcie_extendL1timer(struct pcicore_info *pi, bool extend);
-static void pcie_clkreq_upd(struct pcicore_info *pi, uint state);
-
-static void pcie_war_aspm_clkreq(struct pcicore_info *pi);
-static void pcie_war_serdes(struct pcicore_info *pi);
-static void pcie_war_noplldown(struct pcicore_info *pi);
-static void pcie_war_polarity(struct pcicore_info *pi);
-static void pcie_war_pci_setup(struct pcicore_info *pi);
-
 #define PCIE_ASPM(sih)							\
-	((PCIE_PUB(sih)) &&						\
+	(((sih)->buscoretype == PCIE_CORE_ID) &&			\
 	 (((sih)->buscorerev >= 3) &&					\
 	  ((sih)->buscorerev <= 5)))
 
 
 /* delay needed between the mdio control/ mdiodata register data access */
-#define PR28829_DELAY() udelay(10)
+static void pr28829_delay(void)
+{
+	udelay(10);
+}
 
 /* Initialize the PCI core.
  * It's caller's responsibility to make sure that this is done only once
  */
-void *pcicore_init(struct si_pub *sih, void *pdev, void *regs)
+struct pcicore_info *pcicore_init(struct si_pub *sih, struct pci_dev *pdev,
+				  void __iomem *regs)
 {
 	struct pcicore_info *pi;
 
 	/* alloc struct pcicore_info */
 	pi = kzalloc(sizeof(struct pcicore_info), GFP_ATOMIC);
-	if (pi == NULL) {
-		PCI_ERROR(("pci_attach: malloc failed!\n"));
+	if (pi == NULL)
 		return NULL;
-	}
 
 	pi->sih = sih;
 	pi->dev = pdev;
@@ -273,7 +263,7 @@ void *pcicore_init(struct si_pub *sih, void *pdev, void *regs)
 	return pi;
 }
 
-void pcicore_deinit(void *pch)
+void pcicore_deinit(struct pcicore_info *pch)
 {
 	kfree(pch);
 }
@@ -281,7 +271,7 @@ void pcicore_deinit(void *pch)
 /* return cap_offset if requested capability exists in the PCI config space */
 /* Note that it's caller's responsibility to make sure it's a pci bus */
 u8
-pcicore_find_pci_capability(void *dev, u8 req_cap_id,
+pcicore_find_pci_capability(struct pci_dev *dev, u8 req_cap_id,
 			    unsigned char *buf, u32 *buflen)
 {
 	u8 cap_id;
@@ -344,7 +334,7 @@ end:
 
 /* ***** Register Access API */
 static uint
-pcie_readreg(struct sbpcieregs *pcieregs, uint addrtype, uint offset)
+pcie_readreg(struct sbpcieregs __iomem *pcieregs, uint addrtype, uint offset)
 {
 	uint retval = 0xFFFFFFFF;
 
@@ -364,8 +354,8 @@ pcie_readreg(struct sbpcieregs *pcieregs, uint addrtype, uint offset)
 	return retval;
 }
 
-static uint
-pcie_writereg(struct sbpcieregs *pcieregs, uint addrtype, uint offset, uint val)
+static uint pcie_writereg(struct sbpcieregs __iomem *pcieregs, uint addrtype,
+			  uint offset, uint val)
 {
 	switch (addrtype) {
 	case PCIE_CONFIGREGS:
@@ -384,7 +374,7 @@ pcie_writereg(struct sbpcieregs *pcieregs, uint addrtype, uint offset, uint val)
 
 static bool pcie_mdiosetblock(struct pcicore_info *pi, uint blk)
 {
-	struct sbpcieregs *pcieregs = pi->regs.pcieregs;
+	struct sbpcieregs __iomem *pcieregs = pi->regs.pcieregs;
 	uint mdiodata, i = 0;
 	uint pcie_serdes_spinwait = 200;
 
@@ -394,19 +384,18 @@ static bool pcie_mdiosetblock(struct pcicore_info *pi, uint blk)
 		    (blk << 4));
 	W_REG(&pcieregs->mdiodata, mdiodata);
 
-	PR28829_DELAY();
+	pr28829_delay();
 	/* retry till the transaction is complete */
 	while (i < pcie_serdes_spinwait) {
 		if (R_REG(&pcieregs->mdiocontrol) & MDIOCTL_ACCESS_DONE)
 			break;
+
 		udelay(1000);
 		i++;
 	}
 
-	if (i >= pcie_serdes_spinwait) {
-		PCI_ERROR(("pcie_mdiosetblock: timed out\n"));
+	if (i >= pcie_serdes_spinwait)
 		return false;
-	}
 
 	return true;
 }
@@ -415,7 +404,7 @@ static int
 pcie_mdioop(struct pcicore_info *pi, uint physmedia, uint regaddr, bool write,
 	    uint *val)
 {
-	struct sbpcieregs *pcieregs = pi->regs.pcieregs;
+	struct sbpcieregs __iomem *pcieregs = pi->regs.pcieregs;
 	uint mdiodata;
 	uint i = 0;
 	uint pcie_serdes_spinwait = 10;
@@ -445,13 +434,13 @@ pcie_mdioop(struct pcicore_info *pi, uint physmedia, uint regaddr, bool write,
 
 	W_REG(&pcieregs->mdiodata, mdiodata);
 
-	PR28829_DELAY();
+	pr28829_delay();
 
 	/* retry till the transaction is complete */
 	while (i < pcie_serdes_spinwait) {
 		if (R_REG(&pcieregs->mdiocontrol) & MDIOCTL_ACCESS_DONE) {
 			if (!write) {
-				PR28829_DELAY();
+				pr28829_delay();
 				*val = (R_REG(&pcieregs->mdiodata) &
 					MDIODATA_MASK);
 			}
@@ -463,8 +452,7 @@ pcie_mdioop(struct pcicore_info *pi, uint physmedia, uint regaddr, bool write,
 		i++;
 	}
 
-	PCI_ERROR(("pcie_mdioop: timed out op: %d\n", write));
-	/* Disable mdio access to SERDES */
+	/* Timed out. Disable mdio access to SERDES. */
 	W_REG(&pcieregs->mdiocontrol, 0);
 	return 1;
 }
@@ -485,9 +473,8 @@ pcie_mdiowrite(struct pcicore_info *pi, uint physmedia, uint regaddr, uint val)
 }
 
 /* ***** Support functions ***** */
-static u8 pcie_clkreq(void *pch, u32 mask, u32 val)
+static u8 pcie_clkreq(struct pcicore_info *pi, u32 mask, u32 val)
 {
-	struct pcicore_info *pi = pch;
 	u32 reg_val;
 	u8 offset;
 
@@ -515,9 +502,9 @@ static void pcie_extendL1timer(struct pcicore_info *pi, bool extend)
 {
 	u32 w;
 	struct si_pub *sih = pi->sih;
-	struct sbpcieregs *pcieregs = pi->regs.pcieregs;
+	struct sbpcieregs __iomem *pcieregs = pi->regs.pcieregs;
 
-	if (!PCIE_PUB(sih) || sih->buscorerev < 7)
+	if (sih->buscoretype != PCIE_CORE_ID || sih->buscorerev < 7)
 		return;
 
 	w = pcie_readreg(pcieregs, PCIE_PCIEREGS, PCIE_DLLP_PMTHRESHREG);
@@ -537,30 +524,30 @@ static void pcie_clkreq_upd(struct pcicore_info *pi, uint state)
 	switch (state) {
 	case SI_DOATTACH:
 		if (PCIE_ASPM(sih))
-			pcie_clkreq((void *)pi, 1, 0);
+			pcie_clkreq(pi, 1, 0);
 		break;
 	case SI_PCIDOWN:
 		if (sih->buscorerev == 6) {	/* turn on serdes PLL down */
 			ai_corereg(sih, SI_CC_IDX,
-				   offsetof(chipcregs_t, chipcontrol_addr),
+				   offsetof(struct chipcregs, chipcontrol_addr),
 				   ~0, 0);
 			ai_corereg(sih, SI_CC_IDX,
-				   offsetof(chipcregs_t, chipcontrol_data),
+				   offsetof(struct chipcregs, chipcontrol_data),
 				   ~0x40, 0);
 		} else if (pi->pcie_pr42767) {
-			pcie_clkreq((void *)pi, 1, 1);
+			pcie_clkreq(pi, 1, 1);
 		}
 		break;
 	case SI_PCIUP:
 		if (sih->buscorerev == 6) {	/* turn off serdes PLL down */
 			ai_corereg(sih, SI_CC_IDX,
-				   offsetof(chipcregs_t, chipcontrol_addr),
+				   offsetof(struct chipcregs, chipcontrol_addr),
 				   ~0, 0);
 			ai_corereg(sih, SI_CC_IDX,
-				   offsetof(chipcregs_t, chipcontrol_data),
+				   offsetof(struct chipcregs, chipcontrol_data),
 				   ~0x40, 0x40);
 		} else if (PCIE_ASPM(sih)) {	/* disable clkreq */
-			pcie_clkreq((void *)pi, 1, 0);
+			pcie_clkreq(pi, 1, 0);
 		}
 		break;
 	}
@@ -594,9 +581,10 @@ static void pcie_war_polarity(struct pcicore_info *pi)
  */
 static void pcie_war_aspm_clkreq(struct pcicore_info *pi)
 {
-	struct sbpcieregs *pcieregs = pi->regs.pcieregs;
+	struct sbpcieregs __iomem *pcieregs = pi->regs.pcieregs;
 	struct si_pub *sih = pi->sih;
-	u16 val16, *reg16;
+	u16 val16;
+	u16 __iomem *reg16;
 	u32 w;
 
 	if (!PCIE_ASPM(sih))
@@ -654,8 +642,9 @@ static void pcie_war_serdes(struct pcicore_info *pi)
 /* Needs to happen when coming out of 'standby'/'hibernate' */
 static void pcie_misc_config_fixup(struct pcicore_info *pi)
 {
-	struct sbpcieregs *pcieregs = pi->regs.pcieregs;
-	u16 val16, *reg16;
+	struct sbpcieregs __iomem *pcieregs = pi->regs.pcieregs;
+	u16 val16;
+	u16 __iomem *reg16;
 
 	reg16 = &pcieregs->sprom[SRSH_PCIE_MISC_CONFIG];
 	val16 = R_REG(reg16);
@@ -670,11 +659,11 @@ static void pcie_misc_config_fixup(struct pcicore_info *pi)
 /* Needs to happen when coming out of 'standby'/'hibernate' */
 static void pcie_war_noplldown(struct pcicore_info *pi)
 {
-	struct sbpcieregs *pcieregs = pi->regs.pcieregs;
-	u16 *reg16;
+	struct sbpcieregs __iomem *pcieregs = pi->regs.pcieregs;
+	u16 __iomem *reg16;
 
 	/* turn off serdes PLL down */
-	ai_corereg(pi->sih, SI_CC_IDX, offsetof(chipcregs_t, chipcontrol),
+	ai_corereg(pi->sih, SI_CC_IDX, offsetof(struct chipcregs, chipcontrol),
 		   CHIPCTRL_4321_PLL_DOWN, CHIPCTRL_4321_PLL_DOWN);
 
 	/* clear srom shadow backdoor */
@@ -686,7 +675,7 @@ static void pcie_war_noplldown(struct pcicore_info *pi)
 static void pcie_war_pci_setup(struct pcicore_info *pi)
 {
 	struct si_pub *sih = pi->sih;
-	struct sbpcieregs *pcieregs = pi->regs.pcieregs;
+	struct sbpcieregs __iomem *pcieregs = pi->regs.pcieregs;
 	u32 w;
 
 	if (sih->buscorerev == 0 || sih->buscorerev == 1) {
@@ -730,14 +719,14 @@ static void pcie_war_pci_setup(struct pcicore_info *pi)
 }
 
 /* ***** Functions called during driver state changes ***** */
-void pcicore_attach(void *pch, char *pvars, int state)
+void pcicore_attach(struct pcicore_info *pi, int state)
 {
-	struct pcicore_info *pi = pch;
 	struct si_pub *sih = pi->sih;
+	u32 bfl2 = (u32)getintvar(sih, BRCMS_SROM_BOARDFLAGS2);
 
 	/* Determine if this board needs override */
 	if (PCIE_ASPM(sih)) {
-		if ((u32)getintvar(pvars, "boardflags2") & BFL2_PCIEWAR_OVR)
+		if (bfl2 & BFL2_PCIEWAR_OVR)
 			pi->pcie_war_aspm_ovr = PCIE_ASPM_DISAB;
 		else
 			pi->pcie_war_aspm_ovr = PCIE_ASPM_ENAB;
@@ -754,21 +743,17 @@ void pcicore_attach(void *pch, char *pvars, int state)
 
 }
 
-void pcicore_hwup(void *pch)
+void pcicore_hwup(struct pcicore_info *pi)
 {
-	struct pcicore_info *pi = pch;
-
-	if (!pi || !PCIE_PUB(pi->sih))
+	if (!pi || pi->sih->buscoretype != PCIE_CORE_ID)
 		return;
 
 	pcie_war_pci_setup(pi);
 }
 
-void pcicore_up(void *pch, int state)
+void pcicore_up(struct pcicore_info *pi, int state)
 {
-	struct pcicore_info *pi = pch;
-
-	if (!pi || !PCIE_PUB(pi->sih))
+	if (!pi || pi->sih->buscoretype != PCIE_CORE_ID)
 		return;
 
 	/* Restore L1 timer for better performance */
@@ -780,9 +765,8 @@ void pcicore_up(void *pch, int state)
 /* When the device is going to enter D3 state
  * (or the system is going to enter S3/S4 states)
  */
-void pcicore_sleep(void *pch)
+void pcicore_sleep(struct pcicore_info *pi)
 {
-	struct pcicore_info *pi = pch;
 	u32 w;
 
 	if (!pi || !PCIE_ASPM(pi->sih))
@@ -795,11 +779,9 @@ void pcicore_sleep(void *pch)
 	pi->pcie_pr42767 = false;
 }
 
-void pcicore_down(void *pch, int state)
+void pcicore_down(struct pcicore_info *pi, int state)
 {
-	struct pcicore_info *pi = pch;
-
-	if (!pi || !PCIE_PUB(pi->sih))
+	if (!pi || pi->sih->buscoretype != PCIE_CORE_ID)
 		return;
 
 	pcie_clkreq_upd(pi, state);
@@ -809,20 +791,12 @@ void pcicore_down(void *pch, int state)
 }
 
 /* precondition: current core is sii->buscoretype */
-void pcicore_fixcfg(void *pch, void *regs)
+static void pcicore_fixcfg(struct pcicore_info *pi, u16 __iomem *reg16)
 {
-	struct pcicore_info *pi = pch;
-	struct si_info *sii = SI_INFO(pi->sih);
-	struct sbpciregs *pciregs = regs;
-	struct sbpcieregs *pcieregs = regs;
-	u16 val16, *reg16 = NULL;
+	struct si_info *sii = (struct si_info *)(pi->sih);
+	u16 val16;
 	uint pciidx;
 
-	/* check 'pi' is correct and fix it if not */
-	if (sii->pub.buscoretype == PCIE_CORE_ID)
-		reg16 = &pcieregs->sprom[SRSH_PI_OFFSET];
-	else if (sii->pub.buscoretype == PCI_CORE_ID)
-		reg16 = &pciregs->sprom[SRSH_PI_OFFSET];
 	pciidx = ai_coreidx(&sii->pub);
 	val16 = R_REG(reg16);
 	if (((val16 & SRSH_PI_MASK) >> SRSH_PI_SHIFT) != (u16)pciidx) {
@@ -832,16 +806,27 @@ void pcicore_fixcfg(void *pch, void *regs)
 	}
 }
 
-/* precondition: current core is pci core */
-void pcicore_pci_setup(void *pch, void *regs)
+void
+pcicore_fixcfg_pci(struct pcicore_info *pi, struct sbpciregs __iomem *pciregs)
 {
-	struct pcicore_info *pi = pch;
-	struct sbpciregs *pciregs = regs;
+	pcicore_fixcfg(pi, &pciregs->sprom[SRSH_PI_OFFSET]);
+}
+
+void pcicore_fixcfg_pcie(struct pcicore_info *pi,
+			 struct sbpcieregs __iomem *pcieregs)
+{
+	pcicore_fixcfg(pi, &pcieregs->sprom[SRSH_PI_OFFSET]);
+}
+
+/* precondition: current core is pci core */
+void
+pcicore_pci_setup(struct pcicore_info *pi, struct sbpciregs __iomem *pciregs)
+{
 	u32 w;
 
 	OR_REG(&pciregs->sbtopci2, SBTOPCI_PREF | SBTOPCI_BURST);
 
-	if (SI_INFO(pi->sih)->pub.buscorerev >= 11) {
+	if (((struct si_info *)(pi->sih))->pub.buscorerev >= 11) {
 		OR_REG(&pciregs->sbtopci2, SBTOPCI_RC_READMULTI);
 		w = R_REG(&pciregs->clkrun);
 		W_REG(&pciregs->clkrun, w | PCI_CLKRUN_DSBL);

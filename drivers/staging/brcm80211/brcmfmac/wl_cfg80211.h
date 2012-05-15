@@ -103,10 +103,10 @@ do {								\
 				 * report it to cfg80211 through "connect"
 				 * event
 				 */
-#define WL_IOCTL_LEN_MAX	1024
+#define WL_DCMD_LEN_MAX	1024
 #define WL_EXTRA_BUF_MAX	2048
 #define WL_ISCAN_BUF_MAX	2048	/*
-				 * the buf length can be BRCMF_C_IOCTL_MAXLEN
+				 * the buf length can be BRCMF_DCMD_MAXLEN
 				 * to reduce iteration
 				 */
 #define WL_ISCAN_TIMER_INTERVAL_MS	3000
@@ -188,7 +188,7 @@ struct brcmf_cfg80211_dev {
 
 /* basic structure of scan request */
 struct brcmf_cfg80211_scan_req {
-	struct brcmf_ssid ssid;
+	struct brcmf_ssid_le ssid_le;
 };
 
 /* basic structure of information element */
@@ -199,7 +199,7 @@ struct brcmf_cfg80211_ie {
 
 /* event queue for cfg80211 main event */
 struct brcmf_cfg80211_event_q {
-	struct list_head eq_list;
+	struct list_head evt_q_list;
 	u32 etype;
 	struct brcmf_event_msg emsg;
 	s8 edata[1];
@@ -243,16 +243,15 @@ struct brcmf_cfg80211_iscan_eloop {
 
 /* dongle iscan controller */
 struct brcmf_cfg80211_iscan_ctrl {
-	struct net_device *dev;
+	struct net_device *ndev;
 	struct timer_list timer;
 	u32 timer_ms;
 	u32 timer_on;
 	s32 state;
-	struct task_struct *tsk;
-	struct semaphore sync;
+	struct work_struct work;
 	struct brcmf_cfg80211_iscan_eloop el;
 	void *data;
-	s8 ioctl_buf[BRCMF_C_IOCTL_SMLEN];
+	s8 dcmd_buf[BRCMF_DCMD_SMLEN];
 	s8 scan_buf[WL_ISCAN_BUF_MAX];
 };
 
@@ -265,15 +264,15 @@ struct brcmf_cfg80211_connect_info {
 };
 
 /* assoc ie length */
-struct brcmf_cfg80211_assoc_ielen {
-	u32 req_len;
-	u32 resp_len;
+struct brcmf_cfg80211_assoc_ielen_le {
+	__le32 req_len;
+	__le32 resp_len;
 };
 
 /* wpa2 pmk list */
 struct brcmf_cfg80211_pmk_list {
-	pmkid_list_t pmkids;
-	pmkid_t foo[MAXPMKID - 1];
+	struct pmkid_list pmkids;
+	struct pmkid foo[MAXPMKID - 1];
 };
 
 /* dongle private data of cfg80211 interface */
@@ -283,8 +282,8 @@ struct brcmf_cfg80211_priv {
 	struct cfg80211_scan_request *scan_request;	/* scan request
 							 object */
 	struct brcmf_cfg80211_event_loop el;	/* main event loop */
-	struct list_head eq_list;	/* used for event queue */
-	spinlock_t eq_lock;	/* for event queue synchronization */
+	struct list_head evt_q_list;	/* used for event queue */
+	spinlock_t	 evt_q_lock;	/* for event queue synchronization */
 	struct mutex usr_sync;	/* maily for dongle up/down synchronization */
 	struct brcmf_scan_results *bss_list;	/* bss_list holding scanned
 						 ap information */
@@ -295,13 +294,11 @@ struct brcmf_cfg80211_priv {
 						 cfg80211 layer */
 	struct brcmf_cfg80211_ie ie;	/* information element object for
 					 internal purpose */
-	struct semaphore event_sync;	/* for synchronization of main event
-					 thread */
 	struct brcmf_cfg80211_profile *profile;	/* holding dongle profile */
 	struct brcmf_cfg80211_iscan_ctrl *iscan;	/* iscan controller */
 	struct brcmf_cfg80211_connect_info conn_info; /* association info */
 	struct brcmf_cfg80211_pmk_list *pmk_list;	/* wpa2 pmk list */
-	struct task_struct *event_tsk;	/* task of main event handler thread */
+	struct work_struct event_work;	/* event handler work struct */
 	unsigned long status;		/* current dongle status */
 	void *pub;
 	u32 channel;		/* current channel */
@@ -315,21 +312,45 @@ struct brcmf_cfg80211_priv {
 	bool dongle_up;		/* indicate whether dongle up or not */
 	bool roam_on;		/* on/off switch for dongle self-roaming */
 	bool scan_tried;	/* indicates if first scan attempted */
-	u8 *ioctl_buf;	/* ioctl buffer */
-	u8 *extra_buf;	/* maily to grab assoc information */
+	u8 *dcmd_buf;		/* dcmd buffer */
+	u8 *extra_buf;		/* maily to grab assoc information */
 	struct dentry *debugfsdir;
-	u8 ci[0] __attribute__ ((__aligned__(NETDEV_ALIGN)));
+	u8 ci[0] __aligned(NETDEV_ALIGN);
 };
 
-#define cfg_to_wiphy(w) (w->wdev->wiphy)
-#define wiphy_to_cfg(w) ((struct brcmf_cfg80211_priv *)(wiphy_priv(w)))
-#define cfg_to_wdev(w) (w->wdev)
-#define wdev_to_cfg(w) ((struct brcmf_cfg80211_priv *)(wdev_priv(w)))
-#define cfg_to_ndev(w) (w->wdev->netdev)
-#define ndev_to_cfg(n) (wdev_to_cfg(n->ieee80211_ptr))
+static inline struct wiphy *cfg_to_wiphy(struct brcmf_cfg80211_priv *w)
+{
+	return w->wdev->wiphy;
+}
+
+static inline struct brcmf_cfg80211_priv *wiphy_to_cfg(struct wiphy *w)
+{
+	return (struct brcmf_cfg80211_priv *)(wiphy_priv(w));
+}
+
+static inline struct brcmf_cfg80211_priv *wdev_to_cfg(struct wireless_dev *wd)
+{
+	return (struct brcmf_cfg80211_priv *)(wdev_priv(wd));
+}
+
+static inline struct net_device *cfg_to_ndev(struct brcmf_cfg80211_priv *cfg)
+{
+	return cfg->wdev->netdev;
+}
+
+static inline struct brcmf_cfg80211_priv *ndev_to_cfg(struct net_device *ndev)
+{
+	return wdev_to_cfg(ndev->ieee80211_ptr);
+}
+
 #define iscan_to_cfg(i) ((struct brcmf_cfg80211_priv *)(i->data))
 #define cfg_to_iscan(w) (w->iscan)
-#define cfg_to_conn(w) (&w->conn_info)
+
+static inline struct
+brcmf_cfg80211_connect_info *cfg_to_conn(struct brcmf_cfg80211_priv *cfg)
+{
+	return &cfg->conn_info;
+}
 
 static inline struct brcmf_bss_info *next_bss(struct brcmf_scan_results *list,
 					   struct brcmf_bss_info *bss)
@@ -340,17 +361,15 @@ static inline struct brcmf_bss_info *next_bss(struct brcmf_scan_results *list,
 		list->bss_info;
 }
 
-#define for_each_bss(list, bss, __i)	\
-	for (__i = 0; __i < list->count && __i < WL_AP_MAX; __i++, bss = next_bss(list, bss))
+extern struct brcmf_cfg80211_dev *brcmf_cfg80211_attach(struct net_device *ndev,
+							struct device *busdev,
+							void *data);
+extern void brcmf_cfg80211_detach(struct brcmf_cfg80211_dev *cfg);
 
-extern s32 brcmf_cfg80211_attach(struct net_device *ndev, void *data);
-extern void brcmf_cfg80211_detach(void);
 /* event handler from dongle */
 extern void brcmf_cfg80211_event(struct net_device *ndev,
 				 const struct brcmf_event_msg *e, void *data);
-extern void brcmf_cfg80211_sdio_func(void *func); /* set sdio function info */
-extern struct sdio_func *brcmf_cfg80211_get_sdio_func(void);
-extern s32 brcmf_cfg80211_up(void);	/* dongle up */
-extern s32 brcmf_cfg80211_down(void);	/* dongle down */
+extern s32 brcmf_cfg80211_up(struct brcmf_cfg80211_dev *cfg_dev);
+extern s32 brcmf_cfg80211_down(struct brcmf_cfg80211_dev *cfg_dev);
 
 #endif				/* _wl_cfg80211_h_ */

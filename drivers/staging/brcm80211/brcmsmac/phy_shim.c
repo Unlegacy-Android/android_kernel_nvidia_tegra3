@@ -15,15 +15,15 @@
  */
 
 /*
- * This is "two-way" interface, acting as the SHIM layer between WL and PHY layer.
- *   WL driver can optinally call this translation layer to do some preprocessing, then reach PHY.
- *   On the PHY->WL driver direction, all calls go through this layer since PHY doesn't have the
- *   access to wlc_hw pointer.
+ * This is "two-way" interface, acting as the SHIM layer between driver
+ * and PHY layer. The driver can optionally call this translation layer
+ * to do some preprocessing, then reach PHY. On the PHY->driver direction,
+ * all calls go through this layer since PHY doesn't have access to the
+ * driver's brcms_hardware pointer.
  */
 #include <linux/slab.h>
 #include <net/mac80211.h>
 
-#include "bmac.h"
 #include "main.h"
 #include "mac80211_if.h"
 #include "phy_shim.h"
@@ -31,21 +31,19 @@
 /* PHY SHIM module specific state */
 struct phy_shim_info {
 	struct brcms_hardware *wlc_hw;	/* pointer to main wlc_hw structure */
-	void *wlc;		/* pointer to main wlc structure */
-	void *wl;		/* pointer to os-specific private state */
+	struct brcms_c_info *wlc;	/* pointer to main wlc structure */
+	struct brcms_info *wl; /* pointer to os-specific private state */
 };
 
 struct phy_shim_info *wlc_phy_shim_attach(struct brcms_hardware *wlc_hw,
-						       void *wl, void *wlc) {
+					  struct brcms_info *wl,
+					  struct brcms_c_info *wlc) {
 	struct phy_shim_info *physhim = NULL;
 
 	physhim = kzalloc(sizeof(struct phy_shim_info), GFP_ATOMIC);
-	if (!physhim) {
-		wiphy_err(wlc_hw->wlc->wiphy,
-			  "wl%d: wlc_phy_shim_attach: out of mem\n",
-			  wlc_hw->unit);
+	if (!physhim)
 		return NULL;
-	}
+
 	physhim->wlc_hw = wlc_hw;
 	physhim->wlc = wlc;
 	physhim->wl = wl;
@@ -59,28 +57,28 @@ void wlc_phy_shim_detach(struct phy_shim_info *physhim)
 }
 
 struct wlapi_timer *wlapi_init_timer(struct phy_shim_info *physhim,
-				     void (*fn) (void *arg), void *arg,
-				     const char *name)
+				     void (*fn)(struct brcms_phy *pi),
+				     void *arg, const char *name)
 {
 	return (struct wlapi_timer *)
-			brcms_init_timer(physhim->wl, fn, arg, name);
+			brcms_init_timer(physhim->wl, (void (*)(void *))fn,
+					 arg, name);
 }
 
-void wlapi_free_timer(struct phy_shim_info *physhim, struct wlapi_timer *t)
+void wlapi_free_timer(struct wlapi_timer *t)
 {
-	brcms_free_timer(physhim->wl, (struct brcms_timer *)t);
+	brcms_free_timer((struct brcms_timer *)t);
 }
 
 void
-wlapi_add_timer(struct phy_shim_info *physhim, struct wlapi_timer *t, uint ms,
-		int periodic)
+wlapi_add_timer(struct wlapi_timer *t, uint ms, int periodic)
 {
-	brcms_add_timer(physhim->wl, (struct brcms_timer *)t, ms, periodic);
+	brcms_add_timer((struct brcms_timer *)t, ms, periodic);
 }
 
-bool wlapi_del_timer(struct phy_shim_info *physhim, struct wlapi_timer *t)
+bool wlapi_del_timer(struct wlapi_timer *t)
 {
-	return brcms_del_timer(physhim->wl, (struct brcms_timer *)t);
+	return brcms_del_timer((struct brcms_timer *)t);
 }
 
 void wlapi_intrson(struct phy_shim_info *physhim)
@@ -215,4 +213,13 @@ wlapi_copyto_objmem(struct phy_shim_info *physhim, uint offset, const void *buf,
 		    int l, u32 sel)
 {
 	brcms_b_copyto_objmem(physhim->wlc_hw, offset, buf, l, sel);
+}
+
+char *wlapi_getvar(struct phy_shim_info *physhim, enum brcms_srom_id id)
+{
+	return getvar(physhim->wlc_hw->sih, id);
+}
+int wlapi_getintvar(struct phy_shim_info *physhim, enum brcms_srom_id id)
+{
+	return getintvar(physhim->wlc_hw->sih, id);
 }

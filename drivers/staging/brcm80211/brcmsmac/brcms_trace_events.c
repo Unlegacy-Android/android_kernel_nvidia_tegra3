@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010 Broadcom Corporation
+ * Copyright (c) 2011 Broadcom Corporation
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,6 +14,10 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-extern struct brcms_c_info *brcms_c_attach_malloc(uint unit, uint *err,
-						  uint devid);
-extern void brcms_c_detach_mfree(struct brcms_c_info *wlc);
+#include <linux/module.h> /* bug in tracepoint.h, it should include this */
+
+#ifndef __CHECKER__
+#include "mac80211_if.h"
+#define CREATE_TRACE_POINTS
+#include "brcms_trace_events.h"
+#endif

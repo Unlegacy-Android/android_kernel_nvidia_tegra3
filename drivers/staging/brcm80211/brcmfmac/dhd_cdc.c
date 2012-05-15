@@ -14,6 +14,11 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+/*******************************************************************************
+ * Communicates with the dongle by using dcmd codes.
+ * For certain dcmd codes, the dongle interprets string data from the host.
+ ******************************************************************************/
+
 #include <linux/types.h>
 #include <linux/netdevice.h>
 #include <linux/sched.h>
@@ -27,29 +32,26 @@
 #include "dhd_bus.h"
 #include "dhd_dbg.h"
 
-struct brcmf_proto_cdc_ioctl {
-	u32 cmd;	/* ioctl command value */
-	u32 len;	/* lower 16: output buflen;
+struct brcmf_proto_cdc_dcmd {
+	__le32 cmd;	/* dongle command value */
+	__le32 len;	/* lower 16: output buflen;
 			 * upper 16: input buflen (excludes header) */
-	u32 flags;	/* flag defns given below */
-	u32 status;	/* status code returned from the device */
+	__le32 flags;	/* flag defns given below */
+	__le32 status;	/* status code returned from the device */
 };
 
 /* Max valid buffer size that can be sent to the dongle */
 #define CDC_MAX_MSG_SIZE	(ETH_FRAME_LEN+ETH_FCS_LEN)
 
 /* CDC flag definitions */
-#define CDCF_IOC_ERROR		0x01		/* 1=ioctl cmd failed */
-#define CDCF_IOC_SET		0x02		/* 0=get, 1=set cmd */
-#define CDCF_IOC_IF_MASK	0xF000		/* I/F index */
-#define CDCF_IOC_IF_SHIFT	12
-#define CDCF_IOC_ID_MASK	0xFFFF0000	/* id an ioctl pairing */
-#define CDCF_IOC_ID_SHIFT	16		/* ID Mask shift bits */
-#define CDC_IOC_ID(flags)	\
-	(((flags) & CDCF_IOC_ID_MASK) >> CDCF_IOC_ID_SHIFT)
-#define CDC_SET_IF_IDX(hdr, idx) \
-	((hdr)->flags = (((hdr)->flags & ~CDCF_IOC_IF_MASK) | \
-	((idx) << CDCF_IOC_IF_SHIFT)))
+#define CDC_DCMD_ERROR		0x01	/* 1=cmd failed */
+#define CDC_DCMD_SET		0x02	/* 0=get, 1=set cmd */
+#define CDC_DCMD_IF_MASK	0xF000		/* I/F index */
+#define CDC_DCMD_IF_SHIFT	12
+#define CDC_DCMD_ID_MASK	0xFFFF0000	/* id an cmd pairing */
+#define CDC_DCMD_ID_SHIFT	16		/* ID Mask shift bits */
+#define CDC_DCMD_ID(flags)	\
+	(((flags) & CDC_DCMD_ID_MASK) >> CDC_DCMD_ID_SHIFT)
 
 /*
  * BDC header - Broadcom specific extension of CDC.
@@ -79,7 +81,7 @@ struct brcmf_proto_bdc_header {
 };
 
 
-#define RETRIES 2	/* # of retries to retrieve matching ioctl response */
+#define RETRIES 2 /* # of retries to retrieve matching dcmd response */
 #define BUS_HEADER_LEN	(16+BRCMF_SDALIGN) /* Must be atleast SDPCM_RESERVE
 					 * (amount of header tha might be added)
 					 * plus any space that might be needed
@@ -94,17 +96,17 @@ struct brcmf_proto {
 	u8 pending;
 	u32 lastcmd;
 	u8 bus_header[BUS_HEADER_LEN];
-	struct brcmf_proto_cdc_ioctl msg;
-	unsigned char buf[BRCMF_C_IOCTL_MAXLEN + ROUND_UP_MARGIN];
+	struct brcmf_proto_cdc_dcmd msg;
+	unsigned char buf[BRCMF_DCMD_MAXLEN + ROUND_UP_MARGIN];
 };
 
 static int brcmf_proto_cdc_msg(struct brcmf_pub *drvr)
 {
 	struct brcmf_proto *prot = drvr->prot;
 	int len = le32_to_cpu(prot->msg.len) +
-			sizeof(struct brcmf_proto_cdc_ioctl);
+			sizeof(struct brcmf_proto_cdc_dcmd);
 
-	BRCMF_TRACE(("%s: Enter\n", __func__));
+	brcmf_dbg(TRACE, "Enter\n");
 
 	/* NOTE : cdc->msg.len holds the desired length of the buffer to be
 	 *        returned. Only up to CDC_MAX_MSG_SIZE of this buffer area
@@ -123,31 +125,31 @@ static int brcmf_proto_cdc_cmplt(struct brcmf_pub *drvr, u32 id, u32 len)
 	int ret;
 	struct brcmf_proto *prot = drvr->prot;
 
-	BRCMF_TRACE(("%s: Enter\n", __func__));
+	brcmf_dbg(TRACE, "Enter\n");
 
 	do {
 		ret = brcmf_sdbrcm_bus_rxctl(drvr->bus,
 				(unsigned char *)&prot->msg,
-				len + sizeof(struct brcmf_proto_cdc_ioctl));
+				len + sizeof(struct brcmf_proto_cdc_dcmd));
 		if (ret < 0)
 			break;
-	} while (CDC_IOC_ID(le32_to_cpu(prot->msg.flags)) != id);
+	} while (CDC_DCMD_ID(le32_to_cpu(prot->msg.flags)) != id);
 
 	return ret;
 }
 
 int
-brcmf_proto_cdc_query_ioctl(struct brcmf_pub *drvr, int ifidx, uint cmd,
-			    void *buf, uint len)
+brcmf_proto_cdc_query_dcmd(struct brcmf_pub *drvr, int ifidx, uint cmd,
+			       void *buf, uint len)
 {
 	struct brcmf_proto *prot = drvr->prot;
-	struct brcmf_proto_cdc_ioctl *msg = &prot->msg;
+	struct brcmf_proto_cdc_dcmd *msg = &prot->msg;
 	void *info;
 	int ret = 0, retries = 0;
-	u32 id, flags = 0;
+	u32 id, flags;
 
-	BRCMF_TRACE(("%s: Enter\n", __func__));
-	BRCMF_CTL(("%s: cmd %d len %d\n", __func__, cmd, len));
+	brcmf_dbg(TRACE, "Enter\n");
+	brcmf_dbg(CTL, "cmd %d len %d\n", cmd, len);
 
 	/* Respond "bcmerror" and "bcmerrorstr" with local cache */
 	if (cmd == BRCMF_C_GET_VAR && buf) {
@@ -161,21 +163,22 @@ brcmf_proto_cdc_query_ioctl(struct brcmf_pub *drvr, int ifidx, uint cmd,
 		}
 	}
 
-	memset(msg, 0, sizeof(struct brcmf_proto_cdc_ioctl));
+	memset(msg, 0, sizeof(struct brcmf_proto_cdc_dcmd));
 
 	msg->cmd = cpu_to_le32(cmd);
 	msg->len = cpu_to_le32(len);
-	msg->flags = (++prot->reqid << CDCF_IOC_ID_SHIFT);
-	CDC_SET_IF_IDX(msg, ifidx);
-	msg->flags = cpu_to_le32(msg->flags);
+	flags = (++prot->reqid << CDC_DCMD_ID_SHIFT);
+	flags = (flags & ~CDC_DCMD_IF_MASK) |
+		(ifidx << CDC_DCMD_IF_SHIFT);
+	msg->flags = cpu_to_le32(flags);
 
 	if (buf)
 		memcpy(prot->buf, buf, len);
 
 	ret = brcmf_proto_cdc_msg(drvr);
 	if (ret < 0) {
-		BRCMF_ERROR(("brcmf_proto_cdc_query_ioctl: brcmf_proto_cdc_msg "
-			     "failed w/status %d\n", ret));
+		brcmf_dbg(ERROR, "brcmf_proto_cdc_msg failed w/status %d\n",
+			  ret);
 		goto done;
 	}
 
@@ -186,14 +189,13 @@ retry:
 		goto done;
 
 	flags = le32_to_cpu(msg->flags);
-	id = (flags & CDCF_IOC_ID_MASK) >> CDCF_IOC_ID_SHIFT;
+	id = (flags & CDC_DCMD_ID_MASK) >> CDC_DCMD_ID_SHIFT;
 
 	if ((id < prot->reqid) && (++retries < RETRIES))
 		goto retry;
 	if (id != prot->reqid) {
-		BRCMF_ERROR(("%s: %s: unexpected request id %d (expected %d)\n",
-			     brcmf_ifname(drvr, ifidx), __func__, id,
-			     prot->reqid));
+		brcmf_dbg(ERROR, "%s: unexpected request id %d (expected %d)\n",
+			  brcmf_ifname(drvr, ifidx), id, prot->reqid);
 		ret = -EINVAL;
 		goto done;
 	}
@@ -209,7 +211,7 @@ retry:
 	}
 
 	/* Check the ERROR flag */
-	if (flags & CDCF_IOC_ERROR) {
+	if (flags & CDC_DCMD_ERROR) {
 		ret = le32_to_cpu(msg->status);
 		/* Cache error from dongle */
 		drvr->dongle_error = ret;
@@ -219,24 +221,25 @@ done:
 	return ret;
 }
 
-int brcmf_proto_cdc_set_ioctl(struct brcmf_pub *drvr, int ifidx, uint cmd,
-			      void *buf, uint len)
+int brcmf_proto_cdc_set_dcmd(struct brcmf_pub *drvr, int ifidx, uint cmd,
+				 void *buf, uint len)
 {
 	struct brcmf_proto *prot = drvr->prot;
-	struct brcmf_proto_cdc_ioctl *msg = &prot->msg;
+	struct brcmf_proto_cdc_dcmd *msg = &prot->msg;
 	int ret = 0;
 	u32 flags, id;
 
-	BRCMF_TRACE(("%s: Enter\n", __func__));
-	BRCMF_CTL(("%s: cmd %d len %d\n", __func__, cmd, len));
+	brcmf_dbg(TRACE, "Enter\n");
+	brcmf_dbg(CTL, "cmd %d len %d\n", cmd, len);
 
-	memset(msg, 0, sizeof(struct brcmf_proto_cdc_ioctl));
+	memset(msg, 0, sizeof(struct brcmf_proto_cdc_dcmd));
 
 	msg->cmd = cpu_to_le32(cmd);
 	msg->len = cpu_to_le32(len);
-	msg->flags = (++prot->reqid << CDCF_IOC_ID_SHIFT) | CDCF_IOC_SET;
-	CDC_SET_IF_IDX(msg, ifidx);
-	msg->flags = cpu_to_le32(msg->flags);
+	flags = (++prot->reqid << CDC_DCMD_ID_SHIFT) | CDC_DCMD_SET;
+	flags = (flags & ~CDC_DCMD_IF_MASK) |
+		(ifidx << CDC_DCMD_IF_SHIFT);
+	msg->flags = cpu_to_le32(flags);
 
 	if (buf)
 		memcpy(prot->buf, buf, len);
@@ -250,18 +253,17 @@ int brcmf_proto_cdc_set_ioctl(struct brcmf_pub *drvr, int ifidx, uint cmd,
 		goto done;
 
 	flags = le32_to_cpu(msg->flags);
-	id = (flags & CDCF_IOC_ID_MASK) >> CDCF_IOC_ID_SHIFT;
+	id = (flags & CDC_DCMD_ID_MASK) >> CDC_DCMD_ID_SHIFT;
 
 	if (id != prot->reqid) {
-		BRCMF_ERROR(("%s: %s: unexpected request id %d (expected %d)\n",
-			     brcmf_ifname(drvr, ifidx), __func__, id,
-			     prot->reqid));
+		brcmf_dbg(ERROR, "%s: unexpected request id %d (expected %d)\n",
+			  brcmf_ifname(drvr, ifidx), id, prot->reqid);
 		ret = -EINVAL;
 		goto done;
 	}
 
 	/* Check the ERROR flag */
-	if (flags & CDCF_IOC_ERROR) {
+	if (flags & CDC_DCMD_ERROR) {
 		ret = le32_to_cpu(msg->status);
 		/* Cache error from dongle */
 		drvr->dongle_error = ret;
@@ -272,65 +274,64 @@ done:
 }
 
 int
-brcmf_proto_ioctl(struct brcmf_pub *drvr, int ifidx, struct brcmf_ioctl *ioc,
-		  void *buf, int len)
+brcmf_proto_dcmd(struct brcmf_pub *drvr, int ifidx, struct brcmf_dcmd *dcmd,
+		  int len)
 {
 	struct brcmf_proto *prot = drvr->prot;
 	int ret = -1;
 
 	if (drvr->busstate == BRCMF_BUS_DOWN) {
-		BRCMF_ERROR(("%s : bus is down. we have nothing to do\n",
-			     __func__));
+		brcmf_dbg(ERROR, "bus is down. we have nothing to do.\n");
 		return ret;
 	}
 	brcmf_os_proto_block(drvr);
 
-	BRCMF_TRACE(("%s: Enter\n", __func__));
+	brcmf_dbg(TRACE, "Enter\n");
 
-	if (len > BRCMF_C_IOCTL_MAXLEN)
+	if (len > BRCMF_DCMD_MAXLEN)
 		goto done;
 
 	if (prot->pending == true) {
-		BRCMF_TRACE(("CDC packet is pending!!!! cmd=0x%x (%lu) "
-			     "lastcmd=0x%x (%lu)\n",
-			     ioc->cmd, (unsigned long)ioc->cmd, prot->lastcmd,
-			     (unsigned long)prot->lastcmd));
-		if ((ioc->cmd == BRCMF_C_SET_VAR) ||
-		    (ioc->cmd == BRCMF_C_GET_VAR))
-			BRCMF_TRACE(("iovar cmd=%s\n", (char *)buf));
+		brcmf_dbg(TRACE, "CDC packet is pending!!!! cmd=0x%x (%lu) lastcmd=0x%x (%lu)\n",
+			  dcmd->cmd, (unsigned long)dcmd->cmd, prot->lastcmd,
+			  (unsigned long)prot->lastcmd);
+		if (dcmd->cmd == BRCMF_C_SET_VAR ||
+		    dcmd->cmd == BRCMF_C_GET_VAR)
+			brcmf_dbg(TRACE, "iovar cmd=%s\n", (char *)dcmd->buf);
 
 		goto done;
 	}
 
 	prot->pending = true;
-	prot->lastcmd = ioc->cmd;
-	if (ioc->set)
-		ret = brcmf_proto_cdc_set_ioctl(drvr, ifidx, ioc->cmd,
-						buf, len);
+	prot->lastcmd = dcmd->cmd;
+	if (dcmd->set)
+		ret = brcmf_proto_cdc_set_dcmd(drvr, ifidx, dcmd->cmd,
+						   dcmd->buf, len);
 	else {
-		ret = brcmf_proto_cdc_query_ioctl(drvr, ifidx, ioc->cmd,
-						  buf, len);
+		ret = brcmf_proto_cdc_query_dcmd(drvr, ifidx, dcmd->cmd,
+						     dcmd->buf, len);
 		if (ret > 0)
-			ioc->used = ret - sizeof(struct brcmf_proto_cdc_ioctl);
+			dcmd->used = ret -
+					sizeof(struct brcmf_proto_cdc_dcmd);
 	}
 
-	/* Too many programs assume ioctl() returns 0 on success */
 	if (ret >= 0)
 		ret = 0;
 	else {
-		struct brcmf_proto_cdc_ioctl *msg = &prot->msg;
+		struct brcmf_proto_cdc_dcmd *msg = &prot->msg;
 		/* len == needed when set/query fails from dongle */
-		ioc->needed = le32_to_cpu(msg->len);
+		dcmd->needed = le32_to_cpu(msg->len);
 	}
 
-	/* Intercept the wme_dp ioctl here */
-	if (!ret && ioc->cmd == BRCMF_C_SET_VAR &&
-	    !strcmp(buf, "wme_dp")) {
-		int slen, val = 0;
+	/* Intercept the wme_dp dongle cmd here */
+	if (!ret && dcmd->cmd == BRCMF_C_SET_VAR &&
+	    !strcmp(dcmd->buf, "wme_dp")) {
+		int slen;
+		__le32 val = 0;
 
 		slen = strlen("wme_dp") + 1;
 		if (len >= (int)(slen + sizeof(int)))
-			memcpy(&val, (char *)buf + slen, sizeof(int));
+			memcpy(&val, (char *)dcmd->buf + slen, sizeof(int));
 		drvr->wme_dp = (u8) le32_to_cpu(val);
 	}
 
@@ -342,15 +343,14 @@ done:
 	return ret;
 }
 
-#define PKTSUMNEEDED(skb) \
-		(((struct sk_buff *)(skb))->ip_summed == CHECKSUM_PARTIAL)
-#define PKTSETSUMGOOD(skb, x) \
-		(((struct sk_buff *)(skb))->ip_summed = \
-		((x) ? CHECKSUM_UNNECESSARY : CHECKSUM_NONE))
-
-void brcmf_proto_dump(struct brcmf_pub *drvr, struct brcmu_strbuf *strbuf)
+static bool pkt_sum_needed(struct sk_buff *skb)
 {
-	brcmu_bprintf(strbuf, "Protocol CDC: reqid %d\n", drvr->prot->reqid);
+	return skb->ip_summed == CHECKSUM_PARTIAL;
+}
+
+static void pkt_set_sum_good(struct sk_buff *skb, bool x)
+{
+	skb->ip_summed = (x ? CHECKSUM_UNNECESSARY : CHECKSUM_NONE);
 }
 
 void brcmf_proto_hdrpush(struct brcmf_pub *drvr, int ifidx,
@@ -358,7 +358,7 @@ void brcmf_proto_hdrpush(struct brcmf_pub *drvr, int ifidx,
 {
 	struct brcmf_proto_bdc_header *h;
 
-	BRCMF_TRACE(("%s: Enter\n", __func__));
+	brcmf_dbg(TRACE, "Enter\n");
 
 	/* Push BDC header used to convey priority for buses that don't */
 
@@ -367,7 +367,7 @@ void brcmf_proto_hdrpush(struct brcmf_pub *drvr, int ifidx,
 	h = (struct brcmf_proto_bdc_header *)(pktbuf->data);
 
 	h->flags = (BDC_PROTO_VER << BDC_FLAG_VER_SHIFT);
-	if (PKTSUMNEEDED(pktbuf))
+	if (pkt_sum_needed(pktbuf))
 		h->flags |= BDC_FLAG_SUM_NEEDED;
 
 	h->priority = (pktbuf->priority & BDC_PRIORITY_MASK);
@@ -381,13 +381,13 @@ int brcmf_proto_hdrpull(struct brcmf_pub *drvr, int *ifidx,
 {
 	struct brcmf_proto_bdc_header *h;
 
-	BRCMF_TRACE(("%s: Enter\n", __func__));
+	brcmf_dbg(TRACE, "Enter\n");
 
 	/* Pop BDC header used to convey priority for buses that don't */
 
 	if (pktbuf->len < BDC_HEADER_LEN) {
-		BRCMF_ERROR(("%s: rx data too short (%d < %d)\n", __func__,
-			     pktbuf->len, BDC_HEADER_LEN));
+		brcmf_dbg(ERROR, "rx data too short (%d < %d)\n",
+			  pktbuf->len, BDC_HEADER_LEN);
 		return -EBADE;
 	}
 
@@ -395,23 +395,21 @@ int brcmf_proto_hdrpull(struct brcmf_pub *drvr, int *ifidx,
 
 	*ifidx = BDC_GET_IF_IDX(h);
 	if (*ifidx >= BRCMF_MAX_IFS) {
-		BRCMF_ERROR(("%s: rx data ifnum out of range (%d)\n",
-			     __func__, *ifidx));
+		brcmf_dbg(ERROR, "rx data ifnum out of range (%d)\n", *ifidx);
 		return -EBADE;
 	}
 
 	if (((h->flags & BDC_FLAG_VER_MASK) >> BDC_FLAG_VER_SHIFT) !=
 	    BDC_PROTO_VER) {
-		BRCMF_ERROR(("%s: non-BDC packet received, flags 0x%x\n",
-			     brcmf_ifname(drvr, *ifidx), h->flags));
+		brcmf_dbg(ERROR, "%s: non-BDC packet received, flags 0x%x\n",
+			  brcmf_ifname(drvr, *ifidx), h->flags);
 		return -EBADE;
 	}
 
 	if (h->flags & BDC_FLAG_SUM_GOOD) {
-		BRCMF_INFO(("%s: BDC packet received with good rx-csum, "
-			    "flags 0x%x\n",
-			    brcmf_ifname(drvr, *ifidx), h->flags));
-		PKTSETSUMGOOD(pktbuf, true);
+		brcmf_dbg(INFO, "%s: BDC packet received with good rx-csum, flags 0x%x\n",
+			  brcmf_ifname(drvr, *ifidx), h->flags);
+		pkt_set_sum_good(pktbuf, true);
 	}
 
 	pktbuf->priority = h->priority & BDC_PRIORITY_MASK;
@@ -426,21 +424,19 @@ int brcmf_proto_attach(struct brcmf_pub *drvr)
 	struct brcmf_proto *cdc;
 
 	cdc = kzalloc(sizeof(struct brcmf_proto), GFP_ATOMIC);
-	if (!cdc) {
-		BRCMF_ERROR(("%s: kmalloc failed\n", __func__));
+	if (!cdc)
 		goto fail;
-	}
 
 	/* ensure that the msg buf directly follows the cdc msg struct */
 	if ((unsigned long)(&cdc->msg + 1) != (unsigned long)cdc->buf) {
-		BRCMF_ERROR(("struct brcmf_proto is not correctly defined\n"));
+		brcmf_dbg(ERROR, "struct brcmf_proto is not correctly defined\n");
 		goto fail;
 	}
 
 	drvr->prot = cdc;
 	drvr->hdrlen += BDC_HEADER_LEN;
-	drvr->maxctl = BRCMF_C_IOCTL_MAXLEN +
-			sizeof(struct brcmf_proto_cdc_ioctl) + ROUND_UP_MARGIN;
+	drvr->maxctl = BRCMF_DCMD_MAXLEN +
+			sizeof(struct brcmf_proto_cdc_dcmd) + ROUND_UP_MARGIN;
 	return 0;
 
 fail:
@@ -472,13 +468,13 @@ int brcmf_proto_init(struct brcmf_pub *drvr)
 	int ret = 0;
 	char buf[128];
 
-	BRCMF_TRACE(("%s: Enter\n", __func__));
+	brcmf_dbg(TRACE, "Enter\n");
 
 	brcmf_os_proto_block(drvr);
 
 	/* Get the device MAC address */
 	strcpy(buf, "cur_etheraddr");
-	ret = brcmf_proto_cdc_query_ioctl(drvr, 0, BRCMF_C_GET_VAR,
+	ret = brcmf_proto_cdc_query_dcmd(drvr, 0, BRCMF_C_GET_VAR,
 					  buf, sizeof(buf));
 	if (ret < 0) {
 		brcmf_os_proto_unblock(drvr);
@@ -488,7 +484,7 @@ int brcmf_proto_init(struct brcmf_pub *drvr)
 
 	brcmf_os_proto_unblock(drvr);
 
-	ret = brcmf_c_preinit_ioctls(drvr);
+	ret = brcmf_c_preinit_dcmds(drvr);
 
 	/* Always assumes wl for now */
 	drvr->iswl = true;

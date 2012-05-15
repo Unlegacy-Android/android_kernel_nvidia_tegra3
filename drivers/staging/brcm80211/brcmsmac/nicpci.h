@@ -58,28 +58,25 @@
 /* bar0 + 12K accesses chipc core registers */
 #define PCI_16KB0_CCREGS_OFFSET	(12 * 1024)
 
-#define PCI_CLKRUN_DSBL	0x8000	/* Bit 15 forceClkrun */
+struct sbpciregs;
+struct sbpcieregs;
 
-/* Sonics to PCI translation types */
-#define	SBTOPCI_PREF	0x4		/* prefetch enable */
-#define	SBTOPCI_BURST	0x8		/* burst enable */
-#define	SBTOPCI_RC_READMULTI	0x20	/* memory read multiple */
-
-/* PCI core index in SROM shadow area */
-#define SRSH_PI_OFFSET	0	/* first word */
-#define SRSH_PI_MASK	0xf000	/* bit 15:12 */
-#define SRSH_PI_SHIFT	12	/* bit 15:12 */
-
-extern void *pcicore_init(struct si_pub *sih, void *pdev, void *regs);
-extern void pcicore_deinit(void *pch);
-extern void pcicore_attach(void *pch, char *pvars, int state);
-extern void pcicore_hwup(void *pch);
-extern void pcicore_up(void *pch, int state);
-extern void pcicore_sleep(void *pch);
-extern void pcicore_down(void *pch, int state);
-extern u8 pcicore_find_pci_capability(void *dev, u8 req_cap_id,
-					 unsigned char *buf, u32 *buflen);
-extern void pcicore_fixcfg(void *pch, void *regs);
-extern void pcicore_pci_setup(void *pch, void *regs);
+extern struct pcicore_info *pcicore_init(struct si_pub *sih,
+					 struct pci_dev *pdev,
+					 void __iomem *regs);
+extern void pcicore_deinit(struct pcicore_info *pch);
+extern void pcicore_attach(struct pcicore_info *pch, int state);
+extern void pcicore_hwup(struct pcicore_info *pch);
+extern void pcicore_up(struct pcicore_info *pch, int state);
+extern void pcicore_sleep(struct pcicore_info *pch);
+extern void pcicore_down(struct pcicore_info *pch, int state);
+extern u8 pcicore_find_pci_capability(struct pci_dev *dev, u8 req_cap_id,
+				      unsigned char *buf, u32 *buflen);
+extern void pcicore_fixcfg_pci(struct pcicore_info *pch,
+			       struct sbpciregs __iomem *pciregs);
+extern void pcicore_fixcfg_pcie(struct pcicore_info *pch,
+				struct sbpcieregs __iomem *pciregs);
+extern void pcicore_pci_setup(struct pcicore_info *pch,
+			      struct sbpciregs __iomem *pciregs);
 
 #endif /* _BRCM_NICPCI_H_ */

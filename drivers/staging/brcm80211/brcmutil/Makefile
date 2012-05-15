@@ -20,8 +20,7 @@ ccflags-y :=				\
 	-Idrivers/staging/brcm80211/include
 
 BRCMUTIL_OFILES := \
-	utils.o \
-	wifi.o
+	utils.o
 
 MODULEPFX := brcmutil
 

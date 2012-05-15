@@ -15,25 +15,17 @@
 # OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-ccflags-y :=				\
-	-DWLC_HIGH				\
-	-DWLC_LOW				\
-	-DSTA					\
-	-DWME					\
-	-DWL11N					\
-	-DDBAND					\
-	-DBCMNVRAMR				\
-	-Idrivers/staging/brcm80211/brcmsmac \
-	-Idrivers/staging/brcm80211/brcmsmac/phy \
-	-Idrivers/staging/brcm80211/include
+ccflags-y := \
+	-D__CHECK_ENDIAN__ \
+	-Idrivers/net/wireless/brcm80211/brcmsmac \
+	-Idrivers/net/wireless/brcm80211/brcmsmac/phy \
+	-Idrivers/net/wireless/brcm80211/include
 
 BRCMSMAC_OFILES := \
 	mac80211_if.o \
 	ucode_loader.o \
-	alloc.o \
 	ampdu.o \
 	antsel.o \
-	bmac.o \
 	channel.o \
 	main.o \
 	phy_shim.o \
@@ -50,7 +42,8 @@ BRCMSMAC_OFILES := \
 	otp.o \
 	srom.o \
 	dma.o \
-	nicpci.o
+	nicpci.o \
+	brcms_trace_events.o
 
 MODULEPFX := brcmsmac
 
