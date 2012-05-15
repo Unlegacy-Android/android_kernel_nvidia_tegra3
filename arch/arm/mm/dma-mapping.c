@@ -639,6 +639,11 @@ static int dma_mmap(struct device *dev, struct vm_area_struct *vma,
 	int ret = -ENXIO;
 #ifdef CONFIG_MMU
 	unsigned long pfn = dma_to_pfn(dev, dma_addr);
+	vma->vm_page_prot = __get_dma_pgprot(attrs, vma->vm_page_prot);
+
+	if (dma_mmap_from_coherent(dev, vma, cpu_addr, size, &ret))
+		return ret;
+
 	ret = remap_pfn_range(vma, vma->vm_start,
 			      pfn + vma->vm_pgoff,
 			      vma->vm_end - vma->vm_start,
