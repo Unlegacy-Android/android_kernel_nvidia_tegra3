@@ -292,8 +292,13 @@ static __initdata struct tegra_clk_init_table tegra30_clk_init_table[] = {
 	{ "sdmmc4",	"pll_p",	48000000,	false},
 	{ "pll_a",	"pll_p_out1",	0,		false},
 	{ "pll_a_out0",	"pll_a",	0,		false},
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+	{ "c2bus",	"pll_c2",	300000000,	false },
+	{ "c3bus",	"pll_c3",	300000000,	false },
+#else
 	{ "cbus",	"pll_c",	416000000,	false },
 	{ "pll_c_out1",	"pll_c",	208000000,	false },
+#endif
 	{ "mselect",	"pll_p",	102000000,	true },
 	{ NULL,		NULL,		0,		0},
 };
