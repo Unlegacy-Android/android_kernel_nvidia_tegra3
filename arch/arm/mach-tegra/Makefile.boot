@@ -14,3 +14,4 @@ dtb-$(CONFIG_MACH_SEABOARD) += tegra-seaboard.dtb
 dtb-$(CONFIG_MACH_TRIMSLICE) += tegra-trimslice.dtb
 dtb-$(CONFIG_MACH_VENTANA) += tegra-ventana.dtb
 dtb-$(CONFIG_MACH_CARDHU) += tegra-cardhu.dtb
+dtb-$(CONFIG_MACH_ENTERPRISE) += tegra30-enterprise.dtb
