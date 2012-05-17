@@ -78,6 +78,10 @@ static void suspend(struct work_struct *work)
 {
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("early_suspend: suspend\n");
+
+	if (pm_wakeup_pending())
+		return;
+
 	pm_suspend(requested_suspend_state);
 
 	/*
@@ -192,6 +196,15 @@ void request_suspend_state(suspend_state_t new_state)
 		queue_work(suspend_work_queue, &late_resume_work);
 	}
 	requested_suspend_state = new_state;
+	spin_unlock_irqrestore(&state_lock, irqflags);
+}
+
+void schedule_suspend_work(void)
+{
+	unsigned long irqflags;
+	spin_lock_irqsave(&state_lock, irqflags);
+	if (state & SUSPEND_REQUESTED_AND_SUSPENDED)
+		queue_delayed_work(suspend_work_queue, &suspend_work, HZ);
 	spin_unlock_irqrestore(&state_lock, irqflags);
 }
 

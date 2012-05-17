@@ -289,4 +289,5 @@ ssize_t  wake_unlock_store(struct kobject *kobj, struct kobj_attribute *attr,
 /* kernel/power/earlysuspend.c */
 void request_suspend_state(suspend_state_t state);
 suspend_state_t get_suspend_state(void);
+void schedule_suspend_work(void);
 #endif
