@@ -32,6 +32,7 @@
 #include "clock.h"
 #include "reset.h"
 #include "sleep.h"
+#include "cpu-tegra.h"
 
 bool tegra_all_cpus_booted;
 
@@ -209,8 +210,16 @@ int boot_secondary(unsigned int cpu, struct task_struct *idle)
 			/* Early boot, clock infrastructure is not initialized
 			   - CPU mode switch is not allowed */
 			status = -EINVAL;
-		} else
+		} else {
+#ifdef CONFIG_CPU_FREQ
+			/* set cpu rate is within g-mode range before switch */
+			unsigned int speed = max(
+				(unsigned long)tegra_getspeed(0),
+				clk_get_min_rate(cpu_g_clk) / 1000);
+			tegra_update_cpu_speed(speed);
+#endif
 			status = clk_set_parent(cpu_clk, cpu_g_clk);
+		}
 
 		if (status)
 			goto done;
