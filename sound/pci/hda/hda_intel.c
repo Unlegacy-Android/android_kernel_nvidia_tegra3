@@ -2525,6 +2525,17 @@ static void azx_power_notify(struct hda_bus *bus)
  * power management
  */
 
+static int snd_hda_codecs_inuse(struct hda_bus *bus)
+{
+	struct hda_codec *codec;
+
+	list_for_each_entry(codec, &bus->codec_list, list) {
+		if (snd_hda_codec_needs_resume(codec))
+			return 1;
+	}
+	return 0;
+}
+
 static int azx_suspend(struct azx *chip, pm_message_t state)
 {
 	struct snd_card *card = chip->card;
@@ -2603,7 +2614,8 @@ static int azx_resume(struct azx *chip)
 		azx_init_platform(chip);
 #endif
 
-	azx_init_chip(chip, 1);
+	if (snd_hda_codecs_inuse(chip->bus))
+		azx_init_chip(chip, 1);
 
 	snd_hda_resume(chip->bus);
 	snd_power_change_state(card, SNDRV_CTL_POWER_D0);
