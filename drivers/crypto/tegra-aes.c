@@ -359,7 +359,6 @@ start:
 
 	/* enable error, dma xfer complete interrupts */
 	aes_writel(eng, 0x33, TEGRA_AES_INT_ENB);
-	enable_irq(eng->irq);
 
 	cmdq[0] = CMD_DMASETUP << CMDQ_OPCODE_SHIFT;
 	cmdq[1] = in_addr;
@@ -407,7 +406,7 @@ start:
 	aes_writel(eng, out_addr, TEGRA_AES_SECURE_DEST_ADDR);
 	INIT_COMPLETION(eng->op_complete);
 
-	for (i = 0; i < AES_HW_MAX_ICQ_LENGTH; i++) {
+	for (i = 0; i < 3; i++) {
 		do {
 			value = aes_readl(eng, TEGRA_AES_INTR_STATUS);
 			eng_busy = value & TEGRA_AES_ENGINE_BUSY_FIELD;
@@ -421,12 +420,10 @@ start:
 	if (ret == 0) {
 		dev_err(aes_dev->dev, "engine%d timed out (0x%x)\n",
 			eng->res_id, aes_readl(eng, TEGRA_AES_INTR_STATUS));
-		disable_irq(eng->irq);
 		return -ETIMEDOUT;
 	}
 
-	disable_irq(eng->irq);
-	aes_writel(eng, cmdq[AES_HW_MAX_ICQ_LENGTH - 1], TEGRA_AES_ICMDQUE_WR);
+	aes_writel(eng, cmdq[3], TEGRA_AES_ICMDQUE_WR);
 
 	if ((eng->status != 0) && (retries-- > 0)) {
 		qlen = 0;
@@ -442,29 +439,27 @@ static void aes_release_key_slot(struct tegra_aes_slot *slot)
 		return;
 
 	spin_lock(&list_lock);
-	list_add_tail(&slot->node, &dev_list);
+	slot->available = true;
 	slot = NULL;
 	spin_unlock(&list_lock);
 }
 
 static struct tegra_aes_slot *aes_find_key_slot(void)
 {
-	struct tegra_aes_slot *slot = NULL;
-	struct list_head *new_head;
-	int empty;
+	struct tegra_aes_slot *slot;
+	int found = 0;
 
 	spin_lock(&list_lock);
-	empty = list_empty(&dev_list);
-	if (!empty) {
-		slot = list_entry(&dev_list, struct tegra_aes_slot, node);
-		new_head = dev_list.next;
-		list_del(&dev_list);
-		dev_list.next = new_head->next;
-		dev_list.prev = NULL;
+	list_for_each_entry(slot, &dev_list, node) {
+		if (slot->available) {
+			slot->available = false;
+			found = 1;
+			break;
+		}
 	}
 	spin_unlock(&list_lock);
 
-	return slot;
+	return found ? slot : NULL;
 }
 
 static int aes_set_key(struct tegra_aes_engine *eng, int slot_num)
@@ -1343,6 +1338,7 @@ static int tegra_aes_probe(struct platform_device *pdev)
 		if (i == SSK_SLOT_NUM)
 			continue;
 		dd->slots[i].slot_num = i;
+		dd->slots[i].available = true;
 		INIT_LIST_HEAD(&dd->slots[i].node);
 		list_add_tail(&dd->slots[i].node, &dev_list);
 	}
