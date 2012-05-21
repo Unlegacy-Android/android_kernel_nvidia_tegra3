@@ -2170,6 +2170,11 @@ int hci_send_cmd(struct hci_dev *hdev, __u16 opcode, __u32 plen, void *param)
 
 	BT_DBG("%s opcode 0x%x plen %d", hdev->name, opcode, plen);
 
+	if (!hdev->workqueue) {
+		WARN_ON("hci_send_cmd: workqueue not initialised");
+		return -ENOMEM;
+	}
+
 	skb = bt_skb_alloc(len, GFP_ATOMIC);
 	if (!skb) {
 		BT_ERR("%s no memory for command", hdev->name);
