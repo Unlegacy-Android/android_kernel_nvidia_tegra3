@@ -537,7 +537,7 @@ static int __devinit max8973_probe(struct i2c_client *client,
 
 	/* Register the regulators */
 	rdev = regulator_register(&max->desc, &client->dev,
-			pdata->reg_init_data, max);
+			pdata->reg_init_data, max, NULL);
 	if (IS_ERR(rdev)) {
 		dev_err(max->dev,
 			"%s(): regulator register failed with err %s\n",
