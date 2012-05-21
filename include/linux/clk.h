@@ -101,22 +101,24 @@ int clk_notifier_unregister(struct clk *clk, struct notifier_block *nb);
 struct clk *clk_get(struct device *dev, const char *id);
 
 /**
- * clk_prepare - prepare a clock source
- * @clk: clock source
+ * devm_clk_get - lookup and obtain a managed reference to a clock producer.
+ * @dev: device for clock "consumer"
+ * @id: clock comsumer ID
  *
- * This prepares the clock source for use.
+ * Returns a struct clk corresponding to the clock producer, or
+ * valid IS_ERR() condition containing errno.  The implementation
+ * uses @dev and @id to determine the clock consumer, and thereby
+ * the clock producer.  (IOW, @id may be identical strings, but
+ * clk_get may return different clock producers depending on @dev.)
  *
- * Must not be called from within atomic context.
+ * Drivers must assume that the clock source is not enabled.
+ *
+ * devm_clk_get should not be called from within interrupt context.
+ *
+ * The clock will automatically be freed when the device is unbound
+ * from the bus.
  */
-#ifdef CONFIG_HAVE_CLK_PREPARE
-int clk_prepare(struct clk *clk);
-#else
-static inline int clk_prepare(struct clk *clk)
-{
-	might_sleep();
-	return 0;
-}
-#endif
+struct clk *devm_clk_get(struct device *dev, const char *id);
 
 /**
  * clk_enable - inform the system when the clock source should be running.
@@ -146,6 +148,23 @@ int clk_enable(struct clk *clk);
  */
 void clk_disable(struct clk *clk);
 
+/**
+ * clk_prepare - prepare a clock source
+ * @clk: clock source
+ *
+ * This prepares the clock source for use.
+ *
+ * Must not be called from within atomic context.
+ */
+#ifdef CONFIG_HAVE_CLK_PREPARE
+int clk_prepare(struct clk *clk);
+#else
+static inline int clk_prepare(struct clk *clk)
+{
+	might_sleep();
+	return 0;
+}
+#endif
 
 /**
  * clk_unprepare - undo preparation of a clock source
@@ -206,6 +225,18 @@ unsigned long clk_get_rate(struct clk *clk);
  */
 void clk_put(struct clk *clk);
 
+/**
+ * devm_clk_put	- "free" a managed clock source
+ * @dev: device used to acuqire the clock
+ * @clk: clock source acquired with devm_clk_get()
+ *
+ * Note: drivers must ensure that all clk_enable calls made on this
+ * clock source are balanced by clk_disable calls prior to calling
+ * this function.
+ *
+ * clk_put should not be called from within interrupt context.
+ */
+void devm_clk_put(struct device *dev, struct clk *clk);
 
 /*
  * The remaining APIs are optional for machine class support.
