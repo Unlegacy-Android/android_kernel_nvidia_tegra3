@@ -27,6 +27,8 @@
 #include "apbio.h"
 
 static DEFINE_MUTEX(tegra_apb_dma_lock);
+
+#if defined(CONFIG_TEGRA_SYSTEM_DMA) && defined(CONFIG_ARCH_TEGRA_2x_SOC)
 static struct tegra_dma_channel *tegra_apb_dma;
 static u32 *tegra_apb_bb;
 static dma_addr_t tegra_apb_bb_phys;
@@ -150,3 +152,27 @@ void tegra_apb_writel(u32 value, unsigned long offset)
 
 	mutex_unlock(&tegra_apb_dma_lock);
 }
+#endif
+
+static int tegra_init_apb_dma(void)
+{
+#if defined(CONFIG_TEGRA_SYSTEM_DMA) && defined(CONFIG_ARCH_TEGRA_2x_SOC)
+	tegra_apb_dma = tegra_dma_allocate_channel(TEGRA_DMA_MODE_ONESHOT |
+		TEGRA_DMA_SHARED, "apbio");
+	if (!tegra_apb_dma) {
+		pr_err("%s: can not allocate dma channel\n", __func__);
+		return -ENODEV;
+	}
+
+	tegra_apb_bb = dma_alloc_coherent(NULL, sizeof(u32),
+		&tegra_apb_bb_phys, GFP_KERNEL);
+	if (!tegra_apb_bb) {
+		pr_err("%s: can not allocate bounce buffer\n", __func__);
+		tegra_dma_free_channel(tegra_apb_dma);
+		tegra_apb_dma = NULL;
+		return -ENOMEM;
+	}
+#endif
+	return 0;
+}
+arch_initcall(tegra_init_apb_dma);
