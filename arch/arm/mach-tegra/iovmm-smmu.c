@@ -410,14 +410,10 @@ struct smmu_device {
 	/*
 	 * Register image savers for suspend/resume
 	 */
-	unsigned long config_0;		/* Secure reg */
-	unsigned long tlb_config_0;
-	unsigned long ptc_config_0;
-	unsigned long ptb_asid_0;
-	unsigned long translation_enable_0_0;	/* Secure reg */
-	unsigned long translation_enable_1_0;	/* Secure reg */
-	unsigned long translation_enable_2_0;	/* Secure reg */
-	unsigned long asid_security_0;	/* Secure reg */
+	unsigned long translation_enable_0_0;
+	unsigned long translation_enable_1_0;
+	unsigned long translation_enable_2_0;
+	unsigned long asid_security_0;
 
 	unsigned long lowest_asid;	/* Variables for hardware testing */
 	unsigned long debug_asid;
@@ -451,14 +447,22 @@ static inline void flush_smmu_regs(struct smmu_device *smmu)
  * Flush all TLB entries and all PTC entries
  * Caller must lock smmu
  */
-static void smmu_flush_regs(struct smmu_device *smmu)
+static void smmu_flush_regs(struct smmu_device *smmu, int enable)
 {
 	writel(MC_SMMU_PTC_FLUSH_0_PTC_FLUSH_TYPE_ALL,
 		smmu->regs_mc + MC_SMMU_PTC_FLUSH_0);
 	flush_smmu_regs(smmu);
 	writel(MC_SMMU_TLB_FLUSH_0_TLB_FLUSH_VA_MATCH_ALL |
-		MC_SMMU_TLB_FLUSH_0_TLB_FLUSH_ASID_MATCH_disable,
-		smmu->regs_mc + MC_SMMU_TLB_FLUSH_0);
+			MC_SMMU_TLB_FLUSH_0_TLB_FLUSH_ASID_MATCH_disable,
+			smmu->regs_mc + MC_SMMU_TLB_FLUSH_0);
+
+	if (enable) {
+		writel(MC_SMMU_CONFIG_0_SMMU_ENABLE_ENABLE,
+			smmu->regs_mc + MC_SMMU_CONFIG_0);
+		WARN_ONCE(readl(smmu->regs_mc + MC_SMMU_CONFIG_0) !=
+			MC_SMMU_CONFIG_0_SMMU_ENABLE_ENABLE,
+			"Writing to secure register (SMMU_CONFIG) failed\n");
+	}
 	flush_smmu_regs(smmu);
 }
 
@@ -494,14 +498,14 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 		smmu->regs_mc + MC_SMMU_TRANSLATION_ENABLE_1_0);
 	writel(smmu->translation_enable_2_0,
 		smmu->regs_mc + MC_SMMU_TRANSLATION_ENABLE_2_0);
-	writel(smmu->asid_security_0, smmu->regs_mc + MC_SMMU_ASID_SECURITY_0);
-	writel(smmu->ptb_asid_0, smmu->regs_mc + MC_SMMU_PTB_ASID_0);
-	writel(MC_SMMU_PTC_CONFIG_0_RESET_VAL, smmu->regs_mc + MC_SMMU_PTC_CONFIG_0);
-	writel(MC_SMMU_TLB_CONFIG_0_RESET_VAL, smmu->regs_mc + MC_SMMU_TLB_CONFIG_0);
-	writel(smmu->config_0, smmu->regs_mc + MC_SMMU_CONFIG_0);
+	writel(smmu->asid_security_0,
+		smmu->regs_mc + MC_SMMU_ASID_SECURITY_0);
+	writel(MC_SMMU_TLB_CONFIG_0_RESET_VAL,
+		smmu->regs_mc + MC_SMMU_TLB_CONFIG_0);
+	writel(MC_SMMU_PTC_CONFIG_0_RESET_VAL,
+		smmu->regs_mc + MC_SMMU_PTC_CONFIG_0);
 
-	smmu_flush_regs(smmu);
-
+	smmu_flush_regs(smmu, 1);
 	writel(
 		readl(smmu->regs_ahbarb + AHB_ARBITRATION_XBAR_CTRL_0) |
 		(AHB_ARBITRATION_XBAR_CTRL_0_SMMU_INIT_DONE_DONE <<
@@ -514,10 +518,6 @@ static int smmu_suspend(struct tegra_iovmm_device *dev)
 	struct smmu_device *smmu =
 		container_of(dev, struct smmu_device, iovmm_dev);
 
-	smmu->config_0     = readl(smmu->regs + MC_SMMU_CONFIG_0);
-	smmu->tlb_config_0 = readl(smmu->regs + MC_SMMU_TLB_CONFIG_0);
-	smmu->ptc_config_0 = readl(smmu->regs + MC_SMMU_PTC_CONFIG_0);
-	smmu->ptb_asid_0   = readl(smmu->regs + MC_SMMU_PTB_ASID_0);
 	smmu->translation_enable_0_0 =
 		readl(smmu->regs_mc + MC_SMMU_TRANSLATION_ENABLE_0_0);
 	smmu->translation_enable_1_0 =
@@ -805,8 +805,10 @@ static void smmu_unmap(struct tegra_iovmm_domain *domain,
 				flush_ptc_and_tlb(as->smmu, as, addr, pte,
 						page, 0);
 				kunmap(page);
-				if (!--(*pte_counter) && decommit)
+				if (!--(*pte_counter) && decommit) {
 					free_ptbl(as, addr);
+					smmu_flush_regs(as->smmu, 0);
+				}
 			}
 		}
 		addr += SMMU_PAGE_SIZE;
@@ -1073,14 +1075,10 @@ static int smmu_probe(struct platform_device *pdev)
 				tegra_reg[i].size);
 	}
 
-	smmu->config_0        = MC_SMMU_CONFIG_0_SMMU_ENABLE_ENABLE;
-	smmu->tlb_config_0    = MC_SMMU_TLB_CONFIG_0_RESET_VAL;
-	smmu->ptc_config_0    = MC_SMMU_PTC_CONFIG_0_RESET_VAL;
-	smmu->ptb_asid_0      = 0;
 	smmu->translation_enable_0_0 = ~0;
 	smmu->translation_enable_1_0 = ~0;
 	smmu->translation_enable_2_0 = ~0;
-	smmu->asid_security_0 = 0;
+	smmu->asid_security_0        = 0;
 
 	memcpy(smmu->hwc_state, smmu_hwc_state_init, sizeof(smmu->hwc_state));
 
