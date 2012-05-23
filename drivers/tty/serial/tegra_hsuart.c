@@ -1264,6 +1264,12 @@ static void tegra_set_termios(struct uart_port *u, struct ktermios *termios,
 	if (t->rts_active)
 		set_rts(t, false);
 
+	/* Clear all interrupts as configuration is going to be change */
+	uart_writeb(t, t->ier_shadow | UART_IER_RDI, UART_IER);
+	uart_readb(t, UART_IER);
+	uart_writeb(t, 0, UART_IER);
+	uart_readb(t, UART_IER);
+
 	/* Parity */
 	lcr = t->lcr_shadow;
 	lcr &= ~UART_LCR_PARITY;
@@ -1335,6 +1341,13 @@ static void tegra_set_termios(struct uart_port *u, struct ktermios *termios,
 
 	/* update the port timeout based on new settings */
 	uart_update_timeout(u, termios->c_cflag, baud);
+
+	/* Make sure all write has completed */
+	uart_readb(t, UART_IER);
+
+	/* Reenable interrupt */
+	uart_writeb(t, t->ier_shadow, UART_IER);
+	uart_readb(t, UART_IER);
 
 	spin_unlock_irqrestore(&u->lock, flags);
 	dev_vdbg(t->uport.dev, "-tegra_set_termios\n");
