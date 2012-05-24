@@ -169,9 +169,11 @@ static u16 tegra_sdhci_readw(struct sdhci_host *host, int reg)
 
 static void tegra_sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 {
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
+#endif
 
 	/* Seems like we're getting spurious timeout and crc errors, so
 	 * disable signalling of them. In case of real errors software
@@ -206,10 +208,10 @@ static unsigned int tegra_sdhci_get_cd(struct sdhci_host *sdhci)
 
 static unsigned int tegra_sdhci_get_ro(struct sdhci_host *sdhci)
 {
-	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
-	const struct tegra_sdhci_platform_data *plat;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
 
-	plat = pdev->dev.platform_data;
 	if (!gpio_is_valid(plat->wp_gpio))
 		return -1;
 
@@ -223,10 +225,8 @@ static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci)
 	u32 vendor_ctrl;
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
-	struct tegra_sdhci_platform_data *plat;
+	struct tegra_sdhci_platform_data *plat = tegra_host->plat;
 
-	plat = pdev->dev.platform_data;
 	/* Set the base clock frequency */
 	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
 	vendor_ctrl &= ~(0xFF << SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT);
