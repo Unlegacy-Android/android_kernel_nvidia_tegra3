@@ -26,30 +26,22 @@
 #include <asm/page.h>
 
 #include <mach/iomap.h>
+#include <mach/io.h>
 
+#include "asm_macros.h"
 #include "flowctrl.h"
+#include "sleep.h"
 #include "reset.h"
 
 #define APB_MISC_GP_HIDREV	0x804
 #define PMC_SCRATCH41	0x140
 
+#define DEBUG_CPU_RESET_HANDLER	0	/* Non-zero enables debug code */
+
 #define RESET_DATA(x)	((TEGRA_RESET_##x)*4)
 
         .section ".text.head", "ax"
 	__CPUINIT
-
-#include <mach/io.h>
-
-#include "asm_macros.h"
-#include "reset.h"
-#include "sleep.h"
-
-#define DEBUG_CPU_RESET_HANDLER	0	/* Non-zero enables debug code */
-
-#define PMC_SCRATCH41		0x140
-
-#define RESET_DATA(x)		((TEGRA_RESET_##x)*4)
-
 
 #ifdef CONFIG_SMP
 /*
