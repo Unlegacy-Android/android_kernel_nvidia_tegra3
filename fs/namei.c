@@ -1409,6 +1409,8 @@ static inline int can_lookup(struct inode *inode)
 
 #ifdef CONFIG_64BIT
 
+#include <asm/word-at-a-time.h>
+
 /*
  * Jan Achrenius on G+: microoptimized version of
  * the simpler "(mask & ONEBYTES) * ONEBYTES >> 56"
