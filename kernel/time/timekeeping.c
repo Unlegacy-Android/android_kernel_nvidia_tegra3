@@ -1261,6 +1261,8 @@ ktime_t ktime_get_monotonic_offset(void)
 
 	return timespec_to_ktime(wtom);
 }
+EXPORT_SYMBOL_GPL(ktime_get_monotonic_offset);
+
 
 /**
  * xtime_update() - advances the timekeeping infrastructure
