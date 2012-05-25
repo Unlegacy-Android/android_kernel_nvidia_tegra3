@@ -43,6 +43,12 @@
 #define RTC_COUNT4_DUMMYREAD 0xc5  /* start a PMU RTC access by reading the register prior to the RTC_COUNT4 */
 #define ALM1_VALID_RANGE_IN_SEC 0x3FFF /*only 14-bits width in second*/
 
+/*
+Linux RTC driver refers 1900 as base year in many calculations.
+(e.g. refer drivers/rtc/rtc-lib.c)
+*/
+#define OS_REF_YEAR 1900
+
 struct tps6586x_rtc {
 	unsigned long		epoch_start;
 	int			irq;
@@ -53,6 +59,13 @@ struct tps6586x_rtc {
 static inline struct device *to_tps6586x_dev(struct device *dev)
 {
 	return dev->parent;
+}
+
+static void print_time(struct device *dev, struct rtc_time *tm)
+{
+	dev_info(dev, "RTC Time : %d/%d/%d %d:%d:%d\n",
+		(tm->tm_mon + 1), tm->tm_mday, (tm->tm_year + OS_REF_YEAR),
+		tm->tm_hour, tm->tm_min , tm->tm_sec);
 }
 
 static int tps6586x_rtc_read_time(struct device *dev, struct rtc_time *tm)
@@ -80,6 +93,7 @@ static int tps6586x_rtc_read_time(struct device *dev, struct rtc_time *tm)
 
 	seconds += rtc->epoch_start;
 	rtc_time_to_tm(seconds, tm);
+	print_time(dev, tm);
 	return rtc_valid_tm(tm);
 }
 
@@ -129,6 +143,54 @@ static int tps6586x_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	return 0;
 }
 
+static int tps6586x_rtc_alarm_irq_enable(struct device *dev,
+					 unsigned int enabled)
+{
+	struct tps6586x_rtc *rtc = dev_get_drvdata(dev);
+	struct device *tps_dev = to_tps6586x_dev(dev);
+	u8 buff;
+	int err;
+
+	if (rtc->irq == -1)
+		return -EIO;
+
+	err = tps6586x_read(tps_dev, RTC_CTRL, &buff);
+	if (err < 0) {
+		dev_err(dev, "failed to read RTC_CTRL\n");
+		return err;
+	}
+
+	if ((enabled && (buff & RTC_ENABLE)) ||
+	    (!enabled && !(buff & RTC_ENABLE)))
+		return 0;
+
+	if (enabled) {
+		err = tps6586x_set_bits(tps_dev, RTC_CTRL, RTC_ENABLE);
+		if (err < 0) {
+			dev_err(dev, "failed to set RTC_ENABLE\n");
+			return err;
+		}
+
+		if (!rtc->irq_en) {
+			enable_irq(rtc->irq);
+			rtc->irq_en = true;
+		}
+	} else {
+		err = tps6586x_clr_bits(tps_dev, RTC_CTRL, RTC_ENABLE);
+		if (err < 0) {
+			dev_err(dev, "failed to clear RTC_ENABLE\n");
+			return err;
+		}
+
+		if (rtc->irq_en) {
+			disable_irq(rtc->irq);
+			rtc->irq_en = false;
+		}
+	}
+
+	return 0;
+}
+
 static int tps6586x_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
 	struct tps6586x_rtc *rtc = dev_get_drvdata(dev);
@@ -145,6 +207,9 @@ static int tps6586x_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	if (rtc->irq == -1)
 		return -EIO;
 
+	dev_info(dev->parent, "\n setting alarm to requested time::\n");
+	print_time(dev->parent, &alrm->time);
+
 	rtc_tm_to_time(&alrm->time, &seconds);
 
 	if (WARN_ON(alrm->enabled && (seconds < rtc->epoch_start))) {
@@ -152,12 +217,10 @@ static int tps6586x_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 		return -EINVAL;
 	}
 
-	if (alrm->enabled && !rtc->irq_en) {
-		enable_irq(rtc->irq);
-		rtc->irq_en = true;
-	} else if (!alrm->enabled && rtc->irq_en) {
-		disable_irq(rtc->irq);
-		rtc->irq_en = false;
+	err = tps6586x_rtc_alarm_irq_enable(dev, alrm->enabled);
+	if(err) {
+		dev_err(dev->parent, "\n can't set alarm irq\n");
+		return err;
 	}
 
 	seconds -= rtc->epoch_start;
@@ -208,54 +271,6 @@ static int tps6586x_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	seconds += rtc->epoch_start;
 
 	rtc_time_to_tm(seconds, &alrm->time);
-
-	return 0;
-}
-
-static int tps6586x_rtc_alarm_irq_enable(struct device *dev,
-					 unsigned int enabled)
-{
-	struct tps6586x_rtc *rtc = dev_get_drvdata(dev);
-	struct device *tps_dev = to_tps6586x_dev(dev);
-	u8 buff;
-	int err;
-
-	if (rtc->irq == -1)
-		return -EIO;
-
-	err = tps6586x_read(tps_dev, RTC_CTRL, &buff);
-	if (err < 0) {
-		dev_err(dev, "failed to read RTC_CTRL\n");
-		return err;
-	}
-
-	if ((enabled && (buff & RTC_ENABLE)) ||
-	    (!enabled && !(buff & RTC_ENABLE)))
-		return 0;
-
-	if (enabled) {
-		err = tps6586x_set_bits(tps_dev, RTC_CTRL, RTC_ENABLE);
-		if (err < 0) {
-			dev_err(dev, "failed to set RTC_ENABLE\n");
-			return err;
-		}
-
-		if (!rtc->irq_en) {
-			enable_irq(rtc->irq);
-			rtc->irq_en = true;
-		}
-	} else {
-		err = tps6586x_clr_bits(tps_dev, RTC_CTRL, RTC_ENABLE);
-		if (err < 0) {
-			dev_err(dev, "failed to clear RTC_ENABLE\n");
-			return err;
-		}
-
-		if (rtc->irq_en) {
-			disable_irq(rtc->irq);
-			rtc->irq_en = false;
-		}
-	}
 
 	return 0;
 }
