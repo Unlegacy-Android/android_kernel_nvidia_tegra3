@@ -44,7 +44,8 @@
 #include "board.h"
 #include "board-cardhu.h"
 #include "pm.h"
-#include "tegra3_tsensor.h"
+#include "wakeups-t3.h"
+#include "pm-irq.h"
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
@@ -1157,8 +1158,15 @@ int __init cardhu_suspend_init(void)
 		/* CORE_PWR_REQ to be high for E1291-A03 */
 		if (board_info.fab == BOARD_FAB_A03)
 			cardhu_suspend_data.corereq_high = true;
+		if (board_info.fab < BOARD_FAB_A03)
+			/* post E1291-A02 revisions WAKE19/USB1-VBUS wake supported */
+			tegra_disable_wake_source(TEGRA_WAKE_USB1_VBUS);
 		break;
 	case BOARD_E1198:
+		if (board_info.fab < BOARD_FAB_A02)
+			/* post E1198-A01 revisions WAKE19/USB1-VBUS wake supported */
+			tegra_disable_wake_source(TEGRA_WAKE_USB1_VBUS);
+		break;
 	case BOARD_PM269:
 	case BOARD_PM305:
 	case BOARD_PM311:
