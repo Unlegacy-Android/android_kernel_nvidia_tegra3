@@ -217,7 +217,7 @@ int __init touch_init_raydium(int irq_gpio, int reset_gpio, int platform)
 	gpio_set_value(reset_gpio, 1);
 	msleep(100);
 
-	rm31080a_spi_board[0].irq = TEGRA_GPIO_TO_IRQ(irq_gpio);
+	rm31080a_spi_board[0].irq = gpio_to_irq(irq_gpio);
 
 	switch (platform) {
 	case 0:

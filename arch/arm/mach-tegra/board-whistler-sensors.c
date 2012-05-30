@@ -291,11 +291,21 @@ static struct i2c_board_info whistler_i2c3_board_info[] = {
 	},
 };
 
+static struct i2c_board_info whistler_i2c1_board_info[] = {
+	{
+		I2C_BOARD_INFO("adxl34x", 0x1D),
+	},
+	{
+		I2C_BOARD_INFO("isl29018", 0x44),
+	},
+};
+
 static void whistler_adxl34x_init(void)
 {
 	tegra_gpio_enable(ADXL34X_IRQ_GPIO);
 	gpio_request(ADXL34X_IRQ_GPIO, "adxl34x");
 	gpio_direction_input(ADXL34X_IRQ_GPIO);
+	whistler_i2c1_board_info[0].irq = gpio_to_irq(ADXL34X_IRQ_GPIO);
 }
 
 static void whistler_isl29018_init(void)
@@ -303,22 +313,7 @@ static void whistler_isl29018_init(void)
 	tegra_gpio_enable(ISL29018_IRQ_GPIO);
 	gpio_request(ISL29018_IRQ_GPIO, "isl29018");
 	gpio_direction_input(ISL29018_IRQ_GPIO);
-}
-
-static struct i2c_board_info whistler_i2c1_board_info[] = {
-	{
-		I2C_BOARD_INFO("adxl34x", 0x1D),
-		.irq = TEGRA_GPIO_TO_IRQ(ADXL34X_IRQ_GPIO),
-	},
-	{
-		I2C_BOARD_INFO("isl29018", 0x44),
-		.irq = TEGRA_GPIO_TO_IRQ(ISL29018_IRQ_GPIO),
-	},
-};
-
-static void whistler_adt7461_init(void)
-{
-	tegra_gpio_enable(ADT7461_IRQ_GPIO);
+	whistler_i2c1_board_info[1].irq = gpio_to_irq(ISL29018_IRQ_GPIO);
 }
 
 static struct adt7461_platform_data whistler_adt7461_pdata = {
@@ -338,7 +333,6 @@ static struct adt7461_platform_data whistler_adt7461_pdata = {
 static struct i2c_board_info whistler_i2c4_board_info[] = {
 	{
 		I2C_BOARD_INFO("adt7461", 0x4C),
-		.irq = TEGRA_GPIO_TO_IRQ(ADT7461_IRQ_GPIO),
 		.platform_data = &whistler_adt7461_pdata,
 	},
 	{
@@ -346,6 +340,12 @@ static struct i2c_board_info whistler_i2c4_board_info[] = {
 		.platform_data = &whistler_tca6416_data,
 	},
 };
+
+static void whistler_adt7461_init(void)
+{
+	tegra_gpio_enable(ADT7461_IRQ_GPIO);
+	whistler_i2c4_board_info[0].irq = gpio_to_irq(ADT7461_IRQ_GPIO);
+}
 
 int __init whistler_sensors_init(void)
 {

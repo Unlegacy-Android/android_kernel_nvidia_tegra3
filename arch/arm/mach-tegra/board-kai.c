@@ -154,8 +154,6 @@ static noinline void __init kai_bt_st(void)
 static struct resource kai_bluesleep_resources[] = {
 	[0] = {
 		.name = "host_wake",
-			.start	= TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6),
-			.end	= TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6),
 			.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
 	},
 };
@@ -176,6 +174,9 @@ static noinline void __init kai_tegra_setup_tibluesleep(void)
 		pr_err("gpio_request failed for gpio: %d\n", TEGRA_GPIO_PU6);
 	else
 		gpio_direction_input(TEGRA_GPIO_PU6);
+
+	kai_bluesleep_resources[0].start = kai_bluesleep_resources[0].end =
+		gpio_to_irq(TEGRA_GPIO_PU6);
 
 	platform_device_register(&kai_bluesleep_device);
 }
@@ -216,7 +217,6 @@ static struct i2c_board_info __initdata kai_nfc_board_info[] = {
 	{
 		I2C_BOARD_INFO("pn544", 0x28),
 		.platform_data = &nfc_pdata,
-		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PX0),
 	},
 };
 
@@ -321,12 +321,10 @@ static struct i2c_board_info kai_i2c4_smb349_board_info[] = {
 
 static struct i2c_board_info __initdata rt5640_board_info = {
 	I2C_BOARD_INFO("rt5640", 0x1c),
-	.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_CDC_IRQ),
 };
 
 static struct i2c_board_info __initdata rt5639_board_info = {
 	I2C_BOARD_INFO("rt5639", 0x1c),
-	.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_CDC_IRQ),
 };
 
 static void kai_i2c_init(void)
@@ -350,6 +348,8 @@ static void kai_i2c_init(void)
 	i2c_register_board_info(4, kai_i2c4_smb349_board_info,
 		ARRAY_SIZE(kai_i2c4_smb349_board_info));
 
+	rt5639_board_info.irq = rt5640_board_info.irq =
+		gpio_to_irq(TEGRA_GPIO_CDC_IRQ);
 	if (board_info.fab == BOARD_FAB_A00)
 		i2c_register_board_info(4, &rt5640_board_info, 1);
 	else
@@ -360,6 +360,7 @@ static void kai_i2c_init(void)
 	i2c_register_board_info(4, kai_i2c4_max17048_board_info,
 		ARRAY_SIZE(kai_i2c4_max17048_board_info));
 
+	kai_nfc_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PX0);
 	i2c_register_board_info(0, kai_nfc_board_info, 1);
 }
 

@@ -55,8 +55,6 @@ static struct wifi_platform_data enterprise_wifi_control = {
 static struct resource wifi_resource[] = {
 	[0] = {
 		.name	= "bcm4329_wlan_irq",
-		.start	= TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6),
-		.end	= TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6),
 		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL | IORESOURCE_IRQ_SHAREABLE,
 	},
 };
@@ -279,6 +277,8 @@ static int __init enterprise_wifi_init(void)
 	if (rc)
 		pr_err("WLAN_WOW gpio direction configuration failed:%d\n", rc);
 
+	wifi_resource[0].start = wifi_resource[0].end =
+		gpio_to_irq(TEGRA_GPIO_PU6);
 	platform_device_register(&enterprise_wifi_device);
 	return 0;
 }

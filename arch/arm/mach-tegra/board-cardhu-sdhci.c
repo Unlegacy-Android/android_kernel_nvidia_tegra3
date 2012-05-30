@@ -58,8 +58,6 @@ static struct wifi_platform_data cardhu_wifi_control = {
 static struct resource wifi_resource[] = {
 	[0] = {
 		.name	= "bcm4329_wlan_irq",
-		.start	= TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PO4),
-		.end	= TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PO4),
 		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL | IORESOURCE_IRQ_SHAREABLE,
 	},
 };
@@ -280,6 +278,9 @@ static int __init cardhu_wifi_init(void)
 	rc = gpio_direction_input(CARDHU_WLAN_WOW);
 	if (rc)
 		pr_err("WLAN_WOW gpio direction configuration failed:%d\n", rc);
+
+	wifi_resource[0].start = wifi_resource[0].end =
+		gpio_to_irq(TEGRA_GPIO_PO4);
 
 	platform_device_register(&cardhu_wifi_device);
 	return 0;

@@ -151,8 +151,6 @@ static struct resource enterprise_bluesleep_resources[] = {
 	},
 	[2] = {
 		.name = "host_wake",
-			.start  = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PS2),
-			.end    = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PS2),
 			.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
 	},
 };
@@ -166,6 +164,9 @@ static struct platform_device enterprise_bluesleep_device = {
 
 static void __init enterprise_setup_bluesleep(void)
 {
+	enterprise_bluesleep_resources[2].start =
+		enterprise_bluesleep_resources[2].end =
+			gpio_to_irq(TEGRA_GPIO_PS2);
 	platform_device_register(&enterprise_bluesleep_device);
 	tegra_gpio_enable(TEGRA_GPIO_PS2);
 	tegra_gpio_enable(TEGRA_GPIO_PE7);
@@ -347,18 +348,15 @@ static struct pn544_i2c_platform_data nfc_pdata = {
 static struct i2c_board_info __initdata max98088_board_info = {
 	I2C_BOARD_INFO("max98088", 0x10),
 	.platform_data = &enterprise_max98088_pdata,
-	.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_HP_DET),
 };
 
 static struct i2c_board_info __initdata enterprise_codec_aic326x_info = {
 	I2C_BOARD_INFO("aic3262-codec", 0x18),
-	.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_HP_DET),
 };
 
 static struct i2c_board_info __initdata nfc_board_info = {
 	I2C_BOARD_INFO("pn544", 0x28),
 	.platform_data = &nfc_pdata,
-	.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PS4),
 };
 
 static void enterprise_i2c_init(void)
@@ -375,8 +373,11 @@ static void enterprise_i2c_init(void)
 	platform_device_register(&tegra_i2c_device2);
 	platform_device_register(&tegra_i2c_device1);
 
+	max98088_board_info.irq = enterprise_codec_aic326x_info.irq =
+		gpio_to_irq(TEGRA_GPIO_HP_DET);
 	i2c_register_board_info(0, &max98088_board_info, 1);
 	i2c_register_board_info(0, &enterprise_codec_aic326x_info, 1);
+	nfc_board_info.irq = gpio_to_irq(TEGRA_GPIO_PS4);
 	i2c_register_board_info(0, &nfc_board_info, 1);
 }
 
@@ -633,7 +634,6 @@ static struct mxt_platform_data atmel_mxt_info = {
 static struct i2c_board_info __initdata atmel_i2c_info[] = {
 	{
 		I2C_BOARD_INFO("atmel_mxt_ts", MXT224_I2C_ADDR1),
-		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PH6),
 		.platform_data = &atmel_mxt_info,
 	}
 };
@@ -652,6 +652,7 @@ static int __init enterprise_touch_init(void)
 	gpio_set_value(TEGRA_GPIO_PF5, 1);
 	msleep(100);
 
+	atmel_i2c_info[0].irq = gpio_to_irq(TEGRA_GPIO_PH6);
 	i2c_register_board_info(1, atmel_i2c_info, 1);
 
 	return 0;

@@ -136,8 +136,6 @@ static struct resource ventana_bluesleep_resources[] = {
 	},
 	[2] = {
 		.name = "host_wake",
-			.start  = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6),
-			.end    = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6),
 			.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
 	},
 };
@@ -151,6 +149,9 @@ static struct platform_device ventana_bluesleep_device = {
 
 static void __init ventana_setup_bluesleep(void)
 {
+	ventana_bluesleep_resources[2].start =
+		ventana_bluesleep_resources[2].end =
+			gpio_to_irq(TEGRA_GPIO_PU6);
 	platform_device_register(&ventana_bluesleep_device);
 	tegra_gpio_enable(TEGRA_GPIO_PU6);
 	tegra_gpio_enable(TEGRA_GPIO_PU1);
@@ -251,7 +252,6 @@ static struct wm8903_platform_data ventana_wm8903_pdata = {
 static struct i2c_board_info __initdata wm8903_board_info = {
 	I2C_BOARD_INFO("wm8903", 0x1a),
 	.platform_data = &ventana_wm8903_pdata,
-	.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_CDC_IRQ),
 };
 
 static void ventana_i2c_init(void)
@@ -266,6 +266,7 @@ static void ventana_i2c_init(void)
 	platform_device_register(&tegra_i2c_device3);
 	platform_device_register(&tegra_i2c_device4);
 
+	wm8903_board_info.irq = gpio_to_irq(TEGRA_GPIO_CDC_IRQ);
 	i2c_register_board_info(0, &wm8903_board_info, 1);
 }
 static struct platform_device *ventana_uart_devices[] __initdata = {
@@ -456,13 +457,13 @@ static struct mxt_platform_data atmel_mxt_info = {
 static struct i2c_board_info __initdata i2c_info[] = {
 	{
 	 I2C_BOARD_INFO("atmel_mxt_ts", 0x5A),
-	 .irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PV6),
 	 .platform_data = &atmel_mxt_info,
 	 },
 };
 
 static int __init ventana_touch_init_atmel(void)
 {
+	i2c_info[0].irq = gpio_to_irq(TEGRA_GPIO_PV6);
 	tegra_gpio_enable(TEGRA_GPIO_PV6);
 	tegra_gpio_enable(TEGRA_GPIO_PQ7);
 
@@ -487,7 +488,6 @@ static struct panjit_i2c_ts_platform_data panjit_data = {
 static struct i2c_board_info __initdata ventana_i2c_bus1_touch_info[] = {
 	{
 		I2C_BOARD_INFO("panjit_touch", 0x3),
-		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PV6),
 		.platform_data = &panjit_data,
 	},
 };
@@ -495,8 +495,9 @@ static struct i2c_board_info __initdata ventana_i2c_bus1_touch_info[] = {
 static int __init ventana_touch_init_panjit(void)
 {
 	tegra_gpio_enable(TEGRA_GPIO_PV6);
-
 	tegra_gpio_enable(TEGRA_GPIO_PQ7);
+
+	ventana_i2c_bus1_touch_info[0].irq = gpio_to_irq(TEGRA_GPIO_PV6);
 	i2c_register_board_info(0, ventana_i2c_bus1_touch_info, 1);
 
 	return 0;

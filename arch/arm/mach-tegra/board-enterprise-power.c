@@ -838,7 +838,7 @@ static struct platform_device enterprise_bpc_mgmt_device = {
 
 void __init enterprise_bpc_mgmt_init(void)
 {
-	int int_gpio = TEGRA_GPIO_TO_IRQ(TEGRA_BPC_TRIGGER);
+	int int_gpio = gpio_to_irq(TEGRA_BPC_TRIGGER);
 
 	tegra_gpio_enable(TEGRA_BPC_TRIGGER);
 

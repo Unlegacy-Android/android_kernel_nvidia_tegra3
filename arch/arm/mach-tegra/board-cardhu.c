@@ -157,8 +157,6 @@ static struct resource cardhu_bluesleep_resources[] = {
 	},
 	[2] = {
 		.name = "host_wake",
-			.start  = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6),
-			.end    = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6),
 			.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
 	},
 };
@@ -172,6 +170,9 @@ static struct platform_device cardhu_bluesleep_device = {
 
 static noinline void __init cardhu_setup_bluesleep(void)
 {
+	cardhu_bluesleep_resources[2].start =
+		cardhu_bluesleep_resources[2].end =
+			gpio_to_irq(TEGRA_GPIO_PU6);
 	platform_device_register(&cardhu_bluesleep_device);
 	return;
 }
@@ -212,7 +213,6 @@ static struct i2c_board_info __initdata cardhu_i2c_bus3_board_info[] = {
 	{
 		I2C_BOARD_INFO("pn544", 0x28),
 		.platform_data = &nfc_pdata,
-		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PX0),
 	},
 };
 static struct tegra_i2c_platform_data cardhu_i2c1_platform_data = {
@@ -378,18 +378,15 @@ static struct max98095_pdata cardhu_max98095_pdata = {
 
 static struct i2c_board_info __initdata cardhu_codec_wm8903_info = {
 	I2C_BOARD_INFO("wm8903", 0x1a),
-	.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_CDC_IRQ),
 	.platform_data = &cardhu_wm8903_pdata,
 };
 
 static struct i2c_board_info __initdata cardhu_codec_aic326x_info = {
 	I2C_BOARD_INFO("aic3262-codec", 0x18),
-	.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_CDC_IRQ),
 };
 
 static struct i2c_board_info __initdata cardhu_codec_max98095_info = {
 	I2C_BOARD_INFO("max98095", 0x10),
-	.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_CDC_IRQ),
 	.platform_data = &cardhu_max98095_pdata,
 };
 
@@ -407,10 +404,13 @@ static void cardhu_i2c_init(void)
 	platform_device_register(&tegra_i2c_device2);
 	platform_device_register(&tegra_i2c_device1);
 
+	cardhu_codec_wm8903_info.irq = cardhu_codec_max98095_info.irq =
+		cardhu_codec_aic326x_info.irq = gpio_to_irq(TEGRA_GPIO_CDC_IRQ);
 	i2c_register_board_info(4, &cardhu_codec_wm8903_info, 1);
 	i2c_register_board_info(4, &cardhu_codec_max98095_info, 1);
 	i2c_register_board_info(4, &cardhu_codec_aic326x_info, 1);
 
+	cardhu_i2c_bus3_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PX0);
 	i2c_register_board_info(2, cardhu_i2c_bus3_board_info, 1);
 }
 
@@ -825,7 +825,6 @@ static struct mxt_platform_data atmel_mxt_info = {
 static struct i2c_board_info __initdata atmel_i2c_info[] = {
 	{
 		I2C_BOARD_INFO("atmel_mxt_ts", 0x5A),
-		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PH4),
 		.platform_data = &atmel_mxt_info,
 	}
 };
@@ -861,6 +860,7 @@ static int __init cardhu_touch_init(void)
 			atmel_mxt_info.config_crc = MXT_CONFIG_CRC_SKU2000;
 		}
 
+		atmel_i2c_info[0].irq = gpio_to_irq(TEGRA_GPIO_PH4);
 		i2c_register_board_info(1, atmel_i2c_info, 1);
 	}
 

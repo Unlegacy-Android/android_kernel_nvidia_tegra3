@@ -206,8 +206,6 @@ static struct resource whistler_bluesleep_resources[] = {
 	},
 	[2] = {
 		.name = "host_wake",
-			.start  = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6),
-			.end    = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6),
 			.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
 	},
 };
@@ -221,6 +219,9 @@ static struct platform_device whistler_bluesleep_device = {
 
 static void __init whistler_setup_bluesleep(void)
 {
+	whistler_bluesleep_resources[2].start =
+		whistler_bluesleep_resources[2].end =
+			gpio_to_irq(TEGRA_GPIO_PU6);
 	platform_device_register(&whistler_bluesleep_device);
 	tegra_gpio_enable(TEGRA_GPIO_PU6);
 	tegra_gpio_enable(TEGRA_GPIO_PU1);
@@ -324,12 +325,10 @@ static struct aic326x_pdata whistler_aic3262_pdata = {
 static struct i2c_board_info __initdata wm8753_board_info[] = {
 	{
 		I2C_BOARD_INFO("wm8753", 0x1a),
-		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_HP_DET),
 	},
 	{
 		I2C_BOARD_INFO("aic3262-codec", 0x18),
 		.platform_data = &whistler_aic3262_pdata,
-		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_HP_DET),
 	},
 };
 
@@ -345,6 +344,8 @@ static void whistler_i2c_init(void)
 	platform_device_register(&tegra_i2c_device2);
 	platform_device_register(&tegra_i2c_device1);
 
+	wm8753_board_info[0].irq = wm8753_board_info[1].irq =
+		gpio_to_irq(TEGRA_GPIO_HP_DET);
 	i2c_register_board_info(4, wm8753_board_info,
 		ARRAY_SIZE(wm8753_board_info));
 }
@@ -435,10 +436,9 @@ static struct synaptics_i2c_rmi_platform_data synaptics_pdata = {
 	.irqflags	= IRQF_TRIGGER_LOW,
 };
 
-static const struct i2c_board_info whistler_i2c_touch_info[] = {
+static struct i2c_board_info whistler_i2c_touch_info[] = {
 	{
 		I2C_BOARD_INFO("synaptics-rmi-ts", 0x20),
-		.irq		= TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PC6),
 		.platform_data	= &synaptics_pdata,
 	},
 };
@@ -446,6 +446,7 @@ static const struct i2c_board_info whistler_i2c_touch_info[] = {
 static int __init whistler_touch_init(void)
 {
 	tegra_gpio_enable(TEGRA_GPIO_PC6);
+	whistler_i2c_touch_info[0].irq = gpio_to_irq(TEGRA_GPIO_PC6);
 	i2c_register_board_info(0, whistler_i2c_touch_info, 1);
 
 	return 0;

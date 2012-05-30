@@ -26,7 +26,7 @@
 #include "fuse.h"
 #include "devices.h"
 
-static const struct tegra_emc_table whistler_emc_tables_elpida_300Mhz[] = {
+static struct tegra_emc_table whistler_emc_tables_elpida_300Mhz[] = {
 	{
 		.rate = 25000,   /* SDRAM frquency */
 		.regs = {
@@ -284,7 +284,7 @@ static const struct tegra_emc_table whistler_emc_tables_elpida_300Mhz[] = {
 	}
 };
 
-static const struct tegra_emc_table whistler_emc_tables_elpida_380Mhz[] = {
+static struct tegra_emc_table whistler_emc_tables_elpida_380Mhz[] = {
 	{
 		.rate = 23750,   /* SDRAM frquency */
 		.regs = {
@@ -593,7 +593,7 @@ static const struct tegra_emc_table whistler_emc_tables_elpida_380Mhz[] = {
 	}
 };
 
-static const struct tegra_emc_pdata whistler_emc_chip = {
+static struct tegra_emc_pdata whistler_emc_chip = {
 	.description = "Elpida 300MHz",
 	.mem_manufacturer_id = 0x0303,
 	.mem_revision_id1 = -1,
@@ -603,7 +603,7 @@ static const struct tegra_emc_pdata whistler_emc_chip = {
 	.num_tables = ARRAY_SIZE(whistler_emc_tables_elpida_300Mhz)
 };
 
-static const struct tegra_emc_pdata whistler_ap25_emc_chip = {
+static struct tegra_emc_pdata whistler_ap25_emc_chip = {
 	.description = "Elpida 380MHz",
 	.mem_manufacturer_id = 0x0303,
 	.mem_revision_id1 = -1,

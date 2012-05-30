@@ -125,7 +125,6 @@ static struct nct1008_platform_data enterprise_nct1008_pdata = {
 static struct i2c_board_info enterprise_i2c4_nct1008_board_info[] = {
 	{
 		I2C_BOARD_INFO("nct1008", 0x4C),
-		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PH7),
 		.platform_data = &enterprise_nct1008_pdata,
 	}
 };
@@ -148,6 +147,7 @@ static void enterprise_nct1008_init(void)
 		return;
 	}
 
+	enterprise_i2c4_nct1008_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PH7);
 	i2c_register_board_info(4, enterprise_i2c4_nct1008_board_info,
 				ARRAY_SIZE(enterprise_i2c4_nct1008_board_info));
 }
@@ -186,23 +186,16 @@ static struct ext_slave_platform_data mpu_compass_data = {
 static struct i2c_board_info __initdata inv_mpu_i2c2_board_info[] = {
 	{
 		I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
-		.irq = TEGRA_GPIO_TO_IRQ(MPU_GYRO_IRQ_GPIO),
 		.platform_data = &mpu_gyro_data,
 	},
 #if (MPU_GYRO_TYPE == MPU_TYPE_MPU3050)
 	{
 		I2C_BOARD_INFO(MPU_ACCEL_NAME, MPU_ACCEL_ADDR),
-#if	MPU_ACCEL_IRQ_GPIO
-		.irq = TEGRA_GPIO_TO_IRQ(MPU_ACCEL_IRQ_GPIO),
-#endif
 		.platform_data = &mpu_accel_data,
 	},
 #endif
 	{
 		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
-#if	MPU_COMPASS_IRQ_GPIO
-		.irq = TEGRA_GPIO_TO_IRQ(MPU_COMPASS_IRQ_GPIO),
-#endif
 		.platform_data = &mpu_compass_data,
 	},
 };
@@ -210,6 +203,7 @@ static struct i2c_board_info __initdata inv_mpu_i2c2_board_info[] = {
 static void mpuirq_init(void)
 {
 	int ret = 0;
+	int i = 0;
 
 	pr_info("*** MPU START *** mpuirq_init...\n");
 
@@ -248,6 +242,16 @@ static void mpuirq_init(void)
 	}
 	pr_info("*** MPU END *** mpuirq_init...\n");
 
+	inv_mpu_i2c2_board_info[i++].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
+#if (MPU_GYRO_TYPE == MPU_TYPE_MPU3050)
+#if MPU_ACCELL_IRQ_GPIO
+	inv_mpu_i2c2_board_info[i].irq = gpio_to_irq(MPU_ACCEL_IRQ_GPIO);
+#endif
+	i++;
+#endif
+#if MPU_COMPASS_IRQ_GPIO
+	inv_mpu_i2c2_board_info[i++].irq = gpio_to_irq(MPU_COMPASS_IRQ_GPIO);
+#endif
 	i2c_register_board_info(MPU_GYRO_BUS_NUM, inv_mpu_i2c2_board_info,
 		ARRAY_SIZE(inv_mpu_i2c2_board_info));
 }

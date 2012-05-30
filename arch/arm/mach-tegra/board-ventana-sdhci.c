@@ -54,8 +54,6 @@ static struct wifi_platform_data ventana_wifi_control = {
 static struct resource wifi_resource[] = {
 	[0] = {
 		.name  = "bcm4329_wlan_irq",
-		.start = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PS0),
-		.end   = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PS0),
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL | IORESOURCE_IRQ_SHAREABLE,
 	},
 };
@@ -266,6 +264,8 @@ static int __init ventana_wifi_init(void)
 	gpio_direction_output(VENTANA_WLAN_RST, 0);
 	gpio_direction_input(VENTANA_WLAN_WOW);
 
+	wifi_resource[0].start = wifi_resource[0].end =
+		gpio_to_irq(TEGRA_GPIO_PS0);
 	platform_device_register(&ventana_wifi_device);
 
 	device_init_wakeup(&ventana_wifi_device.dev, 1);

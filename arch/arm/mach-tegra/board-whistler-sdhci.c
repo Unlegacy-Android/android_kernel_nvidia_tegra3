@@ -89,8 +89,6 @@ static struct wifi_platform_data whistler_wifi_control = {
 static struct resource wifi_resource[] = {
 	[0] = {
 		.name	= "bcm4329_wlan_irq",
-		.start	= TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU5),
-		.end	= TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU5),
 		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL | IORESOURCE_IRQ_SHAREABLE,
 	},
 };
@@ -252,13 +250,13 @@ static int __init whistler_wifi_init(void)
 	gpio_direction_output(WHISTLER_WLAN_RST, 0);
 	gpio_direction_input(WHISTLER_WLAN_WOW);
 
+	wifi_resource[0].start = wifi_resource[0].end =
+		gpio_to_irq(TEGRA_GPIO_PU5);
 	platform_device_register(&whistler_wifi_device);
 	return 0;
 }
 int __init whistler_sdhci_init(void)
 {
-	int ret;
-
 	tegra_gpio_enable(WHISTLER_EXT_SDCARD_DETECT);
 
 	platform_device_register(&tegra_sdhci_device3);

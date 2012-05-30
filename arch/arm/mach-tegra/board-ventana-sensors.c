@@ -220,10 +220,9 @@ static struct nct1008_platform_data ventana_nct1008_pdata = {
 	.alarm_fn = tegra_throttling_enable,
 };
 
-static const struct i2c_board_info ventana_i2c0_board_info[] = {
+static struct i2c_board_info ventana_i2c0_board_info[] = {
 	{
 		I2C_BOARD_INFO("isl29018", 0x44),
-		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PZ2),
 	},
 };
 
@@ -272,14 +271,12 @@ static const struct i2c_board_info ventana_i2c3_board_info_ssl3250a[] = {
 static struct i2c_board_info ventana_i2c4_board_info[] = {
 	{
 		I2C_BOARD_INFO("nct1008", 0x4C),
-		.irq = TEGRA_GPIO_TO_IRQ(NCT1008_THERM2_GPIO),
 		.platform_data = &ventana_nct1008_pdata,
 	},
 
 #ifdef CONFIG_SENSORS_AK8975
 	{
 		I2C_BOARD_INFO("akm8975", 0x0C),
-		.irq = TEGRA_GPIO_TO_IRQ(AKM8975_IRQ_GPIO),
 	},
 #endif
 };
@@ -347,15 +344,11 @@ static struct ext_slave_platform_data mpu_compass_data = {
 static struct i2c_board_info __initdata inv_mpu_i2c2_board_info[] = {
 	{
 		I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
-		.irq = TEGRA_GPIO_TO_IRQ(MPU_GYRO_IRQ_GPIO),
 		.platform_data = &mpu_gyro_data,
 	},
 #if (MPU_GYRO_TYPE == MPU_TYPE_MPU3050)
 	{
 		I2C_BOARD_INFO(MPU_ACCEL_NAME, MPU_ACCEL_ADDR),
-#if	MPU_ACCEL_IRQ_GPIO
-		.irq = TEGRA_GPIO_TO_IRQ(MPU_ACCEL_IRQ_GPIO),
-#endif
 		.platform_data = &mpu_accel_data,
 	},
 #endif
@@ -364,9 +357,6 @@ static struct i2c_board_info __initdata inv_mpu_i2c2_board_info[] = {
 static struct i2c_board_info __initdata inv_mpu_i2c4_board_info[] = {
 	{
 		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
-#if	MPU_COMPASS_IRQ_GPIO
-		.irq = TEGRA_GPIO_TO_IRQ(MPU_COMPASS_IRQ_GPIO),
-#endif
 		.platform_data = &mpu_compass_data,
 	},
 };
@@ -412,6 +402,16 @@ static void mpuirq_init(void)
 	}
 	pr_info("*** MPU END *** mpuirq_init...\n");
 
+	inv_mpu_i2c2_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
+#if (MPU_GYRO_TYPE == MPU_TYPE_MPU3050)
+#if MPU_ACCEL_IRQ_GPIO
+	inv_mpu_i2c2_board_info[1].irq = gpio_to_irq(MPU_ACCEL_IRQ_GPIO);
+#endif
+#endif
+#if MPU_COMPASS_IRQ_GPIO
+	inv_mpu_i2c4_board_info[0].irq = gpio_to_irq(MPU_COMPASS_IRQ_GPIO);
+#endif
+
 	i2c_register_board_info(MPU_GYRO_BUS_NUM, inv_mpu_i2c2_board_info,
 		ARRAY_SIZE(inv_mpu_i2c2_board_info));
 	i2c_register_board_info(MPU_COMPASS_BUS_NUM, inv_mpu_i2c4_board_info,
@@ -429,6 +429,7 @@ int __init ventana_sensors_init(void)
 	mpuirq_init();
 	ventana_nct1008_init();
 
+	ventana_i2c0_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PZ2);
 	i2c_register_board_info(0, ventana_i2c0_board_info,
 		ARRAY_SIZE(ventana_i2c0_board_info));
 
@@ -446,6 +447,11 @@ int __init ventana_sensors_init(void)
 	i2c_register_board_info(3, ventana_i2c3_board_info_ssl3250a,
 		ARRAY_SIZE(ventana_i2c3_board_info_ssl3250a));
 
+
+	ventana_i2c4_board_info[0].irq = gpio_to_irq(NCT1008_THERM2_GPIO);
+#ifdef CONFIG_SENSORS_AK8975
+	ventana_i2c4_board_info[1].irq = gpio_to_irq(AKM8975_IRQ_GPIO);
+#endif
 	i2c_register_board_info(4, ventana_i2c4_board_info,
 		ARRAY_SIZE(ventana_i2c4_board_info));
 

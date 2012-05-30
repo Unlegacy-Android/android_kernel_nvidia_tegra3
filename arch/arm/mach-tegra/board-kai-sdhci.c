@@ -56,7 +56,6 @@ static int kai_wifi_status_register(
 
 
 static struct wl12xx_platform_data kai_wlan_data __initdata = {
-	.irq = TEGRA_GPIO_TO_IRQ(KAI_WLAN_IRQ),
 	.board_ref_clock = WL12XX_REFCLOCK_26,
 	.board_tcxo_clock = 1,
 	.set_power = kai_wifi_power,
@@ -255,6 +254,7 @@ static int __init kai_wifi_init(void)
 	if (rc)
 		pr_err("WLAN_IRQ gpio direction configuration failed:%d\n", rc);
 
+	kai_wlan_data.irq = gpio_to_irq(KAI_WLAN_IRQ);
 	if (wl12xx_set_platform_data(&kai_wlan_data))
 		pr_err("Error setting wl12xx data\n");
 
