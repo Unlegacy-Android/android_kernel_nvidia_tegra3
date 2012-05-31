@@ -270,7 +270,7 @@ static __initdata struct tegra_clk_init_table tegra30_clk_init_table[] = {
 	{ "pll_c",      NULL,           ULONG_MAX,      false },
 	{ "pll_c_out1", "pll_c",        208000000,      false },
 #endif
-	{ "wake.sclk",	NULL,		40000000,	true },
+	{ "wake.sclk",	NULL,		250000000,	true },
 	{ "sbc5.sclk",	NULL,		40000000,	false},
 	{ "sbc6.sclk",	NULL,		40000000,	false},
 	{ "sbc1.sclk",	NULL,		40000000,	false},
@@ -316,6 +316,7 @@ static __initdata struct tegra_clk_init_table tegra11_clk_init_table[] = {
 	{ "pll_p_out4",	"pll_p",	216000000,	true },
 	{ "host1x",	"pll_p",	108000000,	false },
 #endif
+	{ "wake.sclk",	 NULL,		250000000	true },
 	{ "cl_dvfs_ref", "pll_p",	54000000,	false },
 	{ "cl_dvfs_soc", "pll_p",	54000000,	false },
 	{ "cl_dvfs_ref", "clk_m",	13000000,	false },
