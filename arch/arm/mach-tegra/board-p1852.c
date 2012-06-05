@@ -97,7 +97,6 @@ static __initdata struct tegra_clk_init_table p1852_clk_init_table[] = {
 	{ "vi",			"pll_p",	470000000,	false},
 	{ "vi_sensor",		"pll_p",	150000000,	false},
 	{ "vde",		"pll_c",	484000000,	true},
-	{ "host1x",		"pll_c",	242000000,	true},
 	{ "mpe",		"pll_c",	484000000,	true},
 	{ "se",			"pll_m",	625000000,	true},
 	{ "i2c1",		"pll_p",	3200000,	true},
