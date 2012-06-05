@@ -310,7 +310,6 @@ int battery_charger_init(void *board_data)
 				" charger fails\n", __func__);
 	}
 	gpio_direction_output(TEGRA_GPIO_PF6, 1);
-	tegra_gpio_enable(TEGRA_GPIO_PF6);
 	return 0;
 }
 
@@ -684,8 +683,6 @@ static int __init enterprise_fixed_regulator_init(void)
 	for (i = 0; i < nfixreg_devs; ++i) {
 		struct fixed_voltage_config *fixed_reg_pdata =
 				fixed_regs_devices[i]->dev.platform_data;
-		if (fixed_reg_pdata->gpio < TEGRA_NR_GPIOS)
-			tegra_gpio_enable(fixed_reg_pdata->gpio);
 	}
 	return platform_add_devices(fixed_regs_devices, nfixreg_devs);
 }
@@ -694,14 +691,6 @@ static int __init enterprise_gpio_regulator_init(void)
 {
 	int i, j;
 
-	for (i = 0; i < ARRAY_SIZE(gpio_regs_devices); ++i) {
-		struct gpio_regulator_config *gpio_reg_pdata =
-			gpio_regs_devices[i]->dev.platform_data;
-		for (j = 0; j < gpio_reg_pdata->nr_gpios; ++j) {
-			if (gpio_reg_pdata->gpios[j].gpio < TEGRA_NR_GPIOS)
-				tegra_gpio_enable(gpio_reg_pdata->gpios[j].gpio);
-		}
-	}
 	return platform_add_devices(gpio_regs_devices,
 				    ARRAY_SIZE(gpio_regs_devices));
 }
@@ -841,8 +830,6 @@ static struct platform_device enterprise_bpc_mgmt_device = {
 void __init enterprise_bpc_mgmt_init(void)
 {
 	int int_gpio = gpio_to_irq(TEGRA_BPC_TRIGGER);
-
-	tegra_gpio_enable(TEGRA_BPC_TRIGGER);
 
 #ifdef CONFIG_SMP
 	cpumask_setall(&(bpc_mgmt_platform_data.affinity_mask));
