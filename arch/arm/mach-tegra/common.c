@@ -298,7 +298,6 @@ static __initdata struct tegra_clk_init_table tegra30_clk_init_table[] = {
 	{ "cbus",	"pll_c",	416000000,	false },
 	{ "pll_c_out1",	"pll_c",	208000000,	false },
 #endif
-	{ "mselect",	"pll_p",	102000000,	true },
 	{ NULL,		NULL,		0,		0},
 };
 #endif
@@ -311,6 +310,7 @@ static __initdata struct tegra_clk_init_table tegra11_clk_init_table[] = {
 	{ "host1x",	"pll_p",	102000000,	false },
 	{ "cl_dvfs_ref", "pll_p",       54000000,       false },
 	{ "cl_dvfs_soc", "pll_p",       54000000,       false },
+	{ "mselect",     "pll_p",       102000000,      true },
 #else
 	{ "pll_p_out2",	"pll_p",	108000000,	false },
 	{ "sclk",	"pll_p_out2",	108000000,	true },
@@ -318,6 +318,7 @@ static __initdata struct tegra_clk_init_table tegra11_clk_init_table[] = {
 	{ "host1x",	"pll_p",	108000000,	false },
 	{ "hclk",	"sclk",		108000000,	true },
 	{ "pclk",	"hclk",		54000000,	true },
+	{ "mselect",    "pll_p",        108000000,      true },
 #endif
 	{ "wake.sclk",	 NULL,		250000000	true },
 	{ "cl_dvfs_ref", "pll_p",	54000000,	false },
