@@ -90,6 +90,7 @@ config ARCH_TEGRA_11x_SOC
 	select REPORT_PRESENT_CPUS if TEGRA_AUTO_HOTPLUG
 	select ARCH_TEGRA_HAS_CL_DVFS
 	select TEGRA_DYNAMIC_CBUS
+	select TEGRA_DUAL_CBUS
 	help
 	  Support for NVIDIA Tegra 11x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
