@@ -31,6 +31,7 @@ config ARCH_TEGRA_2x_SOC
 	select PCI_MSI if TEGRA_PCI
 	select CPA
 	select ARM_ERRATA_716044
+	select NVMAP_CACHE_MAINT_BY_SET_WAYS
 	help
 	  Support for NVIDIA Tegra AP20 and T20 processors, based on the
 	  ARM CortexA9MP CPU and the ARM PL310 L2 cache controller
@@ -64,6 +65,7 @@ config ARCH_TEGRA_3x_SOC
 	select CPU_FREQ_TABLE if CPU_FREQ
 	select TEGRA_LP2_ARM_TWD if HAVE_ARM_TWD && !TEGRA_RAIL_OFF_MULTIPLE_CPUS
 	select CPA
+	select NVMAP_CACHE_MAINT_BY_SET_WAYS
 	help
 	  Support for NVIDIA Tegra T30 processor family, based on the
 	  ARM CortexA9MP CPU and the ARM PL310 L2 cache controller
