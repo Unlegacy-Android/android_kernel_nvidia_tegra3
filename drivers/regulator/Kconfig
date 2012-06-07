@@ -332,6 +332,16 @@ config REGULATOR_DB8500_PRCMU
 	  This driver supports the voltage domain regulators controlled by the
 	  DB8500 PRCMU
 
+config REGULATOR_RC5T583
+	tristate "RICOH RC5T583 Power regulators"
+	depends on MFD_RC5T583
+	help
+	  Select this option to enable the power regulator of RICOH
+	  PMIC RC5T583.
+	  This driver supports the control of different power rails of device
+	  through regulator interface. The device supports multiple DCDC/LDO
+	  outputs which can be controlled by i2c communication.
+
 config REGULATOR_TPS6105X
 	tristate "TI TPS6105X Power regulators"
 	depends on TPS6105X
