@@ -41,6 +41,8 @@
 #include <mach/gpio-tegra.h>
 
 #include "board.h"
+#include "clock.h"
+#include "dvfs.h"
 #include "board-cardhu.h"
 #include "devices.h"
 #include "gpio-names.h"
@@ -1304,8 +1306,19 @@ int __init cardhu_panel_init(void)
 #endif
 
 	cardhu_panel_preinit();
-	if (is_dsi_panel())
+	if (is_dsi_panel()) {
+		if (is_panel_1506) {
+			/*
+			 * HACK: To be Removed
+			 */
+			int i;
+			struct clk *c = tegra_get_clock_by_name("dsia");
+
+			for (i = 0; i < c->dvfs->num_freqs; i++)
+				c->dvfs->freqs[i] = 500000000;
+		}
 		goto skip_lvds;
+	}
 #if defined(CONFIG_TEGRA_DC)
 	if (WARN_ON(board_info.board_id == BOARD_E1291 &&
 		((board_info.sku & SKU_TOUCHSCREEN_MECH_FIX) == 0))) {
