@@ -22,6 +22,8 @@
 #ifndef __MACH_TEGRA_IO_H
 #define __MACH_TEGRA_IO_H
 
+#include "vmalloc.h"
+
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define IO_SPACE_LIMIT 0xffff
 #else
@@ -44,7 +46,7 @@
 #define IOMEM(x)	((void __force __iomem *)(x))
 #endif
 
-#define IO_VIRT_BASE	0xFA000000
+#define IO_VIRT_BASE	VMALLOC_END
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define IO_PCIE_PHYS	0x80000000
