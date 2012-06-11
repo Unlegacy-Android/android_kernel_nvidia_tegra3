@@ -4098,7 +4098,7 @@ void dhd_detach(dhd_pub_t *dhdp)
 #ifdef CONFIG_HAS_WAKELOCK
 		dhd->wakelock_counter = 0;
 		dhd->wakelock_rx_timeout_enable = 0;
-		dhd->wakelock_ctrl_timeout_enable = 0; 
+		dhd->wakelock_ctrl_timeout_enable = 0;
 		wake_lock_destroy(&dhd->wl_wifi);
 		wake_lock_destroy(&dhd->wl_rxwake);
 		wake_lock_destroy(&dhd->wl_ctrlwake);
