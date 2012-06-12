@@ -1,5 +1,7 @@
 GCOV_PROFILE := y
 
+subdir-ccflags-y := -Werror
+
 obj-y                                   += board-pinmux.o
 obj-y                                   += ahb.o
 obj-y                                   += common.o
