@@ -88,6 +88,8 @@ struct ion_buffer {
 	int dmap_cnt;
 	struct sg_table *sg_table;
 	struct page **pages;
+	unsigned long *dirty;
+	struct list_head vmas;
 };
 
 /**
