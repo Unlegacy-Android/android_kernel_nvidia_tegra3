@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-enterprise-panel.c
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -554,16 +554,13 @@ static int enterprise_dsi_panel_enable(void)
 		}
 	}
 
-	if (kernel_1st_panel_init != true) {
+	if (kernel_1st_panel_init == true) {
 		ret = gpio_request(enterprise_dsi_panel_reset, "panel reset");
 		if (ret < 0)
 			return ret;
-
-		ret = gpio_direction_output(enterprise_dsi_panel_reset, 0);
-		if (ret < 0) {
-			gpio_free(enterprise_dsi_panel_reset);
-			return ret;
-		}
+		kernel_1st_panel_init = false;
+	} else {
+		gpio_direction_output(enterprise_dsi_panel_reset, 0);
 
 		gpio_set_value(enterprise_dsi_panel_reset, 0);
 		udelay(2000);
@@ -581,10 +578,7 @@ static int enterprise_dsi_panel_disable(void)
 		regulator_disable(enterprise_lcd_reg);
 
 #if DSI_PANEL_RESET
-	if (kernel_1st_panel_init != true) {
-		gpio_free(enterprise_dsi_panel_reset);
-	} else
-		kernel_1st_panel_init = false;
+	gpio_direction_output(enterprise_dsi_panel_reset, 0);
 #endif
 	return 0;
 }
