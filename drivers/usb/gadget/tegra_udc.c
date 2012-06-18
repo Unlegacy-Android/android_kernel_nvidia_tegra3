@@ -129,8 +129,9 @@ static void done(struct tegra_ep *ep, struct tegra_req *req, int status)
 {
 	struct tegra_udc *udc = NULL;
 	unsigned char stopped = ep->stopped;
-	struct ep_td_struct *curr_td, *next_td;
+	struct ep_td_struct *curr_td, *next_td = 0;
 	int j;
+	int count;
 	BUG_ON(!(in_irq() || irqs_disabled()));
 	udc = (struct tegra_udc *)ep->udc;
 	/* Removed the req from tegra_ep->queue */
@@ -143,12 +144,19 @@ static void done(struct tegra_ep *ep, struct tegra_req *req, int status)
 		status = req->req.status;
 
 	/* Free dtd for the request */
-	next_td = req->head;
-	for (j = 0; j < req->dtd_count; j++) {
-		curr_td = next_td;
-		if (j != req->dtd_count - 1)
-			next_td = curr_td->next_td_virt;
+	count = 0;
+	if (ep->last_td) {
+		next_td = ep->last_td;
+		count = ep->last_dtd_count;
+	}
+	ep->last_td = req->head;
+	ep->last_dtd_count = req->dtd_count;
 
+	for (j = 0; j < count; j++) {
+		curr_td = next_td;
+		if (j != count - 1) {
+			next_td = curr_td->next_td_virt;
+		}
 		dma_pool_free(udc->td_pool, curr_td, curr_td->td_dma);
 	}
 
@@ -568,6 +576,8 @@ static int tegra_ep_enable(struct usb_ep *_ep,
 	ep->ep.maxpacket = max;
 	ep->desc = desc;
 	ep->stopped = 0;
+	ep->last_td = 0;
+	ep->last_dtd_count = 0;
 
 	/* Controller related setup
 	 * Init EPx Queue Head (Ep Capabilites field in QH
@@ -610,6 +620,8 @@ static int tegra_ep_disable(struct usb_ep *_ep)
 	unsigned long flags = 0;
 	u32 epctrl;
 	int ep_num;
+	struct ep_td_struct *curr_td, *next_td;
+	int j;
 
 	ep = container_of(_ep, struct tegra_ep, ep);
 	if (!_ep || !ep->desc) {
@@ -638,6 +650,18 @@ static int tegra_ep_disable(struct usb_ep *_ep)
 
 	ep->desc = NULL;
 	ep->stopped = 1;
+	if (ep->last_td) {
+		next_td = ep->last_td;
+		for (j = 0; j < ep->last_dtd_count; j++) {
+			curr_td = next_td;
+			dma_pool_free(udc->td_pool, curr_td, curr_td->td_dma);
+			if (j != ep->last_dtd_count - 1) {
+				next_td = curr_td->next_td_virt;
+			}
+		}
+	}
+	ep->last_td =0;
+	ep->last_dtd_count = 0;
 	spin_unlock_irqrestore(&udc->lock, flags);
 
 	VDBG("disabled %s OK", _ep->name);
