@@ -125,6 +125,7 @@ struct tegra_uart_port {
 	int			uart_state;
 	bool			rx_timeout;
 	int			rx_in_progress;
+	struct tasklet_struct	tlet;
 };
 
 static void tegra_set_baudrate(struct tegra_uart_port *t, unsigned int baud);
@@ -483,6 +484,19 @@ static void do_handle_modem_signal(struct uart_port *u)
 	return;
 }
 
+static void tegra_uart_tasklet_action(unsigned long data)
+{
+	struct tegra_uart_port *t = (struct tegra_uart_port *)data;
+	uart_write_wakeup(&t->uport);
+
+}
+
+static void tegra_uart_write_wakeup(struct tegra_uart_port *t)
+{
+	BUG_ON(!t);
+	tasklet_schedule(&t->tlet);
+}
+
 static void do_handle_tx_pio(struct tegra_uart_port *t)
 {
 	struct circ_buf *xmit = &t->uport.state->xmit;
@@ -492,7 +506,7 @@ static void do_handle_tx_pio(struct tegra_uart_port *t)
 	t->tx_in_progress = 0;
 
 	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
-		uart_write_wakeup(&t->uport);
+		tegra_uart_write_wakeup(t);
 
 	tegra_start_next_tx(t);
 	return;
@@ -519,7 +533,7 @@ static void tegra_tx_dma_complete_callback(struct tegra_dma_req *req)
 	t->tx_in_progress = 0;
 
 	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
-		uart_write_wakeup(&t->uport);
+		tegra_uart_write_wakeup(t);
 
 	tegra_start_next_tx(t);
 
@@ -1490,6 +1504,8 @@ static int __init tegra_uart_probe(struct platform_device *pdev)
 			goto rx_dma_buff_fail;
 		}
 	}
+	tasklet_init(&t->tlet, tegra_uart_tasklet_action, (unsigned long) t);
+
 	return ret;
 
 rx_dma_buff_fail:
@@ -1511,6 +1527,7 @@ static int __devexit tegra_uart_remove(struct platform_device *pdev)
 		pr_err("Invalid Uart instance (%d)\n", pdev->id);
 
 	u = &t->uport;
+	tasklet_kill(&t->tlet);
 	uart_remove_one_port(&tegra_uart_driver, u);
 
 	tegra_uart_free_rx_dma_buffer(t);
