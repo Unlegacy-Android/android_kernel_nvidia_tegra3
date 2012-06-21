@@ -578,15 +578,6 @@ int vfp_preserve_user_clear_hwstate(struct user_vfp __user *ufp,
 
 	if (err)
 		return -EFAULT;
-
-	/* Ensure that VFP is disabled. */
-	vfp_flush_hwstate(thread);
-
-	/*
-	 * As per the PCS, clear the length and stride bits for function
-	 * entry.
-	 */
-	hwstate->fpscr &= ~(FPSCR_LENGTH_MASK | FPSCR_STRIDE_MASK);
 	return 0;
 }
 
@@ -599,7 +590,6 @@ int vfp_restore_user_hwstate(struct user_vfp __user *ufp,
 	unsigned long fpexc;
 	int err = 0;
 
-	/* Disable VFP to avoid corrupting the new thread state. */
 	vfp_flush_hwstate(thread);
 
 	/*
