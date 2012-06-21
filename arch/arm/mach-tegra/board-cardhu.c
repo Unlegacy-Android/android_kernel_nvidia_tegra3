@@ -55,12 +55,14 @@
 #include <mach/i2s.h>
 #include <mach/tegra_asoc_pdata.h>
 #include <mach/tegra_wm8903_pdata.h>
-#include <asm/mach-types.h>
-#include <asm/mach/arch.h>
 #include <mach/usb_phy.h>
 #include <mach/thermal.h>
 #include <mach/pci.h>
 #include <mach/gpio-tegra.h>
+
+#include <asm/hardware/gic.h>
+#include <asm/mach-types.h>
+#include <asm/mach/arch.h>
 
 #include "board.h"
 #include "clock.h"

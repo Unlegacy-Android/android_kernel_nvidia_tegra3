@@ -34,6 +34,7 @@
 #include <linux/gpio_keys.h>
 #include <linux/input.h>
 #include <linux/platform_data/tegra_usb.h>
+
 #include <mach/clk.h>
 #include <mach/iomap.h>
 #include <mach/irqs.h>
@@ -43,10 +44,13 @@
 #include <mach/i2s.h>
 #include <mach/audio.h>
 #include <mach/tegra_das.h>
+
+#include <asm/hardware/gic.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <mach/usb_phy.h>
 #include <mach/nand.h>
+
 #include "board.h"
 #include "clock.h"
 #include "board-aruba.h"
@@ -540,6 +544,7 @@ MACHINE_START(ARUBA, "aruba")
 	.reserve        = tegra_aruba_reserve,
 	.init_early	= tegra_init_early,
 	.init_irq       = tegra_init_irq,
+	.handle_irq	= gic_handle_irq,
 	.timer          = &tegra_timer,
 	.init_machine   = tegra_aruba_init,
 MACHINE_END

@@ -37,8 +37,8 @@
 #include <linux/fsl_devices.h>
 #include <linux/i2c/atmel_mxt_ts.h>
 #include <linux/memblock.h>
-
 #include <linux/nfc/pn544.h>
+
 #include <sound/max98088.h>
 
 #include <asm/hardware/gic.h>
@@ -49,14 +49,16 @@
 #include <mach/pinmux.h>
 #include <mach/iomap.h>
 #include <mach/io.h>
-#include <asm/mach-types.h>
-#include <asm/mach/arch.h>
 #include <mach/usb_phy.h>
 #include <mach/i2s.h>
 #include <mach/tegra_asoc_pdata.h>
 #include <mach/thermal.h>
 #include <mach/tegra-bb-power.h>
 #include <mach/gpio-tegra.h>
+
+#include <asm/mach-types.h>
+#include <asm/hardware/gic.h>
+#include <asm/mach/arch.h>
 
 #include "board.h"
 #include "clock.h"

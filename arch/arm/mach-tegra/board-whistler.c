@@ -51,6 +51,7 @@
 
 #include <sound/tlv320aic326x.h>
 
+#include <asm/hardware/gic.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/hardware/gic.h>
