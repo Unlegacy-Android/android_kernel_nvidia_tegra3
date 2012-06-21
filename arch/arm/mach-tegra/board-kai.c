@@ -53,6 +53,7 @@
 #include <mach/pinmux-tegra30.h>
 #include <mach/iomap.h>
 #include <mach/io.h>
+#include <mach/io_dpd.h>
 #include <mach/i2s.h>
 #include <mach/tegra_rt5640_pdata.h>
 #include <asm/mach-types.h>
@@ -874,6 +875,7 @@ static void __init tegra_kai_init(void)
 	kai_audio_init();
 	platform_add_devices(kai_devices, ARRAY_SIZE(kai_devices));
 	tegra_ram_console_debug_init();
+	tegra_io_dpd_init();
 	kai_sdhci_init();
 	kai_regulator_init();
 	kai_suspend_init();

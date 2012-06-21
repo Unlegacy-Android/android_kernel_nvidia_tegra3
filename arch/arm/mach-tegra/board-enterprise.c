@@ -50,6 +50,7 @@
 #include <mach/pinmux.h>
 #include <mach/iomap.h>
 #include <mach/io.h>
+#include <mach/io_dpd.h>
 #include <mach/usb_phy.h>
 #include <mach/i2s.h>
 #include <mach/tegra_asoc_pdata.h>
@@ -978,6 +979,7 @@ static void __init tegra_enterprise_init(void)
 	platform_add_devices(enterprise_devices, ARRAY_SIZE(enterprise_devices));
 	tegra_ram_console_debug_init();
 	enterprise_regulator_init();
+	tegra_io_dpd_init();
 	enterprise_sdhci_init();
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 	enterprise_edp_init();
