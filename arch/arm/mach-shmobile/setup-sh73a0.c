@@ -709,3 +709,9 @@ void __init sh73a0_add_early_devices(void)
 	/* override timer setup with soc-specific code */
 	shmobile_timer.init = sh73a0_earlytimer_init;
 }
+
+struct arm_soc_desc sh73a0_soc_desc __initdata = {
+	.name		= "Renesas sh73a0",
+	soc_smp_init_ops(sh73a0_soc_smp_init_ops)
+	soc_smp_ops(sh73a0_soc_smp_ops)
+};

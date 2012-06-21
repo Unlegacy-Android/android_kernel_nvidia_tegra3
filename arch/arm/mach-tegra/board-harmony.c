@@ -59,6 +59,7 @@
 #include "devices.h"
 #include "gpio-names.h"
 #include "pm.h"
+#include "common.h"
 
 /* NVidia bootloader tags */
 #define ATAG_NVIDIA		0x41000801
@@ -508,6 +509,7 @@ void __init tegra_harmony_reserve(void)
 
 MACHINE_START(HARMONY, "harmony")
 	.atag_offset	= 0x100,
+	.soc		= &tegra_soc_desc,
 	.fixup		= tegra_harmony_fixup,
 	.map_io         = tegra_map_common_io,
 	.reserve        = tegra_harmony_reserve,

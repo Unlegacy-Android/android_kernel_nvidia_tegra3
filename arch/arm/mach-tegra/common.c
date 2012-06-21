@@ -31,6 +31,7 @@
 #include <linux/sched.h>
 #include <linux/cpufreq.h>
 
+#include <asm/soc.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/hardware/gic.h>
 #include <asm/system.h>
@@ -50,6 +51,7 @@
 #include "reset.h"
 #include "devices.h"
 #include "pmc.h"
+#include "common.h"
 
 #define MC_SECURITY_CFG2	0x7c
 
@@ -1109,3 +1111,9 @@ void tegra_enable_pinmux(void)
 {
 	platform_add_devices(pinmux_devices, ARRAY_SIZE(pinmux_devices));
 }
+
+struct arm_soc_desc tegra_soc_desc __initdata = {
+	.name		= "NVIDIA Tegra",
+	soc_smp_init_ops(tegra_soc_smp_init_ops)
+	soc_smp_ops(tegra_soc_smp_ops)
+};

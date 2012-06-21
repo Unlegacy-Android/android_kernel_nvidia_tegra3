@@ -37,7 +37,7 @@
 	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x470)
 #endif
 
-int platform_cpu_kill(unsigned int cpu)
+int tegra_cpu_kill(unsigned int cpu)
 {
 	unsigned int reg;
 
@@ -52,7 +52,12 @@ int platform_cpu_kill(unsigned int cpu)
 	return 1;
 }
 
-void platform_cpu_die(unsigned int cpu)
+/*
+ * platform-specific code to shutdown a CPU
+ *
+ * Called with IRQs disabled
+ */
+void tegra_cpu_die(unsigned int cpu)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	/* Flush the L1 data cache. */
@@ -79,13 +84,4 @@ void platform_cpu_die(unsigned int cpu)
 
 	/* Should never return here. */
 	BUG();
-}
-
-int platform_cpu_disable(unsigned int cpu)
-{
-	/*
-	 * we don't allow CPU 0 to be shutdown (it is still too special
-	 * e.g. clock tick interrupts)
-	 */
-	return cpu == 0 ? -EPERM : 0;
 }

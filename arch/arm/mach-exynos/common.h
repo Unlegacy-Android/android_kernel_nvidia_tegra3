@@ -12,6 +12,8 @@
 #ifndef __ARCH_ARM_MACH_EXYNOS_COMMON_H
 #define __ARCH_ARM_MACH_EXYNOS_COMMON_H
 
+#include <asm/soc.h>
+
 extern struct sys_timer exynos4_timer;
 
 void exynos_init_io(struct map_desc *mach_desc, int size);
@@ -40,16 +42,27 @@ void exynos5_setup_clocks(void);
 
 #ifdef CONFIG_CPU_EXYNOS4210
 void exynos4210_register_clocks(void);
-
 #else
 #define exynos4210_register_clocks()
 #endif
 
 #ifdef CONFIG_SOC_EXYNOS4212
 void exynos4212_register_clocks(void);
-
 #else
 #define exynos4212_register_clocks()
+#endif
+
+extern struct arm_soc_smp_init_ops	exynos4_soc_smp_init_ops;
+extern struct arm_soc_smp_ops		exynos4_soc_smp_ops;
+extern struct arm_soc_desc		exynos4_soc_desc;
+
+extern void exynos4_cpu_die(unsigned int cpu);
+
+#ifdef CONFIG_ARCH_EXYNOS
+extern  int exynos_init(void);
+extern void exynos4_map_io(void);
+extern void exynos4_init_clocks(int xtal);
+extern void exynos4_init_uarts(struct s3c2410_uartcfg *cfg, int no);
 #endif
 
 #endif /* __ARCH_ARM_MACH_EXYNOS_COMMON_H */

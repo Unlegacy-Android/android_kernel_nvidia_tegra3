@@ -23,7 +23,10 @@
 #include <linux/cpumask.h>
 
 #include <asm/hardware/gic.h>
+#include <asm/mach-types.h>
+#include <asm/smp_plat.h>
 #include <asm/smp_scu.h>
+#include <asm/soc.h>
 
 #include <mach/clk.h>
 #include <mach/iomap.h>
@@ -32,6 +35,9 @@
 #include "fuse.h"
 #include "flowctrl.h"
 #include "reset.h"
+#include "common.h"
+
+extern void tegra_secondary_startup(void);
 
 #include "pm.h"
 #include "clock.h"
@@ -117,7 +123,7 @@ static bool is_cpu_powered(unsigned int cpu)
 		return tegra_powergate_is_powered(TEGRA_CPU_POWERGATE_ID(cpu));
 }
 
-void __cpuinit platform_secondary_init(unsigned int cpu)
+static void __cpuinit tegra_secondary_init(unsigned int cpu)
 {
 	gic_secondary_init(0);
 
@@ -202,7 +208,7 @@ fail:
 	return 0;
 }
 
-int boot_secondary(unsigned int cpu, struct task_struct *idle)
+int tegra_boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 	int status;
 
@@ -280,7 +286,7 @@ done:
  * Initialise the CPU possible map early - this describes the CPUs
  * which may be present or become present in the system.
  */
-void __init smp_init_cpus(void)
+static void __init tegra_smp_init_cpus(void)
 {
 	unsigned int ncores = available_cpus();
 	unsigned int i;
@@ -307,7 +313,7 @@ void __init smp_init_cpus(void)
 	set_smp_cross_call(gic_raise_softirq);
 }
 
-void __init platform_smp_prepare_cpus(unsigned int max_cpus)
+static void __init tegra_smp_prepare_cpus(unsigned int max_cpus)
 {
 	/* Always mark the boot CPU as initialized. */
 	cpumask_set_cpu(0, to_cpumask(tegra_cpu_init_bits));
@@ -332,3 +338,18 @@ void __init platform_smp_prepare_cpus(unsigned int max_cpus)
 #endif
 	scu_enable(scu_base);
 }
+
+struct arm_soc_smp_init_ops tegra_soc_smp_init_ops __initdata = {
+	.smp_init_cpus		= tegra_smp_init_cpus,
+	.smp_prepare_cpus	= tegra_smp_prepare_cpus,
+};
+
+struct arm_soc_smp_ops tegra_soc_smp_ops __initdata = {
+	.smp_secondary_init	= tegra_secondary_init,
+	.smp_boot_secondary	= tegra_boot_secondary,
+#ifdef CONFIG_HOTPLUG_CPU
+	.cpu_kill		= tegra_cpu_kill,
+	.cpu_die		= tegra_cpu_die,
+	.cpu_disable		= dummy_cpu_disable,
+#endif
+};
