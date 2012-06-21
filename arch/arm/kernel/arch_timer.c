@@ -23,6 +23,7 @@
 #include <asm/cputype.h>
 #include <asm/localtimer.h>
 #include <asm/arch_timer.h>
+#include <asm/system_info.h>
 #include <asm/sched_clock.h>
 
 static unsigned long arch_timer_rate;

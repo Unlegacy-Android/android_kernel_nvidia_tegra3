@@ -10,14 +10,19 @@ interrupts (one for the secure mode, one for the non-secure mode).
 
 - compatible : Should be "arm,armv7-timer"
 
-- interrupts : One or two interrupts for secure and non-secure mode
+- interrupts : Interrupt list for secure, non-secure, virtual and
+  hypervisor timers, in that order.
 
 - clock-frequency : The frequency of the main counter, in Hz. Optional.
 
 Example:
 
 	timer {
-		compatible = "arm,armv7-timer"";
-		interrupts = <1 13 0xf08 1 14 0xf08>;
+		compatible = "arm,cortex-a15-timer",
+			     "arm,armv7-timer";
+		interrupts = <1 13 0xf08>,
+			     <1 14 0xf08>,
+			     <1 11 0xf08>,
+			     <1 10 0xf08>;
 		clock-frequency = <100000000>;
 	};
