@@ -74,6 +74,7 @@
 #include "pm.h"
 #include "baseband-xmm-power.h"
 #include "wdt-recovery.h"
+#include "common.h"
 
 /* All units are in millicelsius */
 static struct tegra_thermal_data thermal_data = {
@@ -1345,6 +1346,7 @@ static void __init tegra_cardhu_reserve(void)
 
 MACHINE_START(CARDHU, "cardhu")
 	.atag_offset    = 0x100,
+	.soc		= &tegra_soc_desc,
 	.map_io         = tegra_map_common_io,
 	.reserve        = tegra_cardhu_reserve,
 	.init_early	= tegra30_init_early,

@@ -66,6 +66,7 @@
 #include "wakeups-t2.h"
 #include "pm.h"
 #include "tegra2_emc.h"
+#include "common.h"
 
 
 static struct resource ventana_bcm4329_rfkill_resources[] = {
@@ -654,6 +655,7 @@ void __init tegra_ventana_reserve(void)
 
 MACHINE_START(VENTANA, "ventana")
 	.atag_offset	= 0x100,
+	.soc		= &tegra_soc_desc,
 	.map_io         = tegra_map_common_io,
 	.init_early	= tegra20_init_early,
 	.init_irq       = tegra_init_irq,

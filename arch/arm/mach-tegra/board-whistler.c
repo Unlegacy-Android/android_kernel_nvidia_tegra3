@@ -66,6 +66,7 @@
 #include "fuse.h"
 #include "pm.h"
 #include "board-whistler-baseband.h"
+#include "common.h"
 
 #define SZ_3M (SZ_1M + SZ_2M)
 #define SZ_152M (SZ_128M + SZ_16M + SZ_8M)
@@ -546,6 +547,7 @@ void __init tegra_whistler_reserve(void)
 
 MACHINE_START(WHISTLER, "whistler")
 	.atag_offset	= 0x100,
+	.soc		= &tegra_soc_desc,
 	.map_io         = tegra_map_common_io,
 	.init_early	= tegra20_init_early,
 	.init_irq       = tegra_init_irq,
