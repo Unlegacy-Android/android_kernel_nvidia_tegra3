@@ -91,6 +91,7 @@ unsigned int __init r8a7779_get_core_count(void)
 {
 	void __iomem *scu_base = scu_base_addr();
 
+	shmobile_twd_init(&twd_local_timer);
 	return scu_get_core_count(scu_base);
 }
 

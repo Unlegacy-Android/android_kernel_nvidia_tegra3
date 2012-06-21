@@ -43,10 +43,33 @@ static void __init ux500_twd_init(void)
 #define ux500_twd_init()	do { } while(0)
 #endif
 
+#ifdef CONFIG_HAVE_ARM_TWD
+static DEFINE_TWD_LOCAL_TIMER(u5500_twd_local_timer,
+			      U5500_TWD_BASE, IRQ_LOCALTIMER);
+static DEFINE_TWD_LOCAL_TIMER(u8500_twd_local_timer,
+			      U8500_TWD_BASE, IRQ_LOCALTIMER);
+
+static void __init ux500_twd_init(void)
+{
+	struct twd_local_timer *twd_local_timer;
+	int err;
+
+	twd_local_timer = cpu_is_u5500() ? &u5500_twd_local_timer :
+					   &u8500_twd_local_timer;
+
+	err = twd_local_timer_register(twd_local_timer);
+	if (err)
+		pr_err("twd_local_timer_register failed %d\n", err);
+}
+#else
+#define ux500_twd_init()	do { } while(0)
+#endif
+
 static void __init ux500_timer_init(void)
 {
 	void __iomem *mtu_timer_base;
 	void __iomem *prcmu_timer_base;
+	int err;
 
 	if (cpu_is_u5500()) {
 		mtu_timer_base = __io_address(U5500_MTU0_BASE);
