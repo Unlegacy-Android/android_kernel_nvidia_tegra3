@@ -58,8 +58,6 @@ struct nvmap_alloc_handle {
 	__u32 heap_mask;
 	__u32 flags;
 	__u32 align;
-	__u8 kind;
-	__u8 comp_tag;
 };
 
 struct nvmap_map_caller {
