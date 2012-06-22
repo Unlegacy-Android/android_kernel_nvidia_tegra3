@@ -45,7 +45,6 @@
 #include "board.h"
 #include "board-enterprise.h"
 #include "pm.h"
-#include "wakeups-t3.h"
 #include "tegra3_tsensor.h"
 
 #define PMC_CTRL		0x0
@@ -299,6 +298,7 @@ static struct tps80031_rtc_platform_data rtc_data = {
 		.tm_min = 2,
 		.tm_sec = 3,
 	},
+	.msecure_gpio = TEGRA_GPIO_PF7,
 };
 
 int battery_charger_init(void *board_data)
@@ -310,7 +310,6 @@ int battery_charger_init(void *board_data)
 				" charger fails\n", __func__);
 	}
 	gpio_direction_output(TEGRA_GPIO_PF6, 1);
-	tegra_gpio_enable(TEGRA_GPIO_PF6);
 	return 0;
 }
 
@@ -684,8 +683,6 @@ static int __init enterprise_fixed_regulator_init(void)
 	for (i = 0; i < nfixreg_devs; ++i) {
 		struct fixed_voltage_config *fixed_reg_pdata =
 				fixed_regs_devices[i]->dev.platform_data;
-		if (fixed_reg_pdata->gpio < TEGRA_NR_GPIOS)
-			tegra_gpio_enable(fixed_reg_pdata->gpio);
 	}
 	return platform_add_devices(fixed_regs_devices, nfixreg_devs);
 }
@@ -694,14 +691,6 @@ static int __init enterprise_gpio_regulator_init(void)
 {
 	int i, j;
 
-	for (i = 0; i < ARRAY_SIZE(gpio_regs_devices); ++i) {
-		struct gpio_regulator_config *gpio_reg_pdata =
-			gpio_regs_devices[i]->dev.platform_data;
-		for (j = 0; j < gpio_reg_pdata->nr_gpios; ++j) {
-			if (gpio_reg_pdata->gpios[j].gpio < TEGRA_NR_GPIOS)
-				tegra_gpio_enable(gpio_reg_pdata->gpios[j].gpio);
-		}
-	}
 	return platform_add_devices(gpio_regs_devices,
 				    ARRAY_SIZE(gpio_regs_devices));
 }
@@ -746,6 +735,8 @@ int __init enterprise_regulator_init(void)
 		bcharger_pdata.consumer_supplies = NULL;
 		battery_gauge_data.battery_present = 0;
 	}
+
+	tegra_gpio_enable(TEGRA_GPIO_PF7);
 
 	if (board_info.fab < BOARD_FAB_A03) {
 		tps_platform.num_subdevs = ARRAY_SIZE(tps80031_devs_a02);
@@ -839,8 +830,6 @@ static struct platform_device enterprise_bpc_mgmt_device = {
 void __init enterprise_bpc_mgmt_init(void)
 {
 	int int_gpio = gpio_to_irq(TEGRA_BPC_TRIGGER);
-
-	tegra_gpio_enable(TEGRA_BPC_TRIGGER);
 
 #ifdef CONFIG_SMP
 	cpumask_setall(&(bpc_mgmt_platform_data.affinity_mask));

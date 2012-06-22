@@ -86,42 +86,6 @@ static struct tegra_thermal_data thermal_data = {
 #endif
 };
 
-/* !!!TODO: Change for kai (Taken from Ventana) */
-static struct tegra_utmip_config utmi_phy_config[] = {
-	[0] = {
-			.hssync_start_delay = 0,
-			.idle_wait_delay = 17,
-			.elastic_limit = 16,
-			.term_range_adj = 6,
-			.xcvr_setup = 15,
-			.xcvr_setup_offset = 0,
-			.xcvr_use_fuses = 1,
-			.xcvr_lsfslew = 2,
-			.xcvr_lsrslew = 2,
-	},
-	[1] = {
-			.hssync_start_delay = 0,
-			.idle_wait_delay = 17,
-			.elastic_limit = 16,
-			.term_range_adj = 6,
-			.xcvr_setup = 15,
-			.xcvr_setup_offset = 0,
-			.xcvr_use_fuses = 1,
-			.xcvr_lsfslew = 2,
-			.xcvr_lsrslew = 2,
-	},
-	[2] = {
-			.hssync_start_delay = 0,
-			.idle_wait_delay = 17,
-			.elastic_limit = 16,
-			.term_range_adj = 6,
-			.xcvr_setup = 8,
-			.xcvr_setup_offset = 0,
-			.xcvr_use_fuses = 1,
-			.xcvr_lsfslew = 2,
-			.xcvr_lsrslew = 2,
-	},
-};
 
 /* wl128x BT, FM, GPS connectivity chip */
 struct ti_st_plat_data kai_wilink_pdata = {
@@ -148,7 +112,6 @@ static noinline void __init kai_bt_st(void)
 
 	platform_device_register(&wl128x_device);
 	platform_device_register(&btwilink_device);
-	tegra_gpio_enable(TEGRA_GPIO_PU0);
 }
 
 static struct resource kai_bluesleep_resources[] = {
@@ -661,9 +624,6 @@ static int __init kai_touch_init(void)
 {
 	int touch_id;
 
-	tegra_gpio_enable(KAI_TS_ID1);
-	tegra_gpio_enable(KAI_TS_ID2);
-
 	gpio_request(KAI_TS_ID1, "touch-id1");
 	gpio_direction_input(KAI_TS_ID1);
 
@@ -707,57 +667,103 @@ static int __init kai_touch_init(void)
 	return 0;
 }
 
-static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
-	[0] = {
-			.phy_config = &utmi_phy_config[0],
-			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 1,
-			.default_enable = true,
+static struct tegra_usb_platform_data tegra_udc_pdata = {
+	.port_otg = true,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_DEVICE,
+	.u_data.dev = {
+		.vbus_pmu_irq = 0,
+		.vbus_gpio = -1,
+		.charging_supported = false,
+		.remote_wakeup_supported = false,
 	},
-	[1] = {
-			.phy_config = &utmi_phy_config[1],
-			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 1,
-			.default_enable = false,
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 8,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
 	},
 };
 
-static struct tegra_otg_platform_data tegra_otg_pdata = {
+static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
+	.port_otg = true,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.vbus_reg = NULL,
+		.hot_plug = true,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
+	},
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 15,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
+	},
+};
+
+
+static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode	= TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.vbus_reg = NULL,
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
+
+	},
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 8,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
+	},
+};
+
+static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_device = &tegra_ehci1_device,
-	.ehci_pdata = &tegra_ehci_pdata[0],
+	.ehci_pdata = &tegra_ehci1_utmi_pdata,
 };
 
-#ifdef CONFIG_USB_SUPPORT
-static struct usb_phy_plat_data tegra_usb_phy_pdata[] = {
-	[0] = {
-			.instance = 0,
-			.vbus_gpio = -1,
-	},
-	[1] = {
-			.instance = 1,
-			.vbus_gpio = -1,
-	},
-};
-
+#if CONFIG_USB_SUPPORT
 static void kai_usb_init(void)
 {
-	tegra_usb_phy_init(tegra_usb_phy_pdata,
-			ARRAY_SIZE(tegra_usb_phy_pdata));
-
 	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 	platform_device_register(&tegra_otg_device);
 
-	tegra_ehci2_device.dev.platform_data = &tegra_ehci_pdata[1];
+	/* Setup the udc platform data */
+	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+
+	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
 	platform_device_register(&tegra_ehci2_device);
 }
 
 static void kai_modem_init(void)
 {
 	int ret;
-
-	tegra_gpio_enable(TEGRA_GPIO_W_DISABLE);
-	tegra_gpio_enable(TEGRA_GPIO_MODEM_RSVD1);
-	tegra_gpio_enable(TEGRA_GPIO_MODEM_RSVD2);
 
 	ret = gpio_request(TEGRA_GPIO_W_DISABLE, "w_disable_gpio");
 	if (ret < 0)
@@ -804,13 +810,6 @@ static void kai_audio_init(void)
 	}
 }
 
-static void kai_nfc_init(void)
-{
-	tegra_gpio_enable(TEGRA_GPIO_PX0);
-	tegra_gpio_enable(TEGRA_GPIO_PS7);
-	tegra_gpio_enable(TEGRA_GPIO_PR3);
-}
-
 static void __init tegra_kai_init(void)
 {
 	tegra_thermal_init(&thermal_data);
@@ -835,7 +834,6 @@ static void __init tegra_kai_init(void)
 	kai_panel_init();
 	kai_bt_st();
 	kai_tegra_setup_tibluesleep();
-	kai_nfc_init();
 	kai_sensors_init();
 	kai_pins_state_init();
 	kai_emc_init();

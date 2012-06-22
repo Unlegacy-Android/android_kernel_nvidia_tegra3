@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board-whistler-sdhci.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (C) 2011-2012 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -167,6 +167,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data1 = {
 		.embedded_sdio = &embedded_sdio_data1,
 #endif
 		.built_in = 0,
+		.ocr_mask = MMC_OCR_1V8_MASK,
 	},
 #ifndef CONFIG_MMC_EMBEDDED_SDIO
 	.pm_flags = MMC_PM_KEEP_POWER,

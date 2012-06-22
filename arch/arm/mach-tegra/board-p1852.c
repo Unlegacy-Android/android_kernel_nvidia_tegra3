@@ -57,42 +57,6 @@
 #include "gpio-names.h"
 #include "fuse.h"
 
-static struct tegra_utmip_config utmi_phy_config[] = {
-	[0] = {
-			.hssync_start_delay = 0,
-			.idle_wait_delay = 17,
-			.elastic_limit = 16,
-			.term_range_adj = 6,
-			.xcvr_setup = 15,
-			.xcvr_setup_offset = 0,
-			.xcvr_use_fuses = 1,
-			.xcvr_lsfslew = 2,
-			.xcvr_lsrslew = 2,
-	},
-	[1] = {
-			.hssync_start_delay = 0,
-			.idle_wait_delay = 17,
-			.elastic_limit = 16,
-			.term_range_adj = 6,
-			.xcvr_setup = 15,
-			.xcvr_setup_offset = 0,
-			.xcvr_use_fuses = 1,
-			.xcvr_lsfslew = 2,
-			.xcvr_lsrslew = 2,
-	},
-	[2] = {
-			.hssync_start_delay = 0,
-			.idle_wait_delay = 17,
-			.elastic_limit = 16,
-			.term_range_adj = 6,
-			.xcvr_setup = 8,
-			.xcvr_setup_offset = 0,
-			.xcvr_use_fuses = 1,
-			.xcvr_lsfslew = 2,
-			.xcvr_lsrslew = 2,
-	},
-};
-
 static __initdata struct tegra_clk_init_table p1852_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "pll_m",		NULL,		0,		true},
@@ -236,12 +200,14 @@ static void __init p1852_uart_init(void)
 				ARRAY_SIZE(p1852_uart_devices));
 }
 
-static struct tegra_p1852_platform_data p1852_audio_pdata = {
+#if defined(CONFIG_TEGRA_P1852_TDM)
+static struct tegra_p1852_platform_data p1852_audio_tdm_pdata = {
 	.codec_info[0] = {
 		.codec_dai_name = "dit-hifi",
 		.cpu_dai_name = "tegra30-i2s.0",
 		.codec_name = "spdif-dit.0",
 		.name = "tegra-i2s-1",
+		.pcm_driver = "tegra-tdm-pcm-audio",
 		.i2s_format = format_tdm,
 		.master = 1,
 		.num_slots = 4,
@@ -254,6 +220,7 @@ static struct tegra_p1852_platform_data p1852_audio_pdata = {
 		.cpu_dai_name = "tegra30-i2s.4",
 		.codec_name = "spdif-dit.1",
 		.name = "tegra-i2s-2",
+		.pcm_driver = "tegra-tdm-pcm-audio",
 		.i2s_format = format_tdm,
 		.master = 1,
 		.num_slots = 8,
@@ -261,9 +228,29 @@ static struct tegra_p1852_platform_data p1852_audio_pdata = {
 		.tx_mask = 0xff,
 		.rx_mask = 0xff,
 	},
-
 };
-
+#else
+static struct tegra_p1852_platform_data p1852_audio_i2s_pdata = {
+	.codec_info[0] = {
+		.codec_dai_name = "dit-hifi",
+		.cpu_dai_name = "tegra30-i2s.0",
+		.codec_name = "spdif-dit.0",
+		.name = "tegra-i2s-1",
+		.pcm_driver = "tegra-pcm-audio",
+		.i2s_format = format_i2s,
+		.master = 1,
+	},
+	.codec_info[1] = {
+		.codec_dai_name = "dit-hifi",
+		.cpu_dai_name = "tegra30-i2s.4",
+		.codec_name = "spdif-dit.1",
+		.name = "tegra-i2s-2",
+		.pcm_driver = "tegra-pcm-audio",
+		.i2s_format = format_i2s,
+		.master = 0,
+	},
+};
+#endif
 static struct platform_device generic_codec_1 = {
 	.name		= "spdif-dit",
 	.id			= 0,
@@ -277,13 +264,18 @@ static struct platform_device tegra_snd_p1852 = {
 	.name       = "tegra-snd-p1852",
 	.id = 0,
 	.dev    = {
-	    .platform_data = &p1852_audio_pdata,
+#if defined(CONFIG_TEGRA_P1852_TDM)
+		.platform_data = &p1852_audio_tdm_pdata,
+#else
+		.platform_data = &p1852_audio_i2s_pdata,
+#endif
 	},
 };
 
 static void p1852_i2s_audio_init(void)
 {
 	platform_device_register(&tegra_pcm_device);
+	platform_device_register(&tegra_tdm_pcm_device);
 	platform_device_register(&generic_codec_1);
 	platform_device_register(&generic_codec_2);
 	platform_device_register(&tegra_i2s_device0);
@@ -358,56 +350,94 @@ static struct platform_device *p1852_devices[] __initdata = {
 	&tegra_wdt_device
 };
 
-static struct usb_phy_plat_data tegra_usb_phy_pdata[] = {
-	[0] = {
-			.instance = 0,
-			.vbus_gpio = -1,
-			.vbus_reg_supply = NULL,
+static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.vbus_reg = NULL,
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
 	},
-	[1] = {
-			.instance = 1,
-			.vbus_gpio = -1,
-	},
-	[2] = {
-			.instance = 2,
-			.vbus_gpio = -1,
-			.vbus_reg_supply = NULL,
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.idle_wait_delay = 17,
+		.elastic_limit = 16,
+		.term_range_adj = 6,
+		.xcvr_setup = 63,
+		.xcvr_setup_offset = 6,
+		.xcvr_use_fuses = 1,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_use_lsb = 1,
 	},
 };
 
-static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
-	[0] = {
-			.phy_config = &utmi_phy_config[0],
-			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 1,
+static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.vbus_reg = NULL,
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
 	},
-	[1] = {
-			.phy_config = &utmi_phy_config[1],
-			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 1,
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.idle_wait_delay = 17,
+		.elastic_limit = 16,
+		.term_range_adj = 6,
+		.xcvr_setup = 63,
+		.xcvr_setup_offset = 6,
+		.xcvr_use_fuses = 1,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_use_lsb = 1,
 	},
-	[2] = {
-			.phy_config = &utmi_phy_config[2],
-			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 1,
+};
+
+static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.vbus_reg = NULL,
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
+	},
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.idle_wait_delay = 17,
+		.elastic_limit = 16,
+		.term_range_adj = 6,
+		.xcvr_setup = 63,
+		.xcvr_setup_offset = 6,
+		.xcvr_use_fuses = 1,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_use_lsb = 1,
 	},
 };
 
 static void p1852_usb_init(void)
 {
-	/* Need to parse sku info to decide host/device mode */
-	tegra_usb_phy_init(tegra_usb_phy_pdata,
-				ARRAY_SIZE(tegra_usb_phy_pdata));
-
-	tegra_ehci1_device.dev.platform_data = &tegra_ehci_pdata[0];
+	tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
 	platform_device_register(&tegra_ehci1_device);
 
-	tegra_ehci2_device.dev.platform_data = &tegra_ehci_pdata[1];
+	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
 	platform_device_register(&tegra_ehci2_device);
 
-	tegra_ehci3_device.dev.platform_data = &tegra_ehci_pdata[2];
+	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 	platform_device_register(&tegra_ehci3_device);
-
 }
 
 static struct tegra_nor_platform_data p1852_nor_data = {

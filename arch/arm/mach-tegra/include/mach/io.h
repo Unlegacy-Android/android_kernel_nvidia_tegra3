@@ -44,7 +44,7 @@
 #define IOMEM(x)	((void __force __iomem *)(x))
 #endif
 
-#define IO_VIRT_BASE	0xFA000000
+#define IO_VIRT_BASE	0xFB000000
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define IO_PCIE_PHYS	0x80000000

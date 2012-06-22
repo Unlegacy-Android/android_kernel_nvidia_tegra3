@@ -24,7 +24,6 @@
 #include <linux/usb.h>
 #include <linux/usb/otg.h>
 #include <linux/usb/gadget.h>
-#include <linux/usb/hcd.h>
 #include <linux/platform_device.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/clk.h>
@@ -42,7 +41,8 @@
 #define  USB_VBUS_INT_EN	(1 << 8)
 #define  USB_VBUS_INT_STATUS	(1 << 9)
 #define  USB_VBUS_STATUS	(1 << 10)
-#define  USB_INTS		(USB_VBUS_INT_STATUS | USB_ID_INT_STATUS)
+#define  USB_INT_EN		(USB_VBUS_INT_EN | USB_ID_INT_EN | \
+						USB_VBUS_WAKEUP_EN | USB_ID_PIN_WAKEUP_EN)
 
 typedef void (*callback_t)(enum usb_otg_state to,
 				enum usb_otg_state from, void *args);
@@ -55,7 +55,7 @@ typedef void (*callback_t)(enum usb_otg_state to,
 
 struct tegra_otg_data {
 	struct platform_device *pdev;
-	struct tegra_otg_platform_data *pdata;
+	struct tegra_usb_otg_data *pdata;
 	struct usb_phy phy;
 	unsigned long int_status;
 	spinlock_t lock;
@@ -67,9 +67,10 @@ struct tegra_otg_data {
 	bool clk_enabled;
 	callback_t	charger_cb;
 	void	*charger_cb_data;
-
 	bool interrupt_mode;
+	bool builtin_host;
 };
+
 static struct tegra_otg_data *tegra_clone;
 
 static inline unsigned long otg_readl(struct tegra_otg_data *tegra,
@@ -82,20 +83,6 @@ static inline void otg_writel(struct tegra_otg_data *tegra, unsigned long val,
 			      unsigned int offset)
 {
 	writel(val, tegra->regs + offset);
-}
-
-static void tegra_otg_enable_clk(void)
-{
-	if (!tegra_clone->clk_enabled)
-		clk_enable(tegra_clone->clk);
-	tegra_clone->clk_enabled = true;
-}
-
-static void tegra_otg_disable_clk(void)
-{
-	if (tegra_clone->clk_enabled)
-		clk_disable(tegra_clone->clk);
-	tegra_clone->clk_enabled = false;
 }
 
 static const char *tegra_state_name(enum usb_otg_state state)
@@ -121,12 +108,13 @@ static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
 	clk_enable(tegra->clk);
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 	if (en) {
-		val |= (USB_VBUS_INT_EN | USB_VBUS_WAKEUP_EN);
-		val |= (USB_ID_INT_EN | USB_ID_PIN_WAKEUP_EN);
-	} else {
-		val &= ~(USB_VBUS_INT_EN | USB_VBUS_WAKEUP_EN);
-		val &= ~(USB_ID_INT_EN | USB_ID_PIN_WAKEUP_EN);
+		if (tegra->builtin_host)
+			val |= USB_INT_EN;
+		else
+			val = USB_VBUS_INT_EN | USB_VBUS_WAKEUP_EN | USB_ID_PIN_WAKEUP_EN;
 	}
+	else
+		val &= ~USB_INT_EN;
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
 	/* Add delay to make sure register is updated */
 	udelay(1);
@@ -135,70 +123,67 @@ static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
 	return val;
 }
 
-static struct platform_device *
-tegra_usb_otg_host_register(struct platform_device *ehci_device,
-			    struct tegra_ehci_platform_data *pdata)
+static void tegra_start_host(struct tegra_otg_data *tegra)
 {
-	struct platform_device *pdev;
-	void *platform_data;
+	struct tegra_usb_otg_data *pdata = tegra->pdata;
+	struct platform_device *pdev, *ehci_device = pdata->ehci_device;
 	int val;
 
+	DBG("%s(%d) Begin\n", __func__, __LINE__);
+
+	if (tegra->pdev)
+		return;
+
+	/* prepare device structure for registering host*/
 	pdev = platform_device_alloc(ehci_device->name, ehci_device->id);
 	if (!pdev)
-		return NULL;
+		return ;
 
 	val = platform_device_add_resources(pdev, ehci_device->resource,
-					    ehci_device->num_resources);
+			ehci_device->num_resources);
 	if (val)
 		goto error;
 
-	pdev->dev.dma_mask =  ehci_device->dev.dma_mask;
+	pdev->dev.dma_mask = ehci_device->dev.dma_mask;
 	pdev->dev.coherent_dma_mask = ehci_device->dev.coherent_dma_mask;
 
-	platform_data = kmalloc(sizeof(struct tegra_ehci_platform_data),
-		GFP_KERNEL);
-	if (!platform_data)
+	val = platform_device_add_data(pdev, pdata->ehci_pdata,
+			sizeof(struct tegra_usb_platform_data));
+	if (val)
 		goto error;
 
-	memcpy(platform_data, pdata, sizeof(struct tegra_ehci_platform_data));
-	pdev->dev.platform_data = platform_data;
+	tegra->builtin_host = !pdata->ehci_pdata->builtin_host_disabled;
 
 	val = platform_device_add(pdev);
-	if (val)
-		goto error_add;
-
-	return pdev;
-
-error_add:
-	kfree(platform_data);
-error:
-	pr_err("%s: failed to add the host controller device\n", __func__);
-	platform_device_put(pdev);
-	return NULL;
-}
-
-static void tegra_usb_otg_host_unregister(struct platform_device *pdev)
-{
-	kfree(pdev->dev.platform_data);
-	pdev->dev.platform_data = NULL;
-	platform_device_unregister(pdev);
-}
-
-void tegra_start_host(struct tegra_otg_data *tegra)
-{
-	struct tegra_otg_platform_data *pdata = tegra->phy.dev->platform_data;
-	if (!tegra->pdev) {
-		tegra->pdev = tegra_usb_otg_host_register(pdata->ehci_device,
-							  pdata->ehci_pdata);
+	if (val) {
+		pr_err("%s: platform_device_add failed\n", __func__);
+		goto error;
 	}
+
+	tegra->pdev = pdev;
+
+	DBG("%s(%d) End\n", __func__, __LINE__);
+	return;
+
+error:
+	BUG_ON("failed to add the host controller device\n");
+	platform_device_del(pdev);
+	tegra->pdev = NULL;
 }
 
-void tegra_stop_host(struct tegra_otg_data *tegra)
+static void tegra_stop_host(struct tegra_otg_data *tegra)
 {
-	if (tegra->pdev) {
-		tegra_usb_otg_host_unregister(tegra->pdev);
+	struct platform_device *pdev = tegra->pdev;
+
+	DBG("%s(%d) Begin\n", __func__, __LINE__);
+
+	if (pdev) {
+		/* unregister host from otg */
+		platform_device_unregister(pdev);
 		tegra->pdev = NULL;
 	}
+
+	DBG("%s(%d) End\n", __func__, __LINE__);
 }
 
 int register_otg_callback(callback_t cb, void *args)
@@ -217,7 +202,7 @@ static void tegra_change_otg_state(struct tegra_otg_data *tegra,
 	struct usb_otg *otg = tegra->phy.otg;
 	enum usb_otg_state from = otg->phy->state;
 
-	if(!tegra->interrupt_mode){
+	if (!tegra->interrupt_mode){
 		DBG("OTG: Vbus detection is disabled");
 		return;
 	}
@@ -227,8 +212,7 @@ static void tegra_change_otg_state(struct tegra_otg_data *tegra,
 
 	if (to != OTG_STATE_UNDEFINED && from != to) {
 		otg->phy->state = to;
-		dev_info(&tegra->pdev->dev, "%s --> %s\n", tegra_state_name(from),
-					      tegra_state_name(to));
+		pr_info("otg state changed: %s --> %s\n", tegra_state_name(from), tegra_state_name(to));
 
 		if (tegra->charger_cb)
 			tegra->charger_cb(to, from, tegra->charger_cb_data);
@@ -238,11 +222,9 @@ static void tegra_change_otg_state(struct tegra_otg_data *tegra,
 				usb_gadget_vbus_connect(otg->gadget);
 			else if (to == OTG_STATE_A_HOST)
 				tegra_start_host(tegra);
-		} else if (from == OTG_STATE_A_HOST) {
-			if (to == OTG_STATE_A_SUSPEND)
+		} else if (from == OTG_STATE_A_HOST && to == OTG_STATE_A_SUSPEND) {
 				tegra_stop_host(tegra);
-		} else if (from == OTG_STATE_B_PERIPHERAL && otg->gadget) {
-			if (to == OTG_STATE_A_SUSPEND)
+		} else if (from == OTG_STATE_B_PERIPHERAL && otg->gadget && to == OTG_STATE_A_SUSPEND) {
 				usb_gadget_vbus_disconnect(otg->gadget);
 		}
 	}
@@ -258,14 +240,11 @@ static void irq_work(struct work_struct *work)
 	unsigned long flags;
 	unsigned long status;
 
-	clk_enable(tegra->clk);
-
 	spin_lock_irqsave(&tegra->lock, flags);
-
 	status = tegra->int_status;
 
 	/* Debug prints */
-	DBG("%s(%d) status = 0x%x\n", __func__, __LINE__, status);
+	DBG("%s(%d) status = 0x%lx\n", __func__, __LINE__, status);
 	if ((status & USB_ID_INT_STATUS) &&
 			(status & USB_VBUS_INT_STATUS))
 		DBG("%s(%d) got vbus & id interrupt\n", __func__, __LINE__);
@@ -276,7 +255,7 @@ static void irq_work(struct work_struct *work)
 			DBG("%s(%d) got vbus interrupt\n", __func__, __LINE__);
 	}
 
-	if (!(status & USB_ID_STATUS))
+	if (!(status & USB_ID_STATUS) && (status & USB_ID_INT_EN))
 		to = OTG_STATE_A_HOST;
 	else if (status & USB_VBUS_STATUS && from != OTG_STATE_A_HOST)
 		to = OTG_STATE_B_PERIPHERAL;
@@ -285,8 +264,6 @@ static void irq_work(struct work_struct *work)
 
 	spin_unlock_irqrestore(&tegra->lock, flags);
 	tegra_change_otg_state(tegra, to);
-	clk_disable(tegra->clk);
-	tegra_otg_disable_clk();
 }
 
 static irqreturn_t tegra_otg_irq(int irq, void *data)
@@ -296,51 +273,52 @@ static irqreturn_t tegra_otg_irq(int irq, void *data)
 	unsigned long val;
 
 	spin_lock_irqsave(&tegra->lock, flags);
-
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
+	DBG("%s(%d) interrupt val = 0x%lx\n", __func__, __LINE__, val);
+
 	if (val & (USB_VBUS_INT_EN | USB_ID_INT_EN)) {
+		DBG("%s(%d) PHY_WAKEUP = 0x%lx\n", __func__, __LINE__, val);
 		otg_writel(tegra, val, USB_PHY_WAKEUP);
 		if ((val & USB_ID_INT_STATUS) || (val & USB_VBUS_INT_STATUS)) {
 			tegra->int_status = val;
 			schedule_work(&tegra->work);
 		}
 	}
-
 	spin_unlock_irqrestore(&tegra->lock, flags);
 
 	return IRQ_HANDLED;
 }
 
-void tegra_otg_check_vbus_detection(void)
-{
-	tegra_otg_enable_clk();
-}
-EXPORT_SYMBOL(tegra_otg_check_vbus_detection);
 
 static int tegra_otg_set_peripheral(struct usb_otg *otg,
 				struct usb_gadget *gadget)
 {
 	struct tegra_otg_data *tegra;
 	unsigned long val;
+	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
 	tegra = (struct tegra_otg_data *)container_of(otg->phy, struct tegra_otg_data, phy);
 	otg->gadget = gadget;
 
 	val = enable_interrupt(tegra, true);
 
-	if ((val & USB_ID_STATUS) && (val & USB_VBUS_STATUS)) {
+	if ((val & USB_ID_STATUS) && (val & USB_VBUS_STATUS))
 		val |= USB_VBUS_INT_STATUS;
-	} else if (!(val & USB_ID_STATUS)) {
-		val |= USB_ID_INT_STATUS;
-	} else {
-		val &= ~(USB_ID_INT_STATUS | USB_VBUS_INT_STATUS);
+	else if (!(val & USB_ID_STATUS)) {
+		if(!tegra->builtin_host)
+			val &= ~USB_ID_INT_STATUS;
+		else
+			val |= USB_ID_INT_STATUS;
 	}
+	else
+		val &= ~(USB_ID_INT_STATUS | USB_VBUS_INT_STATUS);
 
 	if ((val & USB_ID_INT_STATUS) || (val & USB_VBUS_INT_STATUS)) {
 		tegra->int_status = val;
-		schedule_work (&tegra->work);
+		schedule_work(&tegra->work);
 	}
 
+	DBG("%s(%d) END\n", __func__, __LINE__);
 	return 0;
 }
 
@@ -348,17 +326,18 @@ static int tegra_otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 {
 	struct tegra_otg_data *tegra = container_of(otg->phy, struct tegra_otg_data, phy);
 	unsigned long val;
+	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
 	otg->host = host;
 
 	clk_enable(tegra->clk);
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 	val &= ~(USB_VBUS_INT_STATUS | USB_ID_INT_STATUS);
-
 	val |= (USB_ID_INT_EN | USB_ID_PIN_WAKEUP_EN);
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
 	clk_disable(tegra->clk);
 
+	DBG("%s(%d) END\n", __func__, __LINE__);
 	return 0;
 }
 
@@ -379,12 +358,9 @@ static ssize_t store_host_en(struct device *dev, struct device_attribute *attr,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_otg_data *tegra = platform_get_drvdata(pdev);
 	unsigned long host;
-	int err;
 
-	err = kstrtoul(buf, 10, &host);
-	if (err < 0) {
-		return err;
-	}
+	if (sscanf(buf, "%d", &host) != 1 || host < 0 || host > 1)
+		return -EINVAL;
 
 	if (host) {
 		enable_interrupt(tegra, false);
@@ -402,10 +378,19 @@ static ssize_t store_host_en(struct device *dev, struct device_attribute *attr,
 
 static DEVICE_ATTR(enable_host, 0644, show_host_en, store_host_en);
 
+static int tegra_otg_set_power(struct usb_phy *phy, unsigned mA)
+{
+	return 0;
+}
+
+static int tegra_otg_set_suspend(struct usb_phy *phy, int suspend)
+{
+	return 0;
+}
+
 static int tegra_otg_probe(struct platform_device *pdev)
 {
 	struct tegra_otg_data *tegra;
-	struct tegra_ehci_platform_data *ehci_pdata;
 	struct resource *res;
 	int err;
 
@@ -419,15 +404,10 @@ static int tegra_otg_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	tegra->pdev = pdev;
-	tegra->pdata = pdev->dev.platform_data;
-	ehci_pdata = tegra->pdata->ehci_pdata;
-
 	spin_lock_init(&tegra->lock);
 
 	platform_set_drvdata(pdev, tegra);
 	tegra_clone = tegra;
-	tegra->clk_enabled = false;
 	tegra->interrupt_mode = true;
 
 	tegra->clk = clk_get(&pdev->dev, NULL);
@@ -467,11 +447,13 @@ static int tegra_otg_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to register IRQ\n");
 		goto err_irq;
 	}
-	INIT_WORK (&tegra->work, irq_work);
+	INIT_WORK(&tegra->work, irq_work);
 
 	tegra->phy.label = "tegra-otg";
 	tegra->phy.otg->set_host = tegra_otg_set_host;
 	tegra->phy.otg->set_peripheral = tegra_otg_set_peripheral;
+	tegra->phy.set_suspend = tegra_otg_set_suspend;
+	tegra->phy.set_power = tegra_otg_set_power;
 	tegra->phy.state = OTG_STATE_A_SUSPEND;
 	tegra->phy.otg->phy = &tegra->phy;
 
@@ -481,17 +463,15 @@ static int tegra_otg_probe(struct platform_device *pdev)
 		goto err_clk;
 	}
 
-	if (!ehci_pdata->default_enable)
-		clk_disable(tegra->clk);
-
-	dev_info(&pdev->dev, "otg transceiver registered\n");
-
 	err = device_create_file(&pdev->dev, &dev_attr_enable_host);
 	if (err) {
 		dev_warn(&pdev->dev, "Can't register sysfs attribute\n");
 		goto err_irq;
 	}
 
+	clk_disable(tegra->clk);
+
+	dev_info(&pdev->dev, "otg transceiver registered\n");
 	return 0;
 
 err_irq:
@@ -522,58 +502,63 @@ static int __exit tegra_otg_remove(struct platform_device *pdev)
 static int tegra_otg_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct tegra_otg_data *tegra_otg = platform_get_drvdata(pdev);
-	struct usb_phy *phy = &tegra_otg->phy;
+	struct tegra_otg_data *tegra = platform_get_drvdata(pdev);
+	struct usb_phy *phy = &tegra->phy;
 	enum usb_otg_state from = phy->otg->phy->state;
 	unsigned int val;
 
-	/* store the interupt enable for cable ID and VBUS */
-	clk_enable(tegra_otg->clk);
-	tegra_otg->intr_reg_data = readl(tegra_otg->regs + USB_PHY_WAKEUP);
-	val = tegra_otg->intr_reg_data & ~(USB_ID_INT_EN | USB_VBUS_INT_EN);
-	writel(val, (tegra_otg->regs + USB_PHY_WAKEUP));
-	clk_disable(tegra_otg->clk);
+	DBG("%s(%d) BEGIN state : %s\n", __func__, __LINE__,
+				tegra_state_name(phy->otg->phy->state));
 
-	if (from == OTG_STATE_B_PERIPHERAL && phy->otg->gadget) {
-		usb_gadget_vbus_disconnect(phy->otg->gadget);
-		phy->otg->phy->state = OTG_STATE_A_SUSPEND;
-	}
-	tegra_otg_disable_clk();
+	clk_enable(tegra->clk);
+	val = otg_readl(tegra, USB_PHY_WAKEUP);
+	val &= ~(USB_ID_INT_EN | USB_VBUS_INT_EN);
+	otg_writel(tegra, val, USB_PHY_WAKEUP);
+	clk_disable(tegra->clk);
+
+	/* suspend peripheral mode, host mode is taken care by host driver */
+	if (from == OTG_STATE_B_PERIPHERAL)
+		tegra_change_otg_state(tegra, OTG_STATE_A_SUSPEND);
+
+	DBG("%s(%d) END\n", __func__, __LINE__);
+
 	return 0;
 }
 
 static void tegra_otg_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct tegra_otg_data *tegra_otg = platform_get_drvdata(pdev);
+	struct tegra_otg_data *tegra = platform_get_drvdata(pdev);
+	struct usb_otg *otg = tegra->phy.otg;
 	int val;
 	unsigned long flags;
 
-	tegra_otg_enable_clk();
+	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
-	/* Following delay is intentional.
-	 * It is placed here after observing system hang.
-	 * Root cause is not confirmed.
-	 */
-	msleep(1);
-	/* restore the interupt enable for cable ID and VBUS */
-	clk_enable(tegra_otg->clk);
-	writel(tegra_otg->intr_reg_data, (tegra_otg->regs + USB_PHY_WAKEUP));
-	val = readl(tegra_otg->regs + USB_PHY_WAKEUP);
-	clk_disable(tegra_otg->clk);
+	/* Clear pending interrupts */
+	clk_enable(tegra->clk);
+	val = otg_readl(tegra, USB_PHY_WAKEUP);
+	otg_writel(tegra, val, USB_PHY_WAKEUP);
+	DBG("%s(%d) PHY WAKEUP register : 0x%x\n", __func__, __LINE__, val);
+	clk_disable(tegra->clk);
 
-	/* A device might be connected while CPU is in sleep mode. In this case no interrupt
-	 * will be triggered
-	 * force irq_work to recheck connected devices
-	 */
-	if (!(val & USB_ID_STATUS)) {
-		spin_lock_irqsave(&tegra_otg->lock, flags);
-		tegra_otg->int_status = (val | USB_ID_INT_STATUS );
-		schedule_work(&tegra_otg->work);
-		spin_unlock_irqrestore(&tegra_otg->lock, flags);
-	}
+	/* Handle if host cable is replaced with device during suspend state */
+	if (otg->phy->state == OTG_STATE_A_HOST && (val & USB_ID_STATUS))
+		tegra_change_otg_state(tegra, OTG_STATE_A_SUSPEND);
 
-	return;
+	/* Enable interrupt and call work to set to appropriate state */
+	spin_lock_irqsave(&tegra->lock, flags);
+	if (tegra->builtin_host)
+		tegra->int_status = val | USB_INT_EN;
+	else
+		tegra->int_status = val | USB_VBUS_INT_EN | USB_VBUS_WAKEUP_EN |
+			USB_ID_PIN_WAKEUP_EN;
+
+	spin_unlock_irqrestore(&tegra->lock, flags);
+	irq_work(&tegra->work);
+
+	enable_interrupt(tegra, true);
+	DBG("%s(%d) END\n", __func__, __LINE__);
 }
 
 static const struct dev_pm_ops tegra_otg_pm_ops = {

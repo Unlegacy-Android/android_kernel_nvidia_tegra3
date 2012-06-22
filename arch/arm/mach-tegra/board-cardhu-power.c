@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu-power.c
  *
- * Copyright (C) 2011 NVIDIA, Inc.
+ * Copyright (C) 2011-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -44,7 +44,6 @@
 #include "board.h"
 #include "board-cardhu.h"
 #include "pm.h"
-#include "wakeups-t3.h"
 #include "tegra3_tsensor.h"
 
 #define PMC_CTRL		0x0
@@ -606,12 +605,14 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_pnl1_supply[] = {
 static struct regulator_consumer_supply fixed_reg_cam1_ldo_en_supply[] = {
 	REGULATOR_SUPPLY("vdd_2v8_cam1", NULL),
 	REGULATOR_SUPPLY("avdd", "6-0072"),
+	REGULATOR_SUPPLY("vdd", "6-000e"),
 };
 
 /* CAM2_LDO_EN from AP GPIO KB_ROW7 R07*/
 static struct regulator_consumer_supply fixed_reg_cam2_ldo_en_supply[] = {
 	REGULATOR_SUPPLY("vdd_2v8_cam2", NULL),
 	REGULATOR_SUPPLY("avdd", "7-0072"),
+	REGULATOR_SUPPLY("vdd", "7-000e"),
 };
 
 /* CAM3_LDO_EN from AP GPIO KB_ROW8 S00*/
@@ -651,6 +652,8 @@ static struct regulator_consumer_supply fixed_reg_en_1v8_cam_supply[] = {
 	REGULATOR_SUPPLY("vdd_1v8_cam3", NULL),
 	REGULATOR_SUPPLY("dvdd", "6-0072"),
 	REGULATOR_SUPPLY("dvdd", "7-0072"),
+	REGULATOR_SUPPLY("vdd_i2c", "6-000e"),
+	REGULATOR_SUPPLY("vdd_i2c", "7-000e"),
 	REGULATOR_SUPPLY("vdd_i2c", "2-0033"),
 };
 
@@ -994,7 +997,6 @@ static struct platform_device *fixed_reg_devs_e1291_a04[] = {
 
 int __init cardhu_fixed_regulator_init(void)
 {
-	int i;
 	struct board_info board_info;
 	struct board_info pmu_board_info;
 	struct board_info display_board_info;

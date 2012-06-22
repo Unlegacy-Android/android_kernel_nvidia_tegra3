@@ -129,13 +129,13 @@ enum tegra_dc_feature_option {
 };
 
 struct tegra_dc_feature_entry {
-	int window_index;
-	enum tegra_dc_feature_option option;
+	u32 window_index;
+	u32 option;
 	long arg[ENTRY_SIZE];
 };
 
 struct tegra_dc_feature {
-	unsigned num_entries;
+	u32 num_entries;
 	struct tegra_dc_feature_entry *entries;
 };
 
@@ -145,4 +145,18 @@ int tegra_dc_feature_has_filter(struct tegra_dc *dc, int win_idx, int operation)
 
 long *tegra_dc_parse_feature(struct tegra_dc *dc, int win_idx, int operation);
 void tegra_dc_feature_register(struct tegra_dc *dc);
+
+static inline bool win_use_v_filter(struct tegra_dc *dc,
+	const struct tegra_dc_win *win)
+{
+	return tegra_dc_feature_has_filter(dc, win->idx, HAS_V_FILTER) &&
+		win->h.full != dfixed_const(win->out_h);
+}
+static inline bool win_use_h_filter(struct tegra_dc *dc,
+	const struct tegra_dc_win *win)
+{
+	return tegra_dc_feature_has_filter(dc, win->idx, HAS_H_FILTER) &&
+		win->w.full != dfixed_const(win->out_w);
+}
+
 #endif

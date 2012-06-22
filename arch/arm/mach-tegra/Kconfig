@@ -21,7 +21,6 @@ config ARCH_TEGRA_2x_SOC
 	select ARM_ERRATA_754327
 	select ARM_ERRATA_764369
 	select ARM_ERRATA_742230 if SMP
-	select PL310_ERRATA_727915 if CACHE_L2X0
 	select PL310_ERRATA_769419 if CACHE_L2X0
 	select CPU_FREQ_TABLE if CPU_FREQ
 	select USB_ARCH_HAS_EHCI if USB_SUPPORT
@@ -31,6 +30,7 @@ config ARCH_TEGRA_2x_SOC
 	select PCI_MSI if TEGRA_PCI
 	select CPA
 	select ARM_ERRATA_716044
+	select NVMAP_CACHE_MAINT_BY_SET_WAYS
 	help
 	  Support for NVIDIA Tegra AP20 and T20 processors, based on the
 	  ARM CortexA9MP CPU and the ARM PL310 L2 cache controller
@@ -64,6 +64,7 @@ config ARCH_TEGRA_3x_SOC
 	select CPU_FREQ_TABLE if CPU_FREQ
 	select TEGRA_LP2_ARM_TWD if HAVE_ARM_TWD && !TEGRA_RAIL_OFF_MULTIPLE_CPUS
 	select CPA
+	select NVMAP_CACHE_MAINT_BY_SET_WAYS
 	help
 	  Support for NVIDIA Tegra T30 processor family, based on the
 	  ARM CortexA9MP CPU and the ARM PL310 L2 cache controller
@@ -274,6 +275,14 @@ config TEGRA_FIQ_DEBUGGER
 	select FIQ_DEBUGGER
 	help
 	  Enables the FIQ serial debugger on Tegra
+
+config TEGRA_P1852_TDM
+	bool "Enable TDM mode for P1852 SKUs"
+	default n
+	depends on MACH_P1852
+	help
+		Enables TDM mode driver for P1852 SKUs. If this
+		is not defined then I2S mode is selected by default.
 
 config TEGRA_CARDHU_DSI
 	bool "Support DSI panel on Cardhu"
