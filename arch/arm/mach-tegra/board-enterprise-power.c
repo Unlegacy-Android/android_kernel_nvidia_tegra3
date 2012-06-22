@@ -741,6 +741,9 @@ int __init enterprise_regulator_init(void)
 	pmc_dpd_pads = readl(pmc + PMC_DPD_PADS_ORIDE);
 	writel(pmc_dpd_pads & ~PMC_DPD_PADS_ORIDE_BLINK , pmc + PMC_DPD_PADS_ORIDE);
 
+	/* Setting CPU voltage tolerance in lower side for 3000uV */
+	pdata_smps1_common.tolerance_uv = 3000;
+
 	/* Disable battery charging if power adapter is connected. */
 	if (get_power_supply_type() == POWER_SUPPLY_TYPE_MAINS) {
 		bcharger_pdata.num_consumer_supplies = 0;
