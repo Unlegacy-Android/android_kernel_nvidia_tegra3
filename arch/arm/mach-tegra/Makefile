@@ -37,13 +37,6 @@ endif
 ifeq ($(CONFIG_CPU_IDLE),y)
 obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t3.o
 endif
-ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
-ifeq ($(CONFIG_CPUQUIET_FRAMEWORK),y)
-obj-y                                   += cpuquiet.o
-else
-obj-y                                   += cpu-tegra3.o
-endif
-endif
 endif
 
 obj-y                                   += pinmux.o
@@ -108,6 +101,13 @@ obj-y					+= headsmp.o
 obj-y					+= reset.o
 obj-$(CONFIG_TEGRA_SYSTEM_DMA)		+= dma.o apbio.o
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
+ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
+ifeq ($(CONFIG_TEGRA_CPUQUIET),y)
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpuquiet.o
+else
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpu-tegra3.o
+endif
+endif
 obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
 obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_soctherm.o
