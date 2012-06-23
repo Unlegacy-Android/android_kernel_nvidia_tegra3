@@ -56,6 +56,7 @@
 #include <mach/thermal.h>
 #include <mach/tegra-bb-power.h>
 #include <mach/gpio-tegra.h>
+#include <mach/tegra_fiq_debugger.h>
 
 #include <asm/mach-types.h>
 #include <asm/hardware/gic.h>
@@ -993,6 +994,7 @@ static void __init tegra_enterprise_init(void)
 	enterprise_suspend_init();
 	enterprise_bpc_mgmt_init();
 	tegra_release_bootloader_fb();
+	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 }
 
 static void __init tegra_enterprise_reserve(void)
