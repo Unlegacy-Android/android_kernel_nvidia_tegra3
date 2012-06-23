@@ -443,7 +443,7 @@ static struct resource spi_resource6[] = {
 };
 #endif
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 static struct resource dtv_resource[] = {
 	[0] = {
 		.start  = INT_DTV,
@@ -740,7 +740,7 @@ struct platform_device tegra_nor_device = {
 	},
 };
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 struct platform_device tegra_dtv_device = {
 	.name           = "tegra_dtv",
 	.id             = -1,
