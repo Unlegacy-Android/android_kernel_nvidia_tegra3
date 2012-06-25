@@ -509,7 +509,12 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 
 	if (clock) {
 		/* bring out sd instance from io dpd mode */
-		tegra_io_dpd_disable(tegra_host->dpd);
+		if (tegra_host->dpd) {
+			mutex_lock(&tegra_host->dpd->delay_lock);
+			cancel_delayed_work_sync(&tegra_host->dpd->delay_dpd);
+			tegra_io_dpd_disable(tegra_host->dpd);
+			mutex_unlock(&tegra_host->dpd->delay_lock);
+		}
 
 		if (!tegra_host->clk_enabled) {
 			clk_enable(pltfm_host->clk);
@@ -530,7 +535,18 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 		clk_disable(pltfm_host->clk);
 		tegra_host->clk_enabled = false;
 		/* io dpd enable call for sd instance */
-		tegra_io_dpd_enable(tegra_host->dpd);
+
+		if (tegra_host->dpd) {
+			mutex_lock(&tegra_host->dpd->delay_lock);
+			if (tegra_host->dpd->need_delay_dpd) {
+				schedule_delayed_work(
+					&tegra_host->dpd->delay_dpd,
+					msecs_to_jiffies(100));
+			} else {
+				tegra_io_dpd_enable(tegra_host->dpd);
+			}
+			mutex_unlock(&tegra_host->dpd->delay_lock);
+		}
 	}
 }
 
@@ -863,6 +879,12 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci, pm_message_t state)
 				regulator_disable(tegra_host->vdd_slot_reg);
 			tegra_host->is_rail_enabled = 0;
 		}
+	}
+
+	if (tegra_host->dpd) {
+		mutex_lock(&tegra_host->dpd->delay_lock);
+		tegra_host->dpd->need_delay_dpd = 1;
+		mutex_unlock(&tegra_host->dpd->delay_lock);
 	}
 
 	return 0;
