@@ -542,6 +542,16 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 	DEFAULT_PINMUX(GMI_DQS,         NAND,           NORMAL,     TRISTATE,     OUTPUT),
 };
 
+static __initdata struct tegra_pingroup_config unused_pins_lowpower_e1506[] = {
+	DEFAULT_PINMUX(LCD_PCLK,        DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_WR_N,        DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_HSYNC,       DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_VSYNC,       DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_SCK,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_SDOUT,       DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_SDIN,        DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+};
+
 static __initdata struct tegra_pingroup_config gmi_pins_269[] = {
 	/* Continuation of table unused_pins_lowpower only for PM269 */
 	DEFAULT_PINMUX(GMI_CS0_N,       NAND,           PULL_UP,    NORMAL,       OUTPUT),
@@ -692,6 +702,8 @@ int __init cardhu_pinmux_init(void)
 		if (display_board_info.board_id == BOARD_DISPLAY_E1506) {
 			tegra_pinmux_config_table(cardhu_pinmux_pm269_e1506,
 					ARRAY_SIZE(cardhu_pinmux_pm269_e1506));
+			tegra_pinmux_config_table(unused_pins_lowpower_e1506,
+					ARRAY_SIZE(unused_pins_lowpower_e1506));
 		}
 
 		tegra_pinmux_config_table(unused_pins_lowpower,
