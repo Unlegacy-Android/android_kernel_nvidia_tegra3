@@ -30,6 +30,7 @@
 #include <linux/cpu.h>
 #include <linux/io.h>
 #include <linux/syscore_ops.h>
+#include <linux/cpu_pm.h>
 
 #include <asm/mach/time.h>
 #include <asm/arch_timer.h>
@@ -422,8 +423,7 @@ static int __init tegra_init_late_arch_timer(void)
 	int err = -ENODEV;
 
 	if (arch_timer_initialized) {
-		err = arch_timer_register(arch_timer_resources,
-			ARRAY_SIZE(arch_timer_resources));
+		err = arch_timer_of_register();
 		if (err)
 			pr_err("%s: Unable to register arch timer: %d\n",
 			     __func__, err);

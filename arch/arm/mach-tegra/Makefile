@@ -11,6 +11,7 @@ obj-y                                   += io.o
 obj-y                                   += irq.o
 obj-y                                   += clock.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_clocks.o
+obj-y                                   += clock-common.o
 obj-y                                   += timer.o
 obj-y                                   += timerinfo.o
 ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)

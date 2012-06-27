@@ -100,12 +100,12 @@ struct dvfs {
 
 extern struct dvfs_rail *tegra_cpu_rail;
 
-void tegra2_init_dvfs(void);
-void tegra3_init_dvfs(void);
 int tegra_dvfs_init_rails(struct dvfs_rail *dvfs_rails[], int n);
-int tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d);
 
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
+void tegra2_init_dvfs(void);
+void tegra3_init_dvfs(void);
+int tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d);
 int dvfs_debugfs_init(struct dentry *clk_debugfs_root);
 int tegra_dvfs_late_init(void);
 void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n);
