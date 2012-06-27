@@ -27,6 +27,7 @@
 #include <trace/events/nvhost.h>
 #include "nvhost_channel.h"
 #include "nvhost_hwctx.h"
+#include "chip_support.h"
 
 /*** Wait list management ***/
 
@@ -353,6 +354,7 @@ int nvhost_intr_init(struct nvhost_intr *intr, u32 irq_gen, u32 irq_sync)
 	intr_op().init_host_sync(intr);
 	intr->host_general_irq = irq_gen;
 	intr->host_general_irq_requested = false;
+	intr_op().request_host_general_irq(intr);
 
 	for (id = 0, syncpt = intr->syncpt;
 	     id < nb_pts;

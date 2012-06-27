@@ -10,13 +10,32 @@ obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += common-t3.o
 obj-y                                   += io.o
 obj-y                                   += irq.o
 obj-y                                   += clock.o
+obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_clocks.o
 obj-y                                   += timer.o
 obj-y                                   += timerinfo.o
 ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
-obj-y                                   += timer-t2.o
+obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t2.o
 else
-obj-y                                   += timer-t3.o
+obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t3.o
 endif
+
+ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
+obj-y                                   += common-t2.o
+obj-y                                   += pm-t2.o
+obj-y                                   += sleep-t2.o
+obj-y                                   += timer-t2.o
+obj-y                                   += wakeups-t2.o
+else
+obj-y                                   += common-t3.o
+obj-y                                   += pm-t3.o
+obj-y                                   += sleep-t3.o
+obj-y                                   += timer-t3.o
+obj-y                                   += wakeups-t3.o
+ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
+obj-y                                   += cpu-tegra3.o
+endif
+endif
+
 obj-y                                   += pinmux.o
 obj-y                                   += delay.o
 obj-y                                   += pm.o
@@ -42,9 +61,10 @@ obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)       += arb_sema.o
 obj-y                                   += powergate.o
 ifeq ($(CONFIG_TEGRA_SILICON_PLATFORM),y)
 obj-y                                   += dvfs.o
+obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_dvfs.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += latency_allowance.o
+obj-y                                   += latency_allowance.o
 obj-$(CONFIG_TEGRA_EDP_LIMITS)          += edp.o
 endif
 ifeq ($(CONFIG_TEGRA_SILICON_PLATFORM),y)
@@ -62,6 +82,7 @@ obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pm-t3.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += pinmux-tegra20-tables.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pinmux-tegra30-tables.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += board-dt-tegra30.o
+obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += pinmux-t11-tables.o
 obj-$(CONFIG_HOTPLUG_CPU)               += hotplug.o
 obj-y					+= pmc.o
 obj-y					+= flowctrl.o
@@ -74,9 +95,6 @@ obj-$(CONFIG_SMP)			+= platsmp.o headsmp.o
 obj-$(CONFIG_SMP)                       += reset.o
 obj-$(CONFIG_TEGRA_SYSTEM_DMA)		+= dma.o apbio.o
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
-ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpu-tegra3.o
-endif
 obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
 obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
 ifeq ($(CONFIG_CPU_IDLE),y)
@@ -101,6 +119,7 @@ endif
 obj-$(CONFIG_SENSORS_TEGRA_TSENSOR)     += tegra3_tsensor.o
 obj-$(CONFIG_TEGRA_DYNAMIC_PWRDET)      += powerdetect.o
 obj-$(CONFIG_TEGRA_USB_MODEM_POWER)     += tegra_usb_modem_power.o
+obj-$(CONFIG_ARCH_TEGRA_HAS_CL_DVFS)    += tegra_cl_dvfs.o
 
 obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
 obj-$(CONFIG_MACH_HARMONY)              += board-harmony.o
@@ -146,6 +165,8 @@ obj-${CONFIG_MACH_CURACAO}              += board-curacao.o
 obj-${CONFIG_MACH_CURACAO}              += board-curacao-panel.o
 obj-${CONFIG_MACH_CURACAO}              += board-curacao-pinmux.o
 obj-${CONFIG_MACH_CURACAO}              += board-curacao-power.o
+obj-${CONFIG_MACH_CURACAO}              += board-curacao-sdhci.o
+obj-${CONFIG_MACH_CURACAO}              += board-curacao-sensors.o
 
 obj-${CONFIG_MACH_WHISTLER}             += board-whistler.o
 obj-${CONFIG_MACH_WHISTLER}             += board-whistler-pinmux.o

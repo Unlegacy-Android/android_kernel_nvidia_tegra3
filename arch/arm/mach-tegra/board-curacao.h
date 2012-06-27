@@ -22,7 +22,20 @@
 
 int curacao_regulator_init(void);
 int curacao_suspend_init(void);
+
+int curacao_sdhci_init(void);
 int curacao_pinmux_init(void);
 int curacao_panel_init(void);
+
+#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
+#define CURACAO_BOARD_NAME "curacao_sim"
+int __init curacao_power_off_init(void);
+#else
+#define CURACAO_BOARD_NAME "curacao"
+static inline int curacao_power_off_init(void)
+{
+	return 0;
+}
+#endif
 
 #endif

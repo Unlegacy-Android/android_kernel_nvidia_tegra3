@@ -84,6 +84,7 @@ ENTRY(tegra_resume)
 	str	r1, [r2]
 #endif
 
+#ifdef CONFIG_HAVE_ARM_SCU
 	/* enable SCU */
 	mov32	r0, TEGRA_ARM_PERIF_BASE
 	ldr	r1, [r0]
@@ -94,6 +95,7 @@ ENTRY(tegra_resume)
 	orr	r1, r1, #(1 << 6)	@ Enable SCU standby.
 #endif
 	str	r1, [r0]
+#endif
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 	/* wake up (should have specified args?) */
@@ -206,6 +208,17 @@ ENTRY(__tegra_cpu_reset_handler_start)
 	.align L1_CACHE_SHIFT
 ENTRY(__tegra_cpu_reset_handler)
 
+/* DO NOT put any code before the !defined(CONFIG_ARM_SAVE_DEBUG_CONTEXT)
+   block below. It must be the first thing in this subroutine. */
+
+#if !defined(CONFIG_ARM_SAVE_DEBUG_CONTEXT) || DEBUG_CPU_RESET_HANDLER
+	/* If Debug Architecture v7.1 or later, unlock the OS lock. */
+	mrc	p15, 0, r0, c0, c1, 2		@ ID_DFR0
+	and	r0, r0, #0xF			@ coprocessor debug model
+	cmp	r0, #5				@ debug arch >= v7.1?
+	movge	r0, #0				@ yes, unlock debug
+	mcrge	p14, 0, r0, c1, c0, 4		@ DBGOSLAR
+#endif
 #if DEBUG_CPU_RESET_HANDLER
 	b	.
 #endif

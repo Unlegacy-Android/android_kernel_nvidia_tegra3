@@ -188,6 +188,31 @@
 #define DC_COM_GPIO_DEBOUNCE_COUNTER		0x328
 #define DC_COM_CRC_CHECKSUM_LATCHED		0x329
 
+#define DC_COM_CMU_CSC_KRR			0x32a
+#define DC_COM_CMU_CSC_KGR			0x32b
+#define DC_COM_CMU_CSC_KBR			0x32c
+#define DC_COM_CMU_CSC_KRG			0x32d
+#define DC_COM_CMU_CSC_KGG			0x32e
+#define DC_COM_CMU_CSC_KBG			0x32f
+#define DC_COM_CMU_CSC_KRB			0x330
+#define DC_COM_CMU_CSC_KGB			0x331
+#define DC_COM_CMU_CSC_KBB			0x332
+#define DC_COM_CMU_LUT1				0x336
+#define  LUT1_ADDR(x)			(((x) & 0x0ff) << 0)
+#define  LUT1_DATA(x)			(((x) & 0xfff) << 16)
+#define  LUT1_READ_DATA(x)		(((x) >> 16) & 0xfff)
+#define DC_COM_CMU_LUT2				0x337
+#define  LUT2_ADDR(x)			(((x) & 0x3ff) << 0)
+#define  LUT2_DATA(x)			(((x) & 0x0ff) << 16)
+#define  LUT2_READ_DATA(x)		(((x) >> 16) & 0x0ff)
+#define DC_COM_CMU_LUT1_READ			0x338
+#define  LUT1_READ_ADDR(x)		(((x) & 0x0ff) << 8)
+#define  LUT1_READ_EN			(1 << 0)
+#define DC_COM_CMU_LUT2_READ			0x339
+#define  LUT2_READ_ADDR(x)		(((x) & 0x3ff) << 8)
+#define  LUT2_READ_EN			(1 << 0)
+
+
 #define DC_DISP_DISP_SIGNAL_OPTIONS0		0x400
 #define  H_PULSE_0_ENABLE		(1 << 8)
 #define  H_PULSE_1_ENABLE		(1 << 10)
@@ -315,10 +340,11 @@
 #define  BASE_COLOR_SIZE565		(6 << 0)
 #define  BASE_COLOR_SIZE332		(7 << 0)
 #define  BASE_COLOR_SIZE888		(8 << 0)
-
 #define  DITHER_CONTROL_DISABLE		(0 << 8)
 #define  DITHER_CONTROL_ORDERED		(2 << 8)
 #define  DITHER_CONTROL_ERRDIFF		(3 << 8)
+#define  CMU_DISABLE			(0 << 20)
+#define  CMU_ENABLE			(1 << 20)
 
 #define DC_DISP_SHIFT_CLOCK_OPTIONS		0x431
 #define DC_DISP_DATA_ENABLE_OPTIONS		0x432
@@ -430,10 +456,70 @@
 #define DC_WIN_LINE_STRIDE			0x70a
 #define  LINE_STRIDE(x)		(x)
 #define  UV_LINE_STRIDE(x)	(((x) & 0xffff) << 16)
+
+#define DC_WINBUF_BLEND_LAYER_CONTROL		0x716
+#define  WIN_K1(x)			(((x) & 0xff) << 8)
+#define  WIN_K2(x)			(((x) & 0xff) << 16)
+#define  WIN_BLEND_ENABLE		(0 << 24)
+#define  WIN_BLEND_BYPASS		(1 << 24)
+
+#define DC_WINBUF_BLEND_MATCH_SELECT		0x717
+#define  WIN_BLEND_FACT_SRC_COLOR_MATCH_SEL_ZERO \
+					(0 << 0)
+#define  WIN_BLEND_FACT_SRC_COLOR_MATCH_SEL_ONE \
+					(1 << 0)
+#define  WIN_BLEND_FACT_SRC_COLOR_MATCH_SEL_K1 \
+					(2 << 0)
+#define  WIN_BLEND_FACT_SRC_COLOR_MATCH_SEL_K1_TIMES_DST \
+					(3 << 0)
+#define  WIN_BLEND_FACT_SRC_COLOR_MATCH_SEL_NEG_K1_TIMES_DST \
+					(4 << 0)
+#define  WIN_BLEND_FACT_SRC_COLOR_MATCH_SEL_K1_TIMES_SRC \
+					(5 << 0)
+#define  WIN_BLEND_FACT_DST_COLOR_MATCH_SEL_ZERO \
+					(0 << 4)
+#define  WIN_BLEND_FACT_DST_COLOR_MATCH_SEL_ONE \
+					(1 << 4)
+#define  WIN_BLEND_FACT_DST_COLOR_MATCH_SEL_K1 \
+					(2 << 4)
+#define  WIN_BLEND_FACT_DST_COLOR_MATCH_SEL_K2 \
+					(3 << 4)
+#define  WIN_BLEND_FACT_DST_COLOR_MATCH_SEL_K1_TIMES_DST \
+					(4 << 4)
+#define  WIN_BLEND_FACT_DST_COLOR_MATCH_SEL_NEG_K1_TIMES_DST \
+					(5 << 4)
+#define  WIN_BLEND_FACT_DST_COLOR_MATCH_SEL_NEG_K1_TIMES_SRC \
+					(6 << 4)
+#define  WIN_BLEND_FACT_DST_COLOR_MATCH_SEL_NEG_K1 \
+					(7 << 4)
+#define  WIN_BLEND_FACT_SRC_ALPHA_MATCH_SEL_ZERO \
+					(0 << 8)
+#define  WIN_BLEND_FACT_SRC_ALPHA_MATCH_SEL_K1 \
+					(1 << 8)
+#define  WIN_BLEND_FACT_SRC_ALPHA_MATCH_SEL_K2 \
+					(2 << 8)
+#define  WIN_BLEND_FACT_DST_ALPHA_MATCH_SEL_ZERO \
+					(0 << 12)
+#define  WIN_BLEND_FACT_DST_ALPHA_MATCH_SEL_ONE \
+					(1 << 12)
+#define  WIN_BLEND_FACT_DST_ALPHA_MATCH_SEL_NEG_K1_TIMES_SRC \
+					(2 << 12)
+#define  WIN_BLEND_FACT_DST_ALPHA_MATCH_SEL_K2 \
+					(3 << 12)
+
+#define DC_WINBUF_BLEND_ALPHA_1BIT		0x719
+#define  WIN_ALPHA_1BIT_WEIGHT0(x)	(((x) & 0xff) << 0)
+#define  WIN_ALPHA_1BIT_WEIGHT1(x)	(((x) & 0xff) << 8)
+
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #define  GET_LINE_STRIDE(x)	((x) & 0xffff)
 #define  GET_UV_LINE_STRIDE(x)	(((x) >> 16) & 0xffff)
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #define DC_WIN_BUF_STRIDE			0x70b
 #define DC_WIN_UV_BUF_STRIDE			0x70c
+#endif
 #define DC_WIN_BUFFER_ADDR_MODE			0x70d
 #define  DC_WIN_BUFFER_ADDR_MODE_LINEAR		(0 << 0)
 #define  DC_WIN_BUFFER_ADDR_MODE_LINEAR_UV	(0 << 16)
@@ -488,16 +574,23 @@
 #define  SD_ENABLE_NORMAL		(1 << 0)
 #define  SD_ENABLE_ONESHOT		(2 << 0)
 #define  SD_USE_VID_LUMA		(1 << 2)
+#define  SD_BIN_WIDTH(x)		(((x) & 0x3) << 3)
 #define  SD_BIN_WIDTH_ONE		(0 << 3)
 #define  SD_BIN_WIDTH_TWO		(1 << 3)
 #define  SD_BIN_WIDTH_FOUR		(2 << 3)
 #define  SD_BIN_WIDTH_EIGHT		(3 << 3)
 #define  SD_BIN_WIDTH_MASK		(3 << 3)
-#define  SD_AGGRESSIVENESS(x)	   	(((x) & 0x7) << 5)
+#define  SD_AGGRESSIVENESS(x)		(((x) & 0x7) << 5)
 #define  SD_HW_UPDATE_DLY(x)		(((x) & 0x3) << 8)
 #define  SD_ONESHOT_ENABLE		(1 << 10)
 #define  SD_CORRECTION_MODE_AUTO	(0 << 11)
 #define  SD_CORRECTION_MODE_MAN		(1 << 11)
+#define  SD_K_LIMIT_ENABLE		(1 << 12)
+#define  SD_WINDOW_ENABLE		(1 << 13)
+#define  SD_SOFT_CLIPPING_ENABLE	(1 << 14)
+#define  SD_SMOOTH_K_ENABLE		(1 << 15)
+#define  SD_VSYNC			(0 << 28)
+#define  SD_VPULSE2			(1 << 28)
 
 #define NUM_BIN_WIDTHS 4
 #define STEPS_PER_AGG_LVL 64
@@ -544,7 +637,7 @@
 #define DC_DISP_SD_BL_CONTROL			0x4dc
 #define  SD_BLC_MODE_MAN		(0 << 0)
 #define  SD_BLC_MODE_AUTO		(1 << 1)
-#define  SD_BLC_BRIGHTNESS(val)	 	(((val) & (0xff << 8)) >> 8)
+#define  SD_BLC_BRIGHTNESS(val)		(((val) & (0xff << 8)) >> 8)
 
 #define DC_DISP_SD_HW_K_VALUES			0x4dd
 #define  SD_HW_K_R(val)			(((val) & (0x3ff << 0)) >> 0)
@@ -556,8 +649,25 @@
 #define  SD_MAN_K_G(x)			(((x) & 0x3ff) << 10)
 #define  SD_MAN_K_B(x)			(((x) & 0x3ff) << 20)
 
+#define DC_DISP_SD_K_LIMIT			0x4df
+#define  SD_K_LIMIT(x)			(((x) & 0x3ff) << 0)
+
+#define DC_DISP_SD_WINDOW_POSITION		0x4e0
+#define  SD_WIN_H_POSITION(x)		(((x) & 0x1fff) << 0)
+#define  SD_WIN_V_POSITION(x)		(((x) & 0x1fff) << 16)
+
+#define DC_DISP_SD_WINDOW_SIZE			0x4e1
+#define  SD_WIN_H_SIZE(x)		(((x) & 0x1fff) << 0)
+#define  SD_WIN_V_SIZE(x)		(((x) & 0x1fff) << 16)
+
+#define DC_DISP_SD_SOFT_CLIPPING		0x4e2
+#define  SD_SOFT_CLIPPING_THRESHOLD(x)	(((x) & 0xff) << 0)
+#define  SD_SOFT_CLIPPING_RECIP(x)	(((x) & 0xffff) << 16)
+
+#define DC_DISP_SD_SMOOTH_K			0x4e3
+#define  SD_SMOOTH_K_INCR(x)		(((x) & 0x3fff) << 0)
+
 #define  NUM_AGG_PRI_LVLS		4
 #define  SD_AGG_PRI_LVL(x)		((x) >> 3)
 #define  SD_GET_AGG(x)			((x) & 0x7)
-
 #endif

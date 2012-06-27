@@ -46,11 +46,16 @@
 #include "t30/t30.h"
 #include "bus_client.h"
 #include "nvhost_acm.h"
-#include <linux/nvmap.h>
 #include "nvhost_channel.h"
 #include "nvhost_job.h"
+#include "t20/t20.h"
+#include "t30/t30.h"
+#include "t114/t114.h"
+#include "nvhost_memmgr.h"
+#include "chip_support.h"
 
 #define DRIVER_NAME		"host1x"
+#define HOST_DEFAULT_RATE	108000000
 
 static unsigned int register_sets;
 
@@ -357,8 +362,10 @@ fail:
 
 struct nvhost_device *nvhost_get_device(char *name)
 {
-	BUG_ON(!host_device_op().get_nvhost_device);
-	return host_device_op().get_nvhost_device(name);
+	if (host_device_op().get_nvhost_device)
+		return host_device_op().get_nvhost_device(name);
+	pr_warn("%s: nvhost device %s does not exist\n", __func__, name);
+	return NULL;
 }
 
 struct nvhost_channel *nvhost_alloc_channel(int index)
@@ -405,6 +412,41 @@ static struct resource nvhost_resources[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	{
+		.start = TEGRA_DISPLAY_BASE,
+		.end = TEGRA_DISPLAY_BASE + TEGRA_DISPLAY_SIZE - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	{
+		.start = TEGRA_DISPLAY2_BASE,
+		.end = TEGRA_DISPLAY2_BASE + TEGRA_DISPLAY2_SIZE - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	{
+		.start = TEGRA_VI_BASE,
+		.end = TEGRA_VI_BASE + TEGRA_VI_SIZE - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	{
+		.start = TEGRA_ISP_BASE,
+		.end = TEGRA_ISP_BASE + TEGRA_ISP_SIZE - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	{
+		.start = TEGRA_MPE_BASE,
+		.end = TEGRA_MPE_BASE + TEGRA_MPE_SIZE - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	{
+		.start = TEGRA_MSENC_BASE,
+		.end = TEGRA_MSENC_BASE + TEGRA_MSENC_SIZE - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	{
+		.start = TEGRA_TSEC_BASE,
+		.end = TEGRA_TSEC_BASE + TEGRA_TSEC_SIZE - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	{
 		.start = INT_SYNCPT_THRESH_BASE,
 		.end = INT_SYNCPT_THRESH_BASE + INT_SYNCPT_THRESH_NR - 1,
 		.flags = IORESOURCE_IRQ,
@@ -421,7 +463,7 @@ struct nvhost_device tegra_grhost_device = {
 	.id = -1,
 	.resource = nvhost_resources,
 	.num_resources = ARRAY_SIZE(nvhost_resources),
-	.clocks = {{"host1x", UINT_MAX}, {} },
+	.clocks = {{"host1x", HOST_DEFAULT_RATE}, {} },
 	NVHOST_MODULE_NO_POWERGATE_IDS,
 };
 
@@ -445,13 +487,6 @@ static int __devinit nvhost_probe(struct nvhost_device *dev,
 	if (!host)
 		return -ENOMEM;
 
-	host->nvmap = nvmap_create_client(nvmap_dev, "nvhost");
-	if (!host->nvmap) {
-		dev_err(&dev->dev, "unable to create nvmap client\n");
-		err = -EIO;
-		goto fail;
-	}
-
 	host->reg_mem = request_mem_region(regs->start,
 					resource_size(regs), dev->name);
 	if (!host->reg_mem) {
@@ -470,6 +505,13 @@ static int __devinit nvhost_probe(struct nvhost_device *dev,
 	err = nvhost_alloc_resources(host);
 	if (err) {
 		dev_err(&dev->dev, "failed to init chip support\n");
+		goto fail;
+	}
+
+	host->memmgr = mem_op().alloc_mgr();
+	if (!host->memmgr) {
+		dev_err(&dev->dev, "unable to create nvmap client\n");
+		err = -EIO;
 		goto fail;
 	}
 
@@ -510,8 +552,8 @@ static int __devinit nvhost_probe(struct nvhost_device *dev,
 
 fail:
 	nvhost_free_resources(host);
-	if (host->nvmap)
-		nvmap_client_put(host->nvmap);
+	if (host->memmgr)
+		mem_op().put_mgr(host->memmgr);
 	kfree(host);
 	return err;
 }

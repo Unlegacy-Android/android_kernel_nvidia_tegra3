@@ -56,6 +56,7 @@
 #include "devices.h"
 #include "gpio-names.h"
 #include "fuse.h"
+#include "common.h"
 
 static __initdata struct tegra_clk_init_table p1852_clk_init_table[] = {
 	/* name		parent		rate		enabled */
@@ -494,7 +495,8 @@ static void __init tegra_p1852_reserve(void)
 }
 
 MACHINE_START(P1852, "p1852")
-	.boot_params    = 0x80000100,
+	.atag_offset    = 0x100,
+	.soc		= &tegra_soc_desc,
 	.init_irq       = tegra_init_irq,
 	.init_early     = tegra_init_early,
 	.init_machine   = tegra_p1852_init,

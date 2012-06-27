@@ -96,6 +96,7 @@ static const char *tegra_revision_name[TEGRA_REVISION_MAX] = {
 	[TEGRA_REVISION_A03p]    = "A03 prime",
 	[TEGRA_REVISION_A04]     = "A04",
 	[TEGRA_REVISION_A04p]    = "A04 prime",
+	[TEGRA_REVISION_QT]      = "QT",
 };
 
 u32 tegra_fuse_readl(unsigned long offset)
@@ -210,7 +211,7 @@ unsigned long long tegra_chip_uid(void)
 
 		Field    Bits  Position Data
 		-------  ----  -------- ----------------------------------------
-		CID        4     60     Chip id (encoded as zero for T30)
+		CID        4     60     Chip id
 		VENDOR     4     56     Vendor code
 		FAB        6     50     FAB code
 		LOT       26     24     Lot code (5-digit base-36-coded-decimal,
@@ -229,6 +230,10 @@ unsigned long long tegra_chip_uid(void)
 	switch (reg) {
 	case TEGRA_CHIPID_TEGRA3:
 		cid = 0;
+		break;
+
+	case TEGRA_CHIPID_TEGRA11:
+		cid = 1;
 		break;
 
 	default:
@@ -286,6 +291,7 @@ int tegra_gpu_register_sets(void)
 #endif
 }
 
+#if defined(CONFIG_TEGRA_SILICON_PLATFORM)
 struct chip_revision {
 	enum tegra_chipid	chipid;
 	unsigned int		major;
@@ -302,15 +308,17 @@ struct chip_revision {
 	.revision = TEGRA_REVISION_##rev }
 
 static struct chip_revision tegra_chip_revisions[] = {
-	CHIP_REVISION(TEGRA2, 1, 2, 0,   A02),
-	CHIP_REVISION(TEGRA2, 1, 3, 0,   A03),
-	CHIP_REVISION(TEGRA2, 1, 3, 'p', A03p),
-	CHIP_REVISION(TEGRA2, 1, 4, 0,   A04),
-	CHIP_REVISION(TEGRA2, 1, 4, 'p', A04p),
-	CHIP_REVISION(TEGRA3, 1, 1, 0,   A01),
-	CHIP_REVISION(TEGRA3, 1, 2, 0,   A02),
-	CHIP_REVISION(TEGRA3, 1, 3, 0,   A03),
+	CHIP_REVISION(TEGRA2,  1, 2, 0,   A02),
+	CHIP_REVISION(TEGRA2,  1, 3, 0,   A03),
+	CHIP_REVISION(TEGRA2,  1, 3, 'p', A03p),
+	CHIP_REVISION(TEGRA2,  1, 4, 0,   A04),
+	CHIP_REVISION(TEGRA2,  1, 4, 'p', A04p),
+	CHIP_REVISION(TEGRA3,  1, 1, 0,   A01),
+	CHIP_REVISION(TEGRA3,  1, 2, 0,   A02),
+	CHIP_REVISION(TEGRA3,  1, 3, 0,   A03),
+	CHIP_REVISION(TEGRA11, 1, 0, 0,   A01),
 };
+#endif
 
 static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
 {
@@ -335,6 +343,17 @@ static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
 		revision = tegra_chip_revisions[i].revision;
 		break;
 	}
+
+#elif defined(CONFIG_TEGRA_FPGA_PLATFORM)
+	if (id->major == 0) {
+		if (id->minor == 1)
+			revision = TEGRA_REVISION_A01;
+		else
+			revision = TEGRA_REVISION_QT;
+	}
+#elif defined(CONFIG_TEGRA_SIMULATION_PLATFORM)
+	if ((id->chipid & 0xff) == TEGRA_CHIPID_TEGRA11)
+		revision = TEGRA_REVISION_A01;
 #endif
 
 	return revision;
@@ -388,6 +407,19 @@ enum tegra_revision tegra_get_revision(void)
 
 	return tegra_id.revision;
 }
+
+#ifndef CONFIG_TEGRA_SILICON_PLATFORM
+void tegra_get_netlist_revision(u32 *netlist, u32* patchid)
+{
+	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN) {
+		/* Boot loader did not pass a valid chip ID.
+		 * Get it from hardware */
+		tegra_get_tegraid_from_hw();
+	}
+	*netlist = tegra_id.netlist;
+	*patchid = tegra_id.patch & 0xF;
+}
+#endif
 
 static int get_chip_id(char *val, const struct kernel_param *kp)
 {

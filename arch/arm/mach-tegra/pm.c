@@ -57,6 +57,7 @@
 #include <asm/pgtable.h>
 #include <asm/tlbflush.h>
 #include <asm/suspend.h>
+#include <asm/smp_plat.h>
 
 #include <mach/clk.h>
 #include <mach/iomap.h>
@@ -66,6 +67,7 @@
 
 #include "board.h"
 #include "clock.h"
+#include "common.h"
 #include "cpuidle.h"
 #include "fuse.h"
 #include "gic.h"
@@ -320,6 +322,9 @@ static void restore_cpu_complex(u32 mode)
 
 	BUG_ON(cpu != 0);
 
+#ifdef CONFIG_SMP
+	cpu = cpu_logical_map(cpu);
+#endif
 	/* Is CPU complex already running on PLLX? */
 	reg = readl(clk_rst + CLK_RESET_CCLK_BURST);
 	policy = (reg >> CLK_RESET_CCLK_BURST_POLICY_SHIFT) & 0xF;
@@ -402,6 +407,9 @@ static void suspend_cpu_complex(u32 mode)
 
 	BUG_ON(cpu != 0);
 
+#ifdef CONFIG_SMP
+	cpu = cpu_logical_map(cpu);
+#endif
 	/* switch coresite to clk_m, save off original source */
 	tegra_sctx.clk_csite_src = readl(clk_rst + CLK_RESET_SOURCE_CSITE);
 	writel(3<<30, clk_rst + CLK_RESET_SOURCE_CSITE);
@@ -439,13 +447,7 @@ static void suspend_cpu_complex(u32 mode)
 		flowctrl_writel(reg, FLOW_CTRL_CPU_CSR(i));
 	}
 
-	tegra_gic_cpu_disable();
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	/* Tegra3 enters LPx states via WFI - do not propagate legacy IRQs
-	   to CPU core to avoid fall through WFI (IRQ-to-flow controller wake
-	   path is not affected). */
-	tegra_gic_pass_through_disable();
-#endif
+	tegra_gic_cpu_disable(true);
 }
 
 void tegra_clear_cpu_in_lp2(int cpu)
@@ -848,9 +850,10 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 			reg &= (~PMC_SCRATCH4_WAKE_CLUSTER_MASK);
 		pmc_32kwritel(reg, PMC_SCRATCH4);
 #endif
+		tegra_tsc_suspend();
 		tegra_lp0_suspend_mc();
 		tegra_cpu_reset_handler_save();
-
+		tegra_tsc_wait_for_suspend();
 	}
 	else if (mode == TEGRA_SUSPEND_LP1)
 		*iram_cpu_lp1_mask = 1;
@@ -869,8 +872,10 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	tegra_init_cache(true);
 
 	if (mode == TEGRA_SUSPEND_LP0) {
+		tegra_tsc_resume();
 		tegra_cpu_reset_handler_restore();
 		tegra_lp0_resume_mc();
+		tegra_tsc_wait_for_resume();
 	} else if (mode == TEGRA_SUSPEND_LP1)
 		*iram_cpu_lp1_mask = 0;
 

@@ -34,6 +34,7 @@
 #include <linux/platform_data/tegra_nor.h>
 #include <linux/gpio.h>
 
+#include <asm/hardware/gic.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>

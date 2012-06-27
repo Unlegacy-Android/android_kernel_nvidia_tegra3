@@ -7,6 +7,21 @@ config TEGRA_GRHOST
 	help
 	  Driver for the Tegra graphics host hardware.
 
+config TEGRA_GRHOST_USE_NVMAP
+	bool "Use nvmap as graphics memory manager"
+	default y
+	help
+	  Use nvmap as the graphics memory manager. This is the only
+	  choice at the moment.
+
+config TEGRA_GRHOST_DEFAULT_TIMEOUT
+	depends on TEGRA_GRHOST
+	int "Default timeout for submits"
+	default 0 if TEGRA_SIMULATION_PLATFORM
+	default 30000
+	help
+	  Default timeout for jobs in milliseconds. Set to zero for no timeout.
+
 config TEGRA_DC
 	tristate "Tegra Display Contoller"
 	depends on ARCH_TEGRA && TEGRA_GRHOST
@@ -14,6 +29,16 @@ config TEGRA_DC
 	select I2C
 	help
 	  Tegra display controller support.
+
+config TEGRA_DC_CMU
+    bool
+    default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
+    default y
+
+config TEGRA_SD_GEN2
+    bool
+    default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
+    default y
 
 config FB_TEGRA
 	tristate "Tegra Framebuffer driver"
@@ -124,6 +149,13 @@ config TEGRA_DSI
 	default n
 	help
 	  Say Y here to enable the DSI panel.
+
+config TEGRA_DSI2LVDS
+	bool "Support DSI to LVDS bridge"
+	default n
+	select TEGRA_DSI
+	help
+	  Say Y here to support DSI-to-LVDS bridge controller for display.
 
 config NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 	bool "Convert carveout to IOVMM"

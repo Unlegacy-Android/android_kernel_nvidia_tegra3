@@ -101,7 +101,9 @@ struct tegra_dc {
 	struct tegra_dc_win		windows[DC_N_WINDOWS];
 	struct tegra_dc_blend		blend;
 	int				n_windows;
-
+#ifdef CONFIG_TEGRA_DC_CMU
+	struct tegra_dc_cmu		cmu;
+#endif
 	wait_queue_head_t		wq;
 
 	struct mutex			lock;
@@ -138,6 +140,7 @@ struct tegra_dc {
 	struct tegra_dc_ext		*ext;
 
 	struct tegra_dc_feature		*feature;
+	int				gen1_blend_num;
 
 #ifdef CONFIG_DEBUG_FS
 	struct dentry			*debugdir;
@@ -290,6 +293,7 @@ void tegra_dc_setup_clk(struct tegra_dc *dc, struct clk *clk);
 extern struct tegra_dc_out_ops tegra_dc_rgb_ops;
 extern struct tegra_dc_out_ops tegra_dc_hdmi_ops;
 extern struct tegra_dc_out_ops tegra_dc_dsi_ops;
+extern struct tegra_dc_out_ops tegra_dc_dsi2lvds_ops;
 
 /* defined in dc_sysfs.c, used by dc.c */
 void __devexit tegra_dc_remove_sysfs(struct device *dev);

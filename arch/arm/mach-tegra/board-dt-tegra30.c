@@ -35,6 +35,7 @@
 
 #include "board.h"
 #include "clock.h"
+#include "common.h"
 
 static struct of_device_id tegra_dt_match_table[] __initdata = {
 	{ .compatible = "simple-bus", },
@@ -74,6 +75,7 @@ static const char *tegra30_dt_board_compat[] = {
 };
 
 DT_MACHINE_START(TEGRA30_DT, "NVIDIA Tegra30 (Flattened Device Tree)")
+	.soc		= &tegra_soc_desc,
 	.map_io		= tegra_map_common_io,
 	.init_early	= tegra30_init_early,
 	.init_irq	= tegra_dt_init_irq,

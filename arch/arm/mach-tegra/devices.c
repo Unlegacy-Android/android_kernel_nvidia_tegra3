@@ -312,6 +312,58 @@ struct platform_device tegra_i2c_device5 = {
 };
 #endif
 
+struct platform_device tegra11_i2c_device1 = {
+	.name		= "tegra11-i2c",
+	.id		= 0,
+	.resource	= i2c_resource1,
+	.num_resources	= ARRAY_SIZE(i2c_resource1),
+	.dev = {
+		.platform_data = 0,
+	},
+};
+
+struct platform_device tegra11_i2c_device2 = {
+	.name		= "tegra11-i2c",
+	.id		= 1,
+	.resource	= i2c_resource2,
+	.num_resources	= ARRAY_SIZE(i2c_resource2),
+	.dev = {
+		.platform_data = 0,
+	},
+};
+
+struct platform_device tegra11_i2c_device3 = {
+	.name		= "tegra11-i2c",
+	.id		= 2,
+	.resource	= i2c_resource3,
+	.num_resources	= ARRAY_SIZE(i2c_resource3),
+	.dev = {
+		.platform_data = 0,
+	},
+};
+
+struct platform_device tegra11_i2c_device4 = {
+	.name		= "tegra11-i2c",
+	.id		= 3,
+	.resource	= i2c_resource4,
+	.num_resources	= ARRAY_SIZE(i2c_resource4),
+	.dev = {
+		.platform_data = 0,
+	},
+};
+
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+struct platform_device tegra11_i2c_device5 = {
+	.name		= "tegra11-i2c",
+	.id		= 4,
+	.resource	= i2c_resource5,
+	.num_resources	= ARRAY_SIZE(i2c_resource5),
+	.dev = {
+		.platform_data = 0,
+	},
+};
+#endif
+
 static struct resource spi_resource1[] = {
 	[0] = {
 		.start	= INT_SPI_1,
@@ -473,6 +525,68 @@ struct platform_device tegra_spi_device6 = {
 };
 #endif
 
+struct platform_device tegra_spi_r2_device1 = {
+	.name		= "spi_tegra_r2",
+	.id		= 0,
+	.resource	= spi_resource1,
+	.num_resources	= ARRAY_SIZE(spi_resource1),
+	.dev		= {
+		.coherent_dma_mask	= 0xffffffff,
+	},
+};
+
+struct platform_device tegra_spi_r2_device2 = {
+	.name		= "spi_tegra_r2",
+	.id		= 1,
+	.resource	= spi_resource2,
+	.num_resources	= ARRAY_SIZE(spi_resource2),
+	.dev		= {
+		.coherent_dma_mask	= 0xffffffff,
+	},
+};
+
+struct platform_device tegra_spi_r2_device3 = {
+	.name		= "spi_tegra_r2",
+	.id		= 2,
+	.resource	= spi_resource3,
+	.num_resources	= ARRAY_SIZE(spi_resource3),
+	.dev		= {
+		.coherent_dma_mask	= 0xffffffff,
+	},
+};
+
+struct platform_device tegra_spi_r2_device4 = {
+	.name		= "spi_tegra_r2",
+	.id		= 3,
+	.resource	= spi_resource4,
+	.num_resources	= ARRAY_SIZE(spi_resource4),
+	.dev		= {
+		.coherent_dma_mask	= 0xffffffff,
+	},
+};
+
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+struct platform_device tegra_spi_r2_device5 = {
+	.name           = "spi_tegra_r2",
+	.id             = 4,
+	.resource       = spi_resource5,
+	.num_resources  = ARRAY_SIZE(spi_resource5),
+	.dev  = {
+		.coherent_dma_mask      = 0xffffffff,
+	},
+};
+
+struct platform_device tegra_spi_r2_device6 = {
+	.name           = "spi_tegra_r2",
+	.id             = 5,
+	.resource       = spi_resource6,
+	.num_resources  = ARRAY_SIZE(spi_resource6),
+	.dev  = {
+		.coherent_dma_mask      = 0xffffffff,
+	},
+};
+#endif
+
 struct platform_device tegra_spi_slave_device1 = {
 	.name           = "spi_slave_tegra",
 	.id             = 0,
@@ -525,6 +639,68 @@ struct platform_device tegra_spi_slave_device5 = {
 
 struct platform_device tegra_spi_slave_device6 = {
 	.name           = "spi_slave_tegra",
+	.id             = 5,
+	.resource       = spi_resource6,
+	.num_resources  = ARRAY_SIZE(spi_resource6),
+	.dev  = {
+		.coherent_dma_mask      = 0xffffffff,
+	},
+};
+#endif
+
+struct platform_device tegra_spi_r2_slave_device1 = {
+	.name           = "spi_slave_tegra_r2",
+	.id             = 0,
+	.resource       = spi_resource1,
+	.num_resources  = ARRAY_SIZE(spi_resource1),
+	.dev  = {
+		.coherent_dma_mask      = 0xffffffff,
+	},
+};
+
+struct platform_device tegra_spi_slave_r2_device2 = {
+	.name           = "spi_slave_tegra_r2",
+	.id             = 1,
+	.resource       = spi_resource2,
+	.num_resources  = ARRAY_SIZE(spi_resource2),
+	.dev  = {
+		.coherent_dma_mask      = 0xffffffff,
+	},
+};
+
+struct platform_device tegra_spi_slave_r2_device3 = {
+	.name           = "spi_slave_tegra_r2",
+	.id             = 2,
+	.resource       = spi_resource3,
+	.num_resources  = ARRAY_SIZE(spi_resource3),
+	.dev  = {
+		.coherent_dma_mask      = 0xffffffff,
+	},
+};
+
+struct platform_device tegra_spi_slave_r2_device4 = {
+	.name           = "spi_slave_tegra_r2",
+	.id             = 3,
+	.resource       = spi_resource4,
+	.num_resources  = ARRAY_SIZE(spi_resource4),
+	.dev  = {
+		.coherent_dma_mask      = 0xffffffff,
+	},
+};
+
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+struct platform_device tegra_spi_slave_r2_device5 = {
+	.name           = "spi_slave_tegra_r2",
+	.id             = 4,
+	.resource       = spi_resource5,
+	.num_resources  = ARRAY_SIZE(spi_resource5),
+	.dev  = {
+		.coherent_dma_mask      = 0xffffffff,
+	},
+};
+
+struct platform_device tegra_spi_r2_slave_device6 = {
+	.name           = "spi_slave_tegra_r2",
 	.id             = 5,
 	.resource       = spi_resource6,
 	.num_resources  = ARRAY_SIZE(spi_resource6),
@@ -1437,38 +1613,20 @@ struct platform_device tegra_gart_device = {
 };
 #endif
 
-#if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
-static struct resource tegra_smmu_resources[] = {
-	[0] = {
-		.name	= "mc",
-		.flags	= IORESOURCE_MEM,
-		.start	= TEGRA_MC_BASE,
-		.end	= TEGRA_MC_BASE + TEGRA_MC_SIZE - 1,
-	},
-	[1] = {
-		.name   = "ahbarb",
-		.flags  = IORESOURCE_MEM,
-		.start  = TEGRA_AHB_ARB_BASE,
-		.end    = TEGRA_AHB_ARB_BASE + TEGRA_AHB_ARB_SIZE - 1,
-        }
-};
-
+#if defined(CONFIG_TEGRA_IOVMM_SMMU)
 struct platform_device tegra_smmu_device = {
 	.name		= "tegra_smmu",
 	.id		= -1,
-	.num_resources	= ARRAY_SIZE(tegra_smmu_resources),
-	.resource	= tegra_smmu_resources
 };
 
-
-static struct tegra_smmu_window tegra_smmu[] = {
+static struct resource tegra_smmu[] = {
 	[0] = {
 		.start	= TEGRA_SMMU_BASE,
 		.end	= TEGRA_SMMU_BASE + TEGRA_SMMU_SIZE - 1,
 	},
 };
 
-struct tegra_smmu_window *tegra_smmu_window(int wnum)
+struct resource *tegra_smmu_window(int wnum)
 {
 	return &tegra_smmu[wnum];
 }

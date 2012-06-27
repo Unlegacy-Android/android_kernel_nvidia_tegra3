@@ -296,3 +296,9 @@ void __init r8a7779_add_early_devices(void)
 	/* override timer setup with soc-specific code */
 	shmobile_timer.init = r8a7779_earlytimer_init;
 }
+
+struct arm_soc_desc r8a7779_soc_desc __initdata = {
+	.name		= "Renesas r8a7779",
+	soc_smp_init_ops(r8a7779_soc_smp_init_ops)
+	soc_smp_ops(r8a7779_soc_smp_ops)
+};

@@ -1524,7 +1524,8 @@ config SMP
 	depends on HAVE_SMP
 	depends on MMU
 	select USE_GENERIC_SMP_HELPERS
-	select HAVE_ARM_SCU if !ARCH_MSM_SCORPIONMP
+	select HAVE_ARM_SCU if !ARCH_MSM_SCORPIONMP && \
+		 (!ARCH_TEGRA || ARCH_TEGRA_HAS_ARM_SCU)
 	help
 	  This enables support for systems with more than one CPU. If you have
 	  a system with only one CPU, like most personal computers, say N. If
@@ -1584,6 +1585,13 @@ config HAVE_ARM_SCU
 	bool
 	help
 	  This option enables support for the ARM system coherency unit
+
+config ARM_ARCH_TIMER
+	bool "Architected timer support"
+	depends on CPU_V7
+	select TICK_ONESHOT
+	help
+	  This option enables support for the ARM architected timer
 
 config HAVE_ARM_TWD
 	bool

@@ -16,6 +16,7 @@
 #include <linux/cpumask.h>	/* Required by asm/hardware/gic.h */
 #include <linux/io.h>
 #include <linux/irqnr.h>
+#include <linux/cpu_pm.h>
 
 #include <asm/hardware/gic.h>
 
@@ -25,36 +26,38 @@
 #include "gic.h"
 #include "pm.h"
 
-#if defined(CONFIG_HOTPLUG_CPU) || defined(CONFIG_PM_SLEEP)
-static void __iomem *gic_cpu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x100);
+void __iomem *tegra_gic_cpu_base;
+static bool is_vgic;
 
-void tegra_gic_cpu_disable(void)
+#if defined(CONFIG_HOTPLUG_CPU) || defined(CONFIG_PM_SLEEP)
+
+void tegra_gic_cpu_disable(bool pass_through)
 {
-	writel(0, gic_cpu_base + GIC_CPU_CTRL);
+	u32 gic_cpu_ctrl = 0;
+
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	if (pass_through) {
+		if (is_vgic)
+			gic_cpu_ctrl = 0x1E0;
+		else
+			gic_cpu_ctrl = 2;
+	}
+#endif
+	writel(gic_cpu_ctrl, tegra_gic_cpu_base + GIC_CPU_CTRL);
 }
 
 void tegra_gic_cpu_enable(void)
 {
-	writel(1, gic_cpu_base + GIC_CPU_CTRL);
+	writel(1, tegra_gic_cpu_base + GIC_CPU_CTRL);
 }
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-
-void tegra_gic_pass_through_disable(void)
-{
-	u32 val = readl(gic_cpu_base + GIC_CPU_CTRL);
-	val |= 2; /* enableNS = disable GIC pass through */
-	writel(val, gic_cpu_base + GIC_CPU_CTRL);
-}
-
-#endif
 #endif
 
 #if defined(CONFIG_PM_SLEEP)
 
 int tegra_gic_pending_interrupt(void)
 {
-	u32 irq = readl(gic_cpu_base + GIC_CPU_HIGHPRI);
+	u32 irq = readl(tegra_gic_cpu_base + GIC_CPU_HIGHPRI);
 	irq &= 0x3FF;
 
 	return irq;
@@ -126,10 +129,48 @@ void tegra_gic_affinity_to_cpu0(void)
 	wmb();
 }
 #endif
+
+static int tegra_gic_notifier(struct notifier_block *self, unsigned long cmd, void *v)
+{
+	u32 gic_cpu_ctrl;
+
+	switch (cmd) {
+	case CPU_PM_ENTER:
+		gic_cpu_ctrl = readl(tegra_gic_cpu_base + GIC_CPU_CTRL);
+		if (gic_cpu_ctrl & 1) {
+			gic_cpu_ctrl |= 0x1E0;
+			writel(gic_cpu_ctrl, tegra_gic_cpu_base + GIC_CPU_CTRL);
+		}
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block tegra_gic_notifier_block = {
+	.notifier_call = tegra_gic_notifier,
+};
 #endif
 
 void __init tegra_gic_init(void)
 {
+	u32 midr;
+
+	__asm__("mrc p15, 0, %0, c0, c0, 0\n" : "=r" (midr));
+
+	if ((midr & 0x0000FFF0) != 0x0000C090)
+		is_vgic = true;
+
+	if (is_vgic)
+		tegra_gic_cpu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x2000);
+	else
+		tegra_gic_cpu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x100);
+
 	gic_init(0, 29, IO_ADDRESS(TEGRA_ARM_INT_DIST_BASE),
-		 IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x100));
+		 tegra_gic_cpu_base);
+
+#ifdef CONFIG_PM_SLEEP
+	if (is_vgic)
+		cpu_pm_register_notifier(&tegra_gic_notifier_block);
+#endif
 }

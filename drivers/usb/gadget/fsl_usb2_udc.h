@@ -349,6 +349,8 @@ struct usb_sys_interface {
 #define  PORTSCX_PTS_ULPI                 0x40000000
 #define  PORTSCX_PTS_FSLS                 0x60000000
 #define  PORTSCX_PTS_BIT_POS              29
+
+#define  HOSTPC1_DEVLC_ASUS               0x00020000
 #endif
 
 /* bit 11-10 are line status */

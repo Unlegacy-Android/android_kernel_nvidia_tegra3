@@ -45,6 +45,8 @@
 #include <asm/cacheflush.h>
 #include <asm/cachetype.h>
 #include <asm/tlbflush.h>
+#include <asm/system.h>
+#include <asm/soc.h>
 
 #include <asm/prom.h>
 #include <asm/mach/arch.h>
@@ -143,6 +145,7 @@ static const char *cpu_name;
 static const char *machine_name;
 static char __initdata cmd_line[COMMAND_LINE_SIZE];
 struct machine_desc *machine_desc __initdata;
+static const struct arm_soc_desc *soc_desc __initdata;
 
 static char default_command_line[COMMAND_LINE_SIZE] __initdata = CONFIG_CMDLINE;
 static union { char c[4]; unsigned long l; } endian_test __initdata = { { 'l', '?', '?', 'b' } };
@@ -671,6 +674,29 @@ static int __init parse_tag_mem32(const struct tag *tag)
 
 __tagtable(ATAG_MEM, parse_tag_mem32);
 
+static int __init parse_tag_mem64(const struct tag *tag)
+{
+	/* We only use 32-bits for the size. */
+	unsigned long size;
+	phys_addr_t start, end;
+
+	start = tag->u.mem64.start;
+	size = tag->u.mem64.size;
+	end = start + size;
+
+	/* Ensure that the memory region is in range. */
+	if (end & ~PHYS_MASK)
+		pr_warning("Ignoring out-of-range mem64 tag (%.8llx-%.8llx)\n",
+			   (unsigned long long)start,
+			   (unsigned long long)end - 1);
+	else
+		arm_add_memory(start, size);
+
+	return 0;
+}
+
+__tagtable(ATAG_MEM64, parse_tag_mem64);
+
 #if defined(CONFIG_VGA_CONSOLE) || defined(CONFIG_DUMMY_CONSOLE)
 struct screen_info screen_info = {
  .orig_video_lines	= 30,
@@ -938,6 +964,12 @@ void __init setup_arch(char **cmdline_p)
 		mdesc = setup_machine_tags(machine_arch_type);
 	machine_desc = mdesc;
 	machine_name = mdesc->name;
+	if (mdesc->soc) {
+		soc_desc = mdesc->soc;
+		pr_info("SoC: %s\n", soc_desc->name);
+		soc_smp_ops_register(soc_desc->smp_init_ops, soc_desc->smp_ops);
+	} else
+		soc_desc = NULL;
 
 #ifdef CONFIG_ZONE_DMA
 	if (mdesc->dma_zone_size) {

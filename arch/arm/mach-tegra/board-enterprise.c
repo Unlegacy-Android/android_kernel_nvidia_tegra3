@@ -37,8 +37,8 @@
 #include <linux/fsl_devices.h>
 #include <linux/i2c/atmel_mxt_ts.h>
 #include <linux/memblock.h>
-
 #include <linux/nfc/pn544.h>
+
 #include <sound/max98088.h>
 
 #include <asm/hardware/gic.h>
@@ -49,14 +49,16 @@
 #include <mach/pinmux.h>
 #include <mach/iomap.h>
 #include <mach/io.h>
-#include <asm/mach-types.h>
-#include <asm/mach/arch.h>
 #include <mach/usb_phy.h>
 #include <mach/i2s.h>
 #include <mach/tegra_asoc_pdata.h>
 #include <mach/thermal.h>
 #include <mach/tegra-bb-power.h>
 #include <mach/gpio-tegra.h>
+
+#include <asm/mach-types.h>
+#include <asm/hardware/gic.h>
+#include <asm/mach/arch.h>
 
 #include "board.h"
 #include "clock.h"
@@ -66,6 +68,7 @@
 #include "gpio-names.h"
 #include "fuse.h"
 #include "pm.h"
+#include "common.h"
 
 /* All units are in millicelsius */
 static struct tegra_thermal_data thermal_data = {
@@ -947,6 +950,7 @@ static void __init tegra_enterprise_reserve(void)
 
 MACHINE_START(TEGRA_ENTERPRISE, "tegra_enterprise")
 	.atag_offset	= 0x100,
+	.soc		= &tegra_soc_desc,
 	.map_io         = tegra_map_common_io,
 	.reserve        = tegra_enterprise_reserve,
 	.init_early	= tegra30_init_early,

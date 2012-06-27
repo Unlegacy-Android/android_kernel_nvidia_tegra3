@@ -21,6 +21,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/export.h>
 #include <linux/nvhost.h>
+#include <linux/io.h>
 
 #include "bus.h"
 #include "dev.h"
@@ -227,6 +228,18 @@ void nvhost_device_unregister(struct nvhost_device *dev)
 	}
 }
 EXPORT_SYMBOL_GPL(nvhost_device_unregister);
+
+void nvhost_device_writel(struct nvhost_device *dev, u32 r, u32 v)
+{
+	writel(v, dev->aperture + r);
+}
+EXPORT_SYMBOL_GPL(nvhost_device_writel);
+
+u32 nvhost_device_readl(struct nvhost_device *dev, u32 r)
+{
+	return readl(dev->aperture + r);
+}
+EXPORT_SYMBOL_GPL(nvhost_device_readl);
 
 #ifdef CONFIG_PM_SLEEP
 

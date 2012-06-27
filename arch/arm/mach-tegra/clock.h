@@ -40,7 +40,12 @@ struct clk;
 #else
 #define USE_PLL_LOCK_BITS 1	/* Use lock bits for PLL stabiliation */
 #define USE_PLLE_SS 1		/* Use spread spectrum coefficients for PLLE */
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 #define PLL_POST_LOCK_DELAY 50	/* Safety delay after lock is detected */
+#else
+#define PLL_POST_LOCK_DELAY 10	/* Safety delay after lock is detected */
+#endif
+#define PLL_PRE_LOCK_DELAY  2	/* Delay 1st lock bit read after pll enabled */
 #endif
 
 #define DIV_BUS			(1 << 0)
@@ -67,6 +72,7 @@ struct clk;
 #define DIV_U71_INT		(1 << 21)
 #define DIV_U71_IDLE		(1 << 22)
 #define DIV_U151		(1 << 23)
+#define DFLL			(1 << 24)
 #define ENABLE_ON_INIT		(1 << 28)
 #define PERIPH_ON_APB		(1 << 29)
 #define PERIPH_ON_CBUS		(1 << 30)
@@ -169,6 +175,7 @@ struct clk {
 			const struct clk_pll_freq_table	*freq_table;
 			int				lock_delay;
 			unsigned long			fixed_rate;
+			u32				misc1;
 		} pll;
 		struct {
 			unsigned long			default_rate;

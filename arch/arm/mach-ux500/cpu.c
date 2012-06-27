@@ -136,3 +136,9 @@ struct device * __init ux500_soc_device_init(const char *soc_id)
 
 	return parent;
 }
+
+struct arm_soc_desc ux500_soc_desc __initdata = {
+	.name		= "STE Ux500",
+	soc_smp_init_ops(ux500_soc_smp_init_ops)
+	soc_smp_ops(ux500_soc_smp_ops)
+};

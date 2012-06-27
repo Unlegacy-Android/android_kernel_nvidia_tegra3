@@ -120,6 +120,9 @@ struct tegra_dc_dsi_data {
 
 	struct mutex lock;
 
+	struct tegra_dc_out_ops *dsi2lvds_out_ops;
+	void			*dsi2lvds_out_data;
+
 	/* data from board info */
 	struct tegra_dsi_out info;
 
@@ -294,6 +297,16 @@ const u32 init_reg[] = {
 	DSI_PKT_LEN_6_7,
 };
 
+const u32 init_reg_vs1_ext[] = {
+	DSI_PAD_CONTROL_0_VS1,
+	DSI_PAD_CONTROL_CD_VS1,
+	DSI_PAD_CD_STATUS_VS1,
+	DSI_PAD_CONTROL_1_VS1,
+	DSI_PAD_CONTROL_2_VS1,
+	DSI_PAD_CONTROL_3_VS1,
+	DSI_PAD_CONTROL_4_VS1,
+};
+
 inline unsigned long tegra_dsi_readl(struct tegra_dc_dsi_data *dsi, u32 reg)
 {
 	unsigned long ret;
@@ -417,6 +430,18 @@ free_out:
 static inline void tegra_dc_dsi_debug_create(struct tegra_dc_dsi_data *dsi)
 { }
 #endif
+
+inline void *tegra_dc_dsi_get_outdata(struct tegra_dc *dc)
+{
+	return ((struct tegra_dc_dsi_data *)(dc->out_data))->dsi2lvds_out_data;
+}
+EXPORT_SYMBOL(tegra_dc_dsi_get_outdata);
+
+inline void tegra_dc_dsi_set_outdata(struct tegra_dc *dc, void *data)
+{
+	((struct tegra_dc_dsi_data *)(dc->out_data))->dsi2lvds_out_data = data;
+}
+EXPORT_SYMBOL(tegra_dc_dsi_set_outdata);
 
 static int tegra_dsi_syncpt(struct tegra_dc_dsi_data *dsi)
 {
@@ -559,7 +584,8 @@ static void tegra_dsi_init_sw(struct tegra_dc *dc,
 		break;
 	}
 
-	dsi->controller_index = dc->ndev->id;
+	dsi->controller_index = dsi->info.source_invert ?
+			(dc->ndev->id ^ 0x1) : dc->ndev->id;
 	dsi->ulpm = false;
 	dsi->enabled = false;
 	dsi->clk_ref = false;
@@ -616,8 +642,6 @@ static void tegra_dsi_init_sw(struct tegra_dc *dc,
 
 	dev_info(&dc->ndev->dev, "DSI: HS clock rate is %d\n",
 							dsi->target_hs_clk_khz);
-
-	dsi->controller_index = dc->ndev->id;
 
 #if DSI_USE_SYNC_POINTS
 	dsi->syncpt_id = NVSYNCPT_DSI;
@@ -742,6 +766,16 @@ static void tegra_dsi_get_phy_timing(struct tegra_dc_dsi_data *dsi,
 				struct dsi_phy_timing_inclk *phy_timing_clk,
 				u32 clk_ns, u8 lphs)
 {
+#ifndef CONFIG_TEGRA_SILICON_PLATFORM
+	clk_ns = dsi->info.fpga_freq_khz ?
+		((1000 * 1000) / dsi->info.fpga_freq_khz) :
+		DEFAULT_FPGA_FREQ_KHZ;
+#endif
+
+	phy_timing_clk->t_hsdexit = dsi->info.phy_timing.t_hsdexit_ns ?
+			(dsi->info.phy_timing.t_hsdexit_ns / clk_ns) :
+			(T_HSEXIT_DEFAULT(clk_ns));
+
 	if (lphs == DSI_LPHS_IN_HS_MODE) {
 		tegra_dsi_get_clk_phy_timing(dsi, phy_timing_clk, clk_ns);
 		tegra_dsi_get_hs_phy_timing(dsi, phy_timing_clk, clk_ns);
@@ -751,8 +785,7 @@ static void tegra_dsi_get_phy_timing(struct tegra_dc_dsi_data *dsi,
 		tegra_dsi_get_bta_phy_timing(dsi, phy_timing_clk, clk_ns);
 		tegra_dsi_get_ulps_phy_timing(dsi, phy_timing_clk, clk_ns);
 		if (dsi->info.enable_hs_clock_on_lp_cmd_mode)
-			tegra_dsi_get_clk_phy_timing
-				(dsi, phy_timing_clk, clk_ns);
+			tegra_dsi_get_clk_phy_timing(dsi, phy_timing_clk, clk_ns);
 	}
 }
 
@@ -760,11 +793,17 @@ static int tegra_dsi_mipi_phy_timing_range(struct tegra_dc_dsi_data *dsi,
 				struct dsi_phy_timing_inclk *phy_timing,
 				u32 clk_ns, u8 lphs)
 {
+	int err = 0;
+
 #define CHECK_RANGE(val, min, max) ( \
 		((min) == NOT_DEFINED ? 0 : (val) < (min)) || \
 		((max) == NOT_DEFINED ? 0 : (val) > (max)) ? -EINVAL : 0)
 
-	int err = 0;
+#ifndef CONFIG_TEGRA_SILICON_PLATFORM
+	clk_ns = dsi->info.fpga_freq_khz ?
+		((1000 * 1000) / dsi->info.fpga_freq_khz) :
+		DEFAULT_FPGA_FREQ_KHZ;
+#endif
 
 	err = CHECK_RANGE(
 	DSI_CONVERT_T_PHY_TO_T_PHY_NS(
@@ -1595,36 +1634,112 @@ static void tegra_dsi_pad_calibration(struct tegra_dc_dsi_data *dsi)
 {
 	u32 val;
 
-	val =	DSI_PAD_CONTROL_PAD_LPUPADJ(0x1) |
-		DSI_PAD_CONTROL_PAD_LPDNADJ(0x1) |
-		DSI_PAD_CONTROL_PAD_PREEMP_EN(0x1) |
-		DSI_PAD_CONTROL_PAD_SLEWDNADJ(0x6) |
-		DSI_PAD_CONTROL_PAD_SLEWUPADJ(0x6);
-	if (!dsi->ulpm) {
-		val |=	DSI_PAD_CONTROL_PAD_PDIO(0) |
-			DSI_PAD_CONTROL_PAD_PDIO_CLK(0) |
-			DSI_PAD_CONTROL_PAD_PULLDN_ENAB(TEGRA_DSI_DISABLE);
+	if (dsi->info.controller_vs == DSI_VS_1) {
+		val = tegra_dsi_readl(dsi, DSI_PAD_CONTROL_0_VS1);
+		val &= ~(DSI_PAD_CONTROL_0_VS1_PAD_PDIO(0xf) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PDIO_CLK(0x1) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_ENAB(0xf) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_CLK_ENAB(0x1));
+		val |= DSI_PAD_CONTROL_0_VS1_PAD_PDIO(0xf) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PDIO_CLK
+						(TEGRA_DSI_ENABLE) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_ENAB(0xf) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_CLK_ENAB
+						(TEGRA_DSI_ENABLE);
+		tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL_0_VS1);
 	} else {
-		val |=	DSI_PAD_CONTROL_PAD_PDIO(0x3) |
+		val = tegra_dsi_readl(dsi, DSI_PAD_CONTROL);
+
+	val &= ~(DSI_PAD_CONTROL_PAD_PDIO(0x3) |
 			DSI_PAD_CONTROL_PAD_PDIO_CLK(0x1) |
+			DSI_PAD_CONTROL_PAD_PULLDN_ENAB(0x1));
+
+	val |= DSI_PAD_CONTROL_PAD_PDIO(0x3) |
+			DSI_PAD_CONTROL_PAD_PDIO_CLK(TEGRA_DSI_ENABLE) |
 			DSI_PAD_CONTROL_PAD_PULLDN_ENAB(TEGRA_DSI_ENABLE);
+		tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL);
 	}
-	tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL);
+}
 
-	val = MIPI_CAL_TERMOSA(0x4);
-	tegra_vi_csi_writel(val, CSI_CILA_MIPI_CAL_CONFIG_0);
+static void tegra_dsi_pad_disable(struct tegra_dc_dsi_data *dsi)
+{
+	u32 val;
 
-	val = MIPI_CAL_TERMOSB(0x4);
-	tegra_vi_csi_writel(val, CSI_CILB_MIPI_CAL_CONFIG_0);
+	if (dsi->info.controller_vs == DSI_VS_1) {
+		val = tegra_dsi_readl(dsi, DSI_PAD_CONTROL_0_VS1);
+		val &= ~(DSI_PAD_CONTROL_0_VS1_PAD_PDIO(0xf) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PDIO_CLK(0x1) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_ENAB(0xf) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_CLK_ENAB(0x1));
+		val |= DSI_PAD_CONTROL_0_VS1_PAD_PDIO(0xf) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PDIO_CLK
+						(TEGRA_DSI_ENABLE) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_ENAB(0xf) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_CLK_ENAB
+						(TEGRA_DSI_ENABLE);
+		tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL_0_VS1);
+	} else {
+		val = tegra_dsi_readl(dsi, DSI_PAD_CONTROL);
+		val &= ~(DSI_PAD_CONTROL_PAD_PDIO(0x3) |
+			DSI_PAD_CONTROL_PAD_PDIO_CLK(0x1) |
+			DSI_PAD_CONTROL_PAD_PULLDN_ENAB(0x1));
+		val |= DSI_PAD_CONTROL_PAD_PDIO(0x3) |
+			DSI_PAD_CONTROL_PAD_PDIO_CLK(TEGRA_DSI_ENABLE) |
+			DSI_PAD_CONTROL_PAD_PULLDN_ENAB(TEGRA_DSI_ENABLE);
+		tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL);
+	}
+}
 
-	val = MIPI_CAL_HSPUOSD(0x3) | MIPI_CAL_HSPDOSD(0x4);
-	tegra_vi_csi_writel(val, CSI_DSI_MIPI_CAL_CONFIG);
+static void tegra_dsi_pad_enable(struct tegra_dc_dsi_data *dsi)
+{
+	u32 val;
 
-	val = PAD_DRIV_DN_REF(0x5) | PAD_DRIV_UP_REF(0x7);
-	tegra_vi_csi_writel(val, CSI_MIPIBIAS_PAD_CONFIG);
+	if (dsi->info.controller_vs == DSI_VS_1) {
+		val = tegra_dsi_readl(dsi, DSI_PAD_CONTROL_0_VS1);
+		val &= ~(DSI_PAD_CONTROL_0_VS1_PAD_PDIO(0xf) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PDIO_CLK(0x1) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_ENAB(0xf) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_CLK_ENAB(0x1));
+		val |= DSI_PAD_CONTROL_0_VS1_PAD_PDIO(TEGRA_DSI_DISABLE) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PDIO_CLK
+						(TEGRA_DSI_DISABLE) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_ENAB
+						(TEGRA_DSI_DISABLE) |
+			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_CLK_ENAB
+						(TEGRA_DSI_DISABLE);
+		tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL_0_VS1);
+	} else {
+		val = tegra_dsi_readl(dsi, DSI_PAD_CONTROL);
+		val &= ~(DSI_PAD_CONTROL_PAD_PDIO(0x3) |
+			DSI_PAD_CONTROL_PAD_PDIO_CLK(0x1) |
+			DSI_PAD_CONTROL_PAD_PULLDN_ENAB(0x1));
+		val |= DSI_PAD_CONTROL_PAD_PDIO(TEGRA_DSI_DISABLE) |
+			DSI_PAD_CONTROL_PAD_PDIO_CLK(TEGRA_DSI_DISABLE) |
+			DSI_PAD_CONTROL_PAD_PULLDN_ENAB(TEGRA_DSI_DISABLE);
+		tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL);
+	}
+}
 
-	val = PAD_CIL_PDVREG(0x0);
-	tegra_vi_csi_writel(val, CSI_CIL_PAD_CONFIG);
+static void tegra_dsi_config_pad(struct tegra_dc_dsi_data *dsi)
+{
+	u32 val;
+
+	if (dsi->info.controller_vs == DSI_VS_1) {
+		/* TODO: Config pad */
+	} else {
+		val = tegra_dsi_readl(dsi, DSI_PAD_CONTROL);
+		val &= ~(DSI_PAD_CONTROL_PAD_LPUPADJ(0x3) |
+			DSI_PAD_CONTROL_PAD_LPDNADJ(0x3) |
+			DSI_PAD_CONTROL_PAD_PREEMP_EN(0x1) |
+			DSI_PAD_CONTROL_PAD_SLEWDNADJ(0x7) |
+			DSI_PAD_CONTROL_PAD_SLEWUPADJ(0x7));
+		val |= DSI_PAD_CONTROL_PAD_LPUPADJ(0x1) |
+			DSI_PAD_CONTROL_PAD_LPDNADJ(0x1) |
+			DSI_PAD_CONTROL_PAD_PREEMP_EN(0x1) |
+			DSI_PAD_CONTROL_PAD_SLEWDNADJ(0x6) |
+			DSI_PAD_CONTROL_PAD_SLEWUPADJ(0x6);
+		tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL);
+	}
 }
 
 static void tegra_dsi_panelB_enable(void)
@@ -1650,6 +1765,7 @@ static int tegra_dsi_init_hw(struct tegra_dc *dc,
 	tegra_dsi_set_dsi_clk(dc, dsi, dsi->target_lp_clk_khz);
 	if (dsi->info.dsi_instance) {
 		tegra_dsi_panelB_enable();
+		/* TODO:Set the misc register */
 	}
 
 	/* TODO: only need to change the timing for bta */
@@ -1658,9 +1774,13 @@ static int tegra_dsi_init_hw(struct tegra_dc *dc,
 	if (dsi->status.dc_stream == DSI_DC_STREAM_ENABLE)
 		tegra_dsi_stop_dc_stream_at_frame_end(dc, dsi);
 
-	/* Initializing DSI registers */
+	/* Initialize DSI registers */
 	for (i = 0; i < ARRAY_SIZE(init_reg); i++)
 		tegra_dsi_writel(dsi, 0, init_reg[i]);
+	if (dsi->info.controller_vs == DSI_VS_1) {
+		for (i = 0; i < ARRAY_SIZE(init_reg_vs1_ext); i++)
+			tegra_dsi_writel(dsi, 0, init_reg_vs1_ext[i]);
+	}
 
 	tegra_dsi_writel(dsi, dsi->dsi_control_val, DSI_CONTROL);
 
@@ -2607,7 +2727,6 @@ static void tegra_dc_dsi_enable(struct tegra_dc *dc)
 {
 	struct tegra_dc_dsi_data *dsi = tegra_dc_get_outdata(dc);
 	int err;
-	u32 val;
 
 	tegra_dc_io_start(dc);
 	mutex_lock(&dsi->lock);
@@ -2655,6 +2774,8 @@ static void tegra_dc_dsi_enable(struct tegra_dc *dc)
 		}
 
 		if (dsi->ulpm) {
+			u32 val;
+
 			if (tegra_dsi_enter_ulpm(dsi) < 0) {
 				dev_err(&dc->ndev->dev,
 					"DSI failed to enter ulpm\n");
@@ -2706,8 +2827,12 @@ static void tegra_dc_dsi_enable(struct tegra_dc *dc)
 		dsi->enabled = true;
 	}
 
+	if (dsi->dsi2lvds_out_ops && dsi->dsi2lvds_out_ops->enable)
+		dsi->dsi2lvds_out_ops->enable(dc);
+
 	if (dsi->status.driven == DSI_DRIVEN_MODE_DC)
 		tegra_dsi_start_dc_stream(dc, dsi);
+
 fail:
 	mutex_unlock(&dsi->lock);
 	tegra_dc_io_end(dc);
@@ -2718,6 +2843,17 @@ static void _tegra_dc_dsi_init(struct tegra_dc *dc)
 	struct tegra_dc_dsi_data *dsi = tegra_dc_get_outdata(dc);
 
 	tegra_dc_dsi_debug_create(dsi);
+
+	if (dc->out->type == TEGRA_DC_OUT_DSI2LVDS)
+#ifdef CONFIG_TEGRA_DSI2LVDS
+		dsi->dsi2lvds_out_ops = &tegra_dc_dsi2lvds_ops;
+#else
+		dsi->dsi2lvds_out_ops = NULL;
+#endif
+
+	if (dsi->dsi2lvds_out_ops && dsi->dsi2lvds_out_ops->init)
+		dsi->dsi2lvds_out_ops->init(dc);
+
 	tegra_dsi_init_sw(dc, dsi);
 	/* TODO: Configure the CSI pad configuration */
 }
@@ -3047,15 +3183,8 @@ static int tegra_dsi_deep_sleep(struct tegra_dc *dc,
 		}
 	}
 
-	/*
-	 * Suspend pad
-	 * It is ok to overwrite previous value of DSI_PAD_CONTROL reg
-	 * because it will be restored properly in resume sequence
-	 */
-	val = DSI_PAD_CONTROL_PAD_PDIO(0x3) |
-		DSI_PAD_CONTROL_PAD_PDIO_CLK(0x1) |
-		DSI_PAD_CONTROL_PAD_PULLDN_ENAB(TEGRA_DSI_ENABLE);
-	tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL);
+	/* Suspend pad */
+	tegra_dsi_pad_disable(dsi);
 
 	/* Suspend core-logic */
 	val = DSI_POWER_CONTROL_LEG_DSI_ENABLE(TEGRA_DSI_DISABLE);
@@ -3095,6 +3224,9 @@ static void tegra_dc_dsi_disable(struct tegra_dc *dc)
 
 	if (dsi->status.dc_stream == DSI_DC_STREAM_ENABLE)
 		tegra_dsi_stop_dc_stream_at_frame_end(dc, dsi);
+
+	if (dsi->dsi2lvds_out_ops && dsi->dsi2lvds_out_ops->disable)
+		dsi->dsi2lvds_out_ops->disable(dc);
 
 	if (dsi->info.power_saving_suspend) {
 		if (tegra_dsi_deep_sleep(dc, dsi) < 0) {
@@ -3140,6 +3272,9 @@ static void tegra_dc_dsi_suspend(struct tegra_dc *dc)
 
 	tegra_dc_io_start(dc);
 	mutex_lock(&dsi->lock);
+
+	if (dsi->dsi2lvds_out_ops && dsi->dsi2lvds_out_ops->suspend)
+		dsi->dsi2lvds_out_ops->suspend(dc);
 
 	if (!dsi->info.power_saving_suspend) {
 		if (dsi->ulpm) {

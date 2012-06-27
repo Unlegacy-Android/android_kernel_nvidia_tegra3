@@ -123,6 +123,11 @@ void v2m_flags_set(u32 data);
 #define SYS_PROCIDx_HBI_MASK	0xfff
 
 /*
+ * Miscellaneous
+ */
+#define SYS_MISC_MASTERSITE	(1 << 14)
+
+/*
  * Core tile IDs
  */
 #define V2M_CT_ID_CA9		0x0c000191

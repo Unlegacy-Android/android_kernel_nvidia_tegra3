@@ -7,9 +7,11 @@ config ARCH_TEGRA_2x_SOC
 	depends on !ARCH_TEGRA_3x_SOC
 	depends on !ARCH_TEGRA_11x_SOC
 	select ARM_CPU_SUSPEND if PM
+	select ARCH_TEGRA_HAS_ARM_SCU
 	select ARCH_TEGRA_HAS_PCIE
 	select CPU_V7
 	select ARM_GIC
+	select ARM_SMP_TWD
 	select ARM_SAVE_DEBUG_CONTEXT if PM_SLEEP
 	select ARCH_REQUIRE_GPIOLIB
 	select PINCTRL
@@ -40,12 +42,15 @@ config ARCH_TEGRA_3x_SOC
 	bool "Enable support for Tegra30 family"
 	depends on !ARCH_TEGRA_11x_SOC
 	select ARM_CPU_SUSPEND if PM
+	depends on !ARCH_TEGRA_11x_SOC
+	select ARCH_TEGRA_HAS_ARM_SCU
 	select ARCH_TEGRA_HAS_PCIE
 	select ARCH_TEGRA_HAS_SATA
 	select ARCH_TEGRA_HAS_DUAL_3D
 	select ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
 	select CPU_V7
 	select ARM_GIC
+	select ARM_SMP_TWD
 	select ARM_SAVE_DEBUG_CONTEXT if PM_SLEEP
 	select GIC_SET_MULTIPLE_CPUS if SMP
 	select ARCH_REQUIRE_GPIOLIB
@@ -73,9 +78,11 @@ config ARCH_TEGRA_3x_SOC
 
 config ARCH_TEGRA_11x_SOC
 	bool "Tegra 11x family SOC"
-	select ARM_CPU_SUSPEND if PM
 	select ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
 	select CPU_V7
+	select ARM_ARCH_TIMER
+	select ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+	select ARM_CPU_SUSPEND if PM
 	select ARM_GIC
 	select ARCH_REQUIRE_GPIOLIB
 	select USB_ARCH_HAS_EHCI if USB_SUPPORT
@@ -83,9 +90,13 @@ config ARCH_TEGRA_11x_SOC
 	select USB_ULPI if USB_SUPPORT
 	select USB_ULPI_VIEWPORT if USB_SUPPORT
 	select REPORT_PRESENT_CPUS if TEGRA_AUTO_HOTPLUG
+	select ARCH_TEGRA_HAS_CL_DVFS
 	help
 	  Support for NVIDIA Tegra 11x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
+
+config ARCH_TEGRA_HAS_ARM_SCU
+	bool
 
 config ARCH_TEGRA_HAS_DUAL_3D
 	bool
@@ -93,10 +104,16 @@ config ARCH_TEGRA_HAS_DUAL_3D
 config ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
 	bool
 
+config ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+	bool
+
 config ARCH_TEGRA_HAS_PCIE
 	bool
 
 config ARCH_TEGRA_HAS_SATA
+	bool
+
+config ARCH_TEGRA_HAS_CL_DVFS
 	bool
 
 config TEGRA_PCI
@@ -187,6 +204,13 @@ config MACH_ARUBA
        select TEGRA_FPGA_PLATFORM
        help
          Support for NVIDIA Aruba2 FPGA development platform
+
+config MACH_CURACAO
+       bool "Curacao board"
+       depends on ARCH_TEGRA_11x_SOC
+       select TEGRA_FPGA_PLATFORM
+       help
+         Support for NVIDIA Curacao FPGA development platform
 
 config MACH_CARDHU
        bool "Cardhu board"
@@ -345,7 +369,7 @@ config TEGRA_IOVMM_GART
 
 config TEGRA_IOVMM_SMMU
 	bool "Enable I/O virtual memory manager for SMMU"
-	depends on ARCH_TEGRA_3x_SOC
+	depends on !ARCH_TEGRA_2x_SOC
 	default y
 	select TEGRA_IOVMM
 	help

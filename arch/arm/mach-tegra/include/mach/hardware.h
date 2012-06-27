@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011 NVIDIA Corp.
+ * Copyright (C) 2011-2012 NVIDIA Corp.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -31,6 +31,7 @@ enum tegra_chipid {
 	TEGRA_CHIPID_UNKNOWN = 0,
 	TEGRA_CHIPID_TEGRA2 = 0x20,
 	TEGRA_CHIPID_TEGRA3 = 0x30,
+	TEGRA_CHIPID_TEGRA11 = 0x35,
 };
 
 enum tegra_revision {
@@ -41,10 +42,20 @@ enum tegra_revision {
 	TEGRA_REVISION_A03p,
 	TEGRA_REVISION_A04,
 	TEGRA_REVISION_A04p,
+	TEGRA_REVISION_QT,
 	TEGRA_REVISION_MAX,
 };
 
 extern enum tegra_revision tegra_revision;
 enum tegra_chipid tegra_get_chipid(void);
+
+#ifndef CONFIG_TEGRA_SILICON_PLATFORM
+void tegra_get_netlist_revision(u32 *netlist, u32* patchid);
+#else
+static inline void tegra_get_netlist_revision(u32 *netlist, u32* patchid)
+{
+	BUG();
+}
+#endif
 
 #endif

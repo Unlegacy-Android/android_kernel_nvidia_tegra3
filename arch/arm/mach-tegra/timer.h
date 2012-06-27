@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/timer.h
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation
+ * Copyright (C) 2010-2012 NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -48,14 +48,28 @@ struct tegra_twd_context {
 };
 
 #ifdef CONFIG_HAVE_ARM_TWD
+void __init tegra_twd_init(void);
 int tegra_twd_get_state(struct tegra_twd_context *context);
 void tegra_twd_suspend(struct tegra_twd_context *context);
 void tegra_twd_resume(struct tegra_twd_context *context);
 #else
+static inline void __init tegra_twd_init(void) {}
 static inline int tegra_twd_get_state(struct tegra_twd_context *context)
 { return -ENODEV; }
 static inline void tegra_twd_suspend(struct tegra_twd_context *context) {}
 static inline void tegra_twd_resume(struct tegra_twd_context *context) {}
+#endif
+
+#if defined(CONFIG_ARM_ARCH_TIMER) && defined(CONFIG_PM_SLEEP)
+void tegra_tsc_suspend(void);
+void tegra_tsc_resume(void);
+void tegra_tsc_wait_for_suspend(void);
+void tegra_tsc_wait_for_resume(void);
+#else
+static inline void tegra_tsc_suspend(void) {}
+static inline void tegra_tsc_resume(void) {}
+static inline void tegra_tsc_wait_for_suspend(void) {};
+static inline void tegra_tsc_wait_for_resume(void) {};
 #endif
 
 #endif /* _MACH_TEGRA_TIMER_H_ */

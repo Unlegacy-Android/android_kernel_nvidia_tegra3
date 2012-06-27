@@ -25,6 +25,7 @@
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <linux/serial_8250.h>
+#include <linux/tegra_uart.h>
 #include <linux/i2c.h>
 #include <linux/i2c/panjit_ts.h>
 #include <linux/dma-mapping.h>
@@ -272,6 +273,11 @@ static struct platform_device curacao_keys_device = {
 	},
 };
 
+static struct platform_device tegra_camera = {
+	.name = "tegra_camera",
+	.id = -1,
+};
+
 static struct resource tegra_rtc_resources[] = {
 	[0] = {
 		.start = TEGRA_RTC_BASE,
@@ -362,15 +368,33 @@ struct platform_device tegra_nand_device = {
 };
 #endif
 
+#if defined(CONFIG_TEGRA_SIMULATION_PLATFORM) && defined(CONFIG_SMC91X)
+static struct resource tegra_sim_smc91x_resources[] = {
+	[0] = {
+		.start		= TEGRA_SIM_ETH_BASE,
+		.end		= TEGRA_SIM_ETH_BASE + TEGRA_SIM_ETH_SIZE - 1,
+		.flags		= IORESOURCE_MEM,
+	},
+	[1] = {
+		.start		= IRQ_ETH,
+		.end		= IRQ_ETH,
+		.flags		= IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device tegra_sim_smc91x_device = {
+	.name		= "smc91x",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(tegra_sim_smc91x_resources),
+	.resource	= tegra_sim_smc91x_resources,
+};
+#endif
+
 static struct platform_device *curacao_devices[] __initdata = {
 #if ENABLE_OTG
 	&tegra_otg_device,
 #endif
 	&debug_uart,
-	&tegra_uartb_device,
-	&tegra_uartc_device,
-	&tegra_uartd_device,
-	&tegra_uarte_device,
 	&tegra_pmu_device,
 	&tegra_rtc_device,
 	&tegra_udc_device,
@@ -383,8 +407,16 @@ static struct platform_device *curacao_devices[] __initdata = {
 	&tegra_hda_device,
 #endif
 	&tegra_avp_device,
+	&tegra_camera,
+#if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
+	&tegra_se_device,
+#endif
 #if defined(CONFIG_MTD_NAND_TEGRA)
 	&tegra_nand_device,
+#endif
+
+#if defined(CONFIG_TEGRA_SIMULATION_PLATFORM) && defined(CONFIG_SMC91X)
+	&tegra_sim_smc91x_device,
 #endif
 };
 
@@ -412,6 +444,7 @@ static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
 			.phy_config = &ulpi_phy_config,
 			.operating_mode = TEGRA_USB_HOST,
 			.power_down_on_bus_suspend = 1,
+			.phy_type = TEGRA_USB_PHY_TYPE_LINK_ULPI,
 	},
 	[2] = {
 			.phy_config = &utmi_phy_config[1],
@@ -427,6 +460,48 @@ static void curacao_usb_init(void)
 	platform_device_register(&tegra_ehci2_device);
 }
 
+static struct platform_device *curacao_hs_uart_devices[] __initdata = {
+	&tegra_uartb_device,
+	&tegra_uartc_device,
+	&tegra_uartd_device,
+	&tegra_uarte_device,
+};
+
+static struct uart_clk_parent uart_parent_clk[] = {
+	[0] = {.name = "clk_m"},
+};
+
+static struct tegra_uart_platform_data curacao_uart_pdata;
+static struct tegra_uart_platform_data curacao_loopback_uart_pdata;
+
+static void __init curacao_hs_uart_init(void)
+{
+	struct clk *c;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(uart_parent_clk); ++i) {
+		c = tegra_get_clock_by_name(uart_parent_clk[i].name);
+		if (IS_ERR_OR_NULL(c)) {
+			pr_err("Not able to get the clock for %s\n",
+					uart_parent_clk[i].name);
+			continue;
+		}
+		uart_parent_clk[i].parent_clk = c;
+		uart_parent_clk[i].fixed_clk_rate = clk_get_rate(c);
+	}
+	curacao_uart_pdata.parent_clk_list = uart_parent_clk;
+	curacao_loopback_uart_pdata.parent_clk_list = uart_parent_clk;
+	curacao_uart_pdata.parent_clk_count = ARRAY_SIZE(uart_parent_clk);
+	curacao_loopback_uart_pdata.parent_clk_count =
+						ARRAY_SIZE(uart_parent_clk);
+	curacao_loopback_uart_pdata.is_loopback = true;
+	tegra_uartb_device.dev.platform_data = &curacao_uart_pdata;
+	tegra_uartc_device.dev.platform_data = &curacao_uart_pdata;
+	tegra_uartd_device.dev.platform_data = &curacao_uart_pdata;
+	tegra_uarte_device.dev.platform_data = &curacao_loopback_uart_pdata;
+	platform_add_devices(curacao_hs_uart_devices,
+				ARRAY_SIZE(curacao_hs_uart_devices));
+}
 
 static void __init tegra_curacao_init(void)
 {
@@ -435,6 +510,8 @@ static void __init tegra_curacao_init(void)
 
 	platform_add_devices(curacao_devices, ARRAY_SIZE(curacao_devices));
 
+	curacao_power_off_init();
+	curacao_sdhci_init();
 	curacao_i2c_init();
 	curacao_regulator_init();
 	curacao_suspend_init();
@@ -442,6 +519,7 @@ static void __init tegra_curacao_init(void)
 	curacao_keys_init();
 	curacao_usb_init();
 	curacao_panel_init();
+	curacao_hs_uart_init();
 	curacao_bt_rfkill();
 }
 
@@ -454,7 +532,7 @@ static void __init tegra_curacao_reserve(void)
 #endif
 }
 
-MACHINE_START(CURACAO, "curacao")
+MACHINE_START(CURACAO, CURACAO_BOARD_NAME)
 	.boot_params    = 0x80000100,
 	.soc		= &tegra_soc_desc,
 	.map_io         = tegra_map_common_io,

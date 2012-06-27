@@ -576,6 +576,7 @@ static void __init ag5evm_init(void)
 MACHINE_START(AG5EVM, "ag5evm")
 	.map_io		= sh73a0_map_io,
 	.init_early	= sh73a0_add_early_devices,
+	.soc		= &sh73a0_soc_desc,
 	.nr_irqs	= NR_IRQS_LEGACY,
 	.init_irq	= sh73a0_init_irq,
 	.handle_irq	= gic_handle_irq,

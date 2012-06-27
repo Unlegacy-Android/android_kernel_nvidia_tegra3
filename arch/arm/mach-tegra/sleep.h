@@ -3,7 +3,7 @@
  *
  * Declarations for power state transition code
  *
- * Copyright (c) 2010-2011, NVIDIA Corporation.
+ * Copyright (c) 2010-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,6 +34,14 @@
 #endif
 
 #define TEGRA_POWER_LP1_AUDIO		(1 << 25) /* do not turn off pll-p in LP1 */
+
+#ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+#define TEGRA_POWER_CLUSTER_PART_CRAIL	(1 << 24) /* Power gate CRAIL partition */
+#define TEGRA_POWER_CLUSTER_PART_NONCPU	(1 << 25) /* Power gate CxNC partition */
+#define TEGRA_POWER_CLUSTER_PART_MASK	(TEGRA_POWER_CLUSTER_PART_CRAIL | \
+						TEGRA_POWER_CLUSTER_PART_NONCPU)
+#endif
+
 #define TEGRA_POWER_SDRAM_SELFREFRESH	(1 << 26) /* SDRAM is in self-refresh */
 #define TEGRA_POWER_HOTPLUG_SHUTDOWN	(1 << 27) /* Hotplug shutdown */
 #define TEGRA_POWER_CLUSTER_G		(1 << 28) /* G CPU */
@@ -82,9 +90,13 @@
 #define FLOW_CTRL_CSR_WFI_BITMAP	(0xF << 8)
 #endif
 
+#ifdef CONFIG_CACHE_L2X0
 #define TEGRA_PL310_VIRT (TEGRA_ARM_PL310_BASE - IO_CPU_PHYS + IO_CPU_VIRT)
-#define TEGRA_FLOW_CTRL_VIRT (TEGRA_FLOW_CTRL_BASE - IO_PPSB_PHYS + IO_PPSB_VIRT)
+#endif
+#ifdef CONFIG_HAVE_ARM_SCU
 #define TEGRA_ARM_PERIF_VIRT (TEGRA_ARM_PERIF_BASE - IO_CPU_PHYS + IO_CPU_VIRT)
+#endif
+#define TEGRA_FLOW_CTRL_VIRT (TEGRA_FLOW_CTRL_BASE - IO_PPSB_PHYS + IO_PPSB_VIRT)
 
 #ifdef __ASSEMBLY__
 
@@ -94,6 +106,7 @@
 	bic	\tmp1, \tmp1, #(1<<6) | (1<<0)	@ clear ACTLR.SMP | ACTLR.FW
 	mcr	p15, 0, \tmp1, c1, c0, 1	@ ACTLR
 	isb
+#ifdef CONFIG_HAVE_ARM_SCU
 	cpu_id	\tmp1
 	mov	\tmp1, \tmp1, lsl #2
 	mov	\tmp2, #0xf
@@ -101,6 +114,7 @@
 	mov32	\tmp1, TEGRA_ARM_PERIF_VIRT + 0xC
 	str	\tmp2, [\tmp1]			@ invalidate SCU tags for CPU
 	dsb
+#endif
 .endm
 
 #define DEBUG_CONTEXT_STACK	0

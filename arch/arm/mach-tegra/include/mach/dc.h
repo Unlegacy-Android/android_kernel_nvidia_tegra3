@@ -28,6 +28,7 @@
 
 #define TEGRA_MAX_DC		2
 #define DC_N_WINDOWS		3
+#define DEFAULT_FPGA_FREQ_KHZ	160000
 
 
 /* DSI pixel data format */
@@ -128,6 +129,11 @@ struct dsi_phy_timing_ns {
 	u16		t_tago_ns;
 };
 
+enum {
+	DSI_VS_0 = 0x0,
+	DSI_VS_1 = 0x1,
+};
+
 struct tegra_dsi_out {
 	u8		n_data_lanes;			/* required */
 	u8		pixel_format;			/* required */
@@ -138,6 +144,7 @@ struct tegra_dsi_out {
 	u8		dsi_instance;
 	u8		chip_id;
 	u8		chip_rev;
+	u8		controller_vs;
 
 	bool		panel_has_frame_buffer;	/* required*/
 
@@ -156,6 +163,7 @@ struct tegra_dsi_out {
 	u8		video_data_type;		/* required */
 	u8		video_clock_mode;
 	u8		video_burst_mode;
+	u8		ganged_mode_type;
 
 	u16		panel_buffer_size_byte;
 	u16		panel_reset_timeout_msec;
@@ -168,12 +176,16 @@ struct tegra_dsi_out {
 					 * most panels. */
 	bool		te_polarity_low;
 	bool		power_saving_suspend;
+	bool		source_invert; /* Invert the source of DSI. By
+					* defaut DCa is connected to
+					* DSIa. */
 
 	u32		max_panel_freq_khz;
 	u32		lp_cmd_mode_freq_khz;
 	u32		lp_read_cmd_mode_freq_khz;
 	u32		hs_clk_in_lp_cmd_mode_freq_khz;
 	u32		burst_mode_freq_khz;
+	u32		fpga_freq_khz;
 
 	struct dsi_phy_timing_ns phy_timing;
 };
@@ -220,6 +232,12 @@ enum {
 	TEGRA_DC_OUT_RGB,
 	TEGRA_DC_OUT_HDMI,
 	TEGRA_DC_OUT_DSI,
+	TEGRA_DC_OUT_DSI2LVDS,
+};
+
+enum {
+	DSI2LVDS_LEFT_RIGHT,
+	DSI2LVDS_ODD_EVEN,
 };
 
 struct tegra_dc_out_pin {
@@ -269,6 +287,13 @@ struct tegra_dc_sd_agg_priorities {
 	u8 agg[4];
 };
 
+struct tegra_dc_sd_window {
+	u16 h_position;
+	u16 v_position;
+	u16 h_size;
+	u16 v_size;
+};
+
 struct tegra_dc_sd_settings {
 	unsigned enable;
 	bool use_auto_pwm;
@@ -288,6 +313,20 @@ struct tegra_dc_sd_settings {
 
 	bool use_vid_luma;
 	struct tegra_dc_sd_rgb coeff;
+
+	bool k_limit_enable;
+	u16 k_limit;
+
+	bool sd_window_enable;
+	struct tegra_dc_sd_window sd_window;
+
+	bool soft_clipping_enable;
+	u8 soft_clipping_threshold;
+
+	bool smooth_k_enable;
+	u16 smooth_k_incr;
+
+	bool sd_proc_control;
 
 	struct tegra_dc_sd_fc fc;
 	struct tegra_dc_sd_blp blp;
@@ -377,6 +416,9 @@ struct tegra_dc_out {
 #define TEGRA_DC_OUT_CONTINUOUS_MODE		(0 << 3)
 #define TEGRA_DC_OUT_ONE_SHOT_MODE		(1 << 3)
 #define TEGRA_DC_OUT_N_SHOT_MODE		(1 << 4)
+#define TEGRA_DC_OUT_CMU_DISABLE		(0 << 5)
+#define TEGRA_DC_OUT_CMU_ENABLE			(1 << 5)
+
 
 #define TEGRA_DC_ALIGN_MSB		0
 #define TEGRA_DC_ALIGN_LSB		1
@@ -403,6 +445,24 @@ struct tegra_dc_lut {
 	u8 r[256];
 	u8 g[256];
 	u8 b[256];
+};
+
+struct tegra_dc_cmu_csc {
+	u16 krr;
+	u16 kgr;
+	u16 kbr;
+	u16 krg;
+	u16 kgg;
+	u16 kbg;
+	u16 krb;
+	u16 kgb;
+	u16 kbb;
+};
+
+struct tegra_dc_cmu {
+	u16 lut1[256];
+	struct tegra_dc_cmu_csc csc;
+	u8 lut2[960];
 };
 
 struct tegra_dc_win {

@@ -22,8 +22,12 @@
 #include <linux/clk.h>
 #include <linux/cpumask.h>
 
+#include <asm/cputype.h>
 #include <asm/hardware/gic.h>
+#include <asm/mach-types.h>
+#include <asm/smp_plat.h>
 #include <asm/smp_scu.h>
+#include <asm/soc.h>
 
 #include <mach/clk.h>
 #include <mach/iomap.h>
@@ -32,6 +36,9 @@
 #include "fuse.h"
 #include "flowctrl.h"
 #include "reset.h"
+#include "common.h"
+
+extern void tegra_secondary_startup(void);
 
 #include "pm.h"
 #include "clock.h"
@@ -67,14 +74,36 @@ const struct cpumask *const tegra_cpu_init_mask = to_cpumask(tegra_cpu_init_bits
 #define CAR_BOND_OUT_V_CPU_G	(1<<0)
 #endif
 
+#ifdef CONFIG_HAVE_ARM_SCU
 static void __iomem *scu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE);
+#endif
+
+static unsigned int get_core_count(void)
+{
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	u32 l2ctlr;
+
+	unsigned int cpuid = (read_cpuid_id() >> 4) & 0xFFF;
+
+	/* Cortex-A15? */
+	if (cpuid == 0xC0F) {
+		__asm__("mrc p15, 1, %0, c9, c0, 2\n" : "=r" (l2ctlr));
+		return ((l2ctlr >> 24) & 3) + 1;
+	}
+#endif
+#ifdef CONFIG_HAVE_ARM_SCU
+	return scu_get_core_count(scu_base);
+#else
+	return 1;
+#endif
+}
 
 static unsigned int available_cpus(void)
 {
 	static unsigned int ncores;
 
 	if (ncores == 0) {
-		ncores = scu_get_core_count(scu_base);
+		ncores = get_core_count();
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 		if (ncores > 1) {
 			u32 fuse_sku = readl(FUSE_SKU_DIRECT_CONFIG);
@@ -117,7 +146,7 @@ static bool is_cpu_powered(unsigned int cpu)
 		return tegra_powergate_is_powered(TEGRA_CPU_POWERGATE_ID(cpu));
 }
 
-void __cpuinit platform_secondary_init(unsigned int cpu)
+static void __cpuinit tegra_secondary_init(unsigned int cpu)
 {
 	gic_secondary_init(0);
 
@@ -148,16 +177,22 @@ static int tegra30_power_up_cpu(unsigned int cpu)
 	u32 reg;
 	int ret;
 	unsigned long timeout;
+	bool booted = false;
 
 	BUG_ON(cpu == smp_processor_id());
 	BUG_ON(is_lp_cluster());
+
+	if (cpu_isset(cpu, tegra_cpu_init_map))
+		booted = true;
+
+	cpu = cpu_logical_map(cpu);
 
 	/* If this cpu has booted this function is entered after
 	 * CPU has been already un-gated by flow controller. Wait
 	 * for confirmation that cpu is powered and remove clamps.
 	 * On first boot entry do not wait - go to direct ungate.
 	 */
-	if (cpu_isset(cpu, tegra_cpu_init_map)) {
+	if (booted) {
 		timeout = jiffies + 5;
 		do {
 			if (is_cpu_powered(cpu))
@@ -202,9 +237,11 @@ fail:
 	return 0;
 }
 
-int boot_secondary(unsigned int cpu, struct task_struct *idle)
+int tegra_boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 	int status;
+
+	cpu = cpu_logical_map(cpu);
 
 	/* Avoid timer calibration on slave cpus. Use the value calibrated
 	 * on master cpu. This reduces the bringup time for each slave cpu
@@ -280,7 +317,7 @@ done:
  * Initialise the CPU possible map early - this describes the CPUs
  * which may be present or become present in the system.
  */
-void __init smp_init_cpus(void)
+static void __init tegra_smp_init_cpus(void)
 {
 	unsigned int ncores = available_cpus();
 	unsigned int i;
@@ -307,7 +344,7 @@ void __init smp_init_cpus(void)
 	set_smp_cross_call(gic_raise_softirq);
 }
 
-void __init platform_smp_prepare_cpus(unsigned int max_cpus)
+static void __init tegra_smp_prepare_cpus(unsigned int max_cpus)
 {
 	/* Always mark the boot CPU as initialized. */
 	cpumask_set_cpu(0, to_cpumask(tegra_cpu_init_bits));
@@ -330,5 +367,23 @@ void __init platform_smp_prepare_cpus(unsigned int max_cpus)
 			__raw_writel(scu_ctrl, scu_base);
 	}
 #endif
+
+#ifdef CONFIG_HAVE_ARM_SCU
 	scu_enable(scu_base);
+#endif
 }
+
+struct arm_soc_smp_init_ops tegra_soc_smp_init_ops __initdata = {
+	.smp_init_cpus		= tegra_smp_init_cpus,
+	.smp_prepare_cpus	= tegra_smp_prepare_cpus,
+};
+
+struct arm_soc_smp_ops tegra_soc_smp_ops __initdata = {
+	.smp_secondary_init	= tegra_secondary_init,
+	.smp_boot_secondary	= tegra_boot_secondary,
+#ifdef CONFIG_HOTPLUG_CPU
+	.cpu_kill		= tegra_cpu_kill,
+	.cpu_die		= tegra_cpu_die,
+	.cpu_disable		= dummy_cpu_disable,
+#endif
+};

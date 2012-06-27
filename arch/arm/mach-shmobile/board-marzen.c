@@ -94,6 +94,7 @@ static void __init marzen_init(void)
 MACHINE_START(MARZEN, "marzen")
 	.map_io		= r8a7779_map_io,
 	.init_early	= r8a7779_add_early_devices,
+	.soc		= &r8a7779_soc_desc,
 	.nr_irqs	= NR_IRQS_LEGACY,
 	.init_irq	= r8a7779_init_irq,
 	.handle_irq	= gic_handle_irq,

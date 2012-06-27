@@ -805,6 +805,7 @@ MACHINE_START(P852, "Tegra P852")
 	.reserve	= tegra_p852_reserve,
 	.init_early	= tegra_init_early,
 	.init_irq	= tegra_init_irq,
+	.handle_irq	= gic_handle_irq,
 	.timer		= &tegra_timer,
 	.init_machine	= tegra_p852_init,
 MACHINE_END
