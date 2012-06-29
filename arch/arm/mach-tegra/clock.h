@@ -77,6 +77,8 @@ struct clk;
 #define PERIPH_ON_APB		(1 << 29)
 #define PERIPH_ON_CBUS		(1 << 30)
 
+struct tegra_cl_dvfs;
+
 struct clk_mux_sel {
 	struct clk	*input;
 	u32		value;
@@ -176,7 +178,11 @@ struct clk {
 			int				lock_delay;
 			unsigned long			fixed_rate;
 			u32				misc1;
+			u32	(*round_p_to_pdiv)(u32 p, u32 *pdiv);
 		} pll;
+		struct {
+			struct tegra_cl_dvfs		*cl_dvfs;
+		} dfll;
 		struct {
 			unsigned long			default_rate;
 		} pll_div;
@@ -187,6 +193,7 @@ struct clk {
 		struct {
 			struct clk			*main;
 			struct clk			*backup;
+			struct clk			*dynamic;
 			unsigned long			backup_rate;
 			enum cpu_mode			mode;
 		} cpu;
@@ -201,6 +208,10 @@ struct clk {
 			unsigned long			threshold;
 		} system;
 		struct {
+			struct clk			*top_user;
+			struct clk			*slow_user;
+		} cbus;
+		struct {
 			struct list_head		node;
 			bool				enabled;
 			unsigned long			rate;
@@ -208,6 +219,7 @@ struct clk {
 			struct clk			*client;
 			u32				client_div;
 			enum shared_bus_users_mode	mode;
+			struct mutex			*cross_bus_mutex;
 		} shared_bus_user;
 	} u;
 

@@ -34,6 +34,7 @@
 #include "apbio.h"
 
 #define FUSE_SKU_INFO		0x110
+#define FUSE_VP8_ENABLE_0	0x1c4
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define FUSE_UID_LOW		0x108
 #define FUSE_UID_HIGH		0x10c
@@ -76,6 +77,7 @@ static struct tegra_id tegra_id;
 int tegra_sku_id;
 int tegra_chip_id;
 enum tegra_revision tegra_revision;
+static unsigned int tegra_fuse_vp8_enable;
 
 /* The BCT to use at boot is specified by board straps that can be read
  * through a APB misc register and decoded. 2 bits, i.e. 4 possible BCTs.
@@ -469,3 +471,17 @@ void tegra_init_fuse(void)
 		tegra_core_process_id());
 }
 
+static unsigned int get_fuse_vp8_enable(char *val, struct kernel_param *kp)
+{
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA2 ||
+		 tegra_get_chipid() == TEGRA_CHIPID_TEGRA3)
+		tegra_fuse_vp8_enable = 0;
+	else
+		tegra_fuse_vp8_enable =  tegra_fuse_readl(FUSE_VP8_ENABLE_0);
+
+	return param_get_uint(val, kp);
+}
+
+module_param_call(tegra_fuse_vp8_enable, NULL, get_fuse_vp8_enable,
+		&tegra_fuse_vp8_enable, 0444);
+__MODULE_PARM_TYPE(tegra_fuse_vp8_enable, "uint");

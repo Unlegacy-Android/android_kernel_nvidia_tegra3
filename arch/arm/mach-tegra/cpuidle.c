@@ -98,10 +98,6 @@ static bool lp2_disabled_by_suspend;
 
 void tegra_lp2_in_idle(bool enable)
 {
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	/* !!!DELETEME!!! THIS IS A TEMPORARY HACK */
-	lp2_in_idle_modifiable = false;
-#endif
 	/* If LP2 in idle is permanently disabled it can't be re-enabled. */
 	if (lp2_in_idle_modifiable) {
 		lp2_in_idle = enable;
@@ -158,6 +154,60 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 
 	dev->last_residency = (int)us;
 	return (entered_lp2) ? index : 0;
+}
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
+#define	POWER_GATING_OPTION_LEN	8
+static char power_gating_option[8] __read_mostly =
+											{'c', 'r', 'a', 'i', 'l', '\0'};
+static int power_gating_mode = TEGRA_POWER_CLUSTER_PART_CRAIL;
+static struct kparam_string power_gating __read_mostly = {
+	.maxlen = POWER_GATING_OPTION_LEN,
+	.string = power_gating_option,
+};
+
+static int power_gating_set(const char *buffer, const struct kernel_param *kp)
+{
+	const struct kparam_string *kps = kp->str;
+	int len = strlen(buffer);
+	int mode = -1;
+
+	if (len > kp->str->maxlen-1) {
+		pr_err("%s: string %s does not fit in 6 chars.\n", kp->name, buffer);
+		return -ENOSPC;
+	}
+
+	if (!strncmp(buffer, "noncpu", 6))
+		mode = TEGRA_POWER_CLUSTER_PART_NONCPU;
+	else if (!strncmp(buffer, "crail", 5))
+		mode = TEGRA_POWER_CLUSTER_PART_CRAIL;
+	else if (!strncmp(buffer, "emu", 3))
+		mode = TEGRA_POWER_CLUSTER_PART_MASK;
+	else if (!strncmp(buffer, "none", 4))
+		mode = 0;
+
+	if (mode >= 0) {
+		strcpy(kps->string, buffer);
+		kps->string[len - 1] = '\0';
+		power_gating_mode = mode;
+		return 0;
+	}
+
+	pr_err("%s: power gating option: noncpu, crail, emu, cpu.", kp->name);
+	return -EINVAL;
+}
+
+static struct kernel_param_ops power_gating_ops = {
+	.set = power_gating_set,
+	.get = param_get_string,
+};
+
+module_param_cb(power_gating, &power_gating_ops, &power_gating, 0644);
+
+int get_power_gating_partition(void)
+{
+	return power_gating_mode;
 }
 #endif
 

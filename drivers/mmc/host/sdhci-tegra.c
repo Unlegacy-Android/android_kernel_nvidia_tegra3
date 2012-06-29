@@ -306,6 +306,9 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 	ctrl_2 = sdhci_readw(host, SDHCI_HOST_CONTROL2);
 
 	/* Select Bus Speed Mode for host */
+	/* For HS200 we need to set UHS_MODE_SEL to SDR104.
+	 * It works as SDR 104 in SD 4-bit mode and HS200 in eMMC 8-bit mode.
+	 */
 	ctrl_2 &= ~SDHCI_CTRL_UHS_MASK;
 	switch (uhs) {
 	case MMC_TIMING_UHS_SDR12:
@@ -318,6 +321,7 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 		ctrl_2 |= SDHCI_CTRL_UHS_SDR50;
 		break;
 	case MMC_TIMING_UHS_SDR104:
+	case MMC_TIMING_MMC_HS200:
 		ctrl_2 |= SDHCI_CTRL_UHS_SDR104;
 		break;
 	case MMC_TIMING_UHS_DDR50:
@@ -992,16 +996,18 @@ static struct sdhci_pltfm_data sdhci_tegra20_pdata = {
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 		  SDHCI_QUIRK_DATA_TIMEOUT_USES_SDCLK |
 		  SDHCI_QUIRK_NON_STD_VOLTAGE_SWITCHING |
+		  SDHCI_QUIRK_NON_STANDARD_TUNING |
 #endif
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 		  SDHCI_QUIRK_NONSTANDARD_CLOCK |
-		  SDHCI_QUIRK_NON_STANDARD_TUNING |
+#endif
+#ifndef CONFIG_ARCH_TEGRA_11x_SOC
+		  SDHCI_QUIRK_BROKEN_CARD_DETECTION |
 #endif
 		  SDHCI_QUIRK_SINGLE_POWER_WRITE |
 		  SDHCI_QUIRK_NO_HISPD_BIT |
 		  SDHCI_QUIRK_BROKEN_ADMA_ZEROLEN_DESC |
-		  SDHCI_QUIRK_NO_CALC_MAX_DISCARD_TO |
-		  SDHCI_QUIRK_BROKEN_CARD_DETECTION,
+		  SDHCI_QUIRK_NO_CALC_MAX_DISCARD_TO,
 	.ops  = &tegra_sdhci_ops,
 };
 

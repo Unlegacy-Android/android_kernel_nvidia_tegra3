@@ -40,6 +40,9 @@
 #define TEGRA_POWER_CLUSTER_PART_NONCPU	(1 << 25) /* Power gate CxNC partition */
 #define TEGRA_POWER_CLUSTER_PART_MASK	(TEGRA_POWER_CLUSTER_PART_CRAIL | \
 						TEGRA_POWER_CLUSTER_PART_NONCPU)
+#define TEGRA_POWER_CLUSTER_PART_DEFAULT TEGRA_POWER_CLUSTER_PART_CRAIL
+#else
+#define TEGRA_POWER_CLUSTER_PART_DEFAULT 0
 #endif
 
 #define TEGRA_POWER_SDRAM_SELFREFRESH	(1 << 26) /* SDRAM is in self-refresh */
@@ -73,10 +76,25 @@
 #define   FLOW_CTRL_JTAG_RESUME		(1 << 28)
 #define   FLOW_CTRL_HALT_CPU_IRQ	(1 << 10)
 #define   FLOW_CTRL_HALT_CPU_FIQ	(1 << 8)
+#define   FLOW_CTRL_HALT_LIC_IRQ	(1 << 11)
+#define   FLOW_CTRL_HALT_LIC_FIQ	(1 << 10)
+#define   FLOW_CTRL_HALT_GIC_IRQ	(1 << 9)
+#define   FLOW_CTRL_HALT_GIC_FIQ	(1 << 8)
+#define   FLOW_CTRL_IMMEDIATE_WAKE	(1 << 3)
 #define FLOW_CTRL_CPU0_CSR		0x8
-#define   FLOW_CTRL_CSR_INTR_FLAG	(1 << 15)
-#define   FLOW_CTRL_CSR_EVENT_FLAG	(1 << 14)
-#define   FLOW_CTRL_CSR_ENABLE		(1 << 0)
+#define   FLOW_CTRL_CSR_INTR_FLAG		(1 << 15)
+#define   FLOW_CTRL_CSR_EVENT_FLAG		(1 << 14)
+#define   FLOW_CTRL_CSR_ENABLE_EXT_NONE	(0)
+#define   FLOW_CTRL_CSR_ENABLE_EXT_CRAIL	(1<<13)
+#define   FLOW_CTRL_CSR_ENABLE_EXT_NCPU	(1<<12)
+#define   FLOW_CTRL_CSR_ENABLE_EXT_MASK	( \
+					FLOW_CTRL_CSR_ENABLE_EXT_NCPU | \
+					FLOW_CTRL_CSR_ENABLE_EXT_CRAIL )
+#define   FLOW_CTRL_CSR_ENABLE_EXT_EMU FLOW_CTRL_CSR_ENABLE_EXT_MASK
+#define   FLOW_CTRL_CSR_IMMEDIATE_WAKE		(1<<3)
+#define   FLOW_CTRL_CSR_SWITCH_CLUSTER		(1<<2)
+#define   FLOW_CTRL_CSR_ENABLE			(1 << 0)
+
 #define FLOW_CTRL_HALT_CPU1_EVENTS	0x14
 #define FLOW_CTRL_CPU1_CSR		0x18
 
@@ -161,7 +179,7 @@ void tegra_pen_unlock(void);
 void tegra_cpu_wfi(void);
 int tegra_sleep_cpu_finish(unsigned long v2p);
 void tegra_resume(void);
-void tegra_cpu_resume(void);
+void tegra_flush_l1_cache(void);
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 extern void tegra2_iram_start;

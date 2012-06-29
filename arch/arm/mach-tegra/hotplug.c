@@ -69,11 +69,27 @@ void tegra_cpu_die(unsigned int cpu)
 	/* Place the current CPU in reset. */
 	tegra2_hotplug_shutdown();
 #else
+
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	unsigned int r;
+#endif
 	/* Disable GIC CPU interface for this CPU. */
 	tegra_gic_cpu_disable(false);
 
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	/* disable cache */
+	asm volatile(
+	"	mrc p15, 0, %0, c1, c0, 0\n"
+	"	bic %0, %0, #0x4         \n"
+	"	mcr p15, 0, %0, c1, c0, 0\n"
+	: "=r" (r)
+	: "r" (r)
+	: "cc"
+	);
+#endif
+
 	/* Flush the L1 data cache. */
-	flush_cache_all();
+	tegra_flush_l1_cache();
 
 	/* Shut down the current CPU. */
 	tegra3_hotplug_shutdown();

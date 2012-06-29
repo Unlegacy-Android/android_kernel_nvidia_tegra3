@@ -48,27 +48,34 @@ extern struct platform_device tegra11_i2c_device4;
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 extern struct platform_device tegra11_i2c_device5;
 #endif
+extern struct platform_device tegra_i2c_slave_device1;
+extern struct platform_device tegra_i2c_slave_device2;
+extern struct platform_device tegra_i2c_slave_device3;
+extern struct platform_device tegra_i2c_slave_device4;
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+extern struct platform_device tegra_i2c_slave_device5;
+#endif
 extern struct platform_device tegra_spi_device1;
 extern struct platform_device tegra_spi_device2;
 extern struct platform_device tegra_spi_device3;
 extern struct platform_device tegra_spi_device4;
-extern struct platform_device tegra_spi_r2_device1;
-extern struct platform_device tegra_spi_r2_device2;
-extern struct platform_device tegra_spi_r2_device3;
-extern struct platform_device tegra_spi_r2_device4;
-extern struct platform_device tegra_spi_r2_device5;
-extern struct platform_device tegra_spi_r2_device6;
+extern struct platform_device tegra11_spi_device1;
+extern struct platform_device tegra11_spi_device2;
+extern struct platform_device tegra11_spi_device3;
+extern struct platform_device tegra11_spi_device4;
 extern struct platform_device tegra_spi_slave_device1;
 extern struct platform_device tegra_spi_slave_device2;
 extern struct platform_device tegra_spi_slave_device3;
 extern struct platform_device tegra_spi_slave_device4;
-extern struct platform_device tegra_spi_r2_slave_device1;
-extern struct platform_device tegra_spi_r2_slave_device2;
-extern struct platform_device tegra_spi_r2_slave_device3;
-extern struct platform_device tegra_spi_r2_slave_device4;
-extern struct platform_device tegra_spi_r2_slave_device5;
-extern struct platform_device tegra_spi_r2_slave_device6;
+extern struct platform_device tegra11_spi_slave_device1;
+extern struct platform_device tegra11_spi_slave_device2;
+extern struct platform_device tegra11_spi_slave_device3;
+extern struct platform_device tegra11_spi_slave_device4;
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
+extern struct platform_device tegra11_spi_device5;
+extern struct platform_device tegra11_spi_device6;
+extern struct platform_device tegra11_spi_slave_device5;
+extern struct platform_device tegra11_spi_slave_device6;
 extern struct platform_device tegra_spi_device5;
 extern struct platform_device tegra_spi_device6;
 extern struct platform_device tegra_spi_slave_device5;
@@ -145,6 +152,7 @@ extern struct platform_device debug_uartc_device;
 extern struct platform_device debug_uartd_device;
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 extern struct platform_device tegra_se_device;
+extern struct platform_device tegra11_se_device;
 extern struct platform_device debug_uarte_device;
 #endif
 

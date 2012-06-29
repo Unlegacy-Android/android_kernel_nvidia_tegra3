@@ -345,7 +345,8 @@ int clk_set_parent_locked(struct clk *c, struct clk *parent)
 	new_rate = clk_predict_rate_from_parent(c, parent);
 	old_rate = clk_get_rate_locked(c);
 
-	if (new_rate > clk_get_max_rate(c)) {
+	if ((new_rate > clk_get_max_rate(c)) &&
+		(!parent->ops || !parent->ops->shared_bus_update)) {
 
 		pr_err("Failed to set parent %s for %s (violates clock limit"
 		       " %lu)\n", parent->name, c->name, clk_get_max_rate(c));
@@ -995,15 +996,15 @@ static int clock_tree_show(struct seq_file *s, void *data)
 	seq_printf(s, "------------------------------------------------------------------------------\n");
 
 	mutex_lock(&clock_list_lock);
-
+#ifndef CONFIG_TEGRA_FPGA_PLATFORM
 	clk_lock_all();
-
+#endif
 	list_for_each_entry(c, &clocks, node)
 		if (c->parent == NULL)
 			clock_tree_show_one(s, c, 0);
-
+#ifndef CONFIG_TEGRA_FPGA_PLATFORM
 	clk_unlock_all();
-
+#endif
 	mutex_unlock(&clock_list_lock);
 	return 0;
 }

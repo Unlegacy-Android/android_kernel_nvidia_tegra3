@@ -150,8 +150,10 @@ ENDPROC(tegra3_hotplug_shutdown)
  */
 ENTRY(tegra3_cpu_reset)
 	cpu_id	r3
+#ifndef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
 	cmp	r3, #0
 	moveq	pc, lr		@ Must never be called for CPU 0
+#endif
 
 	mov32	r12, TEGRA_FLOW_CTRL_VIRT
 	cpu_to_csr_reg r1, r3
@@ -162,7 +164,11 @@ ENTRY(tegra3_cpu_reset)
 	/* Clear this CPU's "event" and "interrupt" flags and power gate
 	   it when halting but not before it is in the "WFE" state. */
 	movw	r12, FLOW_CTRL_CSR_INTR_FLAG | FLOW_CTRL_CSR_EVENT_FLAG | FLOW_CTRL_CSR_ENABLE
-	mov	r4, #(1 << 4)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	mov	r4, #(1 << 8)			@ wfi bitmap
+#else
+	mov	r4, #(1 << 4)			@ wfe bitmap
+#endif
 	orr	r12, r12, r4, lsl r3
 	str	r12, [r1]
 
@@ -184,7 +190,11 @@ delay_1:
 __cpu_reset_again:
 	dsb
 	.align 5
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	wfi					@ CPU should be power gated here
+#else
 	wfe					@ CPU should be power gated here
+#endif
 wfe_war:
 	b	__cpu_reset_again
 
@@ -237,9 +247,24 @@ ENTRY(tegra3_sleep_cpu_secondary_finish)
 
 	dsb
 #ifdef MULTI_CACHE
+#ifdef CONFIG_HAVE_ARM_SCU
 	mov32	r10, cpu_cache
 	mov	lr, pc
 	ldr	pc, [r10, #CACHE_FLUSH_KERN_ALL]
+#else
+	cpu_id	r2
+	cpu_to_csr_reg	r1,	r2
+	mov32	r10, TEGRA_FLOW_CTRL_VIRT
+	ldr	r10, [r10, r1]
+	tst	r10, #FLOW_CTRL_CSR_ENABLE_EXT_MASK
+	beq	flush_l1
+	mov32	r10, cpu_cache
+	mov	lr, pc
+	ldr	pc, [r10, #CACHE_FLUSH_KERN_ALL]
+	b	no_l2_sync
+flush_l1:
+	bl	tegra_flush_l1_cache
+#endif
 #else
 	bl	__cpuc_flush_kern_all
 #endif
@@ -607,8 +632,15 @@ tegra3_enter_sleep:
 	orr	r0, r0, #FLOW_CTRL_CSR_ENABLE
 	str	r0, [r6, r2]
 
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	tst	r0, #FLOW_CTRL_IMMEDIATE_WAKE
+	movne	r0, #FLOW_CTRL_WAITEVENT
+	moveq	r0, #FLOW_CTRL_WAIT_FOR_INTERRUPT
+	orr	r0, r0, #FLOW_CTRL_HALT_LIC_IRQ | FLOW_CTRL_HALT_LIC_FIQ
+#else
 	mov	r0, #FLOW_CTRL_WAIT_FOR_INTERRUPT
 	orr	r0, r0, #FLOW_CTRL_HALT_CPU_IRQ | FLOW_CTRL_HALT_CPU_FIQ
+#endif
 	cpu_to_halt_reg r2, r1
 	str	r0, [r6, r2]
 	dsb

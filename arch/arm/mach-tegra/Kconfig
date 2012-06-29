@@ -91,6 +91,8 @@ config ARCH_TEGRA_11x_SOC
 	select USB_ULPI_VIEWPORT if USB_SUPPORT
 	select REPORT_PRESENT_CPUS if TEGRA_AUTO_HOTPLUG
 	select ARCH_TEGRA_HAS_CL_DVFS
+	select TEGRA_DYNAMIC_CBUS
+	select TEGRA_DUAL_CBUS
 	help
 	  Support for NVIDIA Tegra 11x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
@@ -572,4 +574,14 @@ config TEGRA_PREPOWER_WIFI
 	default n
 	help
 	  Pre-power up the on board WiFi chip
+
+config TEGRA_DYNAMIC_CBUS
+	bool "Adjust dynamically graphics clocks cumulative dvfs table"
+
+config TEGRA_DUAL_CBUS
+	bool "Use two plls (PLLC2/PLLC3) as graphics clocks sources"
+
+config TEGRA_MIGRATE_CBUS_USERS
+	bool "Move cbus users between source plls to optimize cumulative dvfs"
+	depends on TEGRA_DYNAMIC_CBUS && TEGRA_DUAL_CBUS
 endif

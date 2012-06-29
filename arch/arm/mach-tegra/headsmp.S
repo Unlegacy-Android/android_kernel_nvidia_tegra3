@@ -3,7 +3,7 @@
  *
  * CPU initialization routines for Tegra SoCs
  *
- * Copyright (c) 2009-2011, NVIDIA Corporation.
+ * Copyright (c) 2009-2012, NVIDIA Corporation.
  * Copyright (c) 2011 Google, Inc.
  * Author: Colin Cross <ccross@android.com>
  *         Gary King <gking@nvidia.com>
@@ -79,21 +79,19 @@ ENTRY(tegra_resume)
 	mov32	r2, TEGRA_FLOW_CTRL_BASE+8	@ CPU0 CSR
 	ldr	r1, [r2]
 	orr	r1, r1, #(1 << 15) | (1 << 14)	@ write to clear event & intr
-	movw	r0, #0x0FFD	@ enable, cluster_switch, immed, & bitmaps
+	movw	r0, #0x3FFD	@ enable, enable_ext, cluster_switch, immed, & bitmaps
 	bic	r1, r1, r0
 	str	r1, [r2]
 #endif
 
-#ifdef CONFIG_HAVE_ARM_SCU
+#if defined(CONFIG_HAVE_ARM_SCU)
 	/* enable SCU */
 	mov32	r0, TEGRA_ARM_PERIF_BASE
 	ldr	r1, [r0]
 	orr	r1, r1, #1
-#if defined(CONFIG_HAVE_ARM_SCU)
 	orr	r1, r1, #(1 << 3)	@ Enable SCU speculative line fill.
 	orr	r1, r1, #(1 << 5)	@ Enable IC standby.
 	orr	r1, r1, #(1 << 6)	@ Enable SCU standby.
-#endif
 	str	r1, [r0]
 #endif
 
@@ -120,10 +118,13 @@ __invalidate_cpu_state:
 	isb
 	mcr	p15, 0, r0, c7, c5, 0	@ invalidate BTAC, i-cache
 	mcr	p15, 0, r0, c7, c5, 6	@ invalidate branch pred array
+	mcr	p15, 0, r0, c8, c5, 0	@ invalidate instruction TLB
+	mcr	p15, 0, r0, c8, c6, 0	@ invalidate data TLB
 	mcr	p15, 0, r0, c8, c7, 0	@ invalidate unified TLB
 	dsb
 	isb
 
+#if defined(CONFIG_HAVE_ARM_SCU)
 	cpu_id	r0
 	cmp	r0, #0
 	mov32	r1, (TEGRA_ARM_PERIF_BASE + 0xC)
@@ -131,7 +132,23 @@ __invalidate_cpu_state:
 	movne	r2, #0xf
 	movne	r2, r2, lsl r0
 	strne	r2, [r1]		@ invalidate SCU tags for CPU
+#else
+	/*	This is only needed for cluster 0 with integrated L2 cache */
+	mov32	r0, TEGRA_FLOW_CTRL_BASE+0x2c	@ CLUSTER_CONTROL
+	ldr	r0, [r0]
+	tst	r0, #1
+	bne	enable_icache_bp
+	mrc	p15, 0x1, r0, c9, c0, 2
+	and	r1, r0, #7
+	cmp	r1, #2
+	beq	enable_icache_bp
+	bic r0, r0, #7
+	orr r0, r0, #2
+	mcr p15, 0x1, r0, c9, c0, 2
 
+#endif
+
+enable_icache_bp:
 	dsb
 	mov	r0, #0x1800
 	mcr	p15, 0, r0, c1, c0, 0	@ enable branch prediction, i-cache
@@ -139,14 +156,28 @@ __invalidate_cpu_state:
 	/* fall through */
 
 /*
- *	tegra_invalidate_l1
+ *	tegra_invalidate_cache
  *
- *	  Invalidates the L1 data cache (no clean) during initial boot of a cpu
+ *	  Invalidates the L1 or L2 data cache (no clean) during initial boot of
+ *	  a cpu. For architecture with external L2, invalidate L1 only. For
+ *	  architecture with integrated L2 and SCU, invalidate L2 if current CPU
+ *	  boots up with a power gated NC partition initially or power rail was
+ *	  initially off, invalidates L1 in other cases
  *
  *	  Corrupted registers: r0-r6
  */
-tegra_invalidate_l1:
+tegra_invalidate_cache:
+#if defined(CONFIG_HAVE_ARM_SCU)
 	mov	r0, #0
+#else
+	cpu_id	r0
+	cpu_to_csr_reg	r1, r0
+	mov32	r0, TEGRA_FLOW_CTRL_BASE
+	ldr	r0, [r0, r1]
+	tst	r0, #FLOW_CTRL_CSR_ENABLE_EXT_MASK
+	movne	r0, #2
+	moveq	r0, #0
+#endif
 	mcr	p15, 2, r0, c0, c0, 0
 	mrc	p15, 1, r0, c0, c0, 0
 
@@ -173,6 +204,10 @@ tegra_invalidate_l1:
 	bgt	2b
 	cmp	r2, #0
 	bgt	1b
+#if !defined(CONFIG_HAVE_ARM_SCU)
+	mov	r0, #0
+	mcr	p15, 2, r0, c0, c0, 0
+#endif
 	dsb
 	isb
 	mov	pc, lr

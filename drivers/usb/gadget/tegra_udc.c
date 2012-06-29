@@ -115,7 +115,14 @@ static inline unsigned int udc_readl(struct tegra_udc *udc, u32 offset)
 static inline bool vbus_enabled(struct tegra_udc *udc)
 {
 	bool status = false;
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	status = (udc_readl(udc, VBUS_WAKEUP_REG_OFFSET) & USB_SYS_VBUS_STATUS);
+#else
+	/* On FPGA VBUS is detected through VBUS A Session instead of VBUS
+	 * status.*/
+	status = (udc_readl(udc, VBUS_SENSOR_REG_OFFSET)
+						& USB_SYS_VBUS_ASESSION);
+#endif
 	return status;
 }
 
@@ -314,6 +321,7 @@ static void dr_controller_run(struct tegra_udc *udc)
 
 	/* If OTG transceiver is available, then it handles the VBUS detection*/
 	if (!udc->transceiver) {
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 		/* Enable cable detection interrupt, without setting the
 		 * USB_SYS_VBUS_WAKEUP_INT bit. USB_SYS_VBUS_WAKEUP_INT is
 		 * clear on write */
@@ -322,6 +330,14 @@ static void dr_controller_run(struct tegra_udc *udc)
 				| USB_SYS_VBUS_WAKEUP_ENABLE);
 		temp &= ~USB_SYS_VBUS_WAKEUP_INT_STATUS;
 		udc_writel(udc, temp, VBUS_WAKEUP_REG_OFFSET);
+#else
+		/* On FPGA VBUS is detected through VBUS A Session instead of
+		 * VBUS status.*/
+		temp = udc_readl(udc, VBUS_SENSOR_REG_OFFSET);
+		temp |= USB_SYS_VBUS_ASESSION_INT_EN;
+		temp &= ~USB_SYS_VBUS_ASESSION_CHANGED;
+		udc_writel(udc, temp, VBUS_SENSOR_REG_OFFSET);
+#endif
 	}
 	/* Enable DR irq reg */
 	temp = USB_INTR_INT_EN | USB_INTR_ERR_INT_EN
@@ -2148,12 +2164,21 @@ static irqreturn_t tegra_udc_irq(int irq, void *_udc)
 	spin_lock_irqsave(&udc->lock, flags);
 
 	if (!udc->transceiver) {
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 		temp = udc_readl(udc, VBUS_WAKEUP_REG_OFFSET);
 		/* write back the register to clear the interrupt */
 		udc_writel(udc, temp, VBUS_WAKEUP_REG_OFFSET);
 		if (temp & USB_SYS_VBUS_WAKEUP_INT_STATUS)
 			schedule_work(&udc->irq_work);
 		status = IRQ_HANDLED;
+#else
+		temp = udc_readl(udc, VBUS_SENSOR_REG_OFFSET);
+		/* write back the register to clear the interrupt */
+		udc_writel(udc, temp, VBUS_SENSOR_REG_OFFSET);
+		if (temp & USB_SYS_VBUS_ASESSION_CHANGED)
+			schedule_work(&udc->irq_work);
+		status = IRQ_HANDLED;
+#endif
 	}
 
 	/* Disable ISR for OTG host mode */

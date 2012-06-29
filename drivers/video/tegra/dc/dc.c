@@ -1503,7 +1503,7 @@ static unsigned long tegra_dc_clk_get_rate(struct tegra_dc *dc)
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	return clk_get_rate(dc->clk);
 #else
-	return 27000000;
+	return dc->mode.pclk;
 #endif
 }
 
@@ -2072,8 +2072,7 @@ static void tegra_dc_set_out(struct tegra_dc *dc, struct tegra_dc_out *out)
 		dc->out_ops = &tegra_dc_hdmi_ops;
 		break;
 
-	case TEGRA_DC_OUT_DSI: /* fall through */
-	case TEGRA_DC_OUT_DSI2LVDS:
+	case TEGRA_DC_OUT_DSI:
 		dc->out_ops = &tegra_dc_dsi_ops;
 		break;
 
@@ -2144,9 +2143,11 @@ u32 tegra_dc_read_checksum_latched(struct tegra_dc *dc)
 		goto crc_error;
 	}
 
+#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	/* TODO: Replace mdelay with code to sync VBlANK, since
 	 * DC_COM_CRC_CHECKSUM_LATCHED is available after VBLANK */
 	mdelay(TEGRA_CRC_LATCHED_DELAY);
+#endif
 
 	crc = tegra_dc_readl(dc, DC_COM_CRC_CHECKSUM_LATCHED);
 crc_error:

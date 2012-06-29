@@ -82,6 +82,7 @@ module_param(lp2_n_in_idle, bool, 0644);
 
 static struct clk *cpu_clk_for_dvfs;
 static struct clk *twd_clk;
+static struct clk *dfll;
 
 static int lp2_exit_latencies[5];
 
@@ -155,8 +156,9 @@ bool tegra3_lp2_is_allowed(struct cpuidle_device *dev,
 	 * Refer to Bug 804085.
 	 */
 	if ((tegra_revision == TEGRA_REVISION_A01) &&
+		(tegra_get_chipid() == TEGRA_CHIPID_TEGRA3) &&
 		num_online_cpus() > 1)
-		return false;
+			return false;
 
 #ifndef CONFIG_TEGRA_RAIL_OFF_MULTIPLE_CPUS
 	/* FIXME: All CPU's entering LP2 is not working.
@@ -204,6 +206,7 @@ static bool tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
 	bool sleep_completed = false;
 	bool multi_cpu_entry = false;
 	int bin;
+	unsigned int flag = 0;
 	s64 sleep_time;
 
 	/* LP2 entry time */
@@ -278,10 +281,17 @@ static bool tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
 
 	trace_power_start(POWER_CSTATE, 2, dev->cpu);
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
-	if (!is_lp_cluster())
+	if (!is_lp_cluster()) {
 		tegra_dvfs_rail_off(tegra_cpu_rail, entry_time);
+		/* If DFLL is used as CPU clock source go to open loop mode */
+		if (clk_get_parent(clk_get_parent(cpu_clk_for_dvfs)) == dfll)
+			tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 0);
+	}
 
-	if (tegra_idle_lp2_last(sleep_time, 0) == 0)
+#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
+	flag = get_power_gating_partition();
+#endif
+	if (tegra_idle_lp2_last(sleep_time, flag) == 0)
 		sleep_completed = true;
 	else {
 		int irq = tegra_gic_pending_interrupt();
@@ -290,8 +300,12 @@ static bool tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
 
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT, &dev->cpu);
 	exit_time = ktime_get();
-	if (!is_lp_cluster())
+	if (!is_lp_cluster()) {
 		tegra_dvfs_rail_on(tegra_cpu_rail, exit_time);
+		/* If DFLL is used as CPU clock source go to closed loop mode */
+		if (clk_get_parent(clk_get_parent(cpu_clk_for_dvfs)) == dfll)
+			tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
+	}
 	idle_stats.in_lp2_time[cpu_number(dev->cpu)] +=
 		ktime_to_us(ktime_sub(exit_time, entry_time));
 
@@ -441,15 +455,26 @@ bool tegra3_idle_lp2(struct cpuidle_device *dev,
 	s64 request = ktime_to_us(tick_nohz_get_sleep_length());
 	bool last_cpu = tegra_set_cpu_in_lp2(dev->cpu);
 	bool entered_lp2;
+	bool cpu_gating_only = false;
 
 	cpu_pm_enter();
 
-	if (dev->cpu == 0) {
+#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
+	cpu_gating_only = get_power_gating_partition() ? false : true;
+#endif
+
+	if (cpu_gating_only)
+		tegra3_idle_enter_lp2_cpu_n(dev, state, request);
+	else if (dev->cpu == 0) {
 		if (last_cpu) {
-			entered_lp2 = tegra3_idle_enter_lp2_cpu_0(dev, state, request);
+			tegra3_idle_enter_lp2_cpu_0(dev, state, request);
 		} else {
+#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
+			tegra3_idle_enter_lp2_cpu_n(dev, state, request);
+#else
 			tegra_cpu_wfi();
 			entered_lp2 = false;
+#endif
 		}
 	} else
 		entered_lp2 = tegra3_idle_enter_lp2_cpu_n(dev, state, request);
@@ -466,6 +491,7 @@ int tegra3_cpudile_init_soc(void)
 
 	cpu_clk_for_dvfs = tegra_get_clock_by_name("cpu_g");
 	twd_clk = tegra_get_clock_by_name("twd");
+	dfll = tegra_get_clock_by_name("dfll_cpu");
 
 	for (i = 0; i < ARRAY_SIZE(lp2_exit_latencies); i++)
 		lp2_exit_latencies[i] = tegra_lp2_exit_latency;

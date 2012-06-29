@@ -45,6 +45,9 @@
 
 #define APB_DMA_IRQ_MASK_SET			0x020
 
+#define APB_DMA_SWID				0x3c
+#define SWID_CHAN0				0x1
+
 #define APB_DMA_CHAN_CSR			0x000
 #define CSR_ENB					(1<<31)
 #define CSR_IE_EOC				(1<<30)
@@ -63,6 +66,11 @@
 #define STA_PING_PONG				(1<<28)
 #define STA_COUNT_SHIFT				2
 #define STA_COUNT_MASK				0xFFFC
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define APB_DMA_CHAN_CSRE			0x00C
+#define CSRE_PAUSE				(1<<31)
+#endif
 
 #define APB_DMA_CHAN_AHB_PTR			0x010
 
@@ -196,7 +204,14 @@ static void resume_dma(void)
 	writel(GEN_ENABLE, general_dma_addr + APB_DMA_GEN);
 	spin_unlock(&enable_lock);
 }
-
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+static void pause_dma_channel(struct tegra_dma_channel *ch, bool wait_for_burst_complete)
+{
+	writel(CSRE_PAUSE, ch->addr + APB_DMA_CHAN_CSRE);
+	if (wait_for_burst_complete)
+		udelay(20);
+}
+#endif
 static void start_head_req(struct tegra_dma_channel *ch)
 {
 	struct tegra_dma_req *head_req;
@@ -303,10 +318,18 @@ static unsigned int get_channel_status(struct tegra_dma_channel *ch,
 		 *  - Stop the dma channel
 		 *  - Globally re-enable DMA to resume other transfers
 		 */
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+		spin_lock(&enable_lock);
+		pause_dma_channel(ch, true);
+		status = readl(ch->addr + APB_DMA_CHAN_STA);
+		tegra_dma_stop(ch);
+		spin_unlock(&enable_lock);
+#else
 		pause_dma(true);
 		status = readl(ch->addr + APB_DMA_CHAN_STA);
 		tegra_dma_stop(ch);
 		resume_dma();
+#endif
 		if (status & STA_ISE_EOC) {
 			pr_err("Got Dma Int here clearing");
 			writel(status, ch->addr + APB_DMA_CHAN_STA);
@@ -694,6 +717,7 @@ static bool tegra_dma_update_hw_partial(struct tegra_dma_channel *ch,
 	u32 apb_ptr;
 	u32 ahb_ptr;
 	u32 csr;
+	u32 swid;
 	unsigned long status;
 	unsigned int req_transfer_count;
 	bool configure = false;
@@ -729,6 +753,17 @@ static bool tegra_dma_update_hw_partial(struct tegra_dma_channel *ch,
 	}
 
 	/* Safe to program new configuration */
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	swid = readl(general_dma_addr + APB_DMA_SWID);
+	if (req->use_smmu) {
+		swid |= (SWID_CHAN0 << (ch->id));
+		writel(swid, general_dma_addr + APB_DMA_SWID);
+	}
+	else {
+		swid &= (~(SWID_CHAN0 << (ch->id)));
+		writel(swid, general_dma_addr + APB_DMA_SWID);
+	}
+#endif
 	writel(apb_ptr, ch->addr + APB_DMA_CHAN_APB_PTR);
 	writel(ahb_ptr, ch->addr + APB_DMA_CHAN_AHB_PTR);
 
@@ -760,6 +795,7 @@ static void tegra_dma_update_hw(struct tegra_dma_channel *ch,
 	u32 ahb_ptr;
 	u32 apb_ptr;
 	u32 csr;
+	u32 swid;
 
 	csr = CSR_FLOW;
 	if (req->complete || req->threshold)
@@ -888,6 +924,18 @@ static void tegra_dma_update_hw(struct tegra_dma_channel *ch,
 	}
 	BUG_ON(index == ARRAY_SIZE(bus_width_table));
 	apb_seq |= index << APB_SEQ_BUS_WIDTH_SHIFT;
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	swid = readl(general_dma_addr + APB_DMA_SWID);
+	if (req->use_smmu) {
+		swid |= (SWID_CHAN0 << (ch->id));
+		writel(swid, general_dma_addr + APB_DMA_SWID);
+	}
+	else {
+		swid &= (~(SWID_CHAN0 << (ch->id)));
+		writel(swid, general_dma_addr + APB_DMA_SWID);
+	}
+#endif
 
 	writel(csr, ch->addr + APB_DMA_CHAN_CSR);
 	writel(apb_seq, ch->addr + APB_DMA_CHAN_APB_SEQ);
@@ -1066,6 +1114,9 @@ static irqreturn_t dma_isr(int irq, void *data)
 
 int __init tegra_dma_init(void)
 {
+#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
+	return -ENODEV;
+#else
 	int ret = 0;
 	int i;
 	unsigned int irq;
@@ -1143,6 +1194,7 @@ fail:
 			free_irq(ch->irq, ch);
 	}
 	return ret;
+#endif
 }
 postcore_initcall(tegra_dma_init);
 

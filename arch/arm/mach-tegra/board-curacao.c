@@ -130,9 +130,7 @@ static __initdata struct tegra_clk_init_table curacao_clk_init_table[] = {
 	{ "uartc",	"clk_m",	13000000,	true},
 	{ "uartd",	"clk_m",	13000000,	true},
 	{ "uarte",	"clk_m",	13000000,	true},
-	{ "pll_m",	NULL,		0,		true},
 	{ "blink",      "clk_32k",      32768,          false},
-	{ "pll_p_out4",	"pll_p",	24000000,	true },
 	{ "pwm",	"clk_32k",	32768,		false},
 	{ "blink",	"clk_32k",	32768,		false},
 	{ "pll_a",	NULL,		56448000,	true},
@@ -178,6 +176,11 @@ static struct tegra_i2c_platform_data curacao_i2c2_platform_data = {
 #endif
 };
 
+static struct tegra_i2c_slave_platform_data curacao_i2c2_slave_platform_data = {
+	.adapter_nr	= 1,
+	.bus_clk_rate	= { 100000, 0 },
+};
+
 static struct tegra_i2c_platform_data curacao_i2c3_platform_data = {
 	.adapter_nr	= 3,
 	.bus_count	= 1,
@@ -198,19 +201,20 @@ static struct tegra_i2c_platform_data curacao_i2c5_platform_data = {
 
 static void curacao_i2c_init(void)
 {
-	tegra_i2c_device1.dev.platform_data = &curacao_i2c1_platform_data;
-	tegra_i2c_device2.dev.platform_data = &curacao_i2c2_platform_data;
-	tegra_i2c_device3.dev.platform_data = &curacao_i2c3_platform_data;
-	tegra_i2c_device4.dev.platform_data = &curacao_i2c4_platform_data;
-	tegra_i2c_device5.dev.platform_data = &curacao_i2c5_platform_data;
+	tegra11_i2c_device1.dev.platform_data = &curacao_i2c1_platform_data;
+	tegra_i2c_slave_device2.dev.platform_data =
+					&curacao_i2c2_slave_platform_data;
+	tegra11_i2c_device3.dev.platform_data = &curacao_i2c3_platform_data;
+	tegra11_i2c_device4.dev.platform_data = &curacao_i2c4_platform_data;
+	tegra11_i2c_device5.dev.platform_data = &curacao_i2c5_platform_data;
 
 	i2c_register_board_info(0, curacao_i2c_bus1_board_info, 1);
 
-	platform_device_register(&tegra_i2c_device5);
-	platform_device_register(&tegra_i2c_device4);
-	platform_device_register(&tegra_i2c_device3);
-	platform_device_register(&tegra_i2c_device2);
-	platform_device_register(&tegra_i2c_device1);
+	platform_device_register(&tegra11_i2c_device5);
+	platform_device_register(&tegra11_i2c_device4);
+	platform_device_register(&tegra11_i2c_device3);
+	platform_device_register(&tegra_i2c_slave_device2);
+	platform_device_register(&tegra11_i2c_device1);
 }
 
 #define GPIO_KEY(_id, _gpio, _iswake)		\
@@ -383,7 +387,7 @@ static struct platform_device *curacao_devices[] __initdata = {
 	&tegra_avp_device,
 	&tegra_camera,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
-	&tegra_se_device,
+	&tegra11_se_device,
 #endif
 #if defined(CONFIG_MTD_NAND_TEGRA)
 	&tegra_nand_device,
@@ -434,6 +438,7 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.port_otg = true,
 	.has_hostpc = true,
+	.unaligned_dma_buf_supported = true,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
@@ -459,6 +464,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
+	.unaligned_dma_buf_supported = true,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode	= TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
@@ -483,6 +489,7 @@ static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
+	.unaligned_dma_buf_supported = true,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode	= TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
@@ -569,6 +576,9 @@ static void __init tegra_curacao_init(void)
 {
 	tegra_clk_init_from_table(curacao_clk_init_table);
 	curacao_pinmux_init();
+
+	if (tegra_get_revision() == TEGRA_REVISION_QT)
+		debug_uart_platform_data[0].uartclk = tegra_clk_measure_input_freq();
 
 	platform_add_devices(curacao_devices, ARRAY_SIZE(curacao_devices));
 

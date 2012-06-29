@@ -160,6 +160,7 @@ struct tegra_dma_req {
 	unsigned long dest_bus_width;
 	unsigned long req_sel;
 	unsigned int size;
+	bool use_smmu;
 
 	int fixed_burst_size; /* only for dtv */
 
