@@ -30,6 +30,7 @@
 #include <linux/spinlock.h>
 #include <linux/i2c-tegra.h>
 #include <linux/i2c-slave.h>
+#include <linux/module.h>
 #include <asm/unaligned.h>
 #include <mach/clk.h>
 #include <mach/pinmux.h>
