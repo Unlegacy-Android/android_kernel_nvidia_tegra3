@@ -75,6 +75,7 @@ void get_mac_addr(struct memory_accessor *, void *);
 
 void __init tegra20_init_early(void);
 void __init tegra30_init_early(void);
+void __init tegra11x_init_early(void);
 void __init tegra_map_common_io(void);
 void __init tegra_init_irq(void);
 void __init tegra_dt_init_irq(void);
