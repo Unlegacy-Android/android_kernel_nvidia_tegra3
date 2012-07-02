@@ -103,6 +103,7 @@ extern struct dvfs_rail *tegra_cpu_rail;
 
 void tegra2_init_dvfs(void);
 void tegra3_init_dvfs(void);
+void tegra11x_init_dvfs(void);
 int tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d);
 int dvfs_debugfs_init(struct dentry *clk_debugfs_root);
 int tegra_dvfs_late_init(void);

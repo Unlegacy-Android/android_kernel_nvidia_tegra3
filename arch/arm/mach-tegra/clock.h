@@ -249,6 +249,7 @@ struct tegra_sku_rate_limit {
 
 void tegra2_init_clocks(void);
 void tegra30_init_clocks(void);
+void tegra11x_init_clocks(void);
 void tegra_common_init_clock(void);
 void tegra_init_max_rate(struct clk *c, unsigned long max_rate);
 void clk_init(struct clk *clk);
@@ -269,6 +270,7 @@ int tegra_emc_set_rate(unsigned long rate);
 long tegra_emc_round_rate(unsigned long rate);
 struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value);
 void tegra_emc_timing_invalidate(void);
+unsigned long tegra_clk_measure_input_freq(void);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 static inline bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 { return true; }
