@@ -587,9 +587,6 @@ static int alloc_pdir(struct smmu_as *as)
 	u32 val;
 	struct smmu_device *smmu = as->smmu;
 
-	if (as->pdir_page)
-		return 0;
-
 	as->pte_count = devm_kzalloc(smmu->dev,
 		     sizeof(as->pte_count[0]) * SMMU_PDIR_COUNT, GFP_ATOMIC);
 	if (!as->pte_count) {
