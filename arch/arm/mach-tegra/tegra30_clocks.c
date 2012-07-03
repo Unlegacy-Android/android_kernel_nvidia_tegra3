@@ -4225,6 +4225,8 @@ static struct clk tegra_clk_emc_bridge = {
 	.parent    = &tegra_clk_emc,
 };
 
+static RAW_NOTIFIER_HEAD(cbus_rate_change_nh);
+
 static struct clk tegra_clk_cbus = {
 	.name	   = "cbus",
 	.parent    = &tegra_pll_c,
@@ -4236,7 +4238,8 @@ static struct clk tegra_clk_cbus = {
 	.shared_bus_backup = {
 		.input = &tegra_pll_p,
 		.value = 2,
-	}
+	},
+	.rate_change_nh = &cbus_rate_change_nh,
 };
 
 #define PERIPH_CLK(_name, _dev, _con, _clk_num, _reg, _max, _inputs, _flags) \
