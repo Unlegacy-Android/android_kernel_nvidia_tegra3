@@ -442,7 +442,6 @@ static int __init tegra_init_late_arch_timer(void)
 	int err = -ENODEV;
 
 	if (arch_timer_initialized) {
-//		err = arch_timer_of_register();
 		err = arch_timer_register(&tegra_arch_timer);
 		if (err)
 			pr_err("%s: Unable to register arch timer: %d\n",
