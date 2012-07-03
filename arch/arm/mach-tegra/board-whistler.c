@@ -226,8 +226,6 @@ static void __init whistler_setup_bluesleep(void)
 		whistler_bluesleep_resources[2].end =
 			gpio_to_irq(TEGRA_GPIO_PU6);
 	platform_device_register(&whistler_bluesleep_device);
-	tegra_gpio_enable(TEGRA_GPIO_PU6);
-	tegra_gpio_enable(TEGRA_GPIO_PU1);
 	return;
 }
 
@@ -422,25 +420,9 @@ static struct i2c_board_info whistler_i2c_touch_info[] = {
 
 static int __init whistler_touch_init(void)
 {
-	tegra_gpio_enable(TEGRA_GPIO_PC6);
 	whistler_i2c_touch_info[0].irq = gpio_to_irq(TEGRA_GPIO_PC6);
 	i2c_register_board_info(0, whistler_i2c_touch_info, 1);
 
-	return 0;
-}
-
-static int __init whistler_scroll_init(void)
-{
-	int i;
-	for (i = 0; i < ARRAY_SIZE(scroll_keys); i++)
-		tegra_gpio_enable(scroll_keys[i].gpio);
-
-	return 0;
-}
-
-static int __init whistler_gps_init(void)
-{
-	tegra_gpio_enable(TEGRA_GPIO_PU4);
 	return 0;
 }
 
@@ -522,9 +504,8 @@ static void __init tegra_whistler_init(void)
 	whistler_sensors_init();
 	whistler_touch_init();
 	whistler_kbc_init();
-	whistler_gps_init();
 	whistler_usb_init();
-	whistler_scroll_init();
+	whistler_emc_init();
 	if (modem_id == 0x1)
 		whistler_baseband_init();
 	whistler_setup_bluesleep();
