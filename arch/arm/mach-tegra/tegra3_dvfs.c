@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra3_dvfs.c
  *
- * Copyright (C) 2010-2012, NVIDIA Corporation.
+ * Copyright (C) 2010-2012 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -693,19 +693,23 @@ void __init tegra_soc_init_dvfs(void)
 		tegra_dvfs_core_disabled ? "disabled" : "enabled");
 }
 
-void tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
-			  bool before_clk_update)
+int tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
+			  bool before_clk_update, int cpu_event)
 {
 	bool cpu_warm = !!edp_thermal_index;
 	unsigned int n = cpumask_weight(cpus);
 	unsigned long *alt_freqs = cpu_warm ?
 		(n > 1 ? NULL : cpu_0_freqs) : cpu_cold_freqs;
 
-	if (cpu_warm == before_clk_update) {
+	if (cpu_event || (cpu_warm == before_clk_update)) {
 		int ret = tegra_dvfs_alt_freqs_set(cpu_dvfs, alt_freqs);
-		WARN_ONCE(ret, "tegra dvfs: failed to update CPU alternative"
-			       " frequency limits\n");
+		if (ret) {
+			pr_err("tegra dvfs: failed to set alternative dvfs on "
+			       "%u %s CPUs\n", n, cpu_warm ? "warm" : "cold");
+			return ret;
+		}
 	}
+	return 0;
 }
 
 int tegra_dvfs_rail_disable_prepare(struct dvfs_rail *rail)
