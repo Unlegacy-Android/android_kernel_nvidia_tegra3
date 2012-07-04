@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/usb_phy.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010 - 2012 NVIDIA Corporation
+ * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -34,8 +34,10 @@
 
 #include <mach/iomap.h>
 #include <mach/gpio-tegra.h>
+#include <mach/hardware.h>
 
 #include "tegra_usb_phy.h"
+#include "fuse.h"
 
 #define ERR(stuff...)		pr_err("usb_phy: " stuff)
 #define WARNING(stuff...)	pr_warning("usb_phy: " stuff)
@@ -140,6 +142,16 @@ static int tegra_usb_phy_init_ops(struct tegra_usb_phy *phy)
 static irqreturn_t usb_phy_dev_vbus_pmu_irq_thr(int irq, void *pdata)
 {
 	struct tegra_usb_phy *phy = pdata;
+
+	if (phy->vdd_reg && !phy->vdd_reg_on) {
+		regulator_enable(phy->vdd_reg);
+		phy->vdd_reg_on = 1;
+		/*
+		 * Optimal time to get the regulator turned on
+		 * before detecting vbus interrupt.
+		 */
+		mdelay(15);
+	}
 
 	/* clk is disabled during phy power off and not here*/
 	if (!phy->ctrl_clk_on) {
@@ -347,9 +359,6 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 		}
 	}
 
-	if (phy->vdd_reg)
-		regulator_enable(phy->vdd_reg);
-
 	return phy;
 
 fail_init:
@@ -412,7 +421,6 @@ void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 	}
 
 	if (phy->vdd_reg) {
-		regulator_disable(phy->vdd_reg);
 		regulator_put(phy->vdd_reg);
 	}
 
@@ -481,6 +489,18 @@ int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 		}
 	}
 
+	if (phy->vdd_reg && phy->vdd_reg_on) {
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+		regulator_disable(phy->vdd_reg);
+		phy->vdd_reg_on = false;
+#else
+		if (tegra_revision >= TEGRA_REVISION_A03) {
+			regulator_disable(phy->vdd_reg);
+			phy->vdd_reg_on = false;
+		}
+#endif
+	}
+
 	phy->phy_power_on = false;
 
 	return err;
@@ -494,6 +514,11 @@ int tegra_usb_phy_power_on(struct tegra_usb_phy *phy)
 
 	if (phy->phy_power_on)
 		return status;
+
+	if (phy->vdd_reg && !phy->vdd_reg_on) {
+		regulator_enable(phy->vdd_reg);
+		phy->vdd_reg_on = true;
+	}
 
 	/* In device mode clock is turned on by pmu irq handler
 	 * if pmu irq is not available clocks will not be turned off/on
