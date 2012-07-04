@@ -717,7 +717,9 @@ static bool tegra_dma_update_hw_partial(struct tegra_dma_channel *ch,
 	u32 apb_ptr;
 	u32 ahb_ptr;
 	u32 csr;
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	u32 swid;
+#endif
 	unsigned long status;
 	unsigned int req_transfer_count;
 	bool configure = false;
@@ -795,7 +797,9 @@ static void tegra_dma_update_hw(struct tegra_dma_channel *ch,
 	u32 ahb_ptr;
 	u32 apb_ptr;
 	u32 csr;
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	u32 swid;
+#endif
 
 	csr = CSR_FLOW;
 	if (req->complete || req->threshold)
