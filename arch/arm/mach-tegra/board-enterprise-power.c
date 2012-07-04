@@ -689,8 +689,6 @@ static int __init enterprise_fixed_regulator_init(void)
 
 static int __init enterprise_gpio_regulator_init(void)
 {
-	int i, j;
-
 	return platform_add_devices(gpio_regs_devices,
 				    ARRAY_SIZE(gpio_regs_devices));
 }
