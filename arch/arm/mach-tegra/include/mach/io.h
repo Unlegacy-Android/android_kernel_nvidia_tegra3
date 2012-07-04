@@ -43,8 +43,18 @@
  *
  */
 
+#ifdef __ASSEMBLY__
+#define IOMEM(x)	(x)
+#else
+#define IOMEM(x)	((void __force __iomem *)(x))
+#endif
+
+#ifdef CONFIG_ARM_LPAE
 #define ROUND_UP(x, n)		(((x) + (n) - 1) & ~((n) - 1))
 #define IO_VIRT_ROUND_UP(x)	ROUND_UP(x, SZ_2M)
+#else
+#define IO_VIRT_ROUND_UP(x)	(x)
+#endif
 
 /* Define physical aperture limits */
 
@@ -158,13 +168,7 @@
 
 #ifndef __ASSEMBLER__
 
-#define __arch_ioremap		tegra_ioremap
-#define __arch_iounmap		tegra_iounmap
-
-void __iomem *tegra_ioremap(unsigned long phys, size_t size, unsigned int type);
-void tegra_iounmap(volatile void __iomem *addr);
-
-#define IO_ADDRESS(n) ((void __iomem *) IO_TO_VIRT(n))
+#define IO_ADDRESS(n) (IOMEM(IO_TO_VIRT(n)))
 
 #if defined(CONFIG_TEGRA_PCI)
 extern void __iomem *tegra_pcie_io_base;
