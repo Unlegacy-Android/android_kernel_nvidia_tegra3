@@ -3073,6 +3073,7 @@ static int tegra3_clk_shared_bus_update(struct clk *bus)
 	unsigned long rate = bus->min_rate;
 	unsigned long bw = 0;
 	unsigned long ceiling = bus->max_rate;
+	u8 emc_bw_efficiency = tegra_emc_bw_efficiency_boost;
 
 	if (detach_shared_bus)
 		return 0;
@@ -3086,6 +3087,9 @@ static int tegra3_clk_shared_bus_update(struct clk *bus)
 		 */
 		if (c->u.shared_bus_user.enabled ||
 		    (c->u.shared_bus_user.mode == SHARED_CEILING)) {
+			if (!strcmp(c->name, "3d.emc"))
+				emc_bw_efficiency = tegra_emc_bw_efficiency;
+
 			switch (c->u.shared_bus_user.mode) {
 			case SHARED_BW:
 				if (bw < bus->max_rate)
@@ -3105,8 +3109,8 @@ static int tegra3_clk_shared_bus_update(struct clk *bus)
 
 	if (bw) {
 		if (bus->flags & PERIPH_EMC_ENB) {
-			bw = tegra_emc_bw_efficiency ?
-				(bw / tegra_emc_bw_efficiency) : bus->max_rate;
+			bw = emc_bw_efficiency ?
+				(bw / emc_bw_efficiency) : bus->max_rate;
 			bw = (bw < bus->max_rate / 100) ?
 				(bw * 100) : bus->max_rate;
 		}
