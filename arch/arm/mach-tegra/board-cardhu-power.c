@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu-power.c
  *
- * Copyright (C) 2011-2012, NVIDIA Corporation.
+ * Copyright (C) 2011-2012, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -747,9 +747,7 @@ FIXED_REG(3, en_3v3_sys_a04,	en_3v3_sys,	NULL,				0,      0,      TPS6591X_GPIO_
 
 /* Specific to pm269 */
 FIXED_REG(4, en_vdd_bl_pm269,		en_vdd_bl,		NULL, 				0,      0,      TEGRA_GPIO_PH3,	true,	1, 5000);
-#ifndef CONFIG_TEGRA_CARDHU_DSI
 FIXED_REG(6, en_vdd_pnl1_pm269,		en_vdd_pnl1,		FIXED_SUPPLY(en_3v3_sys),	0,      0,      TEGRA_GPIO_PW1,	true,	1, 3300);
-#endif
 FIXED_REG(9, en_3v3_fuse_pm269,		en_3v3_fuse,		FIXED_SUPPLY(en_3v3_sys), 	0,      0,      TEGRA_GPIO_PC1,	true,	0, 3300);
 FIXED_REG(12, en_3v3_pex_hvdd_pm269,	en_3v3_pex_hvdd,	FIXED_SUPPLY(en_3v3_sys), 	0,      0,      TEGRA_GPIO_PC6,	true,	0, 3300);
 
@@ -867,14 +865,12 @@ FIXED_REG_OD(17, en_vddio_vid_oc,	en_vddio_vid_oc,	FIXED_SUPPLY(en_5v0), 		0,   
 	ADD_FIXED_REG(en_vddio_vid_oc_pm269),
 
 
-#ifndef CONFIG_TEGRA_CARDHU_DSI
 #define E1247_DISPLAY_FIXED_REG			\
 	ADD_FIXED_REG(en_vdd_bl_pm269),		\
 	ADD_FIXED_REG(en_vdd_pnl1_pm269),
-#else
-#define E1247_DISPLAY_FIXED_REG			\
+
+#define E1247_DSI_DISPLAY_FIXED_REG		\
 	ADD_FIXED_REG(en_vdd_bl_pm269),
-#endif
 
 #define PM313_DISPLAY_FIXED_REG			\
 	ADD_FIXED_REG(en_vdd_bl_pm313),		\
@@ -921,6 +917,11 @@ static struct platform_device *fixed_reg_devs_e118x[] = {
 	E1247_DISPLAY_FIXED_REG
 };
 
+static struct platform_device *fixed_reg_devs_e118x_dsi[] = {
+	E118x_FIXED_REG
+	E1247_DSI_DISPLAY_FIXED_REG
+};
+
 /* Fixed regulator devices for E1186/E1187/E1256 */
 static struct platform_device *fixed_reg_devs_e118x_pm313[] = {
 	E118x_FIXED_REG
@@ -963,6 +964,11 @@ static struct platform_device *fixed_reg_devs_pm269[] = {
 	E1247_DISPLAY_FIXED_REG
 };
 
+static struct platform_device *fixed_reg_devs_pm269_dsi[] = {
+	PM269_FIXED_REG
+	E1247_DSI_DISPLAY_FIXED_REG
+};
+
 /* Fixed regulator devices for PM269 */
 static struct platform_device *fixed_reg_devs_pm269_pm313[] = {
 	PM269_FIXED_REG
@@ -973,6 +979,11 @@ static struct platform_device *fixed_reg_devs_pm269_pm313[] = {
 static struct platform_device *fixed_reg_devs_pm311[] = {
 	PM311_FIXED_REG
 	E1247_DISPLAY_FIXED_REG
+};
+
+static struct platform_device *fixed_reg_devs_pm311_dsi[] = {
+	PM311_FIXED_REG
+	E1247_DSI_DISPLAY_FIXED_REG
 };
 
 /* Fixed regulator devices for PM11 */
@@ -994,6 +1005,13 @@ static struct platform_device *fixed_reg_devs_e1291_a04[] = {
 	E1291_A03_FIXED_REG
 	E1198_FIXED_REG
 };
+
+static bool is_display_board_dsi(u16 display_board_id)
+{
+	return ((display_board_id == BOARD_DISPLAY_E1213) ||
+		(display_board_id == BOARD_DISPLAY_E1253) ||
+		(display_board_id == BOARD_DISPLAY_E1506));
+}
 
 int __init cardhu_fixed_regulator_init(void)
 {
@@ -1049,6 +1067,9 @@ int __init cardhu_fixed_regulator_init(void)
 		if (display_board_info.board_id == BOARD_DISPLAY_PM313) {
 			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_pm311_pm313);
 			fixed_reg_devs = fixed_reg_devs_pm311_pm313;
+		} else if (is_display_board_dsi(display_board_info.board_id)) {
+			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_pm311_dsi);
+			fixed_reg_devs = fixed_reg_devs_pm311_dsi;
 		}
 		break;
 
@@ -1059,6 +1080,9 @@ int __init cardhu_fixed_regulator_init(void)
 		if (display_board_info.board_id == BOARD_DISPLAY_PM313) {
 			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_pm269_pm313);
 			fixed_reg_devs = fixed_reg_devs_pm269_pm313;
+		} else if (is_display_board_dsi(display_board_info.board_id)) {
+			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_pm269_dsi);
+			fixed_reg_devs = fixed_reg_devs_pm269_dsi;
 		} else {
 			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_pm269);
 			fixed_reg_devs = fixed_reg_devs_pm269;
@@ -1069,6 +1093,9 @@ int __init cardhu_fixed_regulator_init(void)
 		if (display_board_info.board_id == BOARD_DISPLAY_PM313) {
 			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_e118x_pm313);
 			fixed_reg_devs = fixed_reg_devs_e118x_pm313;
+		} else if (is_display_board_dsi(display_board_info.board_id)) {
+			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_e118x_dsi);
+			fixed_reg_devs = fixed_reg_devs_e118x_dsi;
 		} else {
 			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_e118x);
 			fixed_reg_devs = fixed_reg_devs_e118x;
