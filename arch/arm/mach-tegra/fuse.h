@@ -30,6 +30,7 @@
 
 #define TEGRA20		0x20
 #define TEGRA30		0x30
+#define TEGRA11X	0x35
 
 #define INVALID_PROCESS_ID	99 /* don't expect to have 100 process id's */
 
