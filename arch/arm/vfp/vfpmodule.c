@@ -450,12 +450,6 @@ static int vfp_pm_suspend(void)
 	struct thread_info *ti = current_thread_info();
 	u32 fpexc = fmrx(FPEXC);
 
-	/* If lazy disable, re-enable the VFP ready for it to be saved */
-	if (vfp_current_hw_state[ti->cpu] != &ti->vfpstate) {
-		fpexc |= FPEXC_EN;
-		fmxr(FPEXC, fpexc);
-	}
-
 	/* if vfp is on, then save state for resumption */
 	if (fpexc & FPEXC_EN) {
 		//printk(KERN_DEBUG "%s: saving vfp state\n", __func__);
@@ -464,13 +458,15 @@ static int vfp_pm_suspend(void)
 		/* disable, just in case */
 		fmxr(FPEXC, fmrx(FPEXC) & ~FPEXC_EN);
 	} else if (vfp_current_hw_state[ti->cpu]) {
+#ifndef CONFIG_SMP
 		fmxr(FPEXC, fpexc | FPEXC_EN);
 		vfp_save_state(vfp_current_hw_state[ti->cpu], fpexc);
 		fmxr(FPEXC, fpexc);
+#endif
 	}
 
 	/* clear any information we had about last context state */
-	memset(vfp_current_hw_state, 0, sizeof(vfp_current_hw_state));
+	vfp_current_hw_state[ti->cpu] = NULL;
 
 	return 0;
 }
