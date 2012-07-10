@@ -203,6 +203,7 @@ static __initdata struct tegra_clk_init_table enterprise_clk_init_table[] = {
 	{ "audio3",	"i2s3_sync",	0,		false},
 	{ "vi",		"pll_p",	0,		false},
 	{ "vi_sensor",	"pll_p",	0,		false},
+	{ "i2c5",	"pll_p",	3200000,	false},
 	{ NULL,		NULL,		0,		0},
 };
 
@@ -246,7 +247,7 @@ static struct tegra_i2c_platform_data enterprise_i2c4_platform_data = {
 static struct tegra_i2c_platform_data enterprise_i2c5_platform_data = {
 	.adapter_nr	= 4,
 	.bus_count	= 1,
-	.bus_clk_rate	= { 400000, 0 },
+	.bus_clk_rate	= { 390000, 0 },
 	.scl_gpio		= {TEGRA_GPIO_PZ6, 0},
 	.sda_gpio		= {TEGRA_GPIO_PZ7, 0},
 	.arb_recovery = arb_lost_recovery,
