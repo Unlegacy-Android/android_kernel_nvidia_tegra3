@@ -72,9 +72,7 @@ static void __iomem *timer_reg_base = IO_ADDRESS(TEGRA_TMR1_BASE);
 
 #if defined(CONFIG_PM_SLEEP)
 static cpumask_t wake_timer_canceled;
-#if defined(CONFIG_HOTPLUG_CPU)
 static cpumask_t wake_timer_ready;
-#endif
 #endif
 
 #define timer_writel(value, reg) \

@@ -846,9 +846,9 @@ static struct platform_device enterprise_bpc_mgmt_device = {
 
 void __init enterprise_bpc_mgmt_init(void)
 {
+#ifdef CONFIG_SMP
 	int int_gpio = TEGRA_GPIO_TO_IRQ(TEGRA_BPC_TRIGGER);
 
-#ifdef CONFIG_SMP
 	cpumask_setall(&(bpc_mgmt_platform_data.affinity_mask));
 	irq_set_affinity_hint(int_gpio,
 				&(bpc_mgmt_platform_data.affinity_mask));
