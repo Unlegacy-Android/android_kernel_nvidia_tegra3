@@ -241,12 +241,12 @@ static void mpuirq_init(void)
 
 	inv_mpu_i2c2_board_info[i++].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
 #if (MPU_GYRO_TYPE == MPU_TYPE_MPU3050)
-#if MPU_ACCELL_IRQ_GPIO
+#ifdef MPU_ACCELL_IRQ_GPIO
 	inv_mpu_i2c2_board_info[i].irq = gpio_to_irq(MPU_ACCEL_IRQ_GPIO);
 #endif
 	i++;
 #endif
-#if MPU_COMPASS_IRQ_GPIO
+#ifdef MPU_COMPASS_IRQ_GPIO
 	inv_mpu_i2c2_board_info[i++].irq = gpio_to_irq(MPU_COMPASS_IRQ_GPIO);
 #endif
 	i2c_register_board_info(MPU_GYRO_BUS_NUM, inv_mpu_i2c2_board_info,
