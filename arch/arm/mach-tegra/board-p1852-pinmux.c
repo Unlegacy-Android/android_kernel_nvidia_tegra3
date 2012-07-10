@@ -119,13 +119,8 @@ static __initdata struct tegra_drive_pingroup_config p1852_drive_pinmux[] = {
 	SET_DRIVE(GMH,	DISABLE, ENABLE, DIV_1, 0,  12, SLOWEST, SLOWEST),
 
 	/* I2S/TDM */
-#ifdef CONFIG_TEGRA_MODS
 	SET_DRIVE(DAP1,	ENABLE, ENABLE, DIV_1, 20,  20, SLOWEST, SLOWEST),
 	SET_DRIVE(DAP3,	ENABLE, ENABLE, DIV_1, 20,  20, SLOWEST, SLOWEST),
-#else
-	SET_DRIVE(DAP1,	ENABLE, ENABLE, DIV_1, 3,  3, SLOWEST, SLOWEST),
-	SET_DRIVE(DAP3,	ENABLE, ENABLE, DIV_1, 3,  3, SLOWEST, SLOWEST),
-#endif
 
 	/* SPI */
 	SET_DRIVE(UAD,		DISABLE, ENABLE, DIV_1, 4, 1, SLOWEST, SLOWEST),
@@ -184,6 +179,9 @@ static __initdata struct tegra_drive_pingroup_config p1852_drive_pinmux[] = {
 	}
 
 
+static __initdata struct tegra_pingroup_config p1852_pinmux_i2s4_master[] = {
+	DEFAULT_PINMUX(SDMMC4_CLK,    NAND,   PULL_UP,    NORMAL, INPUT),
+};
 
 static __initdata struct tegra_pingroup_config p1852_pinmux_common[] = {
 	/* SDMMC1 pinmux */
@@ -291,10 +289,10 @@ static __initdata struct tegra_pingroup_config p1852_pinmux_common[] = {
 	DEFAULT_PINMUX(DAP3_SCLK,	I2S2,		NORMAL,		NORMAL,		INPUT),
 
 	/* DAP3 */
-	LVPAD_PINMUX(SDMMC4_DAT4,	I2S4,		NORMAL,		NORMAL,		INPUT,	DISABLE,	DISABLE),
-	LVPAD_PINMUX(SDMMC4_DAT5,	I2S4,		NORMAL,		NORMAL,		INPUT,	DISABLE,	DISABLE),
-	LVPAD_PINMUX(SDMMC4_DAT6,	I2S4,		NORMAL,		NORMAL,		INPUT,	DISABLE,	DISABLE),
-	LVPAD_PINMUX(SDMMC4_DAT7,	I2S4,		NORMAL,		NORMAL,		INPUT,	DISABLE,	DISABLE),
+	DEFAULT_PINMUX(SDMMC4_DAT4,	I2S4,		NORMAL,		NORMAL,		INPUT),
+	DEFAULT_PINMUX(SDMMC4_DAT5,	I2S4,		NORMAL,		NORMAL,		INPUT),
+	DEFAULT_PINMUX(SDMMC4_DAT6,	I2S4,		NORMAL,		NORMAL,		INPUT),
+	DEFAULT_PINMUX(SDMMC4_DAT7,	I2S4,		NORMAL,		NORMAL,		INPUT),
 
 	/* NOR pinmux */
 	DEFAULT_PINMUX(GMI_AD0,		GMI,		NORMAL,		NORMAL,		INPUT),
@@ -427,7 +425,7 @@ static __initdata struct tegra_pingroup_config p1852_pinmux_common[] = {
 	DEFAULT_PINMUX(GPIO_PV2,	RSVD1,	NORMAL,	NORMAL,	INPUT),
 	DEFAULT_PINMUX(GPIO_PV3,	RSVD1,	NORMAL,	NORMAL,	INPUT),
 	DEFAULT_PINMUX(SDMMC3_DAT7,	SDMMC3,	NORMAL,	NORMAL,	INPUT),
-	LVPAD_PINMUX(SDMMC4_CLK,	NAND,	NORMAL,	NORMAL,	INPUT,	DISABLE,	DISABLE),
+	DEFAULT_PINMUX(SDMMC4_CLK,	NAND,	NORMAL,	NORMAL,	INPUT),
 	DEFAULT_PINMUX(SDMMC3_CMD,	SDMMC3,	NORMAL,	NORMAL,	INPUT),
 	DEFAULT_PINMUX(SDMMC3_DAT3,	RSVD0,	NORMAL,	NORMAL,	INPUT),
 	DEFAULT_PINMUX(VI_D1,		RSVD1,	NORMAL,	NORMAL,	INPUT),
@@ -445,6 +443,12 @@ int __init p1852_pinmux_init(void)
 	return 0;
 }
 
+int p1852_pinmux_set_i2s4_master(void)
+{
+	tegra_pinmux_config_table(p1852_pinmux_i2s4_master,
+					ARRAY_SIZE(p1852_pinmux_i2s4_master));
+	return 0;
+}
 #define GPIO_INIT_PIN_MODE(_gpio, _is_input, _value)	\
 	{					\
 		.gpio_nr	= _gpio,	\
