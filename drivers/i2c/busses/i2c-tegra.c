@@ -1237,7 +1237,7 @@ static struct platform_driver tegra_i2c_driver = {
 	.driver  = {
 		.name  = "tegra-i2c",
 		.owner = THIS_MODULE,
-		.of_match_table = tegra_i2c_of_match,
+		.of_match_table = of_match_ptr(tegra_i2c_of_match),
 		.pm    = TEGRA_I2C_DEV_PM_OPS,
 	},
 };
