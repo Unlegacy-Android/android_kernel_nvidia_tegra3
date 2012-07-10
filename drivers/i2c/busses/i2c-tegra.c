@@ -145,7 +145,6 @@ struct tegra_i2c_bus {
  * @adapter: core i2c layer adapter information
  * @clk: clock reference for i2c controller
  * @i2c_clk: clock reference for i2c bus
- * @iomem: memory resource for registers
  * @base: ioremapped registers cookie
  * @cont_id: i2c controller id, used for for packet header
  * @irq: irq number of transfer complete interrupt
@@ -162,7 +161,6 @@ struct tegra_i2c_dev {
 	struct device *dev;
 	struct clk *div_clk;
 	struct clk *fast_clk;
-	struct resource *iomem;
 	struct rt_mutex dev_lock;
 	spinlock_t fifo_lock;
 	void __iomem *base;
