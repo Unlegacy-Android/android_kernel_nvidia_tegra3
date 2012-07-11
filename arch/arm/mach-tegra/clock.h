@@ -233,6 +233,7 @@ struct clk {
 
 	struct raw_notifier_head			*rate_change_nh;
 
+	struct mutex *cross_clk_mutex;
 	struct mutex mutex;
 	spinlock_t spinlock;
 };
@@ -309,6 +310,8 @@ static inline void clk_lock_save(struct clk *c, unsigned long *flags)
 	if (clk_cansleep(c)) {
 		*flags = 0;
 		mutex_lock(&c->mutex);
+		if (c->cross_clk_mutex)
+			mutex_lock(c->cross_clk_mutex);
 	} else {
 		spin_lock_irqsave(&c->spinlock, *flags);
 	}
@@ -316,10 +319,13 @@ static inline void clk_lock_save(struct clk *c, unsigned long *flags)
 
 static inline void clk_unlock_restore(struct clk *c, unsigned long *flags)
 {
-	if (clk_cansleep(c))
+	if (clk_cansleep(c)) {
+		if (c->cross_clk_mutex)
+			mutex_unlock(c->cross_clk_mutex);
 		mutex_unlock(&c->mutex);
-	else
+	} else {
 		spin_unlock_irqrestore(&c->spinlock, *flags);
+	}
 }
 
 static inline void clk_lock_init(struct clk *c)
