@@ -492,6 +492,16 @@ static void __init uart_debug_init(void)
 				debug_port_id = 1;
 	}
 
+#ifdef CONFIG_TEGRA_IRDA
+	if ((board_info.board_id == BOARD_E1186) ||
+		(board_info.board_id == BOARD_E1198)) {
+		if (debug_port_id == 1) {
+			cardhu_irda_pdata.is_irda = false;
+			pr_err("UARTB is not available for IrDA\n");
+		}
+	}
+#endif
+
 	switch (debug_port_id) {
 	case 0:
 		/* UARTA is the debug port. */
@@ -553,6 +563,9 @@ static void __init cardhu_uart_init(void)
 {
 	struct clk *c;
 	int i;
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
 
 	for (i = 0; i < ARRAY_SIZE(uart_parent_clk); ++i) {
 		c = tegra_get_clock_by_name(uart_parent_clk[i].name);
@@ -597,6 +610,18 @@ static void __init cardhu_uart_init(void)
 					debug_uart_clk->name);
 		}
 	}
+
+#ifdef CONFIG_TEGRA_IRDA
+	if (((board_info.board_id == BOARD_E1186) ||
+		(board_info.board_id == BOARD_E1198)) &&
+			cardhu_irda_pdata.is_irda) {
+		cardhu_irda_pdata.parent_clk_list = uart_parent_clk;
+		cardhu_irda_pdata.parent_clk_count =
+					ARRAY_SIZE(uart_parent_clk);
+
+		tegra_uartb_device.dev.platform_data = &cardhu_irda_pdata;
+	}
+#endif
 
 	platform_add_devices(cardhu_uart_devices,
 				ARRAY_SIZE(cardhu_uart_devices));

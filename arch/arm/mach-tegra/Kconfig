@@ -90,6 +90,14 @@ config TEGRA_PCI
 	help
 	  Adds PCIe Host controller driver for tegra based systems
 
+config TEGRA_IRDA
+	bool "IRDA on UARTB Port of Verbier"
+	select IRDA_CPLD
+	depends on ARCH_TEGRA_3x_SOC && MACH_CARDHU
+	help
+	  Adds support for Vishay IrDA transceiver at UARTB port
+	  of Verbier Boards(E1186 and E1198) with no ULPI rework done.
+
 comment "Tegra board type"
 
 config MACH_HARMONY
