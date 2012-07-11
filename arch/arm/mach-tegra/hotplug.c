@@ -71,7 +71,7 @@ void tegra_cpu_die(unsigned int cpu)
 #else
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	unsigned int r;
+	unsigned int r = 0;
 #endif
 	/* Disable GIC CPU interface for this CPU. */
 	tegra_gic_cpu_disable(false);
