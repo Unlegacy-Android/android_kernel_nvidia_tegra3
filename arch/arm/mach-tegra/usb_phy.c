@@ -434,6 +434,7 @@ irqreturn_t tegra_usb_phy_irq(struct tegra_usb_phy *phy)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_irq);
 
 int tegra_usb_phy_init(struct tegra_usb_phy *phy)
 {
@@ -449,6 +450,7 @@ int tegra_usb_phy_init(struct tegra_usb_phy *phy)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_init);
 
 int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 {
@@ -495,6 +497,7 @@ int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 
 	return err;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_power_off);
 
 int tegra_usb_phy_power_on(struct tegra_usb_phy *phy)
 {
@@ -553,6 +556,7 @@ int tegra_usb_phy_reset(struct tegra_usb_phy *phy)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_reset);
 
 int tegra_usb_phy_pre_suspend(struct tegra_usb_phy *phy)
 {
@@ -584,6 +588,7 @@ int tegra_usb_phy_suspend(struct tegra_usb_phy *phy)
 
 	return err;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_suspend);
 
 int tegra_usb_phy_post_suspend(struct tegra_usb_phy *phy)
 {
@@ -599,6 +604,7 @@ int tegra_usb_phy_post_suspend(struct tegra_usb_phy *phy)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_post_suspend);
 
 int tegra_usb_phy_pre_resume(struct tegra_usb_phy *phy, bool remote_wakeup)
 {
@@ -614,6 +620,7 @@ int tegra_usb_phy_pre_resume(struct tegra_usb_phy *phy, bool remote_wakeup)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_pre_resume);
 
 int tegra_usb_phy_resume(struct tegra_usb_phy *phy)
 {
@@ -631,6 +638,7 @@ int tegra_usb_phy_resume(struct tegra_usb_phy *phy)
 	return err;
 
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_resume);
 
 int tegra_usb_phy_post_resume(struct tegra_usb_phy *phy)
 {
@@ -646,6 +654,7 @@ int tegra_usb_phy_post_resume(struct tegra_usb_phy *phy)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_post_resume);
 
 int tegra_usb_phy_port_power(struct tegra_usb_phy *phy)
 {
@@ -658,6 +667,7 @@ int tegra_usb_phy_port_power(struct tegra_usb_phy *phy)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_port_power);
 
 int tegra_usb_phy_bus_reset(struct tegra_usb_phy *phy)
 {
@@ -670,6 +680,7 @@ int tegra_usb_phy_bus_reset(struct tegra_usb_phy *phy)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_bus_reset);
 
 bool tegra_usb_phy_charger_detected(struct tegra_usb_phy *phy)
 {
@@ -690,21 +701,25 @@ bool tegra_usb_phy_hw_accessible(struct tegra_usb_phy *phy)
 
 	return phy->hw_accessible;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_hw_accessible);
 
 bool tegra_usb_phy_remote_wakeup(struct tegra_usb_phy *phy)
 {
 	return phy->remote_wakeup;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_remote_wakeup);
 
 bool tegra_usb_phy_has_hostpc(struct tegra_usb_phy *phy)
 {
 	return phy->pdata->has_hostpc;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_has_hostpc);
 
 bool tegra_usb_phy_otg_supported(struct tegra_usb_phy *phy)
 {
 	return phy->pdata->port_otg;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_otg_supported);
 
 void tegra_usb_phy_memory_prefetch_on(struct tegra_usb_phy *phy)
 {
@@ -735,3 +750,4 @@ void tegra_usb_phy_memory_prefetch_off(struct tegra_usb_phy *phy)
 		writel(val, ahb_gizmo + AHB_MEM_PREFETCH_CFG2);
 	}
 }
+
