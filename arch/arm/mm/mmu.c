@@ -647,7 +647,7 @@ static void __init alloc_init_section(pud_t *pud, unsigned long addr,
 		alloc_init_pte(pmd, addr, end, __phys_to_pfn(phys), type);
 	}
 
-	if ((stash_phys >= PHYS_OFFSET) && (stash_phys < lowmem_limit)) {
+	if ((stash_phys >= PHYS_OFFSET) && (stash_phys < arm_lowmem_limit)) {
 		update_page_count(PG_LEVEL_2M, pages_2m);
 		update_page_count(PG_LEVEL_4K, pages_4k);
 	}
