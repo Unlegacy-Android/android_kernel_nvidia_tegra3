@@ -427,7 +427,7 @@ static struct platform_driver tegra_gart_driver = {
 	.remove		= tegra_gart_remove,
 	.driver = {
 		.owner	= THIS_MODULE,
-		.name	= "tegra-gart",
+		.name	= "tegra_gart",
 		.pm	= &tegra_gart_pm_ops,
 	},
 };
