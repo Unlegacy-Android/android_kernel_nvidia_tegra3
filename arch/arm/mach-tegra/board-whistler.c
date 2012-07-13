@@ -360,12 +360,32 @@ static struct platform_device tegra_camera = {
 };
 
 static struct tegra_asoc_platform_data whistler_audio_pdata = {
-	.gpio_spkr_en = -1,
-	.gpio_hp_det = TEGRA_GPIO_HP_DET,
-	.gpio_hp_mute = -1,
-	.gpio_int_mic_en = -1,
-	.gpio_ext_mic_en = -1,
-	.debounce_time_hp = 200,
+	.gpio_spkr_en		= -1,
+	.gpio_hp_det		= TEGRA_GPIO_HP_DET,
+	.gpio_hp_mute		= -1,
+	.gpio_int_mic_en	= -1,
+	.gpio_ext_mic_en	= -1,
+	.debounce_time_hp	= 200,
+	.i2s_param[HIFI_CODEC]	= {
+		.audio_port_id	= 0,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_I2S,
+		.sample_size	= 16,
+	},
+	.i2s_param[BASEBAND]	= {
+		.audio_port_id	= 2,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
+		.sample_size	= 16,
+		.rate		= 8000,
+		.channels	= 1,
+	},
+	.i2s_param[BT_SCO]	= {
+		.sample_size	= 16,
+		.audio_port_id	= 3,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
+	},
 };
 
 static struct platform_device whistler_audio_aic326x_device = {
