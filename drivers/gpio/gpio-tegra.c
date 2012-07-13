@@ -6,7 +6,7 @@
  * Author:
  *	Erik Gilling <konkers@google.com>
  *
- * Copyright (c) 2011 NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -390,6 +390,9 @@ static int tegra_gpio_suspend(void)
 			bank->oe[p] = __raw_readl(GPIO_OE(gpio));
 			bank->int_enb[p] = __raw_readl(GPIO_INT_ENB(gpio));
 			bank->int_lvl[p] = __raw_readl(GPIO_INT_LVL(gpio));
+
+			/* disable gpio interrupts that are not wake sources */
+			__raw_writel(bank->wake_enb[p], GPIO_INT_ENB(gpio));
 		}
 	}
 	local_irq_restore(flags);
