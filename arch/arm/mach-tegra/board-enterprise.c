@@ -487,8 +487,6 @@ static void __init enterprise_uart_init(void)
 				ARRAY_SIZE(enterprise_uart_devices));
 }
 
-
-
 static struct resource tegra_rtc_resources[] = {
 	[0] = {
 		.start = TEGRA_RTC_BASE,
@@ -520,16 +518,27 @@ static struct tegra_asoc_platform_data enterprise_audio_pdata = {
 	.gpio_hp_mute		= -1,
 	.gpio_int_mic_en	= -1,
 	.gpio_ext_mic_en	= -1,
-	.debounce_time_hp = -1,
+	.debounce_time_hp	= -1,
 	/*defaults for Enterprise board*/
-	.audio_port_id		= {
-		[HIFI_CODEC] = 0,
-		[BASEBAND] = 2,
-		[BT_SCO] = 3,
+	.i2s_param[HIFI_CODEC]	= {
+		.audio_port_id	= 0,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_I2S,
+		.sample_size	= 16,
 	},
-	.baseband_param		= {
-		.rate = 8000,
-		.channels = 1,
+	.i2s_param[BASEBAND]	= {
+		.audio_port_id	= 2,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
+		.sample_size	= 16,
+		.rate		= 8000,
+		.channels	= 1,
+	},
+	.i2s_param[BT_SCO]	= {
+		.audio_port_id	= 3,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
+		.sample_size	= 16,
 	},
 };
 
@@ -548,15 +557,25 @@ static struct tegra_asoc_platform_data enterprise_audio_aic326x_pdata = {
 	.gpio_int_mic_en	= -1,
 	.gpio_ext_mic_en	= -1,
 	/*defaults for Verbier-Enterprise (E1197) board with TI AIC326X codec*/
-	.audio_port_id		= {
-		[HIFI_CODEC] = 0,
-		[BASEBAND] = 2,
-		[BT_SCO] = 3,
+	.i2s_param[HIFI_CODEC]	= {
+		.audio_port_id	= 0,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_I2S,
+		.sample_size	= 16,
 	},
-	.baseband_param		= {
-		.rate = 8000,
-		.channels = 1,
-		.bit_format = TEGRA_DAIFMT_DSP_A,
+	.i2s_param[BASEBAND]	= {
+		.audio_port_id	= 2,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
+		.sample_size	= 16,
+		.rate		= 8000,
+		.channels	= 1,
+	},
+	.i2s_param[BT_SCO]	= {
+		.sample_size	= 16,
+		.audio_port_id	= 3,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
 	},
 };
 
@@ -863,12 +882,12 @@ static void enterprise_audio_init(void)
 	tegra_get_board_info(&board_info);
 
 	if (board_info.board_id == BOARD_E1197)
-		enterprise_audio_pdata.audio_port_id[HIFI_CODEC] = 1;
+		enterprise_audio_pdata.i2s_param[HIFI_CODEC].audio_port_id = 1;
 	else if (board_info.fab == BOARD_FAB_A04) {
-		enterprise_audio_pdata.audio_port_id[BASEBAND] = 4;
+		enterprise_audio_pdata.i2s_param[BASEBAND].audio_port_id = 4;
 		platform_device_register(&tegra_i2s_device4);
 	} else {
-		enterprise_audio_pdata.audio_port_id[BASEBAND] = 2;
+		enterprise_audio_pdata.i2s_param[BASEBAND].audio_port_id = 2;
 		platform_device_register(&tegra_i2s_device2);
 	}
 
