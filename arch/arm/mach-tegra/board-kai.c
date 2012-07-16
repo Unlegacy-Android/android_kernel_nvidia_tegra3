@@ -622,9 +622,6 @@ static struct platform_device *kai_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
 	&tegra_udc_device,
-#if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
-	&tegra_smmu_device,
-#endif
 	&tegra_wdt0_device,
 	&tegra_wdt1_device,
 	&tegra_wdt2_device,
@@ -864,6 +861,7 @@ static void __init tegra_kai_init(void)
 				ARRAY_SIZE(throttle_list));
 	tegra_clk_init_from_table(kai_clk_init_table);
 	tegra_enable_pinmux();
+	tegra_smmu_init();
 	kai_pinmux_init();
 	kai_i2c_init();
 	kai_spi_init();
