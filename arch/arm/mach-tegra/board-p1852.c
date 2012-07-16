@@ -480,6 +480,32 @@ static int __init p1852_touch_init(void)
 
 #endif // CONFIG_TOUCHSCREEN_ATMEL_MXT
 
+#if defined(CONFIG_USB_G_ANDROID)
+static struct tegra_usb_platform_data tegra_udc_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_DEVICE,
+	.u_data.dev = {
+		.vbus_pmu_irq = 0,
+		.vbus_gpio = -1,
+		.charging_supported = false,
+		.remote_wakeup_supported = false,
+	},
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.idle_wait_delay = 17,
+		.elastic_limit = 16,
+		.term_range_adj = 6,
+		.xcvr_setup = 63,
+		.xcvr_setup_offset = 6,
+		.xcvr_use_fuses = 1,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_use_lsb = 1,
+	},
+};
+#else
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
@@ -505,6 +531,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 		.xcvr_use_lsb = 1,
 	},
 };
+#endif
 
 static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	.port_otg = false,
@@ -560,9 +587,16 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 
 static void p1852_usb_init(void)
 {
+	/* Need to parse sku info to decide host/device mode */
+
+	/* G_ANDROID require device mode */
+#if defined(CONFIG_USB_G_ANDROID)
+	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+	platform_device_register(&tegra_udc_device);
+#else
 	tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
 	platform_device_register(&tegra_ehci1_device);
-
+#endif
 	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
 	platform_device_register(&tegra_ehci2_device);
 
