@@ -300,7 +300,7 @@ struct tegra_pcie_info {
 
 	void __iomem		*reg_clk_base;
 	void __iomem		*regs;
-	struct resource		res_mmio;
+	struct resource		*res_mmio;
 	int			power_rails_enabled;
 	int			pcie_power_enabled;
 	struct work_struct 	hotplug_detect;
@@ -311,20 +311,18 @@ struct tegra_pcie_info {
 	struct clk		*pcie_xclk;
 	struct clk		*pll_e;
 	struct tegra_pci_platform_data *plat_data;
-};
+}tegra_pcie;
 
 #define pmc_writel(value, reg) \
 	__raw_writel(value, (u32)reg_pmc_base + (reg))
 #define pmc_readl(reg) \
 	__raw_readl((u32)reg_pmc_base + (reg))
 
-static struct tegra_pcie_info tegra_pcie = {
-	.res_mmio = {
-		.name = "PCI IO",
-		.start = MMIO_BASE,
-		.end = MMIO_BASE + MMIO_SIZE - 1,
-		.flags = IORESOURCE_MEM,
-	},
+struct resource tegra_pcie_res_mmio = {
+	.name = "PCI IO",
+	.start = MMIO_BASE,
+	.end = MMIO_BASE + MMIO_SIZE - 1,
+	.flags = IORESOURCE_MEM,
 };
 
 static struct resource pcie_io_space;
@@ -902,8 +900,10 @@ static void tegra_pcie_enable_controller(void)
 
 static int tegra_pcie_enable_regulators(void)
 {
-	if (tegra_pcie.power_rails_enabled)
+	if (tegra_pcie.power_rails_enabled) {
+		pr_debug("PCIE: Already power rails enabled");
 		return 0;
+	}
 	if (tegra_pcie.regulator_hvdd == NULL) {
 		printk(KERN_INFO "PCIE.C: %s : regulator hvdd_pex\n",
 					__func__);
@@ -956,8 +956,11 @@ static int tegra_pcie_enable_regulators(void)
 static int tegra_pcie_disable_regulators(void)
 {
 	int err = 0;
-	if (tegra_pcie.power_rails_enabled == 0)
+
+	if (tegra_pcie.power_rails_enabled == 0) {
+		pr_debug("PCIE: Already power rails disabled");
 		goto err_exit;
+	}
 	if (tegra_pcie.regulator_hvdd)
 		err = regulator_disable(tegra_pcie.regulator_hvdd);
 	if (err)
@@ -985,16 +988,74 @@ static int tegra_pcie_power_regate(void)
 	return clk_enable(tegra_pcie.pll_e);
 }
 
+static int tegra_pcie_power_off(void);
+
+static int tegra_pcie_map_resources(void)
+{
+	int err;
+
+	/* Allocate config space virtual memory */
+	tegra_pcie.regs = ioremap_nocache(TEGRA_PCIE_BASE, PCIE_IOMAP_SZ);
+	if (tegra_pcie.regs == NULL) {
+		pr_err("PCIE: Failed to map PCI/AFI registers\n");
+		err = -ENOMEM;
+		goto err_exit;
+	}
+
+	err = request_resource(&iomem_resource, &tegra_pcie_res_mmio);
+	if (err) {
+		pr_err("PCIE: Failed to request resources: %d\n", err);
+		goto err_exit;
+	}
+	tegra_pcie.res_mmio = &tegra_pcie_res_mmio;
+
+	/* Allocate downstream IO virtual memory */
+	tegra_pcie_io_base = ioremap_nocache(tegra_pcie_res_mmio.start,
+			resource_size(&tegra_pcie_res_mmio));
+	if (tegra_pcie_io_base == NULL) {
+		pr_err("PCIE: Failed to map IO\n");
+		err = -ENOMEM;
+		goto err_exit;
+	}
+	return 0;
+
+err_exit:
+	tegra_pcie_power_off();
+	return err;
+}
+
+void tegra_pcie_unmap_resources(void)
+{
+	if (tegra_pcie_io_base) {
+		iounmap(tegra_pcie_io_base);
+		tegra_pcie_io_base = 0;
+	}
+	if (tegra_pcie.res_mmio) {
+		release_resource(tegra_pcie.res_mmio);
+		tegra_pcie.res_mmio = 0;
+	}
+	if (tegra_pcie.regs) {
+		iounmap(tegra_pcie.regs);
+		tegra_pcie.regs = 0;
+	}
+}
+
 #ifdef CONFIG_PM
 static int tegra_pcie_power_on(void)
 {
 	int err = 0;
-	if (tegra_pcie.pcie_power_enabled)
-		return 0;
+
+	if (tegra_pcie.pcie_power_enabled) {
+		pr_debug("PCIE: Already powered on");
+		goto err_exit;
+	}
 	err = tegra_pcie_enable_regulators();
 	if (err)
 		goto err_exit;
 	err = tegra_pcie_power_regate();
+	if (err)
+		goto err_exit;
+	err = tegra_pcie_map_resources();
 	if (err)
 		goto err_exit;
 
@@ -1007,8 +1068,12 @@ err_exit:
 static int tegra_pcie_power_off(void)
 {
 	int err = 0;
-	if (tegra_pcie.pcie_power_enabled == 0)
-		return 0;
+
+	if (tegra_pcie.pcie_power_enabled == 0) {
+		pr_debug("PCIE: Already powered off");
+		goto err_exit;
+	}
+	tegra_pcie_unmap_resources();
 	if (tegra_pcie.pll_e)
 		clk_disable(tegra_pcie.pll_e);
 
@@ -1053,7 +1118,6 @@ static void tegra_pcie_clocks_put(void)
 
 static int tegra_pcie_get_resources(void)
 {
-	struct resource *res_mmio = 0;
 	int err;
 
 	tegra_pcie.power_rails_enabled = 0;
@@ -1076,48 +1140,21 @@ static int tegra_pcie_get_resources(void)
 		goto err_pwr_on;
 	}
 
-	/* Allocate config space virtual memory */
-	tegra_pcie.regs = ioremap_nocache(TEGRA_PCIE_BASE, PCIE_IOMAP_SZ);
-	if (tegra_pcie.regs == NULL) {
-		pr_err("PCIE: Failed to map PCI/AFI registers\n");
-		err = -ENOMEM;
-		goto err_map_reg;
-	}
-	res_mmio = &tegra_pcie.res_mmio;
-
-	err = request_resource(&iomem_resource, res_mmio);
+	err = tegra_pcie_map_resources();
 	if (err) {
-		pr_err("PCIE: Failed to request resources: %d\n", err);
-		goto err_req_io;
-	}
-
-	/* Allocate downstream IO virtual memory */
-	tegra_pcie_io_base = ioremap_nocache(res_mmio->start,
-					     resource_size(res_mmio));
-	if (tegra_pcie_io_base == NULL) {
-		pr_err("PCIE: Failed to map IO\n");
-		err = -ENOMEM;
-		goto err_map_io;
+		pr_err("PCIE: failed to map resources: %d\n", err);
+		goto err_pwr_on;
 	}
 
 	err = request_irq(INT_PCIE_INTR, tegra_pcie_isr,
-			  IRQF_SHARED, "PCIE", &tegra_pcie);
+			IRQF_SHARED, "PCIE", &tegra_pcie);
 	if (err) {
 		pr_err("PCIE: Failed to register IRQ: %d\n", err);
-		goto err_irq;
+		goto err_pwr_on;
 	}
 	set_irq_flags(INT_PCIE_INTR, IRQF_VALID);
-
 	return 0;
 
-err_irq:
-	iounmap(tegra_pcie_io_base);
-err_map_io:
-	release_resource(&tegra_pcie.res_mmio);
-err_req_io:
-	iounmap(tegra_pcie.regs);
-err_map_reg:
-	tegra_pcie_power_off();
 err_pwr_on:
 	tegra_pcie_clocks_put();
 err_pwr_on_rail:
