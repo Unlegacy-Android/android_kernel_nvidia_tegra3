@@ -785,7 +785,6 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			pcpu->idle_exit_time = 0;
 		}
 
-		flush_work(&inputopen.inputopen_work);
 		if (atomic_dec_return(&active_count) > 0)
 			return 0;
 
@@ -842,10 +841,6 @@ static int __init cpufreq_interactive_init(void)
 	wake_up_process(speedchange_task);
 
 	return cpufreq_register_governor(&cpufreq_gov_interactive);
-
-err_freetask:
-	put_task_struct(speedchange_task);
-	return -ENOMEM;
 }
 
 #ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_INTERACTIVE
