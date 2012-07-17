@@ -490,8 +490,7 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 	u32 val;
 	int err = 0;
 
-	if (!i2c_dev->is_clkon_always)
-		tegra_i2c_clock_enable(i2c_dev);
+	tegra_i2c_clock_enable(i2c_dev);
 
 	tegra_periph_reset_assert(i2c_dev->div_clk);
 	udelay(2);
@@ -529,8 +528,7 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 	if (tegra_i2c_flush_fifos(i2c_dev))
 		err = -ETIMEDOUT;
 
-	if (!i2c_dev->is_clkon_always)
-		tegra_i2c_clock_disable(i2c_dev);
+	tegra_i2c_clock_disable(i2c_dev);
 
 	if (i2c_dev->irq_disabled) {
 		i2c_dev->irq_disabled = 0;
@@ -864,8 +862,7 @@ static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	i2c_dev->msgs = msgs;
 	i2c_dev->msgs_num = num;
 
-	if (!i2c_dev->is_clkon_always)
-		tegra_i2c_clock_enable(i2c_dev);
+	tegra_i2c_clock_enable(i2c_dev);
 
 	for (i = 0; i < num; i++) {
 		enum msg_end_type end_type = MSG_END_STOP;
@@ -880,8 +877,7 @@ static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 			break;
 	}
 
-	if (!i2c_dev->is_clkon_always)
-		tegra_i2c_clock_disable(i2c_dev);
+	tegra_i2c_clock_disable(i2c_dev);
 
 	rt_mutex_unlock(&i2c_dev->dev_lock);
 
