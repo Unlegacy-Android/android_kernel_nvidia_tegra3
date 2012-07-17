@@ -1137,8 +1137,7 @@ static int tegra_smmu_resume(struct device *dev)
 static int tegra_smmu_probe(struct platform_device *pdev)
 {
 	struct smmu_device *smmu;
-	struct resource *regs, *regs2;
-	struct tegra_smmu_window *window;
+	struct resource *regs, *regs2, *window;
 	struct device *dev = &pdev->dev;
 	int i, err = 0;
 
