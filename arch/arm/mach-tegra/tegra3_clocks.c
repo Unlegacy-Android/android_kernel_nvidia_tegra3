@@ -4450,6 +4450,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("se.cbus",	"tegra-se",		NULL,	&tegra_clk_cbus, "se",  0, 0),
 #endif
 	SHARED_CLK("cap.cbus",	"cap.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
+	SHARED_CLK("cap.profile.cbus", "profile.cbus",	NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
 	SHARED_CLK("floor.cbus", "floor.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, 0),
 };
 
