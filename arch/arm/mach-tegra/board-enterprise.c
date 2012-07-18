@@ -819,9 +819,15 @@ error:
 	return NULL;
 }
 
-void tegra_usb_hsic_host_unregister(struct platform_device *pdev)
+void tegra_usb_hsic_host_unregister(struct platform_device **platdev)
 {
-	platform_device_unregister(pdev);
+	struct platform_device *pdev = *platdev;
+
+	if (pdev && &pdev->dev) {
+		platform_device_unregister(pdev);
+		*platdev = NULL;
+	} else
+		pr_err("%s: no platform device\n", __func__);
 }
 
 static void enterprise_usb_init(void)
