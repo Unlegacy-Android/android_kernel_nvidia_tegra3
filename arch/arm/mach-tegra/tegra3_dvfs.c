@@ -780,6 +780,8 @@ static struct core_cap tegra3_core_cap;
 static struct core_cap kdvfs_core_cap;
 static struct core_cap user_core_cap;
 
+static struct core_cap user_cbus_cap;
+
 static struct kobject *cap_kobj;
 
 /* Arranged in order required for enabling/lowering the cap */
@@ -898,14 +900,91 @@ core_cap_level_store(struct kobject *kobj, struct kobj_attribute *attr,
 	return count;
 }
 
+static void cbus_cap_update(void)
+{
+	static struct clk *cbus_cap;
+
+	if (!cbus_cap) {
+		cbus_cap = tegra_get_clock_by_name("cap.profile.cbus");
+		if (!cbus_cap) {
+			WARN_ONCE(1, "tegra3_dvfs: cbus profiling is not supported");
+			return;
+		}
+	}
+
+	if (user_cbus_cap.refcnt)
+		clk_set_rate(cbus_cap, user_cbus_cap.level);
+	else
+		clk_set_rate(cbus_cap, clk_get_max_rate(cbus_cap));
+}
+
+static ssize_t
+cbus_cap_state_show(struct kobject *kobj, struct kobj_attribute *attr,
+		    char *buf)
+{
+	return sprintf(buf, "%d\n", user_cbus_cap.refcnt ? 1 : 0);
+}
+static ssize_t
+cbus_cap_state_store(struct kobject *kobj, struct kobj_attribute *attr,
+		     const char *buf, size_t count)
+{
+	int state;
+
+	if (sscanf(buf, "%d", &state) != 1)
+		return -1;
+
+	mutex_lock(&core_cap_lock);
+
+	if (state) {
+		user_cbus_cap.refcnt++;
+		if (user_cbus_cap.refcnt == 1)
+			cbus_cap_update();
+	} else if (user_cbus_cap.refcnt) {
+		user_cbus_cap.refcnt--;
+		if (user_cbus_cap.refcnt == 0)
+			cbus_cap_update();
+	}
+
+	mutex_unlock(&core_cap_lock);
+	return count;
+}
+
+static ssize_t
+cbus_cap_level_show(struct kobject *kobj, struct kobj_attribute *attr,
+		    char *buf)
+{
+	return sprintf(buf, "%d\n", user_cbus_cap.level);
+}
+static ssize_t
+cbus_cap_level_store(struct kobject *kobj, struct kobj_attribute *attr,
+		     const char *buf, size_t count)
+{
+	int level;
+
+	if (sscanf(buf, "%d", &level) != 1)
+		return -1;
+
+	mutex_lock(&core_cap_lock);
+	user_cbus_cap.level = level;
+	cbus_cap_update();
+	mutex_unlock(&core_cap_lock);
+	return count;
+}
+
 static struct kobj_attribute cap_state_attribute =
 	__ATTR(core_cap_state, 0644, core_cap_state_show, core_cap_state_store);
 static struct kobj_attribute cap_level_attribute =
 	__ATTR(core_cap_level, 0644, core_cap_level_show, core_cap_level_store);
+static struct kobj_attribute cbus_state_attribute =
+	__ATTR(cbus_cap_state, 0644, cbus_cap_state_show, cbus_cap_state_store);
+static struct kobj_attribute cbus_level_attribute =
+	__ATTR(cbus_cap_level, 0644, cbus_cap_level_show, cbus_cap_level_store);
 
 const struct attribute *cap_attributes[] = {
 	&cap_state_attribute.attr,
 	&cap_level_attribute.attr,
+	&cbus_state_attribute.attr,
+	&cbus_level_attribute.attr,
 	NULL,
 };
 
