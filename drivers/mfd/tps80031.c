@@ -30,6 +30,7 @@
 #include <linux/gpio.h>
 #include <linux/i2c.h>
 #include <linux/pm.h>
+#include <linux/regmap.h>
 
 #include <linux/mfd/core.h>
 #include <linux/mfd/tps80031.h>
@@ -107,6 +108,43 @@
 
 #define TPS80031_BBSPOR_CFG	0xE6
 #define TPS80031_BBSPOR_CHG_EN	0x8
+
+/* Valid Address ranges */
+#define TPS80031_ID0_PMIC_SLAVE_SMPS_DVS	0x55 ... 0x5C
+
+#define TPS80031_ID1_RTC			0x00 ... 0x16
+#define TPS80031_ID1_MEMORY			0x17 ... 0x1E
+#define TPS80031_ID1_PMC_MASTER			0x1F ... 0x2D
+#define TPS80031_ID1_PMC_SLAVE_MISC		0x31 ... 0x34
+#define TPS80031_ID1_PMC_SLAVE_SMPS		0x40 ... 0x68
+#define TPS80031_ID1_PMC_SLAVE_LDO		0x80 ... 0xA7
+#define TPS80031_ID1_PMC_SLAVE_REOSURCES	0XAD ... 0xD0
+#define TPS80031_ID1_PMC_PREQ_ASSIGN		0XD7 ... 0xDF
+#define TPS80031_ID1_PMC_MISC			0xE2 ... 0xEF
+#define TPS80031_ID1_PMC_PU_PD_HZ		0xF0 ... 0xF6
+#define TPS80031_ID1_PMC_BACKUP			0xFA
+
+#define TPS80031_ID2_USB			0x00 ... 0x1A
+#define TPS80031_ID2_GPADC_CONTROL		0x2E ... 0x36
+#define TPS80031_ID2_GPADC_RESULTS		0x37 ... 0x3C
+#define TPS80031_ID2_AUXILLIARIES		0x90 ... 0x9C
+#define TPS80031_ID2_CUSTOM			0xA0 ... 0xB9
+#define TPS80031_ID2_PWM			0xBA ... 0xBE
+#define TPS80031_ID2_FUEL_GAUSE			0xC0 ... 0xCB
+#define TPS80031_ID2_INTERFACE_INTERRUPTS	0xD0 ... 0xD8
+#define TPS80031_ID2_CHARGER			0xE0 ... 0xF5
+
+#define TPS80031_ID3_TEST_LDO			0x00 ... 0x09
+#define TPS80031_ID3_TEST_SMPS			0x10 ... 0x2B
+#define TPS80031_ID3_TEST_POWER			0x30 ... 0x36
+#define TPS80031_ID3_TEST_CHARGER		0x40 ... 0x48
+#define TPS80031_ID3_TEST_AUXILIIARIES		0x50 ... 0xB1
+
+#define TPS80031_ID3_DIEID			0xC0 ... 0xC8
+#define TPS80031_ID3_TRIM_PHOENIX		0xCC ... 0xEA
+#define TPS80031_ID3_TRIM_CUSTOM		0xEC ... 0xED
+
+#define TPS80031_MAX_REGISTER	0x100
 
 struct tps80031_pupd_data {
 	u8	reg;
@@ -256,159 +294,64 @@ struct tps80031 {
 	u8			cont_int_en;
 	u8			prev_cont_stat1;
 	struct tps80031_client	tps_clients[TPS_NUM_SLAVES];
+	struct regmap		*regmap[TPS_NUM_SLAVES];
 };
-
-static inline int __tps80031_read(struct i2c_client *client,
-				  int reg, uint8_t *val)
-{
-	int ret;
-
-	ret = i2c_smbus_read_byte_data(client, reg);
-	if (ret < 0) {
-		dev_err(&client->dev,
-			"failed reading from addr 0x%02x, reg 0x%02x\n",
-			client->addr, reg);
-		return ret;
-	}
-
-	*val = (uint8_t)ret;
-
-	return 0;
-}
-
-static inline int __tps80031_reads(struct i2c_client *client, int reg,
-				int len, uint8_t *val)
-{
-	int ret;
-
-	ret = i2c_smbus_read_i2c_block_data(client, reg, len, val);
-	if (ret < 0) {
-		dev_err(&client->dev,
-			"failed reading from addr 0x%02x, reg	0x%02x\n",
-			 client->addr, reg);
-		return ret;
-	}
-
-	return 0;
-}
-
-static inline int __tps80031_write(struct i2c_client *client,
-				 int reg, uint8_t val)
-{
-	int ret;
-	ret = i2c_smbus_write_byte_data(client, reg, val);
-	if (ret < 0) {
-		dev_err(&client->dev,
-			"failed writing 0x%02x to 0x%02x\n", val, reg);
-		return ret;
-	}
-
-	return 0;
-}
-
-static inline int __tps80031_writes(struct i2c_client *client, int reg,
-				  int len, uint8_t *val)
-{
-	int ret;
-
-	ret = i2c_smbus_write_i2c_block_data(client, reg, len, val);
-	if (ret < 0) {
-		dev_err(&client->dev, "failed writings to 0x%02x\n", reg);
-		return ret;
-	}
-
-	return 0;
-}
 
 int tps80031_write(struct device *dev, int sid, int reg, uint8_t val)
 {
 	struct tps80031 *tps80031 = dev_get_drvdata(dev);
-	struct tps80031_client *tps = &tps80031->tps_clients[sid];
-	int ret;
 
-	mutex_lock(&tps->lock);
-	ret = __tps80031_write(tps->client, reg, val);
-	mutex_unlock(&tps->lock);
-
-	return ret;
+	return regmap_write(tps80031->regmap[sid], reg, val);
 }
 EXPORT_SYMBOL_GPL(tps80031_write);
 
 int tps80031_writes(struct device *dev, int sid, int reg, int len, uint8_t *val)
 {
 	struct tps80031 *tps80031 = dev_get_drvdata(dev);
-	struct tps80031_client *tps = &tps80031->tps_clients[sid];
-	int ret;
 
-	mutex_lock(&tps->lock);
-	ret = __tps80031_writes(tps->client, reg, len, val);
-	mutex_unlock(&tps->lock);
-
-	return ret;
+	return regmap_bulk_write(tps80031->regmap[sid], reg, val, len);
 }
 EXPORT_SYMBOL_GPL(tps80031_writes);
 
 int tps80031_read(struct device *dev, int sid, int reg, uint8_t *val)
 {
 	struct tps80031 *tps80031 = dev_get_drvdata(dev);
-	struct tps80031_client *tps = &tps80031->tps_clients[sid];
+	unsigned int ival;
+	int ret;
 
-	return __tps80031_read(tps->client, reg, val);
+	ret = regmap_read(tps80031->regmap[sid], reg, &ival);
+	if (ret < 0) {
+		dev_err(dev, "failed reading from reg 0x%02x\n", reg);
+		return ret;
+	}
+
+	*val = ival;
+	return ret;
 }
 EXPORT_SYMBOL_GPL(tps80031_read);
 
 int tps80031_reads(struct device *dev, int sid, int reg, int len, uint8_t *val)
 {
 	struct tps80031 *tps80031 = dev_get_drvdata(dev);
-	struct tps80031_client *tps = &tps80031->tps_clients[sid];
 
-	return __tps80031_reads(tps->client, reg, len, val);
+	return regmap_bulk_read(tps80031->regmap[sid], reg, val, len);
 }
 EXPORT_SYMBOL_GPL(tps80031_reads);
 
 int tps80031_set_bits(struct device *dev, int sid, int reg, uint8_t bit_mask)
 {
 	struct tps80031 *tps80031 = dev_get_drvdata(dev);
-	struct tps80031_client *tps = &tps80031->tps_clients[sid];
-	uint8_t reg_val;
-	int ret = 0;
 
-	mutex_lock(&tps->lock);
-
-	ret = __tps80031_read(tps->client, reg, &reg_val);
-	if (ret)
-		goto out;
-
-	if ((reg_val & bit_mask) != bit_mask) {
-		reg_val |= bit_mask;
-		ret = __tps80031_write(tps->client, reg, reg_val);
-	}
-out:
-	mutex_unlock(&tps->lock);
-	return ret;
+	return regmap_update_bits(tps80031->regmap[sid], reg,
+				bit_mask, bit_mask);
 }
 EXPORT_SYMBOL_GPL(tps80031_set_bits);
 
 int tps80031_clr_bits(struct device *dev, int sid, int reg, uint8_t bit_mask)
 {
 	struct tps80031 *tps80031 = dev_get_drvdata(dev);
-	struct tps80031_client *tps = &tps80031->tps_clients[sid];
-	uint8_t reg_val;
-	int ret = 0;
 
-	mutex_lock(&tps->lock);
-
-	ret = __tps80031_read(tps->client, reg, &reg_val);
-	if (ret)
-		goto out;
-
-	if (reg_val & bit_mask) {
-		reg_val &= ~bit_mask;
-		ret = __tps80031_write(tps->client, reg, reg_val);
-	}
-out:
-	mutex_unlock(&tps->lock);
-	return ret;
+	return regmap_update_bits(tps80031->regmap[sid], reg, bit_mask, 0);
 }
 EXPORT_SYMBOL_GPL(tps80031_clr_bits);
 
@@ -416,23 +359,8 @@ int tps80031_update(struct device *dev, int sid, int reg, uint8_t val,
 		uint8_t mask)
 {
 	struct tps80031 *tps80031 = dev_get_drvdata(dev);
-	struct tps80031_client *tps = &tps80031->tps_clients[sid];
-	uint8_t reg_val;
-	int ret = 0;
 
-	mutex_lock(&tps->lock);
-
-	ret = __tps80031_read(tps->client, reg, &reg_val);
-	if (ret)
-		goto out;
-
-	if ((reg_val & mask) != val) {
-		reg_val = (reg_val & ~mask) | (val & mask);
-		ret = __tps80031_write(tps->client, reg, reg_val);
-	}
-out:
-	mutex_unlock(&tps->lock);
-	return ret;
+	return regmap_update_bits(tps80031->regmap[sid], reg, mask, val);
 }
 EXPORT_SYMBOL_GPL(tps80031_update);
 
@@ -446,12 +374,12 @@ int tps80031_force_update(struct device *dev, int sid, int reg, uint8_t val,
 
 	mutex_lock(&tps->lock);
 
-	ret = __tps80031_read(tps->client, reg, &reg_val);
+	ret = tps80031_read(dev, sid, reg, &reg_val);
 	if (ret)
 		goto out;
 
 	reg_val = (reg_val & ~mask) | (val & mask);
-	ret = __tps80031_write(tps->client, reg, reg_val);
+	ret = tps80031_write(dev, sid, reg, reg_val);
 
 out:
 	mutex_unlock(&tps->lock);
@@ -544,7 +472,8 @@ static void tps80031_power_off(void)
 	if (!tps->client)
 		return;
 	dev_info(&tps->client->dev, "switching off PMU\n");
-	__tps80031_write(tps->client, TPS80031_PHOENIX_DEV_ON, DEVOFF);
+	tps80031_write(&tps->client->dev, SLAVE_ID1,
+				TPS80031_PHOENIX_DEV_ON, DEVOFF);
 }
 
 static void tps80031_pupd_init(struct tps80031 *tps80031,
@@ -613,14 +542,14 @@ static int tps80031_gpio_get(struct gpio_chip *gc, unsigned offset)
 	uint8_t trans;
 	int ret;
 
-	ret = __tps80031_read(tps->client,
+	ret = tps80031_read(&tps->client->dev, SLAVE_ID1,
 			pmc_ext_control_base[offset] +
 				EXT_CONTROL_CFG_STATE, &state);
 	if (ret)
 		return ret;
 
 	if (state != 0) {
-		ret = __tps80031_read(tps->client,
+		ret = tps80031_read(&tps->client->dev, SLAVE_ID1,
 				pmc_ext_control_base[offset] +
 					EXT_CONTROL_CFG_TRANS, &trans);
 		if (ret)
@@ -1115,7 +1044,7 @@ static void print_regs(const char *header, struct seq_file *s,
 
 	seq_printf(s, "%s\n", header);
 	for (i = start_offset; i <= end_offset; ++i) {
-		ret = __tps80031_read(tps->client, i, &reg_val);
+		ret = tps80031_read(&tps->client->dev, sid, i, &reg_val);
 		if (ret >= 0)
 			seq_printf(s, "Addr = 0x%02x Reg 0x%02x Value 0x%02x\n",
 						tps->client->addr, i, reg_val);
@@ -1188,6 +1117,109 @@ static void __init tps80031_debuginit(struct tps80031 *tpsi)
 	return;
 }
 #endif
+
+static bool rd_wr_reg_id0(struct device *dev, unsigned int reg)
+{
+	switch(reg) {
+	case TPS80031_ID0_PMIC_SLAVE_SMPS_DVS:
+		return true;
+	default:
+		pr_err("non-existing reg %s() %d reg %x\n", __func__, __LINE__, reg);
+		BUG();
+		return false;
+	}
+}
+
+static bool rd_wr_reg_id1(struct device *dev, unsigned int reg)
+{
+	switch(reg) {
+	case TPS80031_ID1_RTC:
+	case TPS80031_ID1_MEMORY:
+	case TPS80031_ID1_PMC_MASTER:
+	case TPS80031_ID1_PMC_SLAVE_SMPS:
+	case TPS80031_ID1_PMC_SLAVE_MISC:
+	case TPS80031_ID1_PMC_SLAVE_LDO:
+	case TPS80031_ID1_PMC_SLAVE_REOSURCES:
+	case TPS80031_ID1_PMC_PREQ_ASSIGN:
+	case TPS80031_ID1_PMC_MISC:
+	case TPS80031_ID1_PMC_PU_PD_HZ:
+	case TPS80031_ID1_PMC_BACKUP:
+		return true;
+	default:
+		pr_err("non-existing reg %s() %d reg %x\n", __func__, __LINE__, reg);
+		BUG();
+		return false;
+	}
+}
+
+static bool rd_wr_reg_id2(struct device *dev, unsigned int reg)
+{
+	switch(reg) {
+	case TPS80031_ID2_USB:
+	case TPS80031_ID2_GPADC_CONTROL:
+	case TPS80031_ID2_GPADC_RESULTS:
+	case TPS80031_ID2_AUXILLIARIES:
+	case TPS80031_ID2_CUSTOM:
+	case TPS80031_ID2_PWM:
+	case TPS80031_ID2_FUEL_GAUSE:
+	case TPS80031_ID2_INTERFACE_INTERRUPTS:
+	case TPS80031_ID2_CHARGER:
+		return true;
+	default:
+		pr_err("non-existing reg %s() %d reg %x\n", __func__, __LINE__, reg);
+		BUG();
+		return false;
+	}
+}
+static bool rd_wr_reg_id3(struct device *dev, unsigned int reg)
+{
+	switch(reg) {
+	case TPS80031_ID3_TEST_LDO:
+	case TPS80031_ID3_TEST_SMPS:
+	case TPS80031_ID3_TEST_POWER:
+	case TPS80031_ID3_TEST_CHARGER:
+	case TPS80031_ID3_TEST_AUXILIIARIES:
+	case TPS80031_ID3_DIEID:
+	case TPS80031_ID3_TRIM_PHOENIX:
+	case TPS80031_ID3_TRIM_CUSTOM:
+		return true;
+	default:
+		pr_err("non-existing reg %s() %d reg %x\n", __func__, __LINE__, reg);
+		BUG();
+		return false;
+	}
+}
+
+static const struct regmap_config tps80031_regmap_configs[] = {
+	{
+		.reg_bits = 8,
+		.val_bits = 8,
+		.writeable_reg = rd_wr_reg_id0,
+		.readable_reg = rd_wr_reg_id0,
+		.max_register = TPS80031_MAX_REGISTER - 1,
+	},
+	{
+		.reg_bits = 8,
+		.val_bits = 8,
+		.writeable_reg = rd_wr_reg_id1,
+		.readable_reg = rd_wr_reg_id1,
+		.max_register = TPS80031_MAX_REGISTER - 1,
+	},
+	{
+		.reg_bits = 8,
+		.val_bits = 8,
+		.writeable_reg = rd_wr_reg_id2,
+		.readable_reg = rd_wr_reg_id2,
+		.max_register = TPS80031_MAX_REGISTER - 1,
+	},
+	{
+		.reg_bits = 8,
+		.val_bits = 8,
+		.writeable_reg = rd_wr_reg_id3,
+		.readable_reg = rd_wr_reg_id3,
+		.max_register = TPS80031_MAX_REGISTER - 1,
+	},
+};
 
 static int __devexit tps80031_i2c_remove(struct i2c_client *client)
 {
@@ -1275,6 +1307,15 @@ static int __devinit tps80031_i2c_probe(struct i2c_client *client,
 		}
 		i2c_set_clientdata(tps->client, tps80031);
 		mutex_init(&tps->lock);
+
+		tps80031->regmap[i] = devm_regmap_init_i2c(tps->client,
+					&tps80031_regmap_configs[i]);
+		if (IS_ERR(tps80031->regmap[i])) {
+			ret = PTR_ERR(tps80031->regmap[i]);
+			dev_err(&client->dev,
+				"regmap %d init failed, err %d\n", i, ret);
+			goto fail;
+		}
 	}
 
 	if (client->irq) {
