@@ -1281,7 +1281,7 @@ static void spi_tegra_deinit_dma_param(struct spi_tegra_data *tspi,
 	tegra_dma_free_channel(tdc);
 }
 
-static int __init spi_tegra_init_dma_param(struct spi_tegra_data *tspi,
+static int __devinit spi_tegra_init_dma_param(struct spi_tegra_data *tspi,
 			bool dma_to_memory)
 {
 	struct tegra_dma_req *dma_req;
