@@ -34,6 +34,8 @@
 #include <linux/io.h>
 #include <linux/random.h>
 #include <linux/ctype.h>
+#include <linux/debugfs.h>
+#include <linux/seq_file.h>
 
 #include <asm/page.h>
 #include <asm/cacheflush.h>
@@ -73,6 +75,13 @@
 #define MC_SMMU_PTC_CONFIG_0_PTC_STATS_TEST		(1 << 30)
 #define MC_SMMU_PTC_CONFIG_0_PTC_INDEX_MAP__PATTERN	0x3f
 #define MC_SMMU_PTC_CONFIG_0_RESET_VAL			0x2000003f
+
+#define MC_SMMU_STATS_CONFIG_MASK		\
+	MC_SMMU_PTC_CONFIG_0_PTC_STATS_ENABLE__MASK
+#define MC_SMMU_STATS_CONFIG_ENABLE		\
+	MC_SMMU_PTC_CONFIG_0_PTC_STATS_ENABLE
+#define MC_SMMU_STATS_CONFIG_TEST		\
+	MC_SMMU_PTC_CONFIG_0_PTC_STATS_TEST
 
 #define MC_SMMU_PTB_ASID_0				0x1c
 #define MC_SMMU_PTB_ASID_0_CURRENT_ASID_SHIFT		0
@@ -420,6 +429,9 @@ struct smmu_device {
 	unsigned long signature_pid;	/* For debugging aid */
 	unsigned long challenge_code;	/* For debugging aid */
 	unsigned long challenge_pid;	/* For debugging aid */
+
+	struct device *dev;
+	struct dentry *debugfs_root;
 };
 
 #define VA_PAGE_TO_PA(va, page)	\
@@ -597,6 +609,180 @@ static void free_pdir(struct smmu_as *as)
 	}
 }
 
+static const char * const smmu_debugfs_mc[] = {
+	"mc",
+#ifdef TEGRA_MC0_BASE
+	"mc0",
+#endif
+#ifdef TEGRA_MC1_BASE
+	"mc1",
+#endif
+};
+
+static const char * const smmu_debugfs_cache[] = {  "tlb", "ptc", };
+
+static ssize_t smmu_debugfs_stats_write(struct file *file,
+					const char __user *buffer,
+					size_t count, loff_t *pos)
+{
+	struct inode *inode;
+	struct dentry *cache, *mc, *root;
+	struct smmu_device *smmu;
+	int mc_idx, cache_idx, i;
+	u32 offs, val;
+	const char * const smmu_debugfs_stats_ctl[] = { "off", "on", "reset"};
+	char str[] = "reset";
+
+	count = min_t(size_t, count, sizeof(str));
+	if (copy_from_user(str, buffer, count))
+		return -EINVAL;
+
+	for (i = 0; i < ARRAY_SIZE(smmu_debugfs_stats_ctl); i++)
+		if (strncmp(str, smmu_debugfs_stats_ctl[i],
+			    strlen(smmu_debugfs_stats_ctl[i])) == 0)
+			break;
+
+	if (i == ARRAY_SIZE(smmu_debugfs_stats_ctl))
+		return -EINVAL;
+
+	cache = file->f_dentry;
+	inode = cache->d_inode;
+	cache_idx = (int)inode->i_private;
+	mc = cache->d_parent;
+	mc_idx = (int)mc->d_inode->i_private;
+	root = mc->d_parent;
+	smmu = root->d_inode->i_private;
+
+	offs = MC_SMMU_TLB_CONFIG_0;
+	offs += sizeof(u32) * cache_idx;
+	offs += 2 * sizeof(u32) * ARRAY_SIZE(smmu_debugfs_cache) * mc_idx;
+
+	val = readl(smmu->regs + offs);
+	switch (i) {
+	case 0:
+		val &= ~MC_SMMU_STATS_CONFIG_ENABLE;
+		val &= ~MC_SMMU_STATS_CONFIG_TEST;
+		writel(val, smmu->regs + offs);
+		break;
+	case 1:
+		val |= MC_SMMU_STATS_CONFIG_ENABLE;
+		val &= ~MC_SMMU_STATS_CONFIG_TEST;
+		writel(val, smmu->regs + offs);
+		break;
+	case 2:
+		val |= MC_SMMU_STATS_CONFIG_TEST;
+		writel(val, smmu->regs + offs);
+		val &= ~MC_SMMU_STATS_CONFIG_TEST;
+		writel(val, smmu->regs + offs);
+		break;
+	default:
+		BUG();
+		break;
+	}
+
+	pr_debug("%s() %08x, %08x @%08x\n", __func__,
+		 val, readl(smmu->regs + offs), offs);
+
+	return count;
+}
+
+static int smmu_debugfs_stats_show(struct seq_file *s, void *v)
+{
+	struct inode *inode;
+	struct dentry *cache, *mc, *root;
+	struct smmu_device *smmu;
+	int mc_idx, cache_idx, i;
+	u32 offs;
+	const char * const smmu_debugfs_stats[] = { "hit", "miss", };
+
+	inode = s->private;
+
+	cache = d_find_alias(inode);
+	cache_idx = (int)inode->i_private;
+	mc = cache->d_parent;
+	mc_idx = (int)mc->d_inode->i_private;
+	root = mc->d_parent;
+	smmu = root->d_inode->i_private;
+
+	offs = MC_SMMU_STATS_TLB_HIT_COUNT_0;
+	offs += ARRAY_SIZE(smmu_debugfs_stats) * sizeof(u32) * cache_idx;
+	offs += ARRAY_SIZE(smmu_debugfs_stats) * sizeof(u32) *
+		ARRAY_SIZE(smmu_debugfs_cache) * mc_idx;
+
+	for (i = 0; i < ARRAY_SIZE(smmu_debugfs_stats); i++) {
+		u32 val;
+
+		offs += sizeof(u32) * i;
+		val = readl(smmu->regs + offs);
+
+		seq_printf(s, "%08x ", val);
+
+		pr_debug("%s() %s %08x @%08x\n", __func__,
+			 smmu_debugfs_stats[i], val, offs);
+	}
+	seq_printf(s, "\n");
+
+	return 0;
+}
+
+static int smmu_debugfs_stats_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, smmu_debugfs_stats_show, inode);
+}
+
+static const struct file_operations smmu_debugfs_stats_fops = {
+	.open		= smmu_debugfs_stats_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+	.write		= smmu_debugfs_stats_write,
+};
+
+static void smmu_debugfs_delete(struct smmu_device *smmu)
+{
+	debugfs_remove_recursive(smmu->debugfs_root);
+}
+
+static void smmu_debugfs_create(struct smmu_device *smmu)
+{
+	int i;
+	struct dentry *root;
+
+	root = debugfs_create_file("smmu",
+				   S_IFDIR | S_IRWXU | S_IRUGO | S_IXUGO,
+				   NULL, smmu, NULL);
+	if (!root)
+		goto err_out;
+	smmu->debugfs_root = root;
+
+	for (i = 0; i < ARRAY_SIZE(smmu_debugfs_mc); i++) {
+		int j;
+		struct dentry *mc;
+
+		mc = debugfs_create_file(smmu_debugfs_mc[i],
+					 S_IFDIR | S_IRWXU | S_IRUGO | S_IXUGO,
+					 root, (void *)i, NULL);
+		if (!mc)
+			goto err_out;
+
+		for (j = 0; j < ARRAY_SIZE(smmu_debugfs_cache); j++) {
+			struct dentry *cache;
+
+			cache = debugfs_create_file(smmu_debugfs_cache[j],
+						    S_IWUGO | S_IRUGO, mc,
+						    (void *)j,
+						    &smmu_debugfs_stats_fops);
+			if (!cache)
+				goto err_out;
+		}
+	}
+
+	return;
+
+err_out:
+	smmu_debugfs_delete(smmu);
+}
+
 static int smmu_remove(struct platform_device *pdev)
 {
 	struct smmu_device *smmu = platform_get_drvdata(pdev);
@@ -604,6 +790,8 @@ static int smmu_remove(struct platform_device *pdev)
 
 	if (!smmu)
 		return 0;
+
+	smmu_debugfs_delete(smmu);
 
 	if (smmu->enable) {
 		writel(MC_SMMU_CONFIG_0_SMMU_ENABLE_DISABLE,
@@ -1119,6 +1307,7 @@ static int smmu_probe(struct platform_device *pdev)
 	spin_lock_init(&smmu->lock);
 	smmu_setup_regs(smmu);
 	smmu->enable = 1;
+	smmu->dev = &pdev->dev;
 	platform_set_drvdata(pdev, smmu);
 
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
@@ -1126,6 +1315,8 @@ static int smmu_probe(struct platform_device *pdev)
 	if (!smmu->avp_vector_page)
 		goto fail;
 #endif
+	smmu_debugfs_create(smmu);
+
 	return 0;
 
 fail:
