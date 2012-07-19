@@ -1209,7 +1209,6 @@ static int __devexit tps80031_i2c_remove(struct i2c_client *client)
 		mutex_destroy(&tps->lock);
 	}
 
-	kfree(tps80031);
 	return 0;
 }
 
@@ -1246,9 +1245,11 @@ static int __devinit tps80031_i2c_probe(struct i2c_client *client,
 	dev_info(&client->dev, "Jtag version 0x%02x and Eeprom version 0x%02x\n",
 						jtag_ver, ep_ver);
 
-	tps80031 = kzalloc(sizeof(struct tps80031), GFP_KERNEL);
-	if (tps80031 == NULL)
+	tps80031 = devm_kzalloc(&client->dev, sizeof(*tps80031), GFP_KERNEL);
+	if (!tps80031) {
+		dev_err(&client->dev, "Memory alloc for tps80031 failed\n");
 		return -ENOMEM;
+	}
 
 	tps80031->es_version = jtag_ver;
 	tps80031->dev = &client->dev;
