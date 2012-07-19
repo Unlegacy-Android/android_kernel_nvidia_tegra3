@@ -126,7 +126,7 @@ int __cpuinit __cpu_up(unsigned int cpu)
 
 /* SoC helpers */
 static const struct arm_soc_smp_init_ops *soc_smp_init_ops  __initdata;
-static const struct arm_soc_smp_ops *soc_smp_ops  __cpuinitdata;
+static const struct arm_soc_smp_ops *soc_smp_ops  ;
 static struct arm_soc_smp_ops __soc_smp_ops __cpuinitdata;
 
 void __init soc_smp_ops_register(struct arm_soc_smp_init_ops *smp_init_ops,
