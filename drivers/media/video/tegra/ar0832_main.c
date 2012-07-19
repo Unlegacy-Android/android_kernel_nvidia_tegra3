@@ -2401,7 +2401,7 @@ static const struct file_operations ar0832_debugfs_fops = {
 	.release	= single_release,
 };
 
-static void __devexit ar0832_remove_debugfs(struct ar0832_dev *dev)
+static void ar0832_remove_debugfs(struct ar0832_dev *dev)
 {
 	struct i2c_client *i2c_client = dev->i2c_client;
 
