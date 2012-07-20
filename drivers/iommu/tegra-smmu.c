@@ -38,6 +38,9 @@
 #include <mach/smmu.h>
 #include <mach/tegra_smmu.h>
 
+/* REVISIT: With new configurations for t114/124/148 passed from DT */
+#define SKIP_SWGRP_CHECK
+
 /* bitmap of the page sizes currently supported */
 #define SMMU_IOMMU_PGSIZES	(SZ_4K)
 
@@ -316,11 +319,15 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c,
 		offs = HWGRP_ASID_REG(i);
 		val = smmu_read(smmu, offs);
 		if (on) {
+#if !defined(SKIP_SWGRP_CHECK)
 			if (WARN_ON(val & mask))
 				goto err_hw_busy;
+#endif
 			val |= mask;
 		} else {
+#if !defined(SKIP_SWGRP_CHECK)
 			WARN_ON((val & mask) == mask);
+#endif
 			val &= ~mask;
 		}
 		smmu_write(smmu, val, offs);
@@ -551,13 +558,13 @@ static int alloc_pdir(struct smmu_as *as)
 		return 0;
 
 	as->pte_count = devm_kzalloc(smmu->dev,
-		     sizeof(as->pte_count[0]) * SMMU_PDIR_COUNT, GFP_KERNEL);
+		     sizeof(as->pte_count[0]) * SMMU_PDIR_COUNT, GFP_ATOMIC);
 	if (!as->pte_count) {
 		dev_err(smmu->dev,
 			"failed to allocate smmu_device PTE cunters\n");
 		return -ENOMEM;
 	}
-	as->pdir_page = alloc_page(GFP_KERNEL | __GFP_DMA);
+	as->pdir_page = alloc_page(GFP_ATOMIC | __GFP_DMA);
 	if (!as->pdir_page) {
 		dev_err(smmu->dev,
 			"failed to allocate smmu_device page directory\n");
@@ -701,9 +708,15 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		return -ENOMEM;
 	client->dev = dev;
 	client->as = as;
+
+#ifdef SKIP_SWGRP_CHECK
+	/* Enable all SWGRP blindly by default */
+	map = (1 << HWGRP_COUNT) - 1;
+#else
 	map = (unsigned long)dev->platform_data;
 	if (!map)
 		return -EINVAL;
+#endif
 
 	err = smmu_client_enable_hwgrp(client, map);
 	if (err)
@@ -1027,7 +1040,7 @@ static void __exit tegra_smmu_exit(void)
 	platform_driver_unregister(&tegra_smmu_driver);
 }
 
-subsys_initcall(tegra_smmu_init);
+core_initcall(tegra_smmu_init);
 module_exit(tegra_smmu_exit);
 
 MODULE_DESCRIPTION("IOMMU API for SMMU in Tegra30");

@@ -176,7 +176,7 @@ static struct platform_device kai_backlight_device = {
 	},
 };
 
-static int kai_panel_enable(void)
+static int kai_panel_postpoweron(void)
 {
 	if (kai_lvds_reg == NULL) {
 		kai_lvds_reg = regulator_get(NULL, "vdd_lvds");
@@ -185,15 +185,6 @@ static int kai_panel_enable(void)
 			       __func__, PTR_ERR(kai_lvds_reg));
 		else
 			regulator_enable(kai_lvds_reg);
-	}
-
-	if (kai_lvds_vdd_panel == NULL) {
-		kai_lvds_vdd_panel = regulator_get(NULL, "vdd_lcd_panel");
-		if (WARN_ON(IS_ERR(kai_lvds_vdd_panel)))
-			pr_err("%s: couldn't get regulator vdd_lcd_panel: %ld\n",
-			       __func__, PTR_ERR(kai_lvds_vdd_panel));
-		else
-			regulator_enable(kai_lvds_vdd_panel);
 	}
 
 	mdelay(5);
@@ -211,7 +202,30 @@ static int kai_panel_enable(void)
 	return 0;
 }
 
+static int kai_panel_enable(void)
+{
+	if (kai_lvds_vdd_panel == NULL) {
+		kai_lvds_vdd_panel = regulator_get(NULL, "vdd_lcd_panel");
+		if (WARN_ON(IS_ERR(kai_lvds_vdd_panel)))
+			pr_err("%s: couldn't get regulator vdd_lcd_panel: %ld\n",
+			       __func__, PTR_ERR(kai_lvds_vdd_panel));
+		else
+			regulator_enable(kai_lvds_vdd_panel);
+	}
+
+	return 0;
+}
+
 static int kai_panel_disable(void)
+{
+	regulator_disable(kai_lvds_vdd_panel);
+	regulator_put(kai_lvds_vdd_panel);
+	kai_lvds_vdd_panel = NULL;
+
+	return 0;
+}
+
+static int kai_panel_prepoweroff(void)
 {
 	gpio_set_value(kai_lvds_lr, 0);
 	gpio_set_value(kai_lvds_shutdown, 0);
@@ -225,10 +239,6 @@ static int kai_panel_disable(void)
 	regulator_disable(kai_lvds_reg);
 	regulator_put(kai_lvds_reg);
 	kai_lvds_reg = NULL;
-
-	regulator_disable(kai_lvds_vdd_panel);
-	regulator_put(kai_lvds_vdd_panel);
-	kai_lvds_vdd_panel = NULL;
 
 	return 0;
 }
@@ -529,6 +539,8 @@ static struct tegra_dc_out kai_disp1_out = {
 	.n_modes	= ARRAY_SIZE(kai_panel_modes),
 
 	.enable		= kai_panel_enable,
+	.postpoweron	= kai_panel_postpoweron,
+	.prepoweroff	= kai_panel_prepoweroff,
 	.disable	= kai_panel_disable,
 };
 
@@ -621,9 +633,7 @@ static void kai_panel_early_suspend(struct early_suspend *h)
 		fb_blank(registered_fb[1], FB_BLANK_NORMAL);
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
 	cpufreq_store_default_gov();
-	if (cpufreq_change_gov(cpufreq_conservative_gov))
-		pr_err("Early_suspend: Error changing governor to %s\n",
-				cpufreq_conservative_gov);
+	cpufreq_change_gov(cpufreq_conservative_gov);
 #endif
 }
 
@@ -631,8 +641,7 @@ static void kai_panel_late_resume(struct early_suspend *h)
 {
 	unsigned i;
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	if (cpufreq_restore_default_gov())
-		pr_err("Early_suspend: Unable to restore governor\n");
+	cpufreq_restore_default_gov();
 #endif
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);

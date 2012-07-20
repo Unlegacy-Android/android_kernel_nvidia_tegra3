@@ -127,7 +127,13 @@ extern struct platform_device tegra_gart_device;
 #else
 extern struct platform_device tegra_smmu_device;
 #endif
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 extern struct platform_device tegra_wdt_device;
+#else
+extern struct platform_device tegra_wdt0_device;
+extern struct platform_device tegra_wdt1_device;
+extern struct platform_device tegra_wdt2_device;
+#endif
 extern struct platform_device tegra_pwfm0_device;
 extern struct platform_device tegra_pwfm1_device;
 extern struct platform_device tegra_pwfm2_device;
@@ -156,7 +162,11 @@ extern struct platform_device debug_uarte_device;
 #endif
 
 extern struct nvhost_device tegra_disp1_device;
+extern struct nvhost_device tegra_disp2_device;
 extern struct platform_device tegra_nvmap_device;
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+extern struct platform_device tegra_cec_device;
+#endif
 
 void __init tegra_init_debug_uart_rate(void);
 

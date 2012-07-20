@@ -35,11 +35,15 @@
 #include <linux/platform_data/tegra_nor.h>
 #include <linux/spi/spi.h>
 #include <linux/mtd/partitions.h>
+#if defined(CONFIG_TOUCHSCREEN_ATMEL_MXT)
+#include <linux/i2c/atmel_mxt_ts.h>
+#endif
 #include <mach/clk.h>
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
 #include <mach/iomap.h>
+#include <mach/io_dpd.h>
 #include <mach/io.h>
 #include <mach/pci.h>
 #include <mach/audio.h>
@@ -48,6 +52,7 @@
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <mach/usb_phy.h>
+#include <mach/tegra_fiq_debugger.h>
 #include <sound/wm8903.h>
 #include <mach/tsensor.h>
 #include "board.h"
@@ -303,6 +308,15 @@ static struct spi_board_info tegra_spi_devices[] __initdata = {
 	},
 	{
 		.modalias = "spidev",
+		.bus_num = 2,
+		.chip_select = 0,
+		.mode = SPI_MODE_0,
+		.max_speed_hz = 18000000,
+		.platform_data = NULL,
+		.irq = 0,
+	},
+	{
+		.modalias = "spidev",
 		.bus_num = 3,
 		.chip_select = 1,
 		.mode = SPI_MODE_0,
@@ -327,6 +341,7 @@ static void p1852_spi_init(void)
 	tegra_spi_device2.name = "spi_slave_tegra";
 	platform_device_register(&tegra_spi_device1);
 	platform_device_register(&tegra_spi_device2);
+	platform_device_register(&tegra_spi_device3);
 	p852_register_spidev();
 }
 
@@ -336,15 +351,123 @@ static struct platform_device tegra_camera = {
 };
 
 static struct platform_device *p1852_devices[] __initdata = {
-#if defined(CONFIG_TEGRA_IOVMM_SMMU)
+#if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
 	&tegra_smmu_device,
 #endif
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
 	&tegra_camera,
-	&tegra_wdt_device
+	&tegra_wdt0_device,
+	&tegra_wdt1_device,
+	&tegra_wdt2_device
 };
+
+
+#ifdef CONFIG_TOUCHSCREEN_ATMEL_MXT
+
+#define MXT_CONFIG_CRC  0xD62DE8
+static const u8 config[] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0xFF, 0xFF, 0x32, 0x0A, 0x00, 0x14, 0x14, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x8B, 0x00, 0x00,
+	0x1B, 0x2A, 0x00, 0x20, 0x3C, 0x04, 0x05, 0x00,
+	0x02, 0x01, 0x00, 0x0A, 0x0A, 0x0A, 0x0A, 0xFF,
+	0x02, 0x55, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x64, 0x02, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x23,
+	0x00, 0x00, 0x00, 0x05, 0x0A, 0x15, 0x1E, 0x00,
+	0x00, 0x04, 0xFF, 0x03, 0x3F, 0x64, 0x64, 0x01,
+	0x0A, 0x14, 0x28, 0x4B, 0x00, 0x02, 0x00, 0x64,
+	0x00, 0x19, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x08, 0x10, 0x3C, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+#define MXT_CONFIG_CRC_SKU2000  0xA24D9A
+static const u8 config_sku2000[] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0xFF, 0xFF, 0x32, 0x0A, 0x00, 0x14, 0x14, 0x19,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x8B, 0x00, 0x00,
+	0x1B, 0x2A, 0x00, 0x20, 0x3A, 0x04, 0x05, 0x00,  //23=thr  2 di
+	0x04, 0x04, 0x41, 0x0A, 0x0A, 0x0A, 0x0A, 0xFF,
+	0x02, 0x55, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x00,  //0A=limit
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x23,
+	0x00, 0x00, 0x00, 0x05, 0x0A, 0x15, 0x1E, 0x00,
+	0x00, 0x04, 0x00, 0x03, 0x3F, 0x64, 0x64, 0x01,
+	0x0A, 0x14, 0x28, 0x4B, 0x00, 0x02, 0x00, 0x64,
+	0x00, 0x19, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x08, 0x10, 0x3C, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+static struct mxt_platform_data atmel_mxt_info = {
+	.x_line         = 27,
+	.y_line         = 42,
+	.x_size         = 768,
+	.y_size         = 1366,
+	.blen           = 0x20,
+	.threshold      = 0x3C,
+	.voltage        = 3300000,              /* 3.3V */
+	.orient         = 5,
+	.config         = config,
+	.config_length  = 157,
+	.config_crc     = MXT_CONFIG_CRC,
+	.irqflags       = IRQF_TRIGGER_FALLING,
+/*	.read_chg       = &read_chg, */
+	.read_chg       = NULL,
+};
+
+static struct i2c_board_info __initdata atmel_i2c_info[] = {
+	{
+		I2C_BOARD_INFO("atmel_mxt_ts", 0x5A),
+		.irq = TEGRA_GPIO_TO_IRQ(TOUCH_GPIO_IRQ_ATMEL_T9),
+		.platform_data = &atmel_mxt_info,
+	}
+};
+
+static __initdata struct tegra_clk_init_table spi_clk_init_table[] = {
+	/* name         parent          rate            enabled */
+	{ "sbc1",       "pll_p",        52000000,       true},
+	{ NULL,         NULL,           0,              0},
+};
+
+static int __init p1852_touch_init(void)
+{
+	tegra_gpio_enable(TOUCH_GPIO_IRQ_ATMEL_T9);
+	tegra_gpio_enable(TOUCH_GPIO_RST_ATMEL_T9);
+
+	gpio_request(TOUCH_GPIO_IRQ_ATMEL_T9, "atmel-irq");
+	gpio_direction_input(TOUCH_GPIO_IRQ_ATMEL_T9);
+
+	gpio_request(TOUCH_GPIO_RST_ATMEL_T9, "atmel-reset");
+	gpio_direction_output(TOUCH_GPIO_RST_ATMEL_T9, 0);
+	msleep(1);
+	gpio_set_value(TOUCH_GPIO_RST_ATMEL_T9, 1);
+	msleep(100);
+
+	atmel_mxt_info.config = config_sku2000;
+	atmel_mxt_info.config_crc = MXT_CONFIG_CRC_SKU2000;
+
+	i2c_register_board_info(TOUCH_BUS_ATMEL_T9, atmel_i2c_info, 1);
+
+	return 0;
+}
+
+#endif // CONFIG_TOUCHSCREEN_ATMEL_MXT
 
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.port_otg = false,
@@ -472,21 +595,43 @@ static void __init tegra_p1852_init(void)
 	p1852_gpio_init();
 	p1852_uart_init();
 	p1852_usb_init();
+	tegra_io_dpd_init();
 	p1852_sdhci_init();
 	p1852_spi_init();
 	platform_add_devices(p1852_devices, ARRAY_SIZE(p1852_devices));
+#ifdef CONFIG_TOUCHSCREEN_ATMEL_MXT
+	p1852_touch_init();
+#endif
 	p1852_panel_init();
 	p1852_nor_init();
 	p1852_pcie_init();
+	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 }
 
 static void __init tegra_p1852_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
-	tegra_reserve(0, SZ_8M, 0);
+	tegra_reserve(0, SZ_8M, SZ_8M);
 #else
-	tegra_reserve(SZ_128M, SZ_8M, 0);
+	tegra_reserve(SZ_128M, SZ_8M, SZ_8M);
 #endif
+}
+
+int p1852_get_skuid()
+{
+	switch (system_rev) {
+	case TEGRA_P1852_SKU2_A00:
+	case TEGRA_P1852_SKU2_B00:
+		return 2;
+	case TEGRA_P1852_SKU5_A00:
+	case TEGRA_P1852_SKU5_B00:
+		return 5;
+	case TEGRA_P1852_SKU8_A00:
+	case TEGRA_P1852_SKU8_B00:
+		return 8;
+	default:
+		return -1;
+	}
 }
 
 MACHINE_START(P1852, "p1852")

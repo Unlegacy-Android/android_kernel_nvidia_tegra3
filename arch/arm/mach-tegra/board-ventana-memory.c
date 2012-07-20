@@ -541,27 +541,27 @@ static const struct tegra_emc_table ventana_emc_tables_elpida_400Mhz[] = {
 	}
 };
 
-static const struct tegra_emc_pdata ventana_emc_chip = {
+static struct tegra_emc_pdata ventana_emc_chip = {
 	.description = "Elpida 300MHz",
 	.mem_manufacturer_id = 0x0303,
 	.mem_revision_id1 = -1,
 	.mem_revision_id2 = -1,
 	.mem_pid = -1,
-	.tables = ventana_emc_tables_elpida_300Mhz,
+	.tables = (struct tegra_emc_table *)ventana_emc_tables_elpida_300Mhz,
 	.num_tables = ARRAY_SIZE(ventana_emc_tables_elpida_300Mhz)
 };
 
-static const struct tegra_emc_pdata ventana_t25_emc_chip = {
+static struct tegra_emc_pdata ventana_t25_emc_chip = {
 	.description = "Elpida 400MHz",
 	.mem_manufacturer_id = 0x0303,
 	.mem_revision_id1 = -1,
 	.mem_revision_id2 = -1,
 	.mem_pid = -1,
-	.tables = ventana_emc_tables_elpida_400Mhz,
+	.tables = (struct tegra_emc_table *)ventana_emc_tables_elpida_400Mhz,
 	.num_tables = ARRAY_SIZE(ventana_emc_tables_elpida_400Mhz)
 };
 
-static const struct tegra_emc_pdata ventana_siblings_emc_chip = {
+static struct tegra_emc_pdata ventana_siblings_emc_chip = {
 };
 
 #define TEGRA25_SKU		0x0B00

@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation
+ * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -393,6 +393,7 @@
 #define DC_DISP_MCCIF_DISPLAY1B_HYST		0x484
 #define DC_DISP_DAC_CRT_CTRL			0x4c0
 #define DC_DISP_DISP_MISC_CONTROL		0x4c1
+#define   UF_LINE_FLUSH                         (1 << 1)
 
 #define DC_WIN_COLOR_PALETTE(x)			(0x500 + (x))
 

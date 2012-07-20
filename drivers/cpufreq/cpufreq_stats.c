@@ -59,6 +59,11 @@ static int cpufreq_stats_update(unsigned int cpu)
 	cur_time = get_jiffies_64();
 	spin_lock(&cpufreq_stats_lock);
 	stat = per_cpu(cpufreq_stats_table, cpu);
+	if (!stat) {
+		spin_unlock(&cpufreq_stats_lock);
+		return 0;
+	}
+
 	if (stat->time_in_state && stat->last_index >= 0)
 		stat->time_in_state[stat->last_index] +=
 			cur_time - stat->last_time;
@@ -169,12 +174,17 @@ static int freq_table_get_index(struct cpufreq_stats *stat, unsigned int freq)
  */
 static void cpufreq_stats_free_table(unsigned int cpu)
 {
-	struct cpufreq_stats *stat = per_cpu(cpufreq_stats_table, cpu);
+	struct cpufreq_stats *stat;
+
+	spin_lock(&cpufreq_stats_lock);
+	stat = per_cpu(cpufreq_stats_table, cpu);
+	per_cpu(cpufreq_stats_table, cpu) = NULL;
+	spin_unlock(&cpufreq_stats_lock);
+
 	if (stat) {
 		kfree(stat->time_in_state);
 		kfree(stat);
 	}
-	per_cpu(cpufreq_stats_table, cpu) = NULL;
 }
 
 /* must be called early in the CPU removal sequence (before
@@ -298,19 +308,23 @@ static int cpufreq_stat_notifier_trans(struct notifier_block *nb,
 	if (val != CPUFREQ_POSTCHANGE)
 		return 0;
 
+	cpufreq_stats_update(freq->cpu);
+
+	spin_lock(&cpufreq_stats_lock);
 	stat = per_cpu(cpufreq_stats_table, freq->cpu);
-	if (!stat)
+	if (!stat) {
+		spin_unlock(&cpufreq_stats_lock);
 		return 0;
+	}
 
 	old_index = stat->last_index;
 	new_index = freq_table_get_index(stat, freq->new);
 
-	cpufreq_stats_update(freq->cpu);
-
-	if (old_index == new_index)
+	if (old_index == new_index) {
+		spin_unlock(&cpufreq_stats_lock);
 		return 0;
+	}
 
-	spin_lock(&cpufreq_stats_lock);
 	stat->last_index = new_index;
 #ifdef CONFIG_CPU_FREQ_STAT_DETAILS
 	if (old_index >= 0 && new_index >= 0)
@@ -354,6 +368,7 @@ static int __cpuinit cpufreq_stat_cpu_callback(struct notifier_block *nfb,
 		cpufreq_update_policy(cpu);
 		break;
 	case CPU_DOWN_PREPARE:
+	case CPU_DOWN_PREPARE_FROZEN:
 		cpufreq_stats_free_sysfs(cpu);
 		break;
 	case CPU_DEAD:

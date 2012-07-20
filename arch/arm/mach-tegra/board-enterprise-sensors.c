@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-enterprise-sensors.c
  *
- * Copyright (c) 2011, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -104,6 +104,7 @@ static void nct1008_probe_callback(struct nct1008_data *data)
 
 	thermal_device->name = "nct1008";
 	thermal_device->data = data;
+	thermal_device->id = THERMAL_DEVICE_ID_NCT_EXT;
 	thermal_device->offset = TDIODE_OFFSET;
 	thermal_device->get_temp = nct_get_temp;
 	thermal_device->get_temp_low = nct_get_temp_low;
@@ -111,7 +112,7 @@ static void nct1008_probe_callback(struct nct1008_data *data)
 	thermal_device->set_alert = nct_set_alert;
 	thermal_device->set_shutdown_temp = nct_set_shutdown_temp;
 
-	tegra_thermal_set_device(thermal_device);
+	tegra_thermal_device_register(thermal_device);
 }
 
 static struct nct1008_platform_data enterprise_nct1008_pdata = {
@@ -241,12 +242,12 @@ static void mpuirq_init(void)
 
 	inv_mpu_i2c2_board_info[i++].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
 #if (MPU_GYRO_TYPE == MPU_TYPE_MPU3050)
-#if MPU_ACCELL_IRQ_GPIO
+#ifdef MPU_ACCELL_IRQ_GPIO
 	inv_mpu_i2c2_board_info[i].irq = gpio_to_irq(MPU_ACCEL_IRQ_GPIO);
 #endif
 	i++;
 #endif
-#if MPU_COMPASS_IRQ_GPIO
+#ifdef MPU_COMPASS_IRQ_GPIO
 	inv_mpu_i2c2_board_info[i++].irq = gpio_to_irq(MPU_COMPASS_IRQ_GPIO);
 #endif
 	i2c_register_board_info(MPU_GYRO_BUS_NUM, inv_mpu_i2c2_board_info,

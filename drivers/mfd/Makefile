@@ -125,3 +125,5 @@ obj-$(CONFIG_MFD_MAX77663)	+= max77663-core.o
 obj-$(CONFIG_MFD_RICOH583)	+= ricoh583.o
 obj-$(CONFIG_MFD_ANATOP)	+= anatop-mfd.o
 obj-$(CONFIG_MFD_RC5T583)	+= rc5t583.o rc5t583-irq.o
+obj-$(CONFIG_MFD_PALMAS)	+= palmas.o
+obj-$(CONFIG_MFD_LM3533)	+= lm3533-core.o lm3533-ctrlbank.o

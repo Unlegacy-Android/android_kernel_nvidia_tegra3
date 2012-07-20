@@ -101,6 +101,7 @@ struct tps80031_regulator {
 	/* chip constraints on regulator behavior */
 	u16			min_mV;
 	u16			max_mV;
+	unsigned int		tolerance_uv;
 
 	/* regulator specific turn-on delay */
 	int			delay;
@@ -296,6 +297,8 @@ static int __tps80031_dcdc_set_voltage(struct device *parent,
 {
 	int vsel = 0;
 	int ret;
+
+	min_uV = min_uV - ri->tolerance_uv;
 
 	switch (ri->flags) {
 	case 0:
@@ -802,11 +805,11 @@ static int tps80031_power_req_config(struct device *parent,
 		struct tps80031_regulator *ri,
 		struct tps80031_regulator_platform_data *tps80031_pdata)
 {
-	int ret;
+	int ret = 0;
 	uint8_t reg_val;
 
 	if (ri->preq_bit < 0)
-		return 0;
+		goto skip_pwr_req_config;
 
 	ret = tps80031_ext_power_req_config(parent, ri->ext_ctrl_flag,
 			ri->preq_bit, ri->state_reg, ri->trans_reg);
@@ -822,6 +825,7 @@ static int tps80031_power_req_config(struct device *parent,
 		return ret;
 	}
 
+skip_pwr_req_config:
 	if (tps80031_pdata->ext_ctrl_flag &
 			(PWR_OFF_ON_SLEEP | PWR_ON_ON_SLEEP)) {
 		reg_val = (ri->trans_reg_cache & ~0xC);
@@ -1025,6 +1029,7 @@ static int __devinit tps80031_regulator_probe(struct platform_device *pdev)
 	ri->dev = &pdev->dev;
 	if (tps_pdata->delay_us > 0)
 		ri->delay = tps_pdata->delay_us;
+	ri->tolerance_uv = tps_pdata->tolerance_uv;
 
 	check_smps_mode_mult(pdev->dev.parent, ri);
 	ri->platform_flags = tps_pdata->flags;

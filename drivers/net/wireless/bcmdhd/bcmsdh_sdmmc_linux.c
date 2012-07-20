@@ -2,13 +2,13 @@
  * BCMSDH Function Driver for the native SDIO/MMC driver in the Linux Kernel
  *
  * Copyright (C) 1999-2012, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,12 +16,12 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh_sdmmc_linux.c 312783 2012-02-03 22:53:56Z $
+ * $Id: bcmsdh_sdmmc_linux.c 342895 2012-07-04 11:36:15Z $
  */
 
 #include <typedefs.h>
@@ -105,31 +105,36 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 {
 	int ret = 0;
 	static struct sdio_func sdio_func_0;
-	sd_trace(("bcmsdh_sdmmc: %s Enter\n", __FUNCTION__));
-	sd_trace(("sdio_bcmsdh: func->class=%x\n", func->class));
-	sd_trace(("sdio_vendor: 0x%04x\n", func->vendor));
-	sd_trace(("sdio_device: 0x%04x\n", func->device));
-	sd_trace(("Function#: 0x%04x\n", func->num));
 
-	if (func->num == 1) {
-		sdio_func_0.num = 0;
-		sdio_func_0.card = func->card;
-		gInstance->func[0] = &sdio_func_0;
-		if(func->device == 0x4) { /* 4318 */
-			gInstance->func[2] = NULL;
-			sd_trace(("NIC found, calling bcmsdh_probe_bcmdhd...\n"));
-			ret = bcmsdh_probe_bcmdhd(&func->dev);
+	if (func) {
+		sd_trace(("bcmsdh_sdmmc: %s Enter\n", __FUNCTION__));
+		sd_trace(("sdio_bcmsdh: func->class=%x\n", func->class));
+		sd_trace(("sdio_vendor: 0x%04x\n", func->vendor));
+		sd_trace(("sdio_device: 0x%04x\n", func->device));
+		sd_trace(("Function#: 0x%04x\n", func->num));
+
+		if (func->num == 1) {
+			sdio_func_0.num = 0;
+			sdio_func_0.card = func->card;
+			gInstance->func[0] = &sdio_func_0;
+			if(func->device == 0x4) { /* 4318 */
+				gInstance->func[2] = NULL;
+				sd_trace(("NIC found, calling bcmsdh_probe...\n"));
+				ret = bcmsdh_probe_bcmdhd(&func->dev);
+			}
 		}
-	}
 
-	gInstance->func[func->num] = func;
+		gInstance->func[func->num] = func;
 
 	if (func->num == 2) {
-#ifdef WL_CFG80211
-		wl_cfg80211_set_parent_dev(&func->dev);
-#endif
-		sd_trace(("F2 found, calling bcmsdh_probe_bcmdhd...\n"));
-		ret = bcmsdh_probe_bcmdhd(&func->dev);
+	#ifdef WL_CFG80211
+			wl_cfg80211_set_parent_dev(&func->dev);
+	#endif
+			sd_trace(("F2 found, calling bcmsdh_probe...\n"));
+			ret = bcmsdh_probe_bcmdhd(&func->dev);
+		}
+	} else {
+		ret = -ENODEV;
 	}
 
 	return ret;
@@ -137,20 +142,22 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 
 static void bcmsdh_sdmmc_remove(struct sdio_func *func)
 {
-	sd_trace(("bcmsdh_sdmmc: %s Enter\n", __FUNCTION__));
-	sd_info(("sdio_bcmsdh: func->class=%x\n", func->class));
-	sd_info(("sdio_vendor: 0x%04x\n", func->vendor));
-	sd_info(("sdio_device: 0x%04x\n", func->device));
-	sd_info(("Function#: 0x%04x\n", func->num));
+	if (func) {
+		sd_trace(("bcmsdh_sdmmc: %s Enter\n", __FUNCTION__));
+		sd_info(("sdio_bcmsdh: func->class=%x\n", func->class));
+		sd_info(("sdio_vendor: 0x%04x\n", func->vendor));
+		sd_info(("sdio_device: 0x%04x\n", func->device));
+		sd_info(("Function#: 0x%04x\n", func->num));
 
-	if (func->num == 2) {
-		sd_trace(("F2 found, calling bcmsdh_remove_bcmdhd...\n"));
-		bcmsdh_remove_bcmdhd(&func->dev);
-	} else if (func->num == 1) {
-		sdio_claim_host(func);
-		sdio_disable_func(func);
-		sdio_release_host(func);
-		gInstance->func[1] = NULL;
+		if (func->num == 2) {
+			sd_trace(("F2 found, calling bcmsdh_remove...\n"));
+			bcmsdh_remove_bcmdhd(&func->dev);
+		} else if (func->num == 1) {
+			sdio_claim_host(func);
+			sdio_disable_func(func);
+			sdio_release_host(func);
+			gInstance->func[1] = NULL;
+		}
 	}
 }
 
@@ -164,7 +171,9 @@ static const struct sdio_device_id bcmsdh_sdmmc_ids[] = {
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4334) },
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4324) },
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_43239) },
-	{ SDIO_DEVICE_CLASS(SDIO_CLASS_NONE)		},
+#ifdef CONFIG_ANDROID
+	{ SDIO_DEVICE_CLASS(SDIO_CLASS_NONE)            },
+#endif
 	{ /* end: all zeroes */				},
 };
 
@@ -184,10 +193,23 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 
 	if (dhd_os_check_wakelock(bcmsdh_get_drvdata()))
 		return -EBUSY;
+
+	sdio_flags = sdio_get_host_pm_caps(func);
+
+	if (!(sdio_flags & MMC_PM_KEEP_POWER)) {
+		sd_err(("%s: can't keep power while host is suspended\n", __FUNCTION__));
+		return  -EINVAL;
+	}
+
+	/* keep power while host suspended */
+	ret = sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
+	if (ret) {
+		sd_err(("%s: error while trying to keep power\n", __FUNCTION__));
+		return ret;
+	}
 #if defined(OOB_INTR_ONLY)
 	bcmsdh_oob_intr_set(0);
-#endif	/* defined(OOB_INTR_ONLY) */
-	smp_mb();
+#endif /* defined(OOB_INTR_ONLY) */
 
 	sdio_flags = sdio_get_host_pm_caps(func);
 
@@ -206,6 +228,7 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 	}
 
 	dhd_mmc_suspend = TRUE;
+	smp_mb();
 
 out:
 	return ret;
@@ -291,6 +314,9 @@ sdioh_sdmmc_osinit(sdioh_info_t *sd)
 {
 	struct sdos_info *sdos;
 
+	if (!sd)
+		return BCME_BADARG;
+
 	sdos = (struct sdos_info*)MALLOC(sd->osh, sizeof(struct sdos_info));
 	sd->sdos_info = (void*)sdos;
 	if (sdos == NULL)
@@ -317,6 +343,9 @@ sdioh_interrupt_set(sdioh_info_t *sd, bool enable)
 {
 	ulong flags;
 	struct sdos_info *sdos;
+
+	if (!sd)
+		return BCME_BADARG;
 
 	sd_trace(("%s: %s\n", __FUNCTION__, enable ? "Enabling" : "Disabling"));
 

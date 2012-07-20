@@ -20,7 +20,7 @@
 * software in any way with any other Broadcom software provided under a license
 * other than the GPL, without Broadcom's express prior written consent.
 *
-* $Id: dhd_custom_gpio.c 291086 2011-10-21 01:17:24Z $
+* $Id: dhd_custom_gpio.c 337782 2012-06-08 14:16:12Z $
 */
 
 #include <typedefs.h>
@@ -94,7 +94,7 @@ int dhd_customer_oob_irq_map(unsigned long *irq_flags_ptr)
 	if (dhd_oob_gpio_num < 0) {
 		dhd_oob_gpio_num = CUSTOM_OOB_GPIO_NUM;
 	}
-#endif /* CUSTOMER_HW2 */
+#endif /* CUSTOMER_OOB_GPIO_NUM */
 
 	if (dhd_oob_gpio_num < 0) {
 		WL_ERROR(("%s: ERROR customer specific Host GPIO is NOT defined \n",

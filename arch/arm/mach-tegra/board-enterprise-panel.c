@@ -28,6 +28,7 @@
 #include <linux/earlysuspend.h>
 #endif
 #include <linux/tegra_pwm_bl.h>
+#include <linux/pwm_backlight.h>
 #include <asm/atomic.h>
 #include <linux/nvhost.h>
 #include <linux/nvmap.h>
@@ -65,6 +66,8 @@
 #define ENTERPRISE_STEREO_PORTRAIT	1
 
 #define enterprise_lcd_te		TEGRA_GPIO_PJ1
+
+#define enterprise_bl_pwm		TEGRA_GPIO_PH3
 
 #ifdef CONFIG_TEGRA_DC
 static struct regulator *enterprise_dsi_reg;
@@ -170,6 +173,17 @@ static int enterprise_backlight_notify(struct device *unused, int brightness)
 
 static int enterprise_disp1_check_fb(struct device *dev, struct fb_info *info);
 
+#if IS_EXTERNAL_PWM
+static struct platform_pwm_backlight_data enterprise_disp1_backlight_data = {
+	.pwm_id		= 3,
+	.max_brightness	= 255,
+	.dft_brightness	= 224,
+	.pwm_period_ns	= 1000000,
+	.notify		= enterprise_backlight_notify,
+	/* Only toggle backlight on fb blank notifications for disp1 */
+	.check_fb	= enterprise_disp1_check_fb,
+};
+#else
 /*
  * In case which_pwm is TEGRA_PWM_PM0,
  * gpio_conf_to_sfio should be TEGRA_GPIO_PW0: set LCD_CS1_N pin to SFIO
@@ -180,7 +194,6 @@ static struct platform_tegra_pwm_backlight_data enterprise_disp1_backlight_data 
 	.which_dc		= 0,
 	.which_pwm		= TEGRA_PWM_PM1,
 	.gpio_conf_to_sfio	= TEGRA_GPIO_PW1,
-	.switch_to_sfio		= &tegra_gpio_disable,
 	.max_brightness		= 255,
 	.dft_brightness		= 224,
 	.notify		= enterprise_backlight_notify,
@@ -190,9 +203,15 @@ static struct platform_tegra_pwm_backlight_data enterprise_disp1_backlight_data 
 	/* Only toggle backlight on fb blank notifications for disp1 */
 	.check_fb	= enterprise_disp1_check_fb,
 };
+#endif
+
 
 static struct platform_device enterprise_disp1_backlight_device = {
+#if IS_EXTERNAL_PWM
+	.name	= "pwm-backlight",
+#else
 	.name	= "tegra-pwm-bl",
+#endif
 	.id	= -1,
 	.dev	= {
 		.platform_data = &enterprise_disp1_backlight_data,
@@ -515,8 +534,11 @@ static int enterprise_dsi_panel_enable(void)
 	if (ret)
 		return ret;
 
-#if DSI_PANEL_RESET
+#if IS_EXTERNAL_PWM
+	tegra_gpio_disable(enterprise_bl_pwm);
+#endif
 
+#if DSI_PANEL_RESET
 	if (board_info.fab >= BOARD_FAB_A03) {
 		if (enterprise_lcd_reg == NULL) {
 			enterprise_lcd_reg = regulator_get(NULL, "lcd_vddio_en");
@@ -799,7 +821,11 @@ static struct platform_device *enterprise_gfx_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_NVMAP)
 	&enterprise_nvmap_device,
 #endif
+#if IS_EXTERNAL_PWM
+	&tegra_pwfm3_device,
+#else
 	&tegra_pwfm0_device,
+#endif
 };
 
 static struct platform_device *enterprise_bl_devices[]  = {
@@ -822,9 +848,7 @@ static void enterprise_panel_early_suspend(struct early_suspend *h)
 
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
 	cpufreq_store_default_gov();
-	if (cpufreq_change_gov(cpufreq_conservative_gov))
-		pr_err("Early_suspend: Error changing governor to %s\n",
-				cpufreq_conservative_gov);
+	cpufreq_change_gov(cpufreq_conservative_gov);
 #endif
 }
 
@@ -833,8 +857,7 @@ static void enterprise_panel_late_resume(struct early_suspend *h)
 	unsigned i;
 
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	if (cpufreq_restore_default_gov())
-		pr_err("Early_suspend: Unable to restore governor\n");
+	cpufreq_restore_default_gov();
 #endif
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
@@ -853,7 +876,9 @@ int __init enterprise_panel_init(void)
 	BUILD_BUG_ON(ARRAY_SIZE(enterprise_bl_output_measured_a02) != 256);
 
 	if (board_info.fab >= BOARD_FAB_A03) {
+#if !(IS_EXTERNAL_PWM)
 		enterprise_disp1_backlight_data.clk_div = 0x1D;
+#endif
 		bl_output = enterprise_bl_output_measured_a03;
 	} else
 		bl_output = enterprise_bl_output_measured_a02;

@@ -3,6 +3,8 @@
  * Copyright (C) 2011 Capella Microsystems Inc.
  * Author: Frank Hsieh <pengyueh@gmail.com>
  *
+ * Copyright (c) 2012, NVIDIA Corporation.
+ *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -38,11 +40,11 @@
 #include <asm/mach-types.h>
 #include <asm/setup.h>
 
-#define D(x...)			pr_info(x)
+#define D(x...)			pr_debug(x)
 
 #define I2C_RETRY_COUNT		10
 
-#define LS_POLLING_DELAY	500
+#define LS_POLLING_DELAY	1000 /* mSec */
 
 static void report_do_work(struct work_struct *w);
 static DECLARE_DELAYED_WORK(report_work, report_do_work);
@@ -386,20 +388,8 @@ static int lightsensor_enable(struct cm3217_info *lpi)
 	if (ret < 0)
 		pr_err("[LS][CM3217 error]%s: set auto light sensor fail\n",
 		       __func__);
-	else {
-		msleep(50);	/* wait for 50 ms for the first report adc */
 
-		/* report an invalid value first to ensure we
-		 * trigger an event when adc_level is zero.
-		 */
-		input_report_abs(lpi->ls_input_dev, ABS_MISC, -1);
-		input_sync(lpi->ls_input_dev);
-		/* resume, IOCTL and DEVICE_ATTR */
-		report_lsensor_input_event(lpi, 1);
-		lpi->als_enable = 1;
-	}
-
-	queue_delayed_work(lpi->lp_wq, &report_work, lpi->polling_delay);
+	queue_work(lpi->lp_wq, &report_work);
 	lpi->als_enable = 1;
 
 	mutex_unlock(&als_enable_mutex);
@@ -462,8 +452,10 @@ static int lightsensor_release(struct inode *inode, struct file *file)
 static long lightsensor_ioctl(struct file *file, unsigned int cmd,
 			      unsigned long arg)
 {
-	int rc, val;
+	int rc = 0;
+	int val;
 	struct cm3217_info *lpi = lp_info;
+	unsigned long delay;
 
 	/* D("[CM3217] %s cmd %d\n", __func__, _IOC_NR(cmd)); */
 
@@ -483,6 +475,17 @@ static long lightsensor_ioctl(struct file *file, unsigned int cmd,
 		D("[LS][CM3217] %s LIGHTSENSOR_IOCTL_GET_ENABLED, enabled %d\n",
 		  __func__, val);
 		rc = put_user(val, (unsigned long __user *)arg);
+		break;
+
+	case LIGHTSENSOR_IOCTL_SET_DELAY:
+		if (get_user(delay, (unsigned long __user *)arg)) {
+			rc = -EFAULT;
+			break;
+		}
+		D("[LS][CM3217] %s LIGHTSENSOR_IOCTL_SET_DELAY, delay %ld\n",
+			__func__, delay);
+		delay = delay / 1000;
+		lpi->polling_delay = msecs_to_jiffies(delay);
 		break;
 
 	default:

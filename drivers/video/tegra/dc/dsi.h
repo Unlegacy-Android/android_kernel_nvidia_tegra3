@@ -1,18 +1,18 @@
 /*
-  * drivers/video/tegra/dc/dsi.h
-  *
-  * Copyright (c) 2011, NVIDIA Corporation.
-  *
-  * This software is licensed under the terms of the GNU General Public
-  * License version 2, as published by the Free Software Foundation, and
-  * may be copied, distributed, and modified under those terms.
-  *
-  * This program is distributed in the hope that it will be useful,
-  * but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  * GNU General Public License for more details.
-  *
-  */
+ * drivers/video/tegra/dc/dsi.h
+ *
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION, All rights reserved.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
 
 #ifndef __DRIVERS_VIDEO_TEGRA_DC_DSI_H__
 #define __DRIVERS_VIDEO_TEGRA_DC_DSI_H__
@@ -77,6 +77,10 @@ struct tegra_dc_dsi_data {
 
 	struct dsi_phy_timing_inclk phy_timing;
 
+	bool ulpm;
+	bool enabled;
+	bool host_suspended;
+
 	u8 driven_mode;
 	u8 controller_index;
 
@@ -98,9 +102,6 @@ struct tegra_dc_dsi_data {
 	u32 current_dsi_clk_khz;
 
 	u32 dsi_control_val;
-
-	bool ulpm;
-	bool enabled;
 };
 
 #define MAX_DSI_INSTANCE	2

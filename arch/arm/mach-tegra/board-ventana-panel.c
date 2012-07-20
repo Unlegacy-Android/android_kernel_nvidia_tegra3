@@ -285,7 +285,7 @@ static struct tegra_dc_platform_data ventana_disp1_pdata = {
 };
 
 static struct tegra_dc_platform_data ventana_disp2_pdata = {
-	.flags		= 0,
+	.flags		= TEGRA_DC_FLAG_ENABLED,
 	.default_out	= &ventana_disp2_out,
 	.fb		= &ventana_hdmi_fb_data,
 };
@@ -350,6 +350,8 @@ static struct platform_device *ventana_gfx_devices[] __initdata = {
 	&ventana_nvmap_device,
 #endif
 	&tegra_pwfm2_device,
+};
+static struct platform_device *ventana_backlight_devices[] __initdata = {
 	&ventana_backlight_device,
 };
 
@@ -368,9 +370,7 @@ static void ventana_panel_early_suspend(struct early_suspend *h)
 		fb_blank(registered_fb[1], FB_BLANK_NORMAL);
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
 	cpufreq_store_default_gov();
-	if (cpufreq_change_gov(cpufreq_conservative_gov))
-		pr_err("Early_suspend: Error changing governor to %s\n",
-				cpufreq_conservative_gov);
+	cpufreq_change_gov(cpufreq_conservative_gov);
 #endif
 }
 
@@ -378,8 +378,7 @@ static void ventana_panel_late_resume(struct early_suspend *h)
 {
 	unsigned i;
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	if (cpufreq_restore_default_gov())
-		pr_err("Early_suspend: Unable to restore governor\n");
+	cpufreq_restore_default_gov();
 #endif
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
@@ -449,6 +448,9 @@ int __init ventana_panel_init(void)
 	if (!err)
 		err = nvhost_device_register(&ventana_disp2_device);
 #endif
+
+	err = platform_add_devices(ventana_backlight_devices,
+				   ARRAY_SIZE(ventana_backlight_devices));
 
 	return err;
 }

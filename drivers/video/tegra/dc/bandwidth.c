@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/bandwidth.c
  *
- * Copyright (C) 2010-2012 NVIDIA Corporation
+ * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -16,6 +16,7 @@
 
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/clk.h>
 
 #include <mach/clk.h>
 #include <mach/dc.h>
@@ -32,8 +33,7 @@ static int use_dynamic_emc = 1;
 
 module_param_named(use_dynamic_emc, use_dynamic_emc, int, S_IRUGO | S_IWUSR);
 
-/* uses the larger of w->bandwidth or w->new_bandwidth, and copies
- * w->new_bandwidth into w->bandwidth */
+/* uses the larger of w->bandwidth or w->new_bandwidth */
 static void tegra_dc_set_latency_allowance(struct tegra_dc *dc,
 	struct tegra_dc_win *w)
 {
@@ -73,8 +73,6 @@ static void tegra_dc_set_latency_allowance(struct tegra_dc *dc,
 	if (w->idx == 1)
 		tegra_set_latency_allowance(vfilter_tab[dc->ndev->id], bw);
 #endif
-
-	w->bandwidth = w->new_bandwidth;
 }
 
 static unsigned int tegra_dc_windows_is_overlapped(struct tegra_dc_win *a,
@@ -183,6 +181,13 @@ static unsigned long tegra_dc_calc_win_bandwidth(struct tegra_dc *dc,
 		dfixed_trunc(w->w) / w->out_w * (WIN_IS_TILED(w) ?
 		tiled_windows_bw_multiplier : 1);
 
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	/*
+	 * Assuming 60% efficiency: i.e. if we calculate we need 70MBps, we
+	 * will request 117MBps from EMC.
+	 */
+	ret = ret + (17 * ret / 25);
+#endif
 	return ret;
 }
 
@@ -220,12 +225,13 @@ void tegra_dc_clear_bandwidth(struct tegra_dc *dc)
  * dc->new_emc_clk_rate into dc->emc_clk_rate.
  * calling this function both before and after a flip is sufficient to select
  * the best possible frequency and latency allowance.
+ * set use_new to true to force dc->new_emc_clk_rate programming.
  */
-void tegra_dc_program_bandwidth(struct tegra_dc *dc)
+void tegra_dc_program_bandwidth(struct tegra_dc *dc, bool use_new)
 {
 	unsigned i;
 
-	if (dc->emc_clk_rate != dc->new_emc_clk_rate) {
+	if (use_new || dc->emc_clk_rate != dc->new_emc_clk_rate) {
 		/* going from 0 to non-zero */
 		if (!dc->emc_clk_rate && !tegra_is_clk_enabled(dc->emc_clk))
 			clk_enable(dc->emc_clk);
@@ -234,15 +240,18 @@ void tegra_dc_program_bandwidth(struct tegra_dc *dc)
 			max(dc->emc_clk_rate, dc->new_emc_clk_rate));
 		dc->emc_clk_rate = dc->new_emc_clk_rate;
 
-		if (!dc->new_emc_clk_rate) /* going from non-zero to 0 */
+		/* going from non-zero to 0 */
+		if (!dc->new_emc_clk_rate && tegra_is_clk_enabled(dc->emc_clk))
 			clk_disable(dc->emc_clk);
 	}
 
 	for (i = 0; i < DC_N_WINDOWS; i++) {
 		struct tegra_dc_win *w = &dc->windows[i];
 
-		if (w->bandwidth != w->new_bandwidth && w->new_bandwidth != 0)
+		if ((use_new || w->bandwidth != w->new_bandwidth) &&
+			w->new_bandwidth != 0)
 			tegra_dc_set_latency_allowance(dc, w);
+		w->bandwidth = w->new_bandwidth;
 		trace_printk("%s:win%u bandwidth=%d\n", dc->ndev->name, w->idx,
 			w->bandwidth);
 	}

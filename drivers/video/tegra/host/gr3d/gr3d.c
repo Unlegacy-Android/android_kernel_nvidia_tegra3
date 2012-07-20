@@ -228,7 +228,6 @@ static int __devinit gr3d_probe(struct nvhost_device *dev,
 	drv->prepare_poweroff		= gr3d[index].prepare_poweroff;
 	drv->alloc_hwctx_handler	= gr3d[index].alloc_hwctx_handler;
 
-	nvhost_set_register_sets(tegra_gpu_register_sets());
 	return nvhost_client_device_init(dev);
 }
 
@@ -238,6 +237,7 @@ static int __exit gr3d_remove(struct nvhost_device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_PM
 static int gr3d_suspend(struct nvhost_device *dev, pm_message_t state)
 {
 	return nvhost_client_device_suspend(dev);
@@ -248,6 +248,7 @@ static int gr3d_resume(struct nvhost_device *dev)
 	dev_info(&dev->dev, "resuming\n");
 	return 0;
 }
+#endif
 
 static struct nvhost_driver gr3d_driver = {
 	.probe = gr3d_probe,

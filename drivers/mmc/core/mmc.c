@@ -97,6 +97,7 @@ static int mmc_decode_cid(struct mmc_card *card)
 		card->cid.prod_name[3]	= UNSTUFF_BITS(resp, 72, 8);
 		card->cid.prod_name[4]	= UNSTUFF_BITS(resp, 64, 8);
 		card->cid.prod_name[5]	= UNSTUFF_BITS(resp, 56, 8);
+		card->cid.prod_rev	= UNSTUFF_BITS(resp, 48, 8);
 		card->cid.serial	= UNSTUFF_BITS(resp, 16, 32);
 		card->cid.month		= UNSTUFF_BITS(resp, 12, 4);
 		card->cid.year		= UNSTUFF_BITS(resp, 8, 4) + 1997;
@@ -502,6 +503,11 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 
 		card->ext_csd.rel_param = ext_csd[EXT_CSD_WR_REL_PARAM];
 		card->ext_csd.rst_n_function = ext_csd[EXT_CSD_RST_N_FUNCTION];
+
+		/* Check whether the eMMC card needs proactive refresh */
+		if ((card->cid.manfid == 0x90) && ((card->cid.prod_rev == 0x73)
+			|| (card->cid.prod_rev == 0x7b)))
+			card->ext_csd.refresh = 1;
 	}
 
 	/* eMMC v4.5 or later */
@@ -627,6 +633,7 @@ MMC_DEV_ATTR(hwrev, "0x%x\n", card->cid.hwrev);
 MMC_DEV_ATTR(manfid, "0x%06x\n", card->cid.manfid);
 MMC_DEV_ATTR(name, "%s\n", card->cid.prod_name);
 MMC_DEV_ATTR(oemid, "0x%04x\n", card->cid.oemid);
+MMC_DEV_ATTR(prv, "0x%x\n", card->cid.prod_rev);
 MMC_DEV_ATTR(serial, "0x%08x\n", card->cid.serial);
 MMC_DEV_ATTR(enhanced_area_offset, "%llu\n",
 		card->ext_csd.enhanced_area_offset);
@@ -643,6 +650,7 @@ static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_manfid.attr,
 	&dev_attr_name.attr,
 	&dev_attr_oemid.attr,
+	&dev_attr_prv.attr,
 	&dev_attr_serial.attr,
 	&dev_attr_enhanced_area_offset.attr,
 	&dev_attr_enhanced_area_size.attr,
@@ -949,6 +957,17 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		if (err)
 			goto free_card;
 
+		if (card->ext_csd.refresh) {
+			init_timer(&card->timer);
+			card->timer.data = (unsigned long) card;
+			card->timer.function = mmc_refresh;
+			card->timer.expires = MMC_BKOPS_INTERVAL <
+				MMC_REFRESH_INTERVAL ? MMC_BKOPS_INTERVAL :
+				MMC_REFRESH_INTERVAL;
+			card->timer.expires *= HZ;
+			card->timer.expires += jiffies;
+			add_timer(&card->timer);
+		}
 		/* If doing byte addressing, check if required to do sector
 		 * addressing.  Handle the case of <2GB cards needing sector
 		 * addressing.  See section 8.1 JEDEC Standard JED84-A441;

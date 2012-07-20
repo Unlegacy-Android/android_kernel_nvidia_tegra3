@@ -35,12 +35,15 @@
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
 #include <linux/vmalloc.h>
+#include <linux/nvmap.h>
 
 #include <asm/cacheflush.h>
 #include <asm/tlbflush.h>
 
 #include <mach/iovmm.h>
-#include <linux/nvmap.h>
+
+#define CREATE_TRACE_POINTS
+#include <trace/events/nvmap.h>
 
 #include "nvmap.h"
 #include "nvmap_ioctl.h"
@@ -762,6 +765,7 @@ static int nvmap_open(struct inode *inode, struct file *filp)
 	priv = nvmap_create_client(dev, "user");
 	if (!priv)
 		return -ENOMEM;
+	trace_nvmap_open(priv);
 
 	priv->super = (filp->f_op == &nvmap_super_fops);
 
@@ -773,6 +777,7 @@ static int nvmap_open(struct inode *inode, struct file *filp)
 
 static int nvmap_release(struct inode *inode, struct file *filp)
 {
+	trace_nvmap_release(filp->private_data);
 	nvmap_client_put(filp->private_data);
 	return 0;
 }
@@ -1186,9 +1191,9 @@ static int nvmap_probe(struct platform_device *pdev)
 #endif
 
 	dev->iovmm_master.iovmm =
-		tegra_iovmm_alloc_client(dev_name(&pdev->dev), NULL,
+		tegra_iovmm_alloc_client(&pdev->dev, NULL,
 			&(dev->dev_user));
-#ifdef CONFIG_TEGRA_IOVMM
+#if defined(CONFIG_TEGRA_IOVMM) || defined(CONFIG_IOMMU_API)
 	if (!dev->iovmm_master.iovmm) {
 		e = PTR_ERR(dev->iovmm_master.iovmm);
 		dev_err(&pdev->dev, "couldn't create iovmm client\n");

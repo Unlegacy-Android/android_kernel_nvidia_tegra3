@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu.c
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@
 #include <linux/memblock.h>
 #include <linux/spi-tegra.h>
 #include <linux/nfc/pn544.h>
+#include <linux/rfkill-gpio.h>
 
 #include <sound/wm8903.h>
 #include <sound/max98095.h>
@@ -51,6 +52,7 @@
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
 #include <mach/iomap.h>
+#include <mach/io_dpd.h>
 #include <mach/io.h>
 #include <mach/i2s.h>
 #include <mach/tegra_asoc_pdata.h>
@@ -59,6 +61,7 @@
 #include <mach/thermal.h>
 #include <mach/pci.h>
 #include <mach/gpio-tegra.h>
+#include <mach/tegra_fiq_debugger.h>
 
 #include <asm/hardware/gic.h>
 #include <asm/mach-types.h>
@@ -76,10 +79,49 @@
 #include "wdt-recovery.h"
 #include "common.h"
 
+static struct balanced_throttle throttle_list[] = {
+#ifdef CONFIG_TEGRA_THERMAL_THROTTLE
+	{
+		.id = BALANCED_THROTTLE_ID_TJ,
+		.throt_tab_size = 10,
+		.throt_tab = {
+			{      0, 1000 },
+			{ 640000, 1000 },
+			{ 640000, 1000 },
+			{ 640000, 1000 },
+			{ 640000, 1000 },
+			{ 640000, 1000 },
+			{ 760000, 1000 },
+			{ 760000, 1050 },
+			{1000000, 1050 },
+			{1000000, 1100 },
+		},
+	},
+#endif
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+	{
+		.id = BALANCED_THROTTLE_ID_SKIN,
+		.throt_tab_size = 6,
+		.throt_tab = {
+			{ 640000, 1200 },
+			{ 640000, 1200 },
+			{ 760000, 1200 },
+			{ 760000, 1200 },
+			{1000000, 1200 },
+			{1000000, 1200 },
+		},
+	},
+#endif
+};
+
 /* All units are in millicelsius */
 static struct tegra_thermal_data thermal_data = {
+	.shutdown_device_id = THERMAL_DEVICE_ID_NCT_EXT,
 	.temp_shutdown = 90000,
-	.temp_offset = TDIODE_OFFSET, /* temps based on tdiode */
+
+#if defined(CONFIG_TEGRA_EDP_LIMITS) || defined(CONFIG_TEGRA_THERMAL_THROTTLE)
+	.throttle_edp_device_id = THERMAL_DEVICE_ID_NCT_EXT,
+#endif
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 	.edp_offset = TDIODE_OFFSET,  /* edp based on tdiode */
 	.hysteresis_edp = 3000,
@@ -90,22 +132,56 @@ static struct tegra_thermal_data thermal_data = {
 	.tc2 = 1,
 	.passive_delay = 2000,
 #endif
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+	.skin_device_id = THERMAL_DEVICE_ID_SKIN,
+	.temp_throttle_skin = 43000,
+	.tc1_skin = 0,
+	.tc2_skin = 1,
+	.passive_delay_skin = 5000,
+
+	.skin_temp_offset = 9793,
+	.skin_period = 1100,
+	.skin_devs_size = 2,
+	.skin_devs = {
+		{
+			THERMAL_DEVICE_ID_NCT_EXT,
+			{
+				2, 1, 1, 1,
+				1, 1, 1, 1,
+				1, 1, 1, 0,
+				1, 1, 0, 0,
+				0, 0, -1, -7
+			}
+		},
+		{
+			THERMAL_DEVICE_ID_NCT_INT,
+			{
+				-11, -7, -5, -3,
+				-3, -2, -1, 0,
+				0, 0, 1, 1,
+				1, 2, 2, 3,
+				4, 6, 11, 18
+			}
+		},
+	},
+#endif
 };
 
-static struct resource cardhu_bcm4329_rfkill_resources[] = {
+static struct rfkill_gpio_platform_data cardhu_bt_rfkill_pdata[] = {
 	{
-		.name   = "bcm4329_nshutdown_gpio",
-		.start  = TEGRA_GPIO_PU0,
-		.end    = TEGRA_GPIO_PU0,
-		.flags  = IORESOURCE_IO,
+		.name           = "bt_rfkill",
+		.shutdown_gpio  = TEGRA_GPIO_PU0,
+		.reset_gpio     = TEGRA_GPIO_INVALID,
+		.type           = RFKILL_TYPE_BLUETOOTH,
 	},
 };
 
-static struct platform_device cardhu_bcm4329_rfkill_device = {
-	.name = "bcm4329_rfkill",
+static struct platform_device cardhu_bt_rfkill_device = {
+	.name = "rfkill_gpio",
 	.id             = -1,
-	.num_resources  = ARRAY_SIZE(cardhu_bcm4329_rfkill_resources),
-	.resource       = cardhu_bcm4329_rfkill_resources,
+	.dev = {
+		.platform_data = &cardhu_bt_rfkill_pdata,
+	},
 };
 
 static struct resource cardhu_bluesleep_resources[] = {
@@ -166,6 +242,7 @@ static __initdata struct tegra_clk_init_table cardhu_clk_init_table[] = {
 	{ "i2c3",	"pll_p",	3200000,	false},
 	{ "i2c4",	"pll_p",	3200000,	false},
 	{ "i2c5",	"pll_p",	3200000,	false},
+	{ "vi",		"pll_p",	0,		false},
 	{ NULL,		NULL,		0,		0},
 };
 
@@ -693,7 +770,9 @@ static struct platform_device *cardhu_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_IOVMM_SMMU) ||  defined(CONFIG_TEGRA_IOMMU_SMMU)
 	&tegra_smmu_device,
 #endif
-	&tegra_wdt_device,
+	&tegra_wdt0_device,
+	&tegra_wdt1_device,
+	&tegra_wdt2_device,
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
@@ -712,12 +791,13 @@ static struct platform_device *cardhu_devices[] __initdata = {
 	&spdif_dit_device,
 	&bluetooth_dit_device,
 	&baseband_dit_device,
-	&cardhu_bcm4329_rfkill_device,
+	&cardhu_bt_rfkill_device,
 	&tegra_pcm_device,
 	&cardhu_audio_wm8903_device,
 	&cardhu_audio_max98095_device,
 	&cardhu_audio_aic326x_device,
 	&tegra_hda_device,
+	&tegra_cec_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
 #endif
@@ -888,6 +968,8 @@ static int __init cardhu_touch_init(void)
 	return 0;
 }
 
+#if defined(CONFIG_USB_SUPPORT)
+
 static void cardu_usb_hsic_postsupend(void)
 {
 #ifdef CONFIG_TEGRA_BB_XMM_POWER
@@ -943,7 +1025,7 @@ static struct tegra_usb_platform_data tegra_ehci2_hsic_xmm_pdata = {
 	},
 	.ops = &hsic_xmm_plat_ops,
 };
-
+#endif
 
 static int hsic_enable_gpio = -1;
 static int hsic_reset_gpio = -1;
@@ -1005,6 +1087,7 @@ void hsic_power_off(void)
 	}
 }
 
+#if defined(CONFIG_USB_SUPPORT)
 static struct tegra_usb_phy_platform_ops hsic_plat_ops = {
 	.open = hsic_platform_open,
 	.close = hsic_platform_close,
@@ -1057,6 +1140,55 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 	},
 };
 
+static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode        = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
+	},
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 15,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
+	},
+};
+
+static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.vbus_reg = "vdd_vbus_typea_usb",
+		.hot_plug = true,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
+	},
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 8,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
+	},
+};
+
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.port_otg = true,
 	.has_hostpc = true,
@@ -1082,61 +1214,13 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	},
 };
 
-static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
-	.port_otg = false,
-	.has_hostpc = true,
-	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-	.op_mode	= TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.vbus_gpio = -1,
-		.hot_plug = false,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
-	},
-	.u_cfg.utmi = {
-		.hssync_start_delay = 0,
-		.elastic_limit = 16,
-		.idle_wait_delay = 17,
-		.term_range_adj = 6,
-		.xcvr_setup = 15,
-		.xcvr_lsfslew = 2,
-		.xcvr_lsrslew = 2,
-		.xcvr_setup_offset = 0,
-		.xcvr_use_fuses = 1,
-	},
-};
-
-static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
-	.port_otg = false,
-	.has_hostpc = true,
-	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-	.op_mode	= TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.vbus_gpio = -1,
-		.vbus_reg = "vdd_vbus_typea_usb",
-		.hot_plug = true,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
-	},
-	.u_cfg.utmi = {
-		.hssync_start_delay = 0,
-		.elastic_limit = 16,
-		.idle_wait_delay = 17,
-		.term_range_adj = 6,
-		.xcvr_setup = 8,
-		.xcvr_lsfslew = 2,
-		.xcvr_lsrslew = 2,
-		.xcvr_setup_offset = 0,
-		.xcvr_use_fuses = 1,
-	},
-};
-
 static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_device = &tegra_ehci1_device,
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
 };
+#endif
 
-#if CONFIG_USB_SUPPORT
+#if defined(CONFIG_USB_SUPPORT)
 static void cardhu_usb_init(void)
 {
 	struct board_info bi;
@@ -1296,7 +1380,9 @@ static void cardhu_sata_init(void) { }
 
 static void __init tegra_cardhu_init(void)
 {
-	tegra_thermal_init(&thermal_data);
+	tegra_thermal_init(&thermal_data,
+				throttle_list,
+				ARRAY_SIZE(throttle_list));
 	tegra_clk_init_from_table(cardhu_clk_init_table);
 	tegra_enable_pinmux();
 	cardhu_pinmux_init();
@@ -1309,6 +1395,7 @@ static void __init tegra_cardhu_init(void)
 	cardhu_uart_init();
 	platform_add_devices(cardhu_devices, ARRAY_SIZE(cardhu_devices));
 	tegra_ram_console_debug_init();
+	tegra_io_dpd_init();
 	cardhu_sdhci_init();
 	cardhu_regulator_init();
 	cardhu_dtv_init();
@@ -1331,6 +1418,7 @@ static void __init tegra_cardhu_init(void)
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
+	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 }
 
 static void __init tegra_cardhu_reserve(void)

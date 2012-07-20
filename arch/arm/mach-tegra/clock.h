@@ -84,6 +84,12 @@ struct clk_mux_sel {
 	u32		value;
 };
 
+struct clk_backup {
+	struct clk	*input;
+	u32		value;
+	unsigned long	bus_rate;
+};
+
 struct clk_pll_freq_table {
 	unsigned long	input_rate;
 	unsigned long	output_rate;
@@ -161,7 +167,7 @@ struct clk {
 	u32				reg_shift;
 
 	struct list_head		shared_bus_list;
-	struct clk_mux_sel		shared_bus_backup;
+	struct clk_backup		shared_bus_backup;
 
 	union {
 		struct {
@@ -274,9 +280,12 @@ struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value);
 void tegra_emc_timing_invalidate(void);
 unsigned long tegra_clk_measure_input_freq(void);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
+static inline int tegra_emc_backup(unsigned long rate)
+{ return 0; }
 static inline bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 { return true; }
 #else
+int tegra_emc_backup(unsigned long rate);
 bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p);
 #endif
 

@@ -1,8 +1,8 @@
 /*
  * EHCI-compliant USB host controller driver for NVIDIA Tegra SoCs
  *
- * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2009 - 2011 NVIDIA Corporation
+ * Copyright (c) 2010 Google, Inc.
+ * Copyright (c) 2009-2012 NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -280,7 +280,7 @@ static int tegra_ehci_hub_control(
 			if (wValue == USB_PORT_FEAT_SUSPEND) {
 				tegra_usb_phy_post_suspend(tegra->phy);
 			} else if (wValue == USB_PORT_FEAT_RESET) {
-				if (ehci->reset_done[0] && wIndex == 1)
+				if (wIndex == 1)
 					tegra_usb_phy_bus_reset(tegra->phy);
 			} else if (wValue == USB_PORT_FEAT_POWER) {
 				if (wIndex == 1)
@@ -486,7 +486,8 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 
 	setup_vbus_gpio(pdev);
 
-	tegra = kzalloc(sizeof(struct tegra_ehci_hcd), GFP_KERNEL);
+	tegra = devm_kzalloc(&pdev->dev, sizeof(struct tegra_ehci_hcd),
+		GFP_KERNEL);
 	if (!tegra) {
 		dev_err(&pdev->dev, "memory alloc failed\n");
 		return -ENOMEM;
@@ -498,8 +499,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 					dev_name(&pdev->dev));
 	if (!hcd) {
 		dev_err(&pdev->dev, "unable to create HCD\n");
-		err = -ENOMEM;
-		goto fail_hcd;
+		return -ENOMEM;
 	}
 
 	platform_set_drvdata(pdev, tegra);
@@ -542,7 +542,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	}
 
 	irq = platform_get_irq(pdev, 0);
-	if (!irq) {
+	if (irq < 0) {
 		dev_err(&pdev->dev, "failed to get IRQ\n");
 		err = -ENODEV;
 		goto fail_irq;
@@ -604,25 +604,21 @@ fail_irq:
 	iounmap(hcd->regs);
 fail_io:
 	usb_put_hcd(hcd);
-fail_hcd:
-	kfree(tegra);
 
 	return err;
 }
 
 
 #ifdef CONFIG_PM
-static int tegra_ehci_resume_noirq(struct device *dev)
+static int tegra_ehci_resume(struct platform_device *pdev)
 {
-	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
 
 	return tegra_usb_phy_power_on(tegra->phy);
 }
 
-static int tegra_ehci_suspend_noirq(struct device *dev)
+static int tegra_ehci_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
 
 	/* bus suspend could have failed because of remote wakeup resume */
@@ -631,11 +627,6 @@ static int tegra_ehci_suspend_noirq(struct device *dev)
 	else
 		return tegra_usb_phy_power_off(tegra->phy);
 }
-
-static struct dev_pm_ops tegra_ehci_dev_pm_ops = {
-	.suspend_noirq = tegra_ehci_suspend_noirq,
-	.resume_noirq = tegra_ehci_resume_noirq,
-};
 #endif
 
 static int tegra_ehci_remove(struct platform_device *pdev)
@@ -660,7 +651,6 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 	tegra_usb_phy_power_off(tegra->phy);
 	tegra_usb_phy_close(tegra->phy);
 	iounmap(hcd->regs);
-	kfree(tegra);
 
 	return 0;
 }
@@ -683,11 +673,12 @@ static struct platform_driver tegra_ehci_driver = {
 	.probe		= tegra_ehci_probe,
 	.remove		= tegra_ehci_remove,
 	.shutdown	= tegra_ehci_hcd_shutdown,
+#ifdef CONFIG_PM
+	.suspend = tegra_ehci_suspend,
+	.resume  = tegra_ehci_resume,
+#endif
 	.driver	= {
 		.name	= driver_name,
 		.of_match_table = tegra_ehci_of_match,
-#ifdef CONFIG_PM
-		.pm = &tegra_ehci_dev_pm_ops,
-#endif
 	}
 };

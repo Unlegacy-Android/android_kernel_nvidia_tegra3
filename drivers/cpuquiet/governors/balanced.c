@@ -55,29 +55,15 @@ static DEFINE_PER_CPU(unsigned int, cpu_load);
 
 static struct timer_list load_timer;
 static bool load_timer_active;
-struct balanced_attribute {
-	struct attribute attr;
-	ssize_t (*show)(struct balanced_attribute *attr, char *buf);
-	ssize_t (*store)(struct balanced_attribute *attr, const char *buf,
-				size_t count);
-	unsigned long *param;
-};
-
-#define BALANCED_ATTRIBUTE(_name, _mode) \
-	static struct balanced_attribute _name ## _attr = {		\
-		.attr = {.name = __stringify(_name), .mode = _mode },	\
-		.show	= show_attribute,				\
-		.store	= store_attribute,				\
-		.param	= &_name,					\
-}
 
 /* configurable parameters */
-static unsigned long balance_level = 75;
-static unsigned long idle_bottom_freq;
-static unsigned long idle_top_freq;
+static unsigned int  balance_level = 60;
+static unsigned int  idle_bottom_freq;
+static unsigned int  idle_top_freq;
 static unsigned long up_delay;
 static unsigned long down_delay;
-
+static unsigned long last_change_time;
+static unsigned int  load_sample_rate = 20; /* msec */
 static struct workqueue_struct *balanced_wq;
 static struct delayed_work balanced_work;
 static BALANCED_STATE balanced_state;
@@ -106,7 +92,7 @@ static void calculate_load_timer(unsigned long data)
 		do_div(idle_time, elapsed_time);
 		*load = 100 - idle_time;
 	}
-	mod_timer(&load_timer, jiffies + msecs_to_jiffies(100));
+	mod_timer(&load_timer, jiffies + msecs_to_jiffies(load_sample_rate));
 }
 
 static void start_load_timer(void)
@@ -183,6 +169,14 @@ static unsigned int count_slow_cpus(unsigned int limit)
 	return cnt;
 }
 
+#define NR_FSHIFT	2
+static unsigned int nr_run_thresholds[] = {
+/*      1,  2,  3,  4 - on-line cpus target */
+	5,  9, 10, UINT_MAX /* avg run threads * 4 (e.g., 9 = 2.25 threads) */
+};
+static unsigned int nr_run_hysteresis = 2;	/* 0.5 thread */
+static unsigned int nr_run_last;
+
 static CPU_SPEED_BALANCE balanced_speed_balance(void)
 {
 	unsigned long highest_speed = cpu_highest_speed();
@@ -190,14 +184,27 @@ static CPU_SPEED_BALANCE balanced_speed_balance(void)
 	unsigned long skewed_speed = balanced_speed / 2;
 	unsigned int nr_cpus = num_online_cpus();
 	unsigned int max_cpus = pm_qos_request(PM_QOS_MAX_ONLINE_CPUS) ? : 4;
+	unsigned int avg_nr_run = avg_nr_running();
+	unsigned int nr_run;
 
 	/* balanced: freq targets for all CPUs are above 50% of highest speed
 	   biased: freq target for at least one CPU is below 50% threshold
 	   skewed: freq targets for at least 2 CPUs are below 25% threshold */
-	if (count_slow_cpus(skewed_speed) >= 2 || nr_cpus > max_cpus)
+	for (nr_run = 1; nr_run < ARRAY_SIZE(nr_run_thresholds); nr_run++) {
+		unsigned int nr_threshold = nr_run_thresholds[nr_run - 1];
+		if (nr_run_last <= nr_run)
+			nr_threshold += nr_run_hysteresis;
+		if (avg_nr_run <= (nr_threshold << (FSHIFT - NR_FSHIFT)))
+			break;
+	}
+	nr_run_last = nr_run;
+
+	if (count_slow_cpus(skewed_speed) >= 2 || nr_cpus > max_cpus ||
+		nr_run < nr_cpus)
 		return CPU_SPEED_SKEWED;
 
-	if (count_slow_cpus(balanced_speed) >= 1 || nr_cpus == max_cpus)
+	if (count_slow_cpus(balanced_speed) >= 1 || nr_cpus == max_cpus ||
+		nr_run <= nr_cpus)
 		return CPU_SPEED_BIASED;
 
 	return CPU_SPEED_BALANCED;
@@ -207,6 +214,8 @@ static void balanced_work_func(struct work_struct *work)
 {
 	bool up = false;
 	unsigned int cpu = nr_cpu_ids;
+	unsigned long now = jiffies;
+
 	CPU_SPEED_BALANCE balance;
 
 	switch (balanced_state) {
@@ -217,7 +226,7 @@ static void balanced_work_func(struct work_struct *work)
 		if (cpu < nr_cpu_ids) {
 			up = false;
 			queue_delayed_work(balanced_wq,
-						 &balanced_work, down_delay);
+						 &balanced_work, up_delay);
 		} else
 			stop_load_timer();
 		break;
@@ -250,7 +259,11 @@ static void balanced_work_func(struct work_struct *work)
 		       __func__, balanced_state);
 	}
 
+	if (!up && ((now - last_change_time) < down_delay))
+		cpu = nr_cpu_ids;
+
 	if (cpu < nr_cpu_ids) {
+		last_change_time = now;
 		if (up)
 			cpuquiet_wake_cpu(cpu);
 		else
@@ -269,7 +282,7 @@ static int balanced_cpufreq_transition(struct notifier_block *nb,
 
 		switch (balanced_state) {
 		case IDLE:
-			if (cpu_freq > idle_top_freq) {
+			if (cpu_freq >= idle_top_freq) {
 				balanced_state = UP;
 				queue_delayed_work(
 					balanced_wq, &balanced_work, up_delay);
@@ -283,7 +296,7 @@ static int balanced_cpufreq_transition(struct notifier_block *nb,
 			}
 			break;
 		case DOWN:
-			if (cpu_freq > idle_top_freq) {
+			if (cpu_freq >= idle_top_freq) {
 				balanced_state = UP;
 				queue_delayed_work(
 					balanced_wq, &balanced_work, up_delay);
@@ -294,13 +307,13 @@ static int balanced_cpufreq_transition(struct notifier_block *nb,
 			if (cpu_freq <= idle_bottom_freq) {
 				balanced_state = DOWN;
 				queue_delayed_work(balanced_wq,
-					&balanced_work, down_delay);
+					&balanced_work, up_delay);
 				start_load_timer();
 			}
 			break;
 		default:
-			pr_err("%s: invalid tegra hotplug state %d\n",
-				__func__, balanced_state);
+			pr_err("%s: invalid cpuquiet balanced governor "
+				"state %d\n", __func__, balanced_state);
 		}
 	}
 
@@ -311,52 +324,22 @@ static struct notifier_block balanced_cpufreq_nb = {
 	.notifier_call = balanced_cpufreq_transition,
 };
 
-static ssize_t show_attribute(struct balanced_attribute *battr, char *buf)
+static void delay_callback(struct cpuquiet_attribute *attr)
 {
-	return sprintf(buf, "%lu\n", *(battr->param));
-}
-
-static ssize_t store_attribute(struct balanced_attribute *battr,
-					const char *buf, size_t count)
-{
-	int err;
 	unsigned long val;
 
-	err = strict_strtoul(buf, 0, &val);
-	if (err < 0)
-		return err;
-
-	*(battr->param) = val;
-
-	return count;
+	if (attr) {
+		val = (*((unsigned long *)(attr->param)));
+		(*((unsigned long *)(attr->param))) = msecs_to_jiffies(val);
+	}
 }
 
-static ssize_t balanced_sysfs_store(struct kobject *kobj,
-			struct attribute *attr, const char *buf, size_t count)
-{
-	struct balanced_attribute *battr =
-		 container_of(attr, struct balanced_attribute, attr);
-
-	if (battr->store)
-		return battr->store(battr, buf, count);
-
-	return -EINVAL;
-}
-
-static ssize_t balanced_sysfs_show(struct kobject *kobj,
-			struct attribute *attr, char *buf)
-{
-	struct balanced_attribute *battr =
-		 container_of(attr, struct balanced_attribute, attr);
-
-	return battr->show(battr, buf);
-}
-
-BALANCED_ATTRIBUTE(balance_level, 0644);
-BALANCED_ATTRIBUTE(idle_bottom_freq, 0644);
-BALANCED_ATTRIBUTE(idle_top_freq, 0644);
-BALANCED_ATTRIBUTE(up_delay, 0644);
-BALANCED_ATTRIBUTE(down_delay, 0644);
+CPQ_BASIC_ATTRIBUTE(balance_level, 0644, uint);
+CPQ_BASIC_ATTRIBUTE(idle_bottom_freq, 0644, uint);
+CPQ_BASIC_ATTRIBUTE(idle_top_freq, 0644, uint);
+CPQ_BASIC_ATTRIBUTE(load_sample_rate, 0644, uint);
+CPQ_ATTRIBUTE(up_delay, 0644, ulong, delay_callback);
+CPQ_ATTRIBUTE(down_delay, 0644, ulong, delay_callback);
 
 static struct attribute *balanced_attributes[] = {
 	&balance_level_attr.attr,
@@ -364,12 +347,13 @@ static struct attribute *balanced_attributes[] = {
 	&idle_top_freq_attr.attr,
 	&up_delay_attr.attr,
 	&down_delay_attr.attr,
+	&load_sample_rate_attr.attr,
 	NULL,
 };
 
 static const struct sysfs_ops balanced_sysfs_ops = {
-	.show = balanced_sysfs_show,
-	.store = balanced_sysfs_store,
+	.show = cpuquiet_auto_sysfs_show,
+	.store = cpuquiet_auto_sysfs_store,
 };
 
 static struct kobj_type ktype_balanced = {
@@ -398,7 +382,6 @@ static int balanced_sysfs(void)
 
 static void balanced_stop(void)
 {
-
 	/*
 	   first unregister the notifiers. This ensures the governor state
 	   can't be modified by a cpufreq transition
@@ -419,6 +402,7 @@ static int balanced_start(void)
 {
 	int err, count;
 	struct cpufreq_frequency_table *table;
+	struct cpufreq_freqs initial_freq;
 
 	err = balanced_sysfs();
 	if (err)
@@ -431,12 +415,11 @@ static int balanced_start(void)
 
 	INIT_DELAYED_WORK(&balanced_work, balanced_work_func);
 
-	up_delay = msecs_to_jiffies(1000);
-	down_delay = msecs_to_jiffies(2000);
+	up_delay = msecs_to_jiffies(100);
+	down_delay = msecs_to_jiffies(500);
 
 	table = cpufreq_frequency_get_table(0);
-	for (count = 0; table[count].frequency != CPUFREQ_TABLE_END; count++)
-		;
+	for (count = 0; table[count].frequency != CPUFREQ_TABLE_END; count++);
 
 	idle_top_freq = table[(count / 2) - 1].frequency;
 	idle_bottom_freq = table[(count / 2) - 2].frequency;
@@ -447,6 +430,11 @@ static int balanced_start(void)
 	init_timer(&load_timer);
 	load_timer.function = calculate_load_timer;
 
+	/*FIXME: Kick start the state machine by faking a freq notification*/
+	initial_freq.new = cpufreq_get(0);
+	if (initial_freq.new != 0)
+		balanced_cpufreq_transition(NULL, CPUFREQ_RESUMECHANGE,
+						&initial_freq);
 	return 0;
 }
 

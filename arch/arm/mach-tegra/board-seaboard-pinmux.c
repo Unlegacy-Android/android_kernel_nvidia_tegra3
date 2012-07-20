@@ -163,7 +163,7 @@ static struct tegra_pingroup_config seaboard_pinmux[] = {
 	{TEGRA_PINGROUP_SPIG,  TEGRA_MUX_SPI2_ALT,      TEGRA_PUPD_PULL_UP,   TEGRA_TRI_TRISTATE},
 };
 
-static struct tegra_pingroup_config ventana_pinmux[] = {
+/*static struct tegra_pingroup_config ventana_pinmux[] = {
 	{TEGRA_PINGROUP_DDC,  TEGRA_MUX_RSVD2,    TEGRA_PUPD_NORMAL,    TEGRA_TRI_NORMAL},
 	{TEGRA_PINGROUP_GMD,  TEGRA_MUX_SFLASH,   TEGRA_PUPD_NORMAL,    TEGRA_TRI_TRISTATE},
 	{TEGRA_PINGROUP_LPW0, TEGRA_MUX_RSVD4,    TEGRA_PUPD_NORMAL,    TEGRA_TRI_NORMAL},
@@ -177,7 +177,7 @@ static struct tegra_pingroup_config ventana_pinmux[] = {
 	{TEGRA_PINGROUP_SPIA, TEGRA_MUX_GMI,      TEGRA_PUPD_NORMAL,    TEGRA_TRI_TRISTATE},
 	{TEGRA_PINGROUP_SPIC, TEGRA_MUX_GMI,      TEGRA_PUPD_NORMAL,    TEGRA_TRI_TRISTATE},
 	{TEGRA_PINGROUP_SPIG, TEGRA_MUX_SPI2_ALT, TEGRA_PUPD_NORMAL,    TEGRA_TRI_TRISTATE},
-};
+};*/
 
 static struct tegra_gpio_table common_gpio_table[] = {
 	{ .gpio = TEGRA_GPIO_SD2_CD,		.enable = true },
@@ -193,7 +193,7 @@ static struct tegra_gpio_table seaboard_gpio_table[] = {
 	{ .gpio = TEGRA_GPIO_ISL29018_IRQ,	.enable = true },
 	{ .gpio = TEGRA_GPIO_USB1,		.enable = true },
 };
-
+#if 0
 static struct tegra_gpio_table ventana_gpio_table[] = {
 	/* hp_det */
 	{ .gpio = TEGRA_GPIO_PW2,		.enable = true },
@@ -202,7 +202,7 @@ static struct tegra_gpio_table ventana_gpio_table[] = {
 	/* ext_mic_en */
 	{ .gpio = TEGRA_GPIO_PX1,		.enable = true },
 };
-
+#endif
 static struct tegra_board_pinmux_conf common_conf = {
 	.pgs = common_pinmux,
 	.pg_count = ARRAY_SIZE(common_pinmux),
@@ -219,12 +219,12 @@ static struct tegra_board_pinmux_conf seaboard_conf = {
 	.gpio_count = ARRAY_SIZE(seaboard_gpio_table),
 };
 
-static struct tegra_board_pinmux_conf ventana_conf = {
+/*static struct tegra_board_pinmux_conf ventana_conf = {
 	.pgs = ventana_pinmux,
 	.pg_count = ARRAY_SIZE(ventana_pinmux),
 	.gpios = ventana_gpio_table,
 	.gpio_count = ARRAY_SIZE(ventana_gpio_table),
-};
+};*/
 
 void seaboard_pinmux_init(void)
 {

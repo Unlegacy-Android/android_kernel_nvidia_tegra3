@@ -37,6 +37,7 @@
 #include <linux/mfd/max8907c.h>
 #include <linux/memblock.h>
 #include <linux/tegra_uart.h>
+#include <linux/rfkill-gpio.h>
 
 #include <mach/clk.h>
 #include <mach/iomap.h>
@@ -176,21 +177,21 @@ static void __init whistler_uart_init(void)
 	platform_add_devices(whistler_uart_devices,
 				ARRAY_SIZE(whistler_uart_devices));
 }
-
-static struct resource whistler_bcm4329_rfkill_resources[] = {
+static struct rfkill_gpio_platform_data whistler_bt_rfkill_pdata[] = {
 	{
-		.name	= "bcm4329_nshutdown_gpio",
-		.start	= TEGRA_GPIO_PU0,
-		.end	= TEGRA_GPIO_PU0,
-		.flags	= IORESOURCE_IO,
+		.name		= "bt_rfkill",
+		.shutdown_gpio  = TEGRA_GPIO_PU0,
+		.reset_gpio     = TEGRA_GPIO_INVALID,
+		.type		= RFKILL_TYPE_BLUETOOTH,
 	},
 };
 
-static struct platform_device whistler_bcm4329_rfkill_device = {
-	.name		= "bcm4329_rfkill",
-	.id		= -1,
-	.num_resources	= ARRAY_SIZE(whistler_bcm4329_rfkill_resources),
-	.resource	= whistler_bcm4329_rfkill_resources,
+static struct platform_device whistler_bt_rfkill_device = {
+	.name = "rfkill_gpio",
+	.id   = -1,
+	.dev  = {
+		.platform_data  = whistler_bt_rfkill_pdata,
+	},
 };
 
 static struct resource whistler_bluesleep_resources[] = {
@@ -225,8 +226,6 @@ static void __init whistler_setup_bluesleep(void)
 		whistler_bluesleep_resources[2].end =
 			gpio_to_irq(TEGRA_GPIO_PU6);
 	platform_device_register(&whistler_bluesleep_device);
-	tegra_gpio_enable(TEGRA_GPIO_PU6);
-	tegra_gpio_enable(TEGRA_GPIO_PU1);
 	return;
 }
 
@@ -401,7 +400,7 @@ static struct platform_device *whistler_devices[] __initdata = {
 	&spdif_dit_device,
 	&bluetooth_dit_device,
 	&baseband_dit_device,
-	&whistler_bcm4329_rfkill_device,
+	&whistler_bt_rfkill_device,
 	&tegra_pcm_device,
 	&whistler_audio_aic326x_device,
 	&whistler_audio_wm8753_device,
@@ -421,25 +420,9 @@ static struct i2c_board_info whistler_i2c_touch_info[] = {
 
 static int __init whistler_touch_init(void)
 {
-	tegra_gpio_enable(TEGRA_GPIO_PC6);
 	whistler_i2c_touch_info[0].irq = gpio_to_irq(TEGRA_GPIO_PC6);
 	i2c_register_board_info(0, whistler_i2c_touch_info, 1);
 
-	return 0;
-}
-
-static int __init whistler_scroll_init(void)
-{
-	int i;
-	for (i = 0; i < ARRAY_SIZE(scroll_keys); i++)
-		tegra_gpio_enable(scroll_keys[i].gpio);
-
-	return 0;
-}
-
-static int __init whistler_gps_init(void)
-{
-	tegra_gpio_enable(TEGRA_GPIO_PU4);
 	return 0;
 }
 
@@ -521,9 +504,8 @@ static void __init tegra_whistler_init(void)
 	whistler_sensors_init();
 	whistler_touch_init();
 	whistler_kbc_init();
-	whistler_gps_init();
 	whistler_usb_init();
-	whistler_scroll_init();
+	whistler_emc_init();
 	if (modem_id == 0x1)
 		whistler_baseband_init();
 	whistler_setup_bluesleep();

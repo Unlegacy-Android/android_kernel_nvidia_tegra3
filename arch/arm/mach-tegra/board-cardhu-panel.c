@@ -48,7 +48,8 @@
 #include "gpio-names.h"
 #include "tegra3_host1x_devices.h"
 
-#define DC_CTRL_MODE	TEGRA_DC_OUT_ONE_SHOT_MODE
+#define DC_CTRL_MODE	(TEGRA_DC_OUT_ONE_SHOT_MODE | \
+			 TEGRA_DC_OUT_ONE_SHOT_LP_MODE)
 
 #define AVDD_LCD PMU_TCA6416_GPIO_PORT17
 #define DSI_PANEL_RESET 1
@@ -63,7 +64,7 @@
 #define pm313_MODE0			TEGRA_GPIO_PZ4
 #define pm313_MODE1			TEGRA_GPIO_PW1
 #define pm313_BPP			TEGRA_GPIO_PN6 /* 0:24bpp, 1:18bpp */
-#define pm313_lvds_shutdown		TEGRA_GPIO_PH1
+#define pm313_lvds_shutdown		TEGRA_GPIO_PL2
 
 /* E1506 display board pins */
 #define e1506_lcd_te		TEGRA_GPIO_PJ1
@@ -142,7 +143,6 @@ static tegra_dc_bl_output cardhu_bl_output_measured = {
 
 static p_tegra_dc_bl_output bl_output = cardhu_bl_output_measured;
 
-static bool kernel_1st_panel_init = true;
 static bool is_panel_218;
 static bool is_panel_219;
 static bool is_panel_1506;
@@ -255,13 +255,7 @@ static int cardhu_backlight_notify(struct device *unused, int brightness)
 	if (brightness > 255) {
 		pr_info("Error: Brightness > 255!\n");
 	} else {
-		/* This value depends on the panel.
-		  Current 19X12 panel with PM313 gets
-		  full brightness when the output is 0. */
-		if (display_board_info.board_id == BOARD_DISPLAY_PM313)
-			brightness = 255 - bl_output[brightness];
-		else
-			brightness = bl_output[brightness];
+		brightness = bl_output[brightness];
 	}
 
 	return brightness;
@@ -807,7 +801,7 @@ static int cardhu_dsi_panel_enable(void)
 		}
 
 		gpio_set_value(e1506_dsi_vddio, 1);
-		mdelay(10);
+		mdelay(1);
 		gpio_set_value(e1506_panel_enb, 1);
 		mdelay(10);
 		gpio_set_value(e1506_bl_enb, 1);
@@ -886,15 +880,12 @@ static int cardhu_dsi_panel_disable(void)
 	} else if (is_panel_1506) {
 		tegra_gpio_disable(e1506_bl_enb);
 		gpio_free(e1506_bl_enb);
+		tegra_gpio_disable(cardhu_dsi_pnl_reset);
+		gpio_free(cardhu_dsi_pnl_reset);
 		tegra_gpio_disable(e1506_panel_enb);
 		gpio_free(e1506_panel_enb);
 		tegra_gpio_disable(e1506_dsi_vddio);
 		gpio_free(e1506_dsi_vddio);
-		if (kernel_1st_panel_init != true) {
-			tegra_gpio_disable(cardhu_dsi_pnl_reset);
-			gpio_free(cardhu_dsi_pnl_reset);
-		} else
-			kernel_1st_panel_init = false;
 	}
 	return err;
 }
@@ -973,6 +964,12 @@ static struct tegra_dsi_cmd dsi_suspend_cmd[] = {
 #endif
 	DSI_CMD_SHORT(0x05, 0x10, 0x00),
 	DSI_DLY_MS(5),
+};
+
+static struct tegra_dsi_cmd dsi_suspend_cmd_1506[] = {
+	DSI_CMD_SHORT(0x05, 0x28, 0x00),
+	DSI_CMD_SHORT(0x05, 0x10, 0x00),
+	DSI_DLY_MS(120),
 };
 
 struct tegra_dsi_out cardhu_dsi = {
@@ -1261,6 +1258,8 @@ static void cardhu_panel_preinit(void)
 
 		cardhu_dsi.n_init_cmd = ARRAY_SIZE(dsi_init_cmd);
 		cardhu_dsi.dsi_init_cmd = dsi_init_cmd;
+		cardhu_dsi.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd);
+		cardhu_dsi.dsi_suspend_cmd = dsi_suspend_cmd;
 
 		if (is_panel_218) {
 			cardhu_disp1_out.modes	= cardhu_dsi_modes_218;
@@ -1280,6 +1279,10 @@ static void cardhu_panel_preinit(void)
 				ARRAY_SIZE(cardhu_dsi_modes_1506);
 			cardhu_dsi.n_init_cmd = ARRAY_SIZE(dsi_init_cmd_1506);
 			cardhu_dsi.dsi_init_cmd = dsi_init_cmd_1506;
+			cardhu_dsi.n_suspend_cmd =
+				ARRAY_SIZE(dsi_suspend_cmd_1506);
+			cardhu_dsi.dsi_suspend_cmd = dsi_suspend_cmd_1506;
+			cardhu_dsi.panel_send_dc_frames = true,
 			cardhu_dsi_fb_data.xres = 720;
 			cardhu_dsi_fb_data.yres = 1280;
 		}

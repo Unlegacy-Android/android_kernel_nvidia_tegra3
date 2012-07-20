@@ -21,7 +21,7 @@
  *
  * Fundamental types and constants relating to 802.11
  *
- * $Id: 802.11.h 320583 2012-03-12 15:09:36Z $
+ * $Id: 802.11.h 329730 2012-04-26 17:27:25Z $
  */
 
 #ifndef _802_11_H_
@@ -1804,12 +1804,20 @@ typedef struct ht_prop_cap_ie ht_prop_cap_ie_t;
 #define HT_PARAMS_DENSITY_SHIFT	2	
 
 
-#define AMPDU_MAX_MPDU_DENSITY	7	
-#define AMPDU_RX_FACTOR_8K	0	
-#define AMPDU_RX_FACTOR_16K	1	
-#define AMPDU_RX_FACTOR_32K	2	
-#define AMPDU_RX_FACTOR_64K	3	
-#define AMPDU_RX_FACTOR_BASE	8*1024	
+#define AMPDU_MAX_MPDU_DENSITY  7       
+#define AMPDU_DENSITY_NONE      0       
+#define AMPDU_DENSITY_1over4_US 1       
+#define AMPDU_DENSITY_1over2_US 2       
+#define AMPDU_DENSITY_1_US      3       
+#define AMPDU_DENSITY_2_US      4       
+#define AMPDU_DENSITY_4_US      5       
+#define AMPDU_DENSITY_8_US      6       
+#define AMPDU_DENSITY_16_US     7       
+#define AMPDU_RX_FACTOR_8K      0       
+#define AMPDU_RX_FACTOR_16K     1       
+#define AMPDU_RX_FACTOR_32K     2       
+#define AMPDU_RX_FACTOR_64K     3       
+#define AMPDU_RX_FACTOR_BASE    8*1024  
 
 #define AMPDU_DELIMITER_LEN	4	
 #define AMPDU_DELIMITER_LEN_MAX	63	
@@ -1959,6 +1967,7 @@ typedef struct vht_cap_ie vht_cap_ie_t;
 #define VHT_CAP_INFO_SUPP_CHAN_WIDTH_MASK       0x0000000c
 #define VHT_CAP_INFO_LDPC                       0x00000010
 #define VHT_CAP_INFO_SGI_80MHZ                  0x00000020
+
 #define VHT_CAP_INFO_SGI_160MHZ                 0x00000040
 #define VHT_CAP_INFO_TX_STBC                    0x00000080
 
@@ -2028,11 +2037,11 @@ typedef enum vht_op_chan_width {
 } vht_op_chan_width_t;
 
 
-#define VHT_MCS_MAP_GET_SS_IDX(numSpatialStreams) ((numSpatialStreams-1)*2)
-#define VHT_MCS_MAP_GET_MCS_PER_SS(numSpatialStreams, mcsMap) \
-			((mcsMap >> VHT_MCS_MAP_GET_SS_IDX(numSpatialStreams)) & 0x3)
-#define VHT_MCS_MAP_SET_MCS_PER_SS(numSpatialStreams, numMcs, mcsMap) \
-			(mcsMap |= ((numMcs & 0x3) << VHT_MCS_MAP_GET_SS_IDX(numSpatialStreams)))
+#define VHT_MCS_MAP_GET_SS_IDX(nss) (((nss)-1)*2)
+#define VHT_MCS_MAP_GET_MCS_PER_SS(nss, mcsMap) \
+	(((mcsMap) >> VHT_MCS_MAP_GET_SS_IDX(nss)) & 0x3)
+#define VHT_MCS_MAP_SET_MCS_PER_SS(nss, numMcs, mcsMap) \
+	((mcsMap) |= (((numMcs) & 0x3) << VHT_MCS_MAP_GET_SS_IDX(nss)))
 
 
 #define WPA_OUI			"\x00\x50\xF2"	
