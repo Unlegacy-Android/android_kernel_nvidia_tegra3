@@ -84,6 +84,9 @@ static __initdata struct tegra_drive_pingroup_config enterprise_drive_pinmux[] =
 
 	/* UART3 */
 	SET_DRIVE(UART3,	DISABLE, ENABLE, DIV_1, 31, 31, FASTEST, FASTEST),
+
+	/* SDMMC1 */
+	SET_DRIVE(SDIO1,	DISABLE, DISABLE, DIV_1, 46, 42, FAST, FAST),
 };
 
 #define DEFAULT_PINMUX(_pingroup, _mux, _pupd, _tri, _io)	\
