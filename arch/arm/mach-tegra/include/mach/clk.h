@@ -41,9 +41,19 @@ void tegra_periph_reset_assert(struct clk *c);
 
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate);
 unsigned long clk_get_rate_all_locked(struct clk *c);
+
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 void tegra2_sdmmc_tap_delay(struct clk *c, int delay);
+#else
+static inline void tegra2_sdmmc_tap_delay(struct clk *c, int delay)
+{
+}
+#endif
 
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+int tegra_emc_enable_eack(void);
+int tegra_emc_disable_eack(void);
+#else
 static inline int tegra_emc_enable_eack(void) {
 	return 0;
 }
@@ -51,12 +61,6 @@ static inline int tegra_emc_enable_eack(void) {
 static inline int tegra_emc_disable_eack(void) {
 	return 0;
 }
-#else
-static inline void tegra2_sdmmc_tap_delay(struct clk *c, int delay)
-{
-}
-int tegra_emc_enable_eack(void);
-int tegra_emc_disable_eack(void);
 #endif
 int tegra_dvfs_rail_disable_by_name(const char *reg_id);
 int tegra_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting);
