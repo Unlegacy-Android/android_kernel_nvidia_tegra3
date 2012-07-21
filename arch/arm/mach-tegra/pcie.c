@@ -639,9 +639,6 @@ static void tegra_pcie_hotplug_init(void)
 
 static void tegra_pcie_attach(void)
 {
-	/* this hardcode is just to bypass the check in resume */
-	if (!is_dock_conn_at_boot)
-		tegra_pcie.num_ports = 1;
 #ifdef CONFIG_PM
 	tegra_pcie_resume(NULL);
 #endif
@@ -912,6 +909,8 @@ static int tegra_pcie_enable_regulators(void)
 		pr_debug("PCIE: Already power rails enabled");
 		return 0;
 	}
+	tegra_pcie.power_rails_enabled = 1;
+
 	if (tegra_pcie.regulator_hvdd == NULL) {
 		printk(KERN_INFO "PCIE.C: %s : regulator hvdd_pex\n",
 					__func__);
@@ -956,8 +955,6 @@ static int tegra_pcie_enable_regulators(void)
 	if (tegra_pcie.regulator_avdd_plle)
 		regulator_enable(tegra_pcie.regulator_avdd_plle);
 
-	tegra_pcie.power_rails_enabled = 1;
-
 	return 0;
 }
 
@@ -996,8 +993,6 @@ static int tegra_pcie_power_regate(void)
 	return clk_enable(tegra_pcie.pll_e);
 }
 
-static int tegra_pcie_power_off(void);
-
 static int tegra_pcie_map_resources(void)
 {
 	int err;
@@ -1006,14 +1001,13 @@ static int tegra_pcie_map_resources(void)
 	tegra_pcie.regs = ioremap_nocache(TEGRA_PCIE_BASE, PCIE_IOMAP_SZ);
 	if (tegra_pcie.regs == NULL) {
 		pr_err("PCIE: Failed to map PCI/AFI registers\n");
-		err = -ENOMEM;
-		goto err_exit;
+		return -ENOMEM;
 	}
 
 	err = request_resource(&iomem_resource, &tegra_pcie_res_mmio);
 	if (err) {
 		pr_err("PCIE: Failed to request resources: %d\n", err);
-		goto err_exit;
+		return err;
 	}
 	tegra_pcie.res_mmio = &tegra_pcie_res_mmio;
 
@@ -1022,13 +1016,8 @@ static int tegra_pcie_map_resources(void)
 			resource_size(&tegra_pcie_res_mmio));
 	if (tegra_pcie_io_base == NULL) {
 		pr_err("PCIE: Failed to map IO\n");
-		err = -ENOMEM;
-		goto err_exit;
+		return -ENOMEM;
 	}
-	return 0;
-
-err_exit:
-	tegra_pcie_power_off();
 	return err;
 }
 
@@ -1047,8 +1036,8 @@ void tegra_pcie_unmap_resources(void)
 		tegra_pcie.regs = 0;
 	}
 }
+static int tegra_pcie_power_off(void);
 
-#ifdef CONFIG_PM
 static int tegra_pcie_power_on(void)
 {
 	int err = 0;
@@ -1057,21 +1046,29 @@ static int tegra_pcie_power_on(void)
 		pr_debug("PCIE: Already powered on");
 		goto err_exit;
 	}
-	err = tegra_pcie_enable_regulators();
-	if (err)
-		goto err_exit;
-	err = tegra_pcie_power_regate();
-	if (err)
-		goto err_exit;
-	err = tegra_pcie_map_resources();
-	if (err)
-		goto err_exit;
-
 	tegra_pcie.pcie_power_enabled = 1;
+
+	err = tegra_pcie_enable_regulators();
+	if (err) {
+		pr_err("PCIE: Failed to enable regulators\n");
+		goto err_exit;
+	}
+	err = tegra_pcie_power_regate();
+	if (err) {
+		pr_err("PCIE: Failed to power regate\n");
+		goto err_exit;
+	}
+	err = tegra_pcie_map_resources();
+	if (err) {
+		pr_err("PCIE: Failed to map resources\n");
+		goto err_exit;
+	}
+
 err_exit:
+	if (err)
+		tegra_pcie_power_off();
 	return err;
 }
-#endif
 
 static int tegra_pcie_power_off(void)
 {
@@ -1120,8 +1117,10 @@ error_exit:
 
 static void tegra_pcie_clocks_put(void)
 {
-	clk_put(tegra_pcie.pll_e);
-	clk_put(tegra_pcie.pcie_xclk);
+	if (tegra_pcie.pll_e)
+		clk_put(tegra_pcie.pll_e);
+	if (tegra_pcie.pcie_xclk)
+		clk_put(tegra_pcie.pcie_xclk);
 }
 
 static int tegra_pcie_get_resources(void)
@@ -1129,31 +1128,18 @@ static int tegra_pcie_get_resources(void)
 	int err;
 
 	tegra_pcie.power_rails_enabled = 0;
-	err = tegra_pcie_enable_regulators();
-	if (err) {
-		pr_err("PCIE: failed to enable power rails %d\n", err);
-		goto err_pwr_on_rail;
-	}
-	tegra_unpowergate_partition(TEGRA_POWERGATE_PCIE);
+	tegra_pcie.pcie_power_enabled = 0;
 
 	err = tegra_pcie_clocks_get();
 	if (err) {
 		pr_err("PCIE: failed to get clocks: %d\n", err);
-		return err;
+		goto err_clk_get;
 	}
-
-	err = tegra_pcie_power_regate();
+	err = tegra_pcie_power_on();
 	if (err) {
-		pr_err("PCIE: failed to power up: %d\n", err);
+		pr_err("PCIE: Failed to power on: %d\n", err);
 		goto err_pwr_on;
 	}
-
-	err = tegra_pcie_map_resources();
-	if (err) {
-		pr_err("PCIE: failed to map resources: %d\n", err);
-		goto err_pwr_on;
-	}
-
 	err = request_irq(INT_PCIE_INTR, tegra_pcie_isr,
 			IRQF_SHARED, "PCIE", &tegra_pcie);
 	if (err) {
@@ -1164,9 +1150,9 @@ static int tegra_pcie_get_resources(void)
 	return 0;
 
 err_pwr_on:
+	tegra_pcie_power_off();
+err_clk_get:
 	tegra_pcie_clocks_put();
-err_pwr_on_rail:
-	tegra_pcie_disable_regulators();
 	return err;
 }
 
@@ -1302,7 +1288,6 @@ static int tegra_pcie_init(void)
 			tegra_pcie_add_port(port, rp_offset, ctrl_offset);
 	}
 
-	tegra_pcie.pcie_power_enabled = 1;
 	if (tegra_pcie.plat_data->use_dock_detect) {
 		unsigned int irq;
 
@@ -1342,7 +1327,6 @@ err_irq:
 static int tegra_pcie_probe(struct platform_device *pdev)
 {
 	int ret;
-	struct pci_dev *dev = NULL;
 
 	tegra_pcie.plat_data = pdev->dev.platform_data;
 	dev_dbg(&pdev->dev, "PCIE.C: %s : _port_status[0] %d\n",
@@ -1353,22 +1337,13 @@ static int tegra_pcie_probe(struct platform_device *pdev)
 		__func__, tegra_pcie.plat_data->port_status[2]);
 	ret = tegra_pcie_init();
 
-	/* disable async PM of pci devices to ensure right order */
-	/* suspend/resume calls of tegra and bus driver */
-	for_each_pci_dev(dev)
-		device_disable_async_suspend(&dev->dev);
-
 	return ret;
 }
 
 #ifdef CONFIG_PM
 static int tegra_pcie_suspend(struct device *dev)
 {
-	int ret = 0;
 	struct pci_dev *pdev = NULL;
-
-	if (!tegra_pcie.num_ports)
-		return ret;
 
 	for_each_pci_dev(pdev) {
 		pci_stop_and_remove_bus_device(pdev);
@@ -1377,6 +1352,8 @@ static int tegra_pcie_suspend(struct device *dev)
 
 	/* disable read/write registers before powering off */
 	is_pcie_noirq_op = true;
+	/* reset number of ports since fresh initialization occurs in resume */
+	tegra_pcie.num_ports = 0;
 
 	return tegra_pcie_power_off();
 }
@@ -1406,23 +1383,30 @@ static int tegra_pcie_resume(struct device *dev)
 	int port, rp_offset = 0;
 	int ctrl_offset = AFI_PEX0_CTRL;
 
-	if (!tegra_pcie.num_ports)
-		return ret;
+	/* return w/o resume if cardhu dock is not connected */
+	if (gpio_get_value(tegra_pcie.plat_data->gpio))
+		goto exit;
 
 	ret = tegra_pcie_power_on();
+	if (ret) {
+		pr_err("PCIE: Failed to power on: %d\n", ret);
+		return ret;
+	}
 	/* enable read/write registers after powering on */
 	is_pcie_noirq_op = false;
 	tegra_pcie_enable_controller();
 	tegra_pcie_setup_translations();
 	msi_enable = false;
 
-	/* reset number of ports before adding port */
-	tegra_pcie.num_ports = 0;
 	for (port = 0; port < MAX_PCIE_SUPPORTED_PORTS; port++) {
 		ctrl_offset += (port * 8);
 		rp_offset = (rp_offset + 0x1000) * port;
 		if (tegra_pcie.plat_data->port_status[port])
 			tegra_pcie_add_port(port, rp_offset, ctrl_offset);
+	}
+	if (!tegra_pcie.num_ports) {
+		tegra_pcie_power_off();
+		goto exit;
 	}
 
 	tegra_pcie_hotplug_init();
@@ -1443,8 +1427,8 @@ static int tegra_pcie_resume(struct device *dev)
 		pci_enable_bridges(bus);
 		pci_bus_add_devices(bus);
 	}
-
-	return ret;
+exit:
+	return 0;
 }
 #endif
 
