@@ -224,6 +224,7 @@ static int tegra_cpuidle_register_device(unsigned int cpu)
 
 	dev->state_count = 0;
 	dev->cpu = cpu;
+	dev->power_specified = 1;
 
 	state = &dev->states[0];
 	snprintf(state->name, CPUIDLE_NAME_LEN, "LP3");
@@ -248,7 +249,6 @@ static int tegra_cpuidle_register_device(unsigned int cpu)
 	state->power_usage = 0;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
 	state->enter = tegra_idle_enter_lp2;
-	dev->power_specified = 1;
 	dev->state_count++;
 #endif
 
