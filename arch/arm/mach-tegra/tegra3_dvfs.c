@@ -21,6 +21,7 @@
 #include <linux/clk.h>
 #include <linux/kobject.h>
 #include <linux/err.h>
+#include <linux/time.h>
 
 #include "clock.h"
 #include "dvfs.h"
@@ -28,12 +29,16 @@
 #include "board.h"
 #include "tegra3_emc.h"
 
+#define CPU_MILLIVOLTS {\
+	750, 762, 775, 787, 800, 825, 837, 850, 862, 875, 887, 900, 912, 916, 925, 937, 950, 962, 975, 987, 1000, 1007, 1012, 1025, 1037, 1050, 1062, 1075, 1087, 1100, 1112, 1125, 1137, 1150, 1162, 1175, 1187, 1200, 1212, 1237};
+
 static bool tegra_dvfs_cpu_disabled;
 static bool tegra_dvfs_core_disabled;
 static struct dvfs *cpu_dvfs;
 
-static const int cpu_millivolts[MAX_DVFS_FREQS] = {
-	750, 762, 775, 787, 800, 825, 837, 850, 862, 875, 887, 900, 912, 916, 925, 937, 950, 962, 975, 987, 1000, 1007, 1012, 1025, 1037, 1050, 1062, 1075, 1087, 1100, 1112, 1125, 1137, 1150, 1162, 1175, 1187, 1200, 1212, 1237};
+static int cpu_millivolts[MAX_DVFS_FREQS] = CPU_MILLIVOLTS;
+
+static const int cpu_millivolts_aged[MAX_DVFS_FREQS] = CPU_MILLIVOLTS;
 
 static const unsigned int cpu_cold_offs_mhz[MAX_DVFS_FREQS] = {
 	 50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50};
@@ -54,7 +59,7 @@ static int cpu_below_core = VDD_CPU_BELOW_VDD_CORE;
 static struct dvfs_rail tegra3_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
 	.max_millivolts = 1250,
-	.min_millivolts = 750,
+	.min_millivolts = 725,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
 };
@@ -630,6 +635,41 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 		return -ENOSYS;
 	}
 	return (i - 1);
+}
+
+static void tegra_adjust_cpu_mvs(int mvs)
+{
+	int i;
+
+	BUG_ON(ARRAY_SIZE(cpu_millivolts) != ARRAY_SIZE(cpu_millivolts_aged));
+
+	for (i = 0; i < ARRAY_SIZE(cpu_millivolts); i++)
+		cpu_millivolts[i] = cpu_millivolts_aged[i] - mvs;
+}
+
+/**
+ * Adjust VDD_CPU to offset aging.
+ * 25mV for 1st year
+ * 12mV for 2nd and 3rd year
+ * 0mV for 4th year onwards
+ */
+void tegra_dvfs_age_cpu(int cur_linear_age)
+{
+	int chip_linear_age;
+	int chip_life;
+	chip_linear_age = tegra_get_age();
+	chip_life = cur_linear_age - chip_linear_age;
+
+	/*For T37 and AP37*/
+	if (tegra_cpu_speedo_id() == 12 || tegra_cpu_speedo_id() == 13) {
+		if (chip_linear_age <= 0) {
+			return;
+		} else if (chip_life <= 12) {
+			tegra_adjust_cpu_mvs(25);
+		} else if (chip_life <= 36) {
+			tegra_adjust_cpu_mvs(13);
+		}
+	}
 }
 
 void __init tegra3_init_dvfs(void)
