@@ -212,13 +212,8 @@ ssize_t wake_unlock_store(
 		pr_info("wake_unlock_store: %s\n", l->name);
 
 	wake_unlock(&l->wake_lock);
-
 not_found:
 	mutex_unlock(&tree_lock);
-
-	if (!pm_wakeup_pending())
-		schedule_suspend_work();
-
 	return n;
 }
 
