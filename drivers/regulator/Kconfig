@@ -429,6 +429,15 @@ config REGULATOR_WM831X
 	  Support the voltage and current regulators of the WM831x series
 	  of PMIC devices.
 
+config REGULATOR_TPS51632
+	tristate "TI TPS51632 Power Regulator"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  This driver supports TPS51632 voltage regulator chip.
+	  The TPS52632 is 3-2-1 Phase D-Cap+ Step Down Driverless Controller
+	  with Serial VID control and DVFS.
+
 config REGULATOR_WM8350
 	tristate "Wolfson Microelectronics WM8350 AudioPlus PMIC"
 	depends on MFD_WM8350
