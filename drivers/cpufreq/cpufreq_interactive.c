@@ -449,7 +449,6 @@ static int cpufreq_interactive_speedchange_task(void *data)
 			__cpufreq_driver_target(pcpu->policy,
 						max_freq,
 						CPUFREQ_RELATION_H);
-			mutex_unlock(&set_speed_lock);
 
 			pcpu->freq_change_time_in_idle =
 				get_cpu_idle_time_us(cpu,
@@ -834,8 +833,6 @@ static int __init cpufreq_interactive_init(void)
 
 	sched_setscheduler_nocheck(speedchange_task, SCHED_FIFO, &param);
 	get_task_struct(speedchange_task);
-
-	INIT_WORK(&freq_scale_down_work, cpufreq_interactive_freq_down);
 
 	/* NB: wake up so the thread does not look hung to the freezer */
 	wake_up_process(speedchange_task);
