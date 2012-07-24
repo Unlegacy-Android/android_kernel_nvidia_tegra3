@@ -36,6 +36,7 @@
 
 #include <linux/mmc/core.h>
 #include <linux/mmc/card.h>
+#include <linux/mmc/host.h>
 #include <linux/mmc/sdio_func.h>
 #include <linux/mmc/sdio_ids.h>
 
@@ -1356,7 +1357,7 @@ sdioh_start(sdioh_info_t *si, int stage)
 		   2.6.27. The implementation prior to that is buggy, and needs broadcom's
 		   patch for it
 		*/
-		if ((ret = sdio_reset_comm(gInstance->func[0]->card))) {
+		if ((ret = mmc_power_restore_host((gInstance->func[0])->card->host))) {
 			sd_err(("%s Failed, error = %d\n", __FUNCTION__, ret));
 			return ret;
 		}
@@ -1441,6 +1442,8 @@ sdioh_stop(sdioh_info_t *si)
 #endif
 		bcmsdh_oob_intr_set(FALSE);
 #endif /* !defined(OOB_INTR_ONLY) */
+		if (mmc_power_save_host((gInstance->func[0])->card->host))
+			sd_err(("%s card power save fail\n", __FUNCTION__));
 	}
 	else
 		sd_err(("%s Failed\n", __FUNCTION__));
