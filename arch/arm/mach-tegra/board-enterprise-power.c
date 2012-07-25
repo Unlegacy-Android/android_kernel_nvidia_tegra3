@@ -341,7 +341,7 @@ static struct tps80031_bg_platform_data battery_gauge_data = {
 
 #define TPS_REG(_id, _data, _sname)				\
 	{							\
-		.id	 = TPS80031_ID_##_id,			\
+		.id	 = TPS80031_REGULATOR_##_id,			\
 		.name   = "tps80031-regulator",			\
 		.platform_data  = &pdata_##_data##_##_sname,	\
 	}
