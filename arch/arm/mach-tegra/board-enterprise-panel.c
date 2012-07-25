@@ -24,9 +24,6 @@
 #include <linux/resource.h>
 #include <asm/mach-types.h>
 #include <linux/platform_device.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-#endif
 #include <linux/tegra_pwm_bl.h>
 #include <linux/pwm_backlight.h>
 #include <asm/atomic.h>
@@ -832,38 +829,6 @@ static struct platform_device *enterprise_bl_devices[]  = {
 	&enterprise_disp1_backlight_device,
 };
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-/* put early_suspend/late_resume handlers here for the display in order
- * to keep the code out of the display driver, keeping it closer to upstream
- */
-struct early_suspend enterprise_panel_early_suspender;
-
-static void enterprise_panel_early_suspend(struct early_suspend *h)
-{
-	/* power down LCD, add use a black screen for HDMI */
-	if (num_registered_fb > 0)
-		fb_blank(registered_fb[0], FB_BLANK_POWERDOWN);
-	if (num_registered_fb > 1)
-		fb_blank(registered_fb[1], FB_BLANK_NORMAL);
-
-#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_store_default_gov();
-	cpufreq_change_gov(cpufreq_conservative_gov);
-#endif
-}
-
-static void enterprise_panel_late_resume(struct early_suspend *h)
-{
-	unsigned i;
-
-#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_restore_default_gov();
-#endif
-	for (i = 0; i < num_registered_fb; i++)
-		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
-}
-#endif
-
 int __init enterprise_panel_init(void)
 {
 	int err;
@@ -905,13 +870,6 @@ int __init enterprise_panel_init(void)
 #if !(DC_CTRL_MODE & TEGRA_DC_OUT_ONE_SHOT_MODE)
 	gpio_request(enterprise_lcd_swp_pl, "lcd_te");
 	gpio_direction_input(enterprise_lcd_te);
-#endif
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	enterprise_panel_early_suspender.suspend = enterprise_panel_early_suspend;
-	enterprise_panel_early_suspender.resume = enterprise_panel_late_resume;
-	enterprise_panel_early_suspender.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
-	register_early_suspend(&enterprise_panel_early_suspender);
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST

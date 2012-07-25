@@ -26,9 +26,6 @@
 #include <linux/resource.h>
 #include <asm/mach-types.h>
 #include <linux/platform_device.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-#endif
 #include <linux/pwm_backlight.h>
 #include <asm/atomic.h>
 #include <linux/nvhost.h>
@@ -1204,30 +1201,6 @@ static struct platform_device *cardhu_gfx_devices[] __initdata = {
 	&cardhu_backlight_device,
 };
 
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-/* put early_suspend/late_resume handlers here for the display in order
- * to keep the code out of the display driver, keeping it closer to upstream
- */
-struct early_suspend cardhu_panel_early_suspender;
-
-static void cardhu_panel_early_suspend(struct early_suspend *h)
-{
-	/* power down LCD, add use a black screen for HDMI */
-	if (num_registered_fb > 0)
-		fb_blank(registered_fb[0], FB_BLANK_POWERDOWN);
-	if (num_registered_fb > 1)
-		fb_blank(registered_fb[1], FB_BLANK_NORMAL);
-}
-
-static void cardhu_panel_late_resume(struct early_suspend *h)
-{
-	unsigned i;
-	for (i = 0; i < num_registered_fb; i++)
-		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
-}
-#endif
-
 static void cardhu_panel_preinit(void)
 {
 	if (display_board_info.board_id == BOARD_DISPLAY_E1213)
@@ -1395,13 +1368,6 @@ skip_lvds:
 	tegra_gpio_enable(e1506_lcd_te);
 	gpio_request(e1506_lcd_te, "lcd_te");
 	gpio_direction_input(e1506_lcd_te);
-#endif
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	cardhu_panel_early_suspender.suspend = cardhu_panel_early_suspend;
-	cardhu_panel_early_suspender.resume = cardhu_panel_late_resume;
-	cardhu_panel_early_suspender.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
-	register_early_suspend(&cardhu_panel_early_suspender);
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST

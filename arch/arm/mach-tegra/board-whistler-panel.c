@@ -24,9 +24,6 @@
 #include <linux/resource.h>
 #include <asm/mach-types.h>
 #include <linux/platform_device.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-#endif
 #include <linux/kernel.h>
 #include <linux/pwm_backlight.h>
 #include <linux/tegra_pwm_bl.h>
@@ -306,39 +303,6 @@ static struct platform_device *whistler_gfx_devices[] __initdata = {
 	&whistler_disp1_backlight_device,
 };
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-/* put early_suspend/late_resume handlers here for the display in order
- * to keep the code out of the display driver, keeping it closer to upstream
- */
-struct early_suspend whistler_panel_early_suspender;
-
-static void whistler_panel_early_suspend(struct early_suspend *h)
-{
-	/* power down LCD, add use a blank screen for HDMI */
-	if (num_registered_fb > 0)
-		fb_blank(registered_fb[0], FB_BLANK_POWERDOWN);
-	if (num_registered_fb > 1)
-		fb_blank(registered_fb[1], FB_BLANK_NORMAL);
-
-#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_store_default_gov();
-	cpufreq_change_gov(cpufreq_conservative_gov);
-#endif
-}
-
-static void whistler_panel_late_resume(struct early_suspend *h)
-{
-	unsigned i;
-
-#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_restore_default_gov();
-#endif
-
-	for (i = 0; i < num_registered_fb; i++)
-		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
-}
-#endif
-
 int __init whistler_panel_init(void)
 {
 	int err;
@@ -346,13 +310,6 @@ int __init whistler_panel_init(void)
 
 	gpio_request(whistler_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(whistler_hdmi_hpd);
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	whistler_panel_early_suspender.suspend = whistler_panel_early_suspend;
-	whistler_panel_early_suspender.resume = whistler_panel_late_resume;
-	whistler_panel_early_suspender.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
-	register_early_suspend(&whistler_panel_early_suspender);
-#endif
 
 #if defined(CONFIG_TEGRA_NVMAP)
 	whistler_carveouts[1].base = tegra_carveout_start;
