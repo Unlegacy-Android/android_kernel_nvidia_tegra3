@@ -787,8 +787,7 @@ done:
  */
 static void l2cap_sock_kill(struct sock *sk)
 {
-	if (!sock_flag(sk, SOCK_ZAPPED) || sock_flag(sk, SOCK_DEAD) ||
-				sk->sk_socket)
+	if (!sock_flag(sk, SOCK_ZAPPED) || sk->sk_socket)
 		return;
 
 	BT_DBG("sk %p state %s", sk, state_to_string(sk->sk_state));
@@ -921,7 +920,8 @@ static void l2cap_sock_close_cb(void *data)
 {
 	struct sock *sk = data;
 
-	l2cap_sock_kill(sk);
+	if (!sock_flag(sk, SOCK_DEAD))
+		l2cap_sock_kill(sk);
 }
 
 static void l2cap_sock_state_change_cb(void *data, int state)
