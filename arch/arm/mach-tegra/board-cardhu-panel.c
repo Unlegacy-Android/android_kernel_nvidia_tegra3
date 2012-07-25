@@ -1258,6 +1258,9 @@ static void cardhu_panel_preinit(void)
 			cardhu_dsi.panel_send_dc_frames = true,
 			cardhu_dsi_fb_data.xres = 720;
 			cardhu_dsi_fb_data.yres = 1280;
+			/* Set height and width in mm. */
+			cardhu_disp1_out.height = 95;
+			cardhu_disp1_out.width = 53;
 		}
 
 		cardhu_disp1_pdata.fb = &cardhu_dsi_fb_data;
