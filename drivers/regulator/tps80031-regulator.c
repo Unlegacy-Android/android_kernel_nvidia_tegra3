@@ -891,26 +891,26 @@ static int tps80031_regulator_preinit(struct device *parent,
 
 	if (tps80031_pdata->init_uV >= 0) {
 		switch (ri->desc.id) {
-		case TPS80031_ID_VIO:
-		case TPS80031_ID_SMPS1:
-		case TPS80031_ID_SMPS2:
-		case TPS80031_ID_SMPS3:
-		case TPS80031_ID_SMPS4:
+		case TPS80031_REGULATOR_VIO:
+		case TPS80031_REGULATOR_SMPS1:
+		case TPS80031_REGULATOR_SMPS2:
+		case TPS80031_REGULATOR_SMPS3:
+		case TPS80031_REGULATOR_SMPS4:
 			ret = __tps80031_dcdc_set_voltage(parent, ri,
 					tps80031_pdata->init_uV,
 					tps80031_pdata->init_uV, 0);
 			break;
 
-		case TPS80031_ID_LDO1:
-		case TPS80031_ID_LDO2:
-		case TPS80031_ID_LDO3:
-		case TPS80031_ID_LDO4:
-		case TPS80031_ID_LDO5:
-		case TPS80031_ID_LDO6:
-		case TPS80031_ID_LDO7:
-		case TPS80031_ID_LDOUSB:
-		case TPS80031_ID_LDOLN:
-		case TPS80031_ID_VANA:
+		case TPS80031_REGULATOR_LDO1:
+		case TPS80031_REGULATOR_LDO2:
+		case TPS80031_REGULATOR_LDO3:
+		case TPS80031_REGULATOR_LDO4:
+		case TPS80031_REGULATOR_LDO5:
+		case TPS80031_REGULATOR_LDO6:
+		case TPS80031_REGULATOR_LDO7:
+		case TPS80031_REGULATOR_LDOUSB:
+		case TPS80031_REGULATOR_LDOLN:
+		case TPS80031_REGULATOR_VANA:
 			ret = __tps80031_ldo_set_voltage(parent, ri,
 					tps80031_pdata->init_uV,
 					tps80031_pdata->init_uV, 0);
