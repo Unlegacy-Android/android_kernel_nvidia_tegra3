@@ -12,6 +12,7 @@ obj-$(CONFIG_USB_OTG_WAKELOCK)	+= otg-wakelock.o
 
 # transceiver drivers
 obj-$(CONFIG_USB_GPIO_VBUS)	+= gpio_vbus.o
+CFLAGS_tegra-otg.o		= -Werror
 obj-$(CONFIG_USB_TEGRA_OTG)	+= tegra-otg.o
 obj-$(CONFIG_ISP1301_OMAP)	+= isp1301_omap.o
 obj-$(CONFIG_TWL4030_USB)	+= twl4030-usb.o
