@@ -1256,7 +1256,8 @@ static void cardhu_panel_preinit(void)
 			cardhu_dsi.n_suspend_cmd =
 				ARRAY_SIZE(dsi_suspend_cmd_1506);
 			cardhu_dsi.dsi_suspend_cmd = dsi_suspend_cmd_1506;
-			cardhu_dsi.panel_send_dc_frames = true,
+			cardhu_dsi.panel_send_dc_frames = true;
+			cardhu_dsi.suspend_aggr = DSI_HOST_SUSPEND_LV0;
 			cardhu_dsi_fb_data.xres = 720;
 			cardhu_dsi_fb_data.yres = 1280;
 			/* Set height and width in mm. */
