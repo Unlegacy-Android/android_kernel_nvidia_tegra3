@@ -1219,6 +1219,11 @@ static void cardhu_panel_preinit(void)
 		cardhu_disp1_out.n_modes = ARRAY_SIZE(cardhu_panel_modes);
 		cardhu_disp1_out.enable = cardhu_panel_enable;
 		cardhu_disp1_out.disable = cardhu_panel_disable;
+		if (board_info.board_id == BOARD_E1291) {
+			/* Set height and width in mm. */
+			cardhu_disp1_out.height = 127;
+			cardhu_disp1_out.width = 216;
+		}
 
 		cardhu_disp1_pdata.fb = &cardhu_fb_data;
 	} else {
