@@ -297,6 +297,14 @@ struct tps80031 {
 	struct regmap		*regmap[TPS_NUM_SLAVES];
 };
 
+/* TPS80031 sub mfd devices */
+static struct mfd_cell tps80031_cell[] = {
+	{
+		.name = "tps80031-regulators",
+	},
+};
+
+
 int tps80031_write(struct device *dev, int sid, int reg, uint8_t val)
 {
 	struct tps80031 *tps80031 = dev_get_drvdata(dev);
@@ -1226,6 +1234,8 @@ static int __devexit tps80031_i2c_remove(struct i2c_client *client)
 	struct tps80031 *tps80031 = i2c_get_clientdata(client);
 	int i;
 
+	mfd_remove_devices(tps80031->dev);
+
 	if (client->irq)
 		free_irq(client->irq, tps80031);
 
@@ -1331,6 +1341,13 @@ static int __devinit tps80031_i2c_probe(struct i2c_client *client,
 
 	tps80031_init_ext_control(tps80031, pdata);
 
+	ret = mfd_add_devices(tps80031->dev, -1,
+			tps80031_cell, ARRAY_SIZE(tps80031_cell), NULL, 0);
+	if (ret < 0) {
+		dev_err(&client->dev, "mfd_add_devices failed: %d\n", ret);
+		goto fail_mfd_add;
+	}
+
 	ret = tps80031_add_subdevs(tps80031, pdata);
 	if (ret) {
 		dev_err(&client->dev, "add devices failed: %d\n", ret);
@@ -1353,9 +1370,11 @@ static int __devinit tps80031_i2c_probe(struct i2c_client *client,
 	return 0;
 
 fail_add_subdev:
+	mfd_remove_devices(tps80031->dev);
+
+fail_mfd_add:
 	if (client->irq)
 		free_irq(client->irq, tps80031);
-
 fail_client_reg:
 	for (i = 0; i < TPS_NUM_SLAVES; i++) {
 		struct tps80031_client *tps = &tps80031->tps_clients[i];
