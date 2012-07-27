@@ -29,6 +29,7 @@
 #include <mach/iomap.h>
 #include <mach/sdhci.h>
 #include <mach/gpio-tegra.h>
+#include <mach/io_dpd.h>
 
 #include "gpio-names.h"
 #include "board.h"
@@ -202,8 +203,21 @@ static int kai_wifi_set_carddetect(int val)
 
 static int kai_wifi_power(int power_on)
 {
+	struct tegra_io_dpd *sd_dpd;
 	pr_err("Powering %s wifi\n", (power_on ? "on" : "off"));
 
+	/*
+	 * FIXME : we need to revisit IO DPD code
+	 * on how should multiple pins under DPD get controlled
+	 *
+	 * kai GPIO WLAN enable is part of SDMMC3 pin group
+	 */
+	sd_dpd = tegra_io_dpd_get(&tegra_sdhci_device2.dev);
+	if (sd_dpd) {
+		mutex_lock(&sd_dpd->delay_lock);
+		tegra_io_dpd_disable(sd_dpd);
+		mutex_unlock(&sd_dpd->delay_lock);
+	}
 	if (power_on) {
 		gpio_set_value(KAI_WLAN_EN, 1);
 		mdelay(15);
@@ -213,6 +227,11 @@ static int kai_wifi_power(int power_on)
 		mdelay(70);
 	} else {
 		gpio_set_value(KAI_WLAN_EN, 0);
+	}
+	if (sd_dpd) {
+		mutex_lock(&sd_dpd->delay_lock);
+		tegra_io_dpd_enable(sd_dpd);
+		mutex_unlock(&sd_dpd->delay_lock);
 	}
 
 	return 0;
