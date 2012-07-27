@@ -182,7 +182,8 @@ static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 	phy->pllu_clk = clk_get_sys(NULL, "pll_u");
 	if (IS_ERR(phy->pllu_clk)) {
 		ERR("inst:[%d] Can't get pllu_clk clock\n", phy->inst);
-		return PTR_ERR(phy->pllu_clk);
+		err = PTR_ERR(phy->pllu_clk);
+		goto fail_pll;
 	}
 	clk_enable(phy->pllu_clk);
 
@@ -230,6 +231,7 @@ fail_ctrlr_clk:
 	clk_disable(phy->pllu_clk);
 	clk_put(phy->pllu_clk);
 
+fail_pll:
 	return err;
 }
 
@@ -272,13 +274,15 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		ERR("inst:[%d] failed to get I/O memory\n", phy->inst);
-		return ERR_PTR(-ENXIO);
+		err = -ENXIO;
+		goto fail_io;
 	}
 
 	phy->regs = ioremap(res->start, resource_size(res));
 	if (!phy->regs) {
 		ERR("inst:[%d] Failed to remap I/O memory\n", phy->inst);
-		return ERR_PTR(-ENOMEM);
+		err = -ENOMEM;
+		goto fail_io;
 	}
 
 	phy->vdd_reg = regulator_get(NULL, "avdd_usb");
@@ -381,6 +385,9 @@ fail_init:
 fail_clk:
 	regulator_put(phy->vdd_reg);
 	iounmap(phy->regs);
+fail_io:
+	kfree(phy);
+
 	return ERR_PTR(err);
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_open);
@@ -420,8 +427,10 @@ void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 		regulator_put(phy->vdd_reg);
 	}
 
-
 	tegra_usb_phy_release_clocks(phy);
+
+	kfree(phy->pdata);
+	kfree(phy);
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_close);
 
