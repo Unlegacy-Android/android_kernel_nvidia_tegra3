@@ -119,7 +119,9 @@
 /* Maximum dma transfer size */
 #define TEGRA_DMA_MAX_TRANSFER_SIZE		0x10000
 
+#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 static struct clk *dma_clk;
+#endif
 
 static const unsigned int ahb_addr_wrap_table[8] = {
 	0, 32, 64, 128, 256, 512, 1024, 2048
@@ -1076,6 +1078,7 @@ static void handle_dma_isr_locked(struct tegra_dma_channel *ch)
 	ch->isr_handler(ch);
 }
 
+#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 static irqreturn_t dma_isr(int irq, void *data)
 {
 	struct tegra_dma_channel *ch = data;
@@ -1115,6 +1118,7 @@ static irqreturn_t dma_isr(int irq, void *data)
 		callback(cb_req);
 	return IRQ_HANDLED;
 }
+#endif
 
 int __init tegra_dma_init(void)
 {
