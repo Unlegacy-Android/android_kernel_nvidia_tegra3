@@ -374,9 +374,9 @@ static void __init tegra_e1853_init(void)
 static void __init tegra_e1853_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
-	tegra_reserve(0, SZ_8M, 0);
+	tegra_reserve(0, SZ_8M, SZ_8M);
 #else
-	tegra_reserve(SZ_128M, SZ_8M, 0);
+	tegra_reserve(SZ_128M, SZ_8M, SZ_8M);
 #endif
 }
 
