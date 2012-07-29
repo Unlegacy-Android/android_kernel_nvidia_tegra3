@@ -333,7 +333,7 @@ void __init arm_memblock_init(struct meminfo *mi, struct machine_desc *mdesc)
 #ifdef CONFIG_XIP_KERNEL
 	memblock_reserve(__pa(_sdata), _end - _sdata);
 #else
-	memblock_reserve(__pa(_stext), _end - _stext);
+	memblock_reserve(__pa(_stext), ALIGN(_end - _stext, PMD_SIZE));
 #endif
 #ifdef CONFIG_BLK_DEV_INITRD
 	if (phys_initrd_size &&
@@ -722,6 +722,7 @@ void __init mem_init(void)
 
 void free_initmem(void)
 {
+#ifndef CONFIG_CPA
 #ifdef CONFIG_HAVE_TCM
 	extern char __tcm_start, __tcm_end;
 
@@ -736,6 +737,7 @@ void free_initmem(void)
 		totalram_pages += free_area(__phys_to_pfn(__pa(__init_begin)),
 					    __phys_to_pfn(__pa(__init_end)),
 					    "init");
+#endif
 }
 
 #ifdef CONFIG_BLK_DEV_INITRD
@@ -744,12 +746,14 @@ static int keep_initrd;
 
 void free_initrd_mem(unsigned long start, unsigned long end)
 {
+#ifndef CONFIG_CPA
 	if (!keep_initrd) {
 		poison_init_mem((void *)start, PAGE_ALIGN(end) - start);
 		totalram_pages += free_area(__phys_to_pfn(__pa(start)),
 					    __phys_to_pfn(__pa(end)),
 					    "initrd");
 	}
+#endif
 }
 
 static int __init keepinitrd_setup(char *__unused)
