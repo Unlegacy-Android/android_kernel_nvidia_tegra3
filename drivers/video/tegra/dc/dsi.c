@@ -266,6 +266,9 @@ const u32 init_reg_vs1_ext[] = {
 	DSI_GANGED_MODE_SIZE,
 };
 
+static int tegra_dsi_host_suspend(struct tegra_dc *dc);
+static int tegra_dsi_host_resume(struct tegra_dc *dc);
+
 inline unsigned long tegra_dsi_readl(struct tegra_dc_dsi_data *dsi, u32 reg)
 {
 	unsigned long ret;
@@ -2378,7 +2381,6 @@ static int _tegra_dsi_write_data(struct tegra_dc_dsi_data *dsi,
 					u8 *pdata, u8 data_id, u16 data_len)
 {
 	u8 virtual_channel;
-	u8 *pval;
 	u32 val;
 	int err;
 
@@ -2401,10 +2403,9 @@ static int _tegra_dsi_write_data(struct tegra_dc_dsi_data *dsi,
 				pdata += 4;
 			} else {
 				val = 0;
-				pval = (u8 *) &val;
-				do
-					*pval++ = *pdata++;
-				while (--data_len);
+				memcpy(&val, pdata, data_len);
+				pdata += data_len;
+				data_len = 0;
 			}
 			tegra_dsi_writel(dsi, val, DSI_WR_DATA);
 		}
@@ -2415,6 +2416,39 @@ static int _tegra_dsi_write_data(struct tegra_dc_dsi_data *dsi,
 		dev_err(&dsi->dc->ndev->dev, "DSI host trigger failed\n");
 
 	return err;
+}
+
+static void tegra_dc_dsi_hold_host(struct tegra_dc *dc)
+{
+	struct tegra_dc_dsi_data *dsi = tegra_dc_get_outdata(dc);
+
+	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_LP_MODE) {
+		/*
+		 * The reference count should never be more than 1.
+		 */
+		BUG_ON(tegra_is_clk_enabled(dc->clk) > 1);
+
+		if (dsi->host_suspended)
+			tegra_dsi_host_resume(dc);
+
+		/*
+		 * Take an extra refrence to count for the clk_disable in
+		 * tegra_dc_release_host.
+		 */
+		clk_enable(dc->clk);
+	}
+}
+
+static void tegra_dc_dsi_release_host(struct tegra_dc *dc)
+{
+	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_LP_MODE)
+		clk_disable(dc->clk);
+}
+
+static void tegra_dc_dsi_idle(struct tegra_dc *dc)
+{
+	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_LP_MODE)
+		tegra_dsi_host_suspend(dc);
 }
 
 int tegra_dsi_write_data(struct tegra_dc *dc,
@@ -2440,6 +2474,7 @@ fail:
 	if (err < 0)
 		dev_err(&dc->ndev->dev, "Failed to restore prev state\n");
 	tegra_dc_io_end(dc);
+
 	return err;
 }
 EXPORT_SYMBOL(tegra_dsi_write_data);
@@ -2471,7 +2506,7 @@ static int tegra_dsi_send_panel_cmd(struct tegra_dc *dc,
 	return err;
 }
 
-static u8 get_8bit_ecc(u32 header)
+static u8 tegra_dsi_ecc(u32 header)
 {
 	char ecc_parity[24] = {
 		0x07, 0x0b, 0x0d, 0x0e, 0x13, 0x15, 0x16, 0x19,
@@ -2488,75 +2523,158 @@ static u8 get_8bit_ecc(u32 header)
 	return ecc_byte;
 }
 
-/* This function is written to send DCS short write (1 parameter) only.
- * This means the cmd will contain only 1 byte of index and 1 byte of value.
- * The data type ID is fixed at 0x15 and the ECC is calculated based on the
- * data in pdata.
- * The command will be sent by hardware every frame.
- * pdata should contain both the index + value for each cmd.
- * data_len will be the total number of bytes in pdata.
- */
-int tegra_dsi_send_panel_short_cmd(struct tegra_dc *dc, u8 *pdata, u8 data_len)
+static u16 tegra_dsi_cs(char *pdata, u16 data_len)
 {
-	u8 ecc8bits = 0, data_len_orig = 0;
-	u32 val = 0, pkthdr = 0;
-	int err = 0, count = 0;
-	struct tegra_dc_dsi_data *dsi = tegra_dc_get_outdata(dc);
+	u16 byte_cnt;
+	u8 bit_cnt;
+	char curr_byte;
+	u16 crc = 0xFFFF;
+	u16 poly = 0x8408;
 
-	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_LP_MODE)
-		tegra_dc_host_resume(dc);
+	if (data_len > 0) {
+		for (byte_cnt = 0; byte_cnt < data_len; byte_cnt++) {
+			curr_byte = pdata[byte_cnt];
+			for (bit_cnt = 0; bit_cnt < 8; bit_cnt++) {
+				if (((crc & 0x0001 ) ^
+					(curr_byte & 0x0001)) > 0)
+					crc = ((crc >> 1) & 0x7FFF) ^ poly;
+				else
+					crc = (crc >> 1) & 0x7FFF;
 
-	data_len_orig = data_len;
-	if (pdata != NULL) {
-		while (data_len) {
-			if (data_len >= 2) {
-				pkthdr = (CMD_SHORTW |
-					(((u16 *)pdata)[0]) << 8 | 0x00 << 24);
-				ecc8bits = get_8bit_ecc(pkthdr);
-				val = (pkthdr | (ecc8bits << 24));
-				data_len -= 2;
-				pdata += 2;
-				count++;
-			}
-			switch (count) {
-			case 1:
-				tegra_dsi_writel(dsi, val, DSI_INIT_SEQ_DATA_0);
-				break;
-			case 2:
-				tegra_dsi_writel(dsi, val, DSI_INIT_SEQ_DATA_1);
-				break;
-			case 3:
-				tegra_dsi_writel(dsi, val, DSI_INIT_SEQ_DATA_2);
-				break;
-			case 4:
-				tegra_dsi_writel(dsi, val, DSI_INIT_SEQ_DATA_3);
-				break;
-			case 5:
-				tegra_dsi_writel(dsi, val, DSI_INIT_SEQ_DATA_4);
-				break;
-			case 6:
-				tegra_dsi_writel(dsi, val, DSI_INIT_SEQ_DATA_5);
-				break;
-			case 7:
-				tegra_dsi_writel(dsi, val, DSI_INIT_SEQ_DATA_6);
-				break;
-			case 8:
-				tegra_dsi_writel(dsi, val, DSI_INIT_SEQ_DATA_7);
-				break;
-			default:
-				err = 1;
-				break;
+				curr_byte = (curr_byte >> 1 ) & 0x7F;
 			}
 		}
 	}
+	return crc;
+}
 
-	val = DSI_INIT_SEQ_CONTROL_DSI_FRAME_INIT_BYTE_COUNT(data_len_orig * 2)
-		| DSI_INIT_SEQ_CONTROL_DSI_SEND_INIT_SEQUENCE(1);
+static int tegra_dsi_dcs_pkt_seq_ctrl_init(struct tegra_dc_dsi_data *dsi,
+						struct tegra_dsi_cmd *cmd)
+{
+	u8 virtual_channel;
+	u32 val;
+	u16 data_len = cmd->sp_len_dly.data_len;
+	u8 seq_ctrl_reg = 0;
+
+	virtual_channel = dsi->info.virtual_channel <<
+				DSI_VIR_CHANNEL_BIT_POSITION;
+
+	val = (virtual_channel | cmd->data_id) << 0 |
+		data_len << 8;
+
+	val |= tegra_dsi_ecc(val) << 24;
+
+	tegra_dsi_writel(dsi, val, DSI_INIT_SEQ_DATA_0 + seq_ctrl_reg++);
+
+	/* if pdata != NULL, pkt type is long pkt */
+	if (cmd->pdata != NULL) {
+		u8 *pdata;
+		u8 *pdata_mem;
+		/*  allocate memory for pdata + 2 bytes checksum */
+		pdata_mem = kzalloc(sizeof(u8) * data_len + 2, GFP_KERNEL);
+		if (!pdata_mem) {
+			dev_err(&dsi->dc->ndev->dev, "dsi: memory err\n");
+			tegra_dsi_soft_reset(dsi);
+			return -ENOMEM;
+		}
+
+		memcpy(pdata_mem, cmd->pdata, data_len);
+		pdata = pdata_mem;
+		*((u16 *)(pdata + data_len)) = tegra_dsi_cs(pdata, data_len);
+
+		/* data_len = length of pdata + 2 byte checksum */
+		data_len += 2;
+
+		while (data_len) {
+			if (data_len >= 4) {
+				val = ((u32 *) pdata)[0];
+				data_len -= 4;
+				pdata += 4;
+			} else {
+				val = 0;
+				memcpy(&val, pdata, data_len);
+				pdata += data_len;
+				data_len = 0;
+			}
+			tegra_dsi_writel(dsi, val, DSI_INIT_SEQ_DATA_0 +
+							seq_ctrl_reg++);
+		}
+		kfree(pdata_mem);
+	}
+
+	return 0;
+}
+
+int tegra_dsi_start_host_cmd_v_blank_dcs(struct tegra_dc_dsi_data * dsi,
+						struct tegra_dsi_cmd *cmd)
+{
+#define PKT_HEADER_LEN_BYTE	4
+#define CHECKSUM_LEN_BYTE	2
+
+	int err = 0;
+	u32 val;
+	u16 tot_pkt_len = PKT_HEADER_LEN_BYTE;
+	struct tegra_dc *dc = dsi->dc;
+
+	if (cmd->cmd_type != TEGRA_DSI_PACKET_CMD)
+		return -EINVAL;
+
+	mutex_lock(&dsi->lock);
+	tegra_dc_dsi_hold_host(dc);
+
+	tegra_dc_io_start(dc);
+
+
+	err = tegra_dsi_dcs_pkt_seq_ctrl_init(dsi, cmd);
+	if (err < 0) {
+		dev_err(&dsi->dc->ndev->dev,
+			"dsi: dcs pkt seq ctrl init failed\n");
+		goto fail;
+	}
+
+	if (cmd->pdata) {
+		u16 data_len = cmd->sp_len_dly.data_len;
+		tot_pkt_len += data_len + CHECKSUM_LEN_BYTE;
+	}
+
+	val = DSI_INIT_SEQ_CONTROL_DSI_FRAME_INIT_BYTE_COUNT(tot_pkt_len) |
+		DSI_INIT_SEQ_CONTROL_DSI_SEND_INIT_SEQUENCE(
+						TEGRA_DSI_ENABLE);
 	tegra_dsi_writel(dsi, val, DSI_INIT_SEQ_CONTROL);
 
+fail:
+	tegra_dc_io_end(dc);
+	tegra_dc_dsi_release_host(dc);
+	mutex_unlock(&dsi->lock);
 	return err;
+
+#undef PKT_HEADER_LEN_BYTE
+#undef CHECKSUM_LEN_BYTE
 }
-EXPORT_SYMBOL(tegra_dsi_send_panel_short_cmd);
+EXPORT_SYMBOL(tegra_dsi_start_host_cmd_v_blank_dcs);
+
+void tegra_dsi_stop_host_cmd_v_blank_dcs(struct tegra_dc_dsi_data * dsi)
+{
+	struct tegra_dc *dc = dsi->dc;
+	u32 cnt;
+
+	mutex_lock(&dsi->lock);
+	tegra_dc_dsi_hold_host(dc);
+
+	tegra_dc_io_start(dc);
+
+	tegra_dsi_writel(dsi, TEGRA_DSI_DISABLE, DSI_INIT_SEQ_CONTROL);
+
+	/* clear seq data registers */
+	for (cnt = 0; cnt < 8; cnt++)
+		tegra_dsi_writel(dsi, 0, DSI_INIT_SEQ_DATA_0 + cnt);
+
+	tegra_dc_io_end(dc);
+
+	tegra_dc_dsi_release_host(dc);
+	mutex_unlock(&dsi->lock);
+}
+EXPORT_SYMBOL(tegra_dsi_stop_host_cmd_v_blank_dcs);
 
 static int tegra_dsi_bta(struct tegra_dc_dsi_data *dsi)
 {
@@ -2964,11 +3082,10 @@ static void _tegra_dc_dsi_enable(struct tegra_dc *dc)
 	struct tegra_dc_dsi_data *dsi = tegra_dc_get_outdata(dc);
 	int err = 0;
 
-	tegra_dc_io_start(dc);
 	mutex_lock(&dsi->lock);
+	tegra_dc_dsi_hold_host(dc);
 
-	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_LP_MODE)
-		tegra_dc_host_resume(dc);
+	tegra_dc_io_start(dc);
 	/* Stop DC stream before configuring DSI registers
 	 * to avoid visible glitches on panel during transition
 	 * from bootloader to kernel driver
@@ -3073,8 +3190,9 @@ static void _tegra_dc_dsi_enable(struct tegra_dc *dc)
 		tegra_dsi_start_dc_stream(dc, dsi);
 
 fail:
-	mutex_unlock(&dsi->lock);
 	tegra_dc_io_end(dc);
+	tegra_dc_dsi_release_host(dc);
+	mutex_unlock(&dsi->lock);
 }
 
 static void __tegra_dc_dsi_init(struct tegra_dc *dc)
@@ -3515,13 +3633,15 @@ fail:
 	return err;
 }
 
-int tegra_dsi_host_suspend(struct tegra_dc *dc)
+static int tegra_dsi_host_suspend(struct tegra_dc *dc)
 {
 	int err = 0;
 	struct tegra_dc_dsi_data *dsi = tegra_dc_get_outdata(dc);
 
 	if (dsi->host_suspended)
 		return 0;
+
+	dsi->host_suspended = true;
 
 	tegra_dsi_stop_dc_stream(dc, dsi);
 
@@ -3530,13 +3650,12 @@ int tegra_dsi_host_suspend(struct tegra_dc *dc)
 		dev_err(&dc->ndev->dev,
 			"DSI failed to enter deep sleep\n");
 
-	dsi->host_suspended = true;
+	tegra_dc_clk_disable(dc);
 
 	return err;
 }
 
-
-int tegra_dsi_host_resume(struct tegra_dc *dc)
+static int tegra_dsi_host_resume(struct tegra_dc *dc)
 {
 	int val = 0;
 	int err = 0;
@@ -3545,6 +3664,7 @@ int tegra_dsi_host_resume(struct tegra_dc *dc)
 	if (!dsi->host_suspended)
 		return 0;
 
+	tegra_dc_clk_enable(dc);
 	switch (dsi->info.suspend_aggr) {
 	case DSI_HOST_SUSPEND_LV0:
 		tegra_dsi_clk_enable(dsi);
@@ -3589,9 +3709,9 @@ int tegra_dsi_host_resume(struct tegra_dc *dc)
 						"is not supported.\n");
 	}
 
+	tegra_dsi_start_dc_stream(dc, dsi);
 	dsi->enabled = true;
 	dsi->host_suspended = false;
-	tegra_dsi_start_dc_stream(dc, dsi);
 fail:
 	return err;
 }
@@ -3766,6 +3886,9 @@ struct tegra_dc_out_ops tegra_dc_dsi_ops = {
 	.destroy = tegra_dc_dsi_destroy,
 	.enable = tegra_dc_dsi_enable,
 	.disable = tegra_dc_dsi_disable,
+	.hold = tegra_dc_dsi_hold_host,
+	.release = tegra_dc_dsi_release_host,
+	.idle = tegra_dc_dsi_idle,
 #ifdef CONFIG_PM
 	.suspend = tegra_dc_dsi_suspend,
 	.resume = tegra_dc_dsi_resume,

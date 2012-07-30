@@ -1395,11 +1395,11 @@ static int tegra3_pll_clk_wait_for_lock(struct clk *c, u32 lock_reg, u32 lock_bi
 #if USE_PLL_LOCK_BITS
 	int i;
 	for (i = 0; i < c->u.pll.lock_delay; i++) {
+		udelay(2);		/* timeout = 2 * lock time */
 		if (clk_readl(lock_reg) & lock_bit) {
 			udelay(PLL_POST_LOCK_DELAY);
 			return 0;
 		}
-		udelay(2);		/* timeout = 2 * lock time */
 	}
 	pr_err("Timed out waiting for lock bit on pll %s", c->name);
 	return -1;
@@ -1556,6 +1556,7 @@ static int tegra3_pll_clk_enable(struct clk *c)
 		val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
 		val |= PMC_PLLP_WB0_OVERRIDE_PLLM_ENABLE;
 		pmc_writel(val, PMC_PLLP_WB0_OVERRIDE);
+		pmc_readl(PMC_PLLP_WB0_OVERRIDE);
 	}
 
 	tegra3_pll_clk_wait_for_lock(c, c->reg + PLL_BASE, PLL_BASE_LOCK);
@@ -3073,6 +3074,7 @@ static int tegra3_clk_shared_bus_update(struct clk *bus)
 	unsigned long rate = bus->min_rate;
 	unsigned long bw = 0;
 	unsigned long ceiling = bus->max_rate;
+	u8 emc_bw_efficiency = tegra_emc_bw_efficiency_boost;
 
 	if (detach_shared_bus)
 		return 0;
@@ -3086,6 +3088,9 @@ static int tegra3_clk_shared_bus_update(struct clk *bus)
 		 */
 		if (c->u.shared_bus_user.enabled ||
 		    (c->u.shared_bus_user.mode == SHARED_CEILING)) {
+			if (!strcmp(c->name, "3d.emc"))
+				emc_bw_efficiency = tegra_emc_bw_efficiency;
+
 			switch (c->u.shared_bus_user.mode) {
 			case SHARED_BW:
 				if (bw < bus->max_rate)
@@ -3104,8 +3109,8 @@ static int tegra3_clk_shared_bus_update(struct clk *bus)
 	}
 	if (bw) {
 		if (bus->flags & PERIPH_EMC_ENB) {
-			bw = tegra_emc_bw_efficiency ?
-				(bw / tegra_emc_bw_efficiency) : bus->max_rate;
+			bw = emc_bw_efficiency ?
+				(bw / emc_bw_efficiency) : bus->max_rate;
 			bw = (bw < bus->max_rate / 100) ?
 				(bw * 100) : bus->max_rate;
 		}
@@ -4226,7 +4231,7 @@ static struct clk tegra_clk_cbus = {
 	.ops       = &tegra_clk_cbus_ops,
 	.max_rate  = 700000000,
 	.mul	   = 1,
-	.div	   = 2,
+	.div	   = CONFIG_TEGRA_CBUS_CLOCK_DIVIDER,
 	.flags     = PERIPH_ON_CBUS,
 	.shared_bus_backup = {
 		.input = &tegra_pll_p,
@@ -4433,8 +4438,11 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("epp.cbus",	"tegra_gr2d",		"epp",	&tegra_clk_cbus, "epp", 0, 0),
 	SHARED_CLK("mpe.cbus",	"tegra_mpe",		"mpe",	&tegra_clk_cbus, "mpe", 0, 0),
 	SHARED_CLK("vde.cbus",	"tegra-avp",		"vde",	&tegra_clk_cbus, "vde", 0, 0),
+#ifdef CONFIG_TEGRA_SE_ON_CBUS
 	SHARED_CLK("se.cbus",	"tegra-se",		NULL,	&tegra_clk_cbus, "se",  0, 0),
+#endif
 	SHARED_CLK("cap.cbus",	"cap.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
+	SHARED_CLK("cap.profile.cbus", "profile.cbus",	NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
 	SHARED_CLK("floor.cbus", "floor.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, 0),
 };
 

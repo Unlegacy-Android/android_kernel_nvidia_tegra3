@@ -98,7 +98,6 @@ static __initdata struct tegra_clk_init_table p1852_clk_init_table[] = {
 	{ "vi",			"pll_p",	470000000,	false},
 	{ "vi_sensor",		"pll_p",	150000000,	false},
 	{ "vde",		"pll_c",	484000000,	true},
-	{ "host1x",		"pll_c",	242000000,	true},
 	{ "mpe",		"pll_c",	484000000,	true},
 	{ "se",			"pll_m",	625000000,	true},
 	{ "i2c1",		"pll_p",	3200000,	true},
@@ -210,11 +209,15 @@ static struct tegra_p1852_platform_data p1852_audio_tdm_pdata = {
 		.name = "tegra-i2s-1",
 		.pcm_driver = "tegra-tdm-pcm-audio",
 		.i2s_format = format_tdm,
+		/* Defines whether the Codec Chip is Master or Slave */
 		.master = 1,
-		.num_slots = 4,
+		/* Defines the number of TDM slots */
+		.num_slots = 8,
+		/* Defines the width of each slot */
 		.slot_width = 32,
-		.tx_mask = 0x0f,
-		.rx_mask = 0x0f,
+		/* Defines which slots are enabled */
+		.tx_mask = 0xff,
+		.rx_mask = 0xff,
 	},
 	.codec_info[1] = {
 		.codec_dai_name = "dit-hifi",

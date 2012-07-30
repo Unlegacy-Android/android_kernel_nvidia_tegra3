@@ -54,7 +54,6 @@ const bcmevent_name_t bcmevent_names[] = {
 	{ WLC_E_MIC_ERROR, "MIC_ERROR" },
 	{ WLC_E_NDIS_LINK, "NDIS_LINK" },
 	{ WLC_E_ROAM, "ROAM" },
-	{ WLC_E_TXFAIL, "TXFAIL" },
 	{ WLC_E_PMKID_CACHE, "PMKID_CACHE" },
 	{ WLC_E_RETROGRADE_TSF, "RETROGRADE_TSF" },
 	{ WLC_E_PRUNE, "PRUNE" },

@@ -176,7 +176,6 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 	irqreturn_t irq_status;
-	bool pmc_remote_wakeup = false;
 
 	spin_lock(&ehci->lock);
 	irq_status = tegra_usb_phy_irq(tegra->phy);
@@ -186,8 +185,9 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 	}
 	if (tegra_usb_phy_remote_wakeup(tegra->phy)) {
 		ehci_info(ehci, "remote wakeup detected\n");
-		pmc_remote_wakeup = true;
 		usb_hcd_resume_root_hub(hcd);
+		spin_unlock(&ehci->lock);
+		return irq_status;
 	}
 	spin_unlock(&ehci->lock);
 
@@ -197,10 +197,6 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 		ehci_readl(ehci, &ehci->regs->port_status[0]));
 
 	irq_status = ehci_irq(hcd);
-
-	if (pmc_remote_wakeup) {
-		ehci->controller_remote_wakeup = false;
-	}
 
 	if (ehci->controller_remote_wakeup) {
 		ehci->controller_remote_wakeup = false;
@@ -235,6 +231,7 @@ static int tegra_ehci_hub_control(
 	switch (typeReq) {
 	case GetPortStatus:
 		if (tegra->port_resuming) {
+			u32 cmd;
 			int delay = ehci->reset_done[wIndex-1] - jiffies;
 			/* Sometimes it seems we get called too soon... In that case, wait.*/
 			if (delay > 0) {
@@ -249,9 +246,11 @@ static int tegra_ehci_hub_control(
 			tegra_usb_phy_post_resume(tegra->phy);
 			tegra->port_resuming = 0;
 			/* If run bit is not set by now enable it */
-			if (ehci->command & CMD_RUN) {
+			cmd = ehci_readl(ehci, &ehci->regs->command);
+			if (!(cmd & CMD_RUN)) {
+				cmd |= CMD_RUN;
 				ehci->command |= CMD_RUN;
-				ehci_writel(ehci, ehci->command, &ehci->regs->command);
+				ehci_writel(ehci, cmd, &ehci->regs->command);
 			}
 			/* Now we can safely re-enable irqs */
 			ehci_writel(ehci, INTR_MASK, &ehci->regs->intr_enable);
@@ -646,6 +645,11 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 
 	if (tegra->irq)
 		disable_irq_wake(tegra->irq);
+
+	/* Make sure phy is powered ON to access USB register */
+	if(!tegra_usb_phy_hw_accessible(tegra->phy))
+		tegra_usb_phy_power_on(tegra->phy);
+
 	usb_remove_hcd(hcd);
 	usb_put_hcd(hcd);
 	tegra_usb_phy_power_off(tegra->phy);

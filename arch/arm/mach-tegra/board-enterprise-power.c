@@ -742,6 +742,9 @@ int __init enterprise_regulator_init(void)
 	pmc_dpd_pads = readl(pmc + PMC_DPD_PADS_ORIDE);
 	writel(pmc_dpd_pads & ~PMC_DPD_PADS_ORIDE_BLINK , pmc + PMC_DPD_PADS_ORIDE);
 
+	/* Setting CPU voltage tolerance in lower side for 3000uV */
+	pdata_smps1_common.tolerance_uv = 3000;
+
 	/* Disable battery charging if power adapter is connected. */
 	if (get_power_supply_type() == POWER_SUPPLY_TYPE_MAINS) {
 		bcharger_pdata.num_consumer_supplies = 0;
@@ -844,9 +847,9 @@ static struct platform_device enterprise_bpc_mgmt_device = {
 
 void __init enterprise_bpc_mgmt_init(void)
 {
+#ifdef CONFIG_SMP
 	int int_gpio = gpio_to_irq(TEGRA_BPC_TRIGGER);
 
-#ifdef CONFIG_SMP
 	cpumask_setall(&(bpc_mgmt_platform_data.affinity_mask));
 	irq_set_affinity_hint(int_gpio,
 				&(bpc_mgmt_platform_data.affinity_mask));

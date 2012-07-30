@@ -1223,11 +1223,13 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 	void __iomem *base = phy->regs;
 	unsigned long val = 0;
 
-	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-	DBG("USB_USBSTS[0x%x] USB_PORTSC[0x%x]\n",
+	if (phy->phy_clk_on) {
+		DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+		DBG("USB_USBSTS[0x%x] USB_PORTSC[0x%x]\n",
 			readl(base + USB_USBSTS), readl(base + USB_PORTSC));
-	DBG("USB_USBMODE[0x%x] USB_USBCMD[0x%x]\n",
+		DBG("USB_USBMODE[0x%x] USB_USBCMD[0x%x]\n",
 			readl(base + USB_USBMODE), readl(base + USB_USBCMD));
+	}
 
 	usb_phy_fence_read(phy);
 	/* check if there is any remote wake event */
@@ -1247,6 +1249,8 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 			val = readl(base + USB_PORTSC);
 			val &= ~(USB_PORTSC_WKCN | USB_PORTSC_RWC_BITS);
 			writel(val , (base + USB_PORTSC));
+		} else if (!phy->phy_clk_on) {
+			return IRQ_NONE;
 		}
 	}
 
@@ -2250,6 +2254,11 @@ static int uhsic_phy_power_off(struct tegra_usb_phy *phy)
 	val |= HOSTPC1_DEVLC_PHCD;
 	writel(val, base + HOSTPC1_DEVLC);
 
+	/* Remove power downs for HSIC from PADS CFG1 register */
+	val = readl(base + UHSIC_PADS_CFG1);
+	val |= (UHSIC_PD_BG |UHSIC_PD_TRK | UHSIC_PD_RX |
+			UHSIC_PD_ZI | UHSIC_PD_TX);
+	writel(val, base + UHSIC_PADS_CFG1);
 	phy->phy_clk_on = false;
 	phy->hw_accessible = false;
 
@@ -2579,7 +2588,16 @@ static int ulpi_null_phy_init(struct tegra_usb_phy *phy)
 
 static int ulpi_null_phy_irq(struct tegra_usb_phy *phy)
 {
+	unsigned long val;
+	void __iomem *base = phy->regs;
+
 	usb_phy_fence_read(phy);
+	if (phy->bus_reseting){
+		val = readl(base + USB_USBCMD);
+		val |= USB_USBCMD_RS;
+		writel(val, base + USB_USBCMD);
+		phy->bus_reseting = false;
+	}
 	return IRQ_HANDLED;
 }
 
@@ -2601,6 +2619,23 @@ static int ulpi_null_phy_cmd_reset(struct tegra_usb_phy *phy)
 	val &=	~ULPIS2S_SLV0_CLAMP_XMIT;
 	writel(val, base + ULPIS2S_CTRL);
 	udelay(10);
+
+	return 0;
+}
+
+static int ulpi_phy_bus_reset(struct tegra_usb_phy *phy)
+{
+	unsigned long val;
+	void __iomem *base = phy->regs;
+
+	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+
+	/*DISABLE RUN BIT */
+
+	val = readl(base + USB_USBCMD);
+	val &= ~USB_USBCMD_RS;
+	writel(val, base + USB_USBCMD);
+	phy->bus_reseting = true;
 
 	return 0;
 }
@@ -2777,6 +2812,7 @@ static int ulpi_null_phy_power_on(struct tegra_usb_phy *phy)
 	}
 	udelay(10);
 
+	phy->bus_reseting = false;
 	phy->phy_clk_on = true;
 	phy->hw_accessible = true;
 
@@ -2862,6 +2898,7 @@ static struct tegra_usb_phy_ops ulpi_null_phy_ops = {
 	.post_resume = ulpi_null_phy_post_resume,
 	.reset		= ulpi_null_phy_cmd_reset,
 	.post_suspend   = phy_post_suspend,
+	.bus_reset	= ulpi_phy_bus_reset,
 };
 
 static struct tegra_usb_phy_ops ulpi_link_phy_ops;

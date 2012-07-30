@@ -486,6 +486,9 @@ static __initdata struct tegra_pingroup_config cardhu_pinmux_cardhu_a03[] = {
 	DEFAULT_PINMUX(PEX_L0_CLKREQ_N, PCIE,            NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(PEX_L1_CLKREQ_N, RSVD3,           PULL_UP,   NORMAL,     INPUT),
 	DEFAULT_PINMUX(PEX_L1_PRSNT_N,  RSVD3,           PULL_UP,   NORMAL,     INPUT),
+
+	/*PCIE dock detect*/
+	DEFAULT_PINMUX(GPIO_PU4,        RSVD1,           PULL_UP,   NORMAL,     INPUT),
 };
 
 static __initdata struct tegra_pingroup_config cardhu_pinmux_e1291_a04[] = {
@@ -493,6 +496,9 @@ static __initdata struct tegra_pingroup_config cardhu_pinmux_e1291_a04[] = {
 	DEFAULT_PINMUX(ULPI_DATA6,      UARTA,           NORMAL,    NORMAL,     OUTPUT),
 	DEFAULT_PINMUX(SPI2_MOSI,       SPI6,            NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(DAP3_SCLK,       RSVD1,           NORMAL,    NORMAL,     OUTPUT),
+
+	/*PCIE dock detect*/
+	DEFAULT_PINMUX(GPIO_PU4,        RSVD1,           PULL_UP,   NORMAL,     INPUT),
 };
 
 static __initdata struct tegra_pingroup_config cardhu_pinmux_e1198[] = {
@@ -538,6 +544,16 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 	DEFAULT_PINMUX(GMI_WR_N,        NAND,           NORMAL,     TRISTATE,     OUTPUT),
 	DEFAULT_PINMUX(GMI_OE_N,        NAND,           NORMAL,     TRISTATE,     OUTPUT),
 	DEFAULT_PINMUX(GMI_DQS,         NAND,           NORMAL,     TRISTATE,     OUTPUT),
+};
+
+static __initdata struct tegra_pingroup_config unused_pins_lowpower_e1506[] = {
+	DEFAULT_PINMUX(LCD_PCLK,        DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_WR_N,        DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_HSYNC,       DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_VSYNC,       DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_SCK,         DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_SDOUT,       DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
+	DEFAULT_PINMUX(LCD_SDIN,        DISPLAYA,        PULL_DOWN,    TRISTATE,  OUTPUT),
 };
 
 static __initdata struct tegra_pingroup_config gmi_pins_269[] = {
@@ -692,6 +708,8 @@ int __init cardhu_pinmux_init(void)
 		if (display_board_info.board_id == BOARD_DISPLAY_E1506) {
 			tegra_pinmux_config_table(cardhu_pinmux_pm269_e1506,
 					ARRAY_SIZE(cardhu_pinmux_pm269_e1506));
+			tegra_pinmux_config_table(unused_pins_lowpower_e1506,
+					ARRAY_SIZE(unused_pins_lowpower_e1506));
 		}
 
 		tegra_pinmux_config_table(unused_pins_lowpower,
