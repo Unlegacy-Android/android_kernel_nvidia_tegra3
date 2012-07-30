@@ -12,7 +12,6 @@
  * Author: Graeme Gregory
  *         graeme.gregory@wolfsonmicro.com or linux@wolfsonmicro.com
  *
- * Copyright (c) 2012, NVIDIA CORPORATION. All rights reserved.
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -214,15 +213,13 @@ static int tegra_max98088_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_card *card = codec->card;
 	struct tegra_max98088 *machine = snd_soc_card_get_drvdata(card);
-	struct tegra_asoc_platform_data *pdata = machine->pdata;
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(cpu_dai);
 #endif
-	int srate, mclk, sample_size, i2s_daifmt, i2s_master;
+	int srate, mclk, sample_size, i2s_daifmt;
 	int err;
+	struct clk *clk;
 	int rate;
-
-	i2s_master = pdata->i2s_param[HIFI_CODEC].is_i2s_master;
 
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
@@ -254,30 +251,31 @@ static int tegra_max98088_hw_params(struct snd_pcm_substream *substream,
 		break;
 	}
 
-	i2s_daifmt = SND_SOC_DAIFMT_NB_NF;
-	i2s_daifmt |= i2s_master ? SND_SOC_DAIFMT_CBS_CFS :
-				SND_SOC_DAIFMT_CBM_CFM;
 
-	switch (pdata->i2s_param[HIFI_CODEC].i2s_mode) {
-		case TEGRA_DAIFMT_I2S :
-			i2s_daifmt |= SND_SOC_DAIFMT_I2S;
-			break;
-		case TEGRA_DAIFMT_DSP_A :
-			i2s_daifmt |= SND_SOC_DAIFMT_DSP_A;
-			break;
-		case TEGRA_DAIFMT_DSP_B :
-			i2s_daifmt |= SND_SOC_DAIFMT_DSP_B;
-			break;
-		case TEGRA_DAIFMT_LEFT_J :
-			i2s_daifmt |= SND_SOC_DAIFMT_LEFT_J;
-			break;
-		case TEGRA_DAIFMT_RIGHT_J :
-			i2s_daifmt |= SND_SOC_DAIFMT_RIGHT_J;
-			break;
-		default :
-			dev_err(card->dev, "Can't configure i2s format\n");
-			return -EINVAL;
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
+	clk = clk_get_sys(NULL, "cdev1");
+#else
+	clk = clk_get_sys("extern1", NULL);
+#endif
+	if (IS_ERR(clk)) {
+		dev_err(card->dev, "Can't retrieve clk cdev1\n");
+		err = PTR_ERR(clk);
+		return err;
 	}
+
+	rate = clk_get_rate(clk);
+	printk("extern1 rate=%d\n",rate);
+
+#if TEGRA30_I2S_MASTER_PLAYBACK
+	i2s_daifmt = SND_SOC_DAIFMT_I2S |
+				SND_SOC_DAIFMT_NB_NF |
+				SND_SOC_DAIFMT_CBS_CFS;
+#else
+	i2s_daifmt = SND_SOC_DAIFMT_I2S |
+				SND_SOC_DAIFMT_NB_NF |
+				SND_SOC_DAIFMT_CBM_CFM;
+	mclk = rate;
+#endif
 
 	err = tegra_asoc_utils_set_rate(&machine->util_data, srate, mclk);
 	if (err < 0) {
@@ -291,9 +289,7 @@ static int tegra_max98088_hw_params(struct snd_pcm_substream *substream,
 
 	tegra_asoc_utils_lock_clk_rate(&machine->util_data, 1);
 
-	rate = clk_get_rate(machine->util_data.clk_cdev1);
-
-	err = snd_soc_dai_set_fmt(codec_dai, i2s_daifmt);
+	err = snd_soc_dai_set_fmt(codec_dai,i2s_daifmt);
 	if (err < 0) {
 		dev_err(card->dev, "codec_dai fmt not set\n");
 		return err;
@@ -305,17 +301,8 @@ static int tegra_max98088_hw_params(struct snd_pcm_substream *substream,
 		return err;
 	}
 
-	err = snd_soc_dai_set_sysclk(codec_dai, 0, rate, SND_SOC_CLOCK_IN);
-
-	/* ULP specific use case for 44.1kHz stream. */
-	if ((!i2s_master) && (srate == 44100) &&
-		machine_is_tegra_enterprise()) {
-		clk_set_rate(machine->util_data.clk_cdev1, (256 * srate));
-		rate = clk_get_rate(machine->util_data.clk_cdev1);
-		err = snd_soc_dai_set_sysclk(codec_dai, 0, rate,
-				SND_SOC_CLOCK_IN);
-	}
-
+	err = snd_soc_dai_set_sysclk(codec_dai, 0, mclk,
+					SND_SOC_CLOCK_IN);
 	if (err < 0) {
 		dev_err(card->dev, "codec_dai clock not set\n");
 		return err;
@@ -384,9 +371,7 @@ static int tegra_bt_hw_params(struct snd_pcm_substream *substream,
 #endif
 	struct snd_soc_card *card = rtd->card;
 	struct tegra_max98088 *machine = snd_soc_card_get_drvdata(card);
-	struct tegra_asoc_platform_data *pdata = machine->pdata;
 	int err, srate, mclk, min_mclk, sample_size;
-	int i2s_daifmt;
 
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
@@ -429,32 +414,10 @@ static int tegra_bt_hw_params(struct snd_pcm_substream *substream,
 
 	tegra_asoc_utils_lock_clk_rate(&machine->util_data, 1);
 
-	i2s_daifmt = SND_SOC_DAIFMT_NB_NF;
-	i2s_daifmt |= pdata->i2s_param[BT_SCO].is_i2s_master ?
-			SND_SOC_DAIFMT_CBS_CFS : SND_SOC_DAIFMT_CBM_CFM;
-
-	switch (pdata->i2s_param[BT_SCO].i2s_mode) {
-		case TEGRA_DAIFMT_I2S :
-			i2s_daifmt |= SND_SOC_DAIFMT_I2S;
-			break;
-		case TEGRA_DAIFMT_DSP_A :
-			i2s_daifmt |= SND_SOC_DAIFMT_DSP_A;
-			break;
-		case TEGRA_DAIFMT_DSP_B :
-			i2s_daifmt |= SND_SOC_DAIFMT_DSP_B;
-			break;
-		case TEGRA_DAIFMT_LEFT_J :
-			i2s_daifmt |= SND_SOC_DAIFMT_LEFT_J;
-			break;
-		case TEGRA_DAIFMT_RIGHT_J :
-			i2s_daifmt |= SND_SOC_DAIFMT_RIGHT_J;
-			break;
-		default :
-			dev_err(card->dev, "Can't configure i2s format\n");
-			return -EINVAL;
-	}
-
-	err = snd_soc_dai_set_fmt(rtd->cpu_dai, i2s_daifmt);
+	err = snd_soc_dai_set_fmt(rtd->cpu_dai,
+			SND_SOC_DAIFMT_DSP_A |
+			SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS);
 	if (err < 0) {
 		dev_err(rtd->codec->card->dev, "cpu_dai fmt not set\n");
 		return err;
@@ -635,9 +598,8 @@ static int tegra_voice_call_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_card *card = codec->card;
 	struct tegra_max98088 *machine = snd_soc_card_get_drvdata(card);
-	struct tegra_asoc_platform_data *pdata = machine->pdata;
-	int srate, mclk, i2s_daifmt;
-	int err, rate;
+	int srate, mclk;
+	int err;
 
 	srate = params_rate(params);
 	switch (srate) {
@@ -661,31 +623,6 @@ static int tegra_voice_call_hw_params(struct snd_pcm_substream *substream,
 		break;
 	}
 
-	i2s_daifmt = SND_SOC_DAIFMT_NB_NF;
-	i2s_daifmt |= pdata->i2s_param[HIFI_CODEC].is_i2s_master ?
-			SND_SOC_DAIFMT_CBS_CFS : SND_SOC_DAIFMT_CBM_CFM;
-
-	switch (pdata->i2s_param[HIFI_CODEC].i2s_mode) {
-		case TEGRA_DAIFMT_I2S :
-			i2s_daifmt |= SND_SOC_DAIFMT_I2S;
-			break;
-		case TEGRA_DAIFMT_DSP_A :
-			i2s_daifmt |= SND_SOC_DAIFMT_DSP_A;
-			break;
-		case TEGRA_DAIFMT_DSP_B :
-			i2s_daifmt |= SND_SOC_DAIFMT_DSP_B;
-			break;
-		case TEGRA_DAIFMT_LEFT_J :
-			i2s_daifmt |= SND_SOC_DAIFMT_LEFT_J;
-			break;
-		case TEGRA_DAIFMT_RIGHT_J :
-			i2s_daifmt |= SND_SOC_DAIFMT_RIGHT_J;
-			break;
-		default :
-			dev_err(card->dev, "Can't configure i2s format\n");
-			return -EINVAL;
-	}
-
 	err = tegra_asoc_utils_set_rate(&machine->util_data, srate, mclk);
 	if (err < 0) {
 		if (!(machine->util_data.set_mclk % mclk))
@@ -698,15 +635,17 @@ static int tegra_voice_call_hw_params(struct snd_pcm_substream *substream,
 
 	tegra_asoc_utils_lock_clk_rate(&machine->util_data, 1);
 
-	rate = clk_get_rate(machine->util_data.clk_cdev1);
-
-	err = snd_soc_dai_set_fmt(codec_dai, i2s_daifmt);
+	err = snd_soc_dai_set_fmt(codec_dai,
+					SND_SOC_DAIFMT_I2S |
+					SND_SOC_DAIFMT_NB_NF |
+					SND_SOC_DAIFMT_CBS_CFS);
 	if (err < 0) {
 		dev_err(card->dev, "codec_dai fmt not set\n");
 		return err;
 	}
 
-	err = snd_soc_dai_set_sysclk(codec_dai, 0, rate, SND_SOC_CLOCK_IN);
+	err = snd_soc_dai_set_sysclk(codec_dai, 0, mclk,
+					SND_SOC_CLOCK_IN);
 	if (err < 0) {
 		dev_err(card->dev, "codec_dai clock not set\n");
 		return err;
@@ -716,6 +655,14 @@ static int tegra_voice_call_hw_params(struct snd_pcm_substream *substream,
 	/* codec configuration */
 	machine->codec_info[HIFI_CODEC].rate = params_rate(params);
 	machine->codec_info[HIFI_CODEC].channels = params_channels(params);
+	machine->codec_info[HIFI_CODEC].bitsize = 16;
+	machine->codec_info[HIFI_CODEC].is_i2smaster = 1;
+	machine->codec_info[HIFI_CODEC].is_format_dsp = 0;
+
+	/* baseband configuration */
+	machine->codec_info[BASEBAND].bitsize = 16;
+	machine->codec_info[BASEBAND].is_i2smaster = 1;
+	machine->codec_info[BASEBAND].is_format_dsp = 1;
 #endif
 
 	machine->is_device_bt = 0;
@@ -782,6 +729,14 @@ static int tegra_bt_voice_call_hw_params(struct snd_pcm_substream *substream,
 	/* codec configuration */
 	machine->codec_info[BT_SCO].rate = params_rate(params);
 	machine->codec_info[BT_SCO].channels = params_channels(params);
+	machine->codec_info[BT_SCO].bitsize = 16;
+	machine->codec_info[BT_SCO].is_i2smaster = 1;
+	machine->codec_info[BT_SCO].is_format_dsp = 1;
+
+	/* baseband configuration */
+	machine->codec_info[BASEBAND].bitsize = 16;
+	machine->codec_info[BASEBAND].is_i2smaster = 1;
+	machine->codec_info[BASEBAND].is_format_dsp = 1;
 #endif
 
 	machine->is_device_bt = 1;
@@ -1196,22 +1151,16 @@ static __devinit int tegra_max98088_driver_probe(struct platform_device *pdev)
 #endif
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	for (i = 0; i < NUM_I2S_DEVICES ; i++) {
-		machine->codec_info[i].i2s_id =
-			pdata->i2s_param[i].audio_port_id;
-		machine->codec_info[i].bitsize =
-			pdata->i2s_param[i].sample_size;
-		machine->codec_info[i].is_i2smaster =
-			pdata->i2s_param[i].is_i2s_master;
-		machine->codec_info[i].rate =
-			pdata->i2s_param[i].rate;
-		machine->codec_info[i].channels =
-			pdata->i2s_param[i].channels;
-		if ((pdata->i2s_param[i].i2s_mode == TEGRA_DAIFMT_DSP_A) ||
-			(pdata->i2s_param[i].i2s_mode == TEGRA_DAIFMT_DSP_B))
-			machine->codec_info[i].is_format_dsp = 1;
-		else
-			machine->codec_info[i].is_format_dsp = 0;
+	for (i = 0; i < NUM_I2S_DEVICES ; i++)
+		machine->codec_info[i].i2s_id = pdata->audio_port_id[i];
+
+	machine->codec_info[BASEBAND].rate = pdata->baseband_param.rate;
+	machine->codec_info[BASEBAND].channels = pdata->baseband_param.channels;
+	machine->codec_info[BASEBAND].is_format_dsp = 0;
+
+	if ((pdata->baseband_param.bit_format == TEGRA_DAIFMT_DSP_A) ||
+	(pdata->baseband_param.bit_format == TEGRA_DAIFMT_DSP_B)) {
+			machine->codec_info[BASEBAND].is_format_dsp = 1;
 	}
 
 	tegra_max98088_dai[DAI_LINK_HIFI].cpu_dai_name =
@@ -1233,16 +1182,6 @@ static __devinit int tegra_max98088_driver_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "No MAX98088 codec\n");
 		goto err_unregister_card;
 	}
-
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	ret = tegra_asoc_utils_set_parent(&machine->util_data,
-				pdata->i2s_param[HIFI_CODEC].is_i2s_master);
-	if (ret) {
-		dev_err(&pdev->dev, "tegra_asoc_utils_set_parent failed (%d)\n",
-			ret);
-		goto err_unregister_card;
-	}
-#endif
 
 	return 0;
 
