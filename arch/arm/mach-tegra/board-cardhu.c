@@ -1041,13 +1041,6 @@ static struct tegra_usb_platform_data tegra_ehci2_hsic_xmm_pdata = {
 		.remote_wakeup_supported = false,
 		.power_off_on_suspend = false,
 	},
-	.u_cfg.hsic = {
-		.sync_start_delay = 9,
-		.idle_wait_delay = 17,
-		.term_range_adj = 0,
-		.elastic_underrun_limit = 16,
-		.elastic_overrun_limit = 16,
-	},
 	.ops = &hsic_xmm_plat_ops,
 };
 #endif
@@ -1130,13 +1123,6 @@ static struct tegra_usb_platform_data tegra_ehci2_hsic_pdata = {
 		.hot_plug = false,
 		.remote_wakeup_supported = false,
 		.power_off_on_suspend = false,
-	},
-	.u_cfg.hsic = {
-		.sync_start_delay = 9,
-		.idle_wait_delay = 17,
-		.term_range_adj = 0,
-		.elastic_underrun_limit = 16,
-		.elastic_overrun_limit = 16,
 	},
 	.ops = &hsic_plat_ops,
 };
