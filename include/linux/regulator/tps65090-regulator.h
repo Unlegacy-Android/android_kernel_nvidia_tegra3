@@ -1,24 +1,19 @@
 /*
- * include/linux/regulator/tps65090-regulator.h
+ * Regulator driver interface for TI TPS65090 PMIC family
  *
- * Interface for regulator driver for TI TPS65090 PMIC family
- *
- * Copyright (C) 2012 NVIDIA Corporation
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to  Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- *
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef __REGULATOR_TPS65090_H
@@ -45,16 +40,11 @@ enum {
  * struct tps65090_regulator_platform_data
  *
  * @regulator: The regulator init data.
- * @init_uV: initial micro volts which need to be set.
- * @init_enable: Enable or do not enable the rails during initialization.
- * @init_apply: Init parameter applied or not.
  * @slew_rate_uV_per_us: Slew rate microvolt per microsec.
  */
 
 struct tps65090_regulator_platform_data {
 	struct regulator_init_data regulator;
-	int slew_rate_uV_per_us;
-	unsigned int flags;
 };
 
 #endif	/* __REGULATOR_TPS65090_H */

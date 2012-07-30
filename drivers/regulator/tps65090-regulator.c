@@ -1,24 +1,19 @@
 /*
- * drivers/regulator/tps65090-regulator.c
- *
  * Regulator driver for tps65090 power management chip.
  *
- * Copyright (C) 2012 NVIDIA Corporation
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- *
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
 #include <linux/module.h>
@@ -45,11 +40,11 @@ struct tps65090_regulator {
 	struct device		*dev;
 };
 
-
 static inline struct device *to_tps65090_dev(struct regulator_dev *rdev)
 {
 	return rdev_get_dev(rdev)->parent->parent;
 }
+
 static int tps65090_reg_is_enabled(struct regulator_dev *rdev)
 {
 	struct tps65090_regulator *ri = rdev_get_drvdata(rdev);
@@ -125,6 +120,7 @@ static struct tps65090_regulator TPS65090_regulator[] = {
 	tps65090_REG(FET6,  20, 0, tps65090_ops),
 	tps65090_REG(FET7,  21, 0, tps65090_ops),
 };
+
 static inline struct tps65090_regulator *find_regulator_info(int id)
 {
 	struct tps65090_regulator *ri;
@@ -137,6 +133,7 @@ static inline struct tps65090_regulator *find_regulator_info(int id)
 	}
 	return NULL;
 }
+
 static int __devinit tps65090_regulator_probe(struct platform_device *pdev)
 {
 	struct tps65090_regulator *ri = NULL;
@@ -196,5 +193,5 @@ static void __exit tps65090_regulator_exit(void)
 module_exit(tps65090_regulator_exit);
 
 MODULE_DESCRIPTION("tps65090 regulator driver");
-MODULE_ALIAS("platform:tps65090-regulator");
-MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Venu Byravarasu <vbyravarasu@nvidia.com>");
+MODULE_LICENSE("GPL v2");
