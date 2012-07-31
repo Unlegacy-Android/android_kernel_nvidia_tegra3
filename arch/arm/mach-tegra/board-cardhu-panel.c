@@ -875,13 +875,9 @@ static int cardhu_dsi_panel_disable(void)
 	} else if (is_panel_218) {
 		gpio_free(cardhu_dsi_pnl_reset);
 	} else if (is_panel_1506) {
-		tegra_gpio_disable(e1506_bl_enb);
 		gpio_free(e1506_bl_enb);
-		tegra_gpio_disable(cardhu_dsi_pnl_reset);
 		gpio_free(cardhu_dsi_pnl_reset);
-		tegra_gpio_disable(e1506_panel_enb);
 		gpio_free(e1506_panel_enb);
-		tegra_gpio_disable(e1506_dsi_vddio);
 		gpio_free(e1506_dsi_vddio);
 	}
 	return err;
@@ -1373,7 +1369,6 @@ skip_lvds:
 	gpio_direction_input(cardhu_hdmi_hpd);
 
 #if !(DC_CTRL_MODE & TEGRA_DC_OUT_ONE_SHOT_MODE)
-	tegra_gpio_enable(e1506_lcd_te);
 	gpio_request(e1506_lcd_te, "lcd_te");
 	gpio_direction_input(e1506_lcd_te);
 #endif
