@@ -308,8 +308,6 @@ static int mdm_request_wakeable_irq(struct tegra_usb_modem *modem,
 	if (ret)
 		return ret;
 
-	tegra_gpio_enable(irq_gpio);
-
 	/* enable IRQ for GPIO */
 	*irq = gpio_to_irq(irq_gpio);
 
