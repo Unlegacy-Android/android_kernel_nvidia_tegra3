@@ -752,8 +752,6 @@ int __init enterprise_regulator_init(void)
 		battery_gauge_data.battery_present = 0;
 	}
 
-	tegra_gpio_enable(TEGRA_GPIO_PF7);
-
 	if (board_info.fab < BOARD_FAB_A03) {
 		tps_platform.num_subdevs = ARRAY_SIZE(tps80031_devs_a02);
 		tps_platform.subdevs = tps80031_devs_a02;
