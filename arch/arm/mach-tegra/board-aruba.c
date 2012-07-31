@@ -463,14 +463,6 @@ static struct platform_device *aruba_devices[] __initdata = {
 #endif
 };
 
-static void aruba_keys_init(void)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(aruba_keys); i++)
-		tegra_gpio_enable(aruba_keys[i].gpio);
-}
-
 static int __init aruba_touch_init(void)
 {
 	return 0;
@@ -523,7 +515,6 @@ static void __init tegra_aruba_init(void)
 	aruba_i2c_init();
 	aruba_regulator_init();
 	aruba_touch_init();
-	aruba_keys_init();
 	aruba_usb_init();
 	aruba_panel_init();
 	aruba_sensors_init();
