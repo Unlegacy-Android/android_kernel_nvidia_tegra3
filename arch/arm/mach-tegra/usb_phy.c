@@ -331,8 +331,6 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 						 req failed\n", phy->inst);
 					goto fail_init;
 				}
-				if (gpio < TEGRA_NR_GPIOS)
-					tegra_gpio_enable(gpio);
 				if (gpio_direction_output(gpio, 1) < 0) {
 					ERR("inst:[%d] host vbus gpio \
 						 dir failed\n", phy->inst);
