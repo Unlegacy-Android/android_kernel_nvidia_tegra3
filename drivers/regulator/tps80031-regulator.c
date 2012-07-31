@@ -515,7 +515,7 @@ static int tps80031ldo_list_voltage(struct regulator_dev *rdev, unsigned index)
 	if (index == 0)
 		return 0;
 
-	if ((ri->desc.id == TPS80031_REGULATOR_LDO2) &&
+	if ((ri->desc.id == TPS80031_ID_LDO2) &&
 			(ri->flags &  TRACK_MODE_ENABLE))
 		return (ri->min_mV + (((index - 1) * 125))/10) * 1000;
 
@@ -573,7 +573,7 @@ static int __tps80031_ldo_set_voltage(struct device *parent,
 	if ((min_uV/1000 < ri->min_mV) || (max_uV/1000 > ri->max_mV))
 		return -EDOM;
 
-	if ((ri->desc.id == TPS80031_REGULATOR_LDO2) &&
+	if ((ri->desc.id == TPS80031_ID_LDO2) &&
 			(ri->flags &  TRACK_MODE_ENABLE))
 		return __tps80031_ldo2_set_voltage_track_mode(parent, ri,
 				min_uV, max_uV);
@@ -609,7 +609,7 @@ static int tps80031ldo_get_voltage(struct regulator_dev *rdev)
 	uint8_t vsel;
 
 
-	if ((ri->desc.id == TPS80031_REGULATOR_LDO2) &&
+	if ((ri->desc.id == TPS80031_ID_LDO2) &&
 			(ri->flags &  TRACK_MODE_ENABLE)) {
 		vsel = ri->volt_reg_cache & 0x3F;
 		return (ri->min_mV + (((vsel - 1) * 125))/10) * 1000;
@@ -757,12 +757,12 @@ static struct regulator_ops tps80031vbus_ops = {
 	.force_reg = _force_reg,				\
 	.volt_reg = _volt_reg,					\
 	.volt_id = _volt_id,					\
-	.id = TPS80031_REGULATOR_##_id,				\
+	.id = TPS80031_ID_##_id,				\
 	.min_mV = min_mVolts,					\
 	.max_mV = max_mVolts,					\
 	.desc = {						\
 		.name = tps80031_rails(_id),			\
-		.id = TPS80031_REGULATOR_##_id,			\
+		.id = TPS80031_ID_##_id,			\
 		.n_voltages = _n_volt,				\
 		.ops = &_ops,					\
 		.type = REGULATOR_VOLTAGE,			\
@@ -857,7 +857,7 @@ static int tps80031_regulator_preinit(struct device *parent,
 	int ret = 0;
 	uint8_t reg_val;
 
-	if (ri->desc.id == TPS80031_REGULATOR_LDOUSB) {
+	if (ri->desc.id == TPS80031_ID_LDOUSB) {
 		if (ri->platform_flags & USBLDO_INPUT_VSYS)
 			ret = tps80031_update(parent, SLAVE_ID1,
 				TPS80031_MISC2_ADD,
@@ -873,7 +873,7 @@ static int tps80031_regulator_preinit(struct device *parent,
 		}
 	}
 
-	if (ri->desc.id == TPS80031_REGULATOR_LDO3) {
+	if (ri->desc.id == TPS80031_ID_LDO3) {
 		if (ri->platform_flags & LDO3_OUTPUT_VIB)
 			ret = tps80031_update(parent, SLAVE_ID1,
 				TPS80031_MISC2_ADD,
@@ -962,22 +962,22 @@ static void check_smps_mode_mult(struct device *parent,
 {
 	int mult_offset;
 	switch (ri->desc.id) {
-	case TPS80031_REGULATOR_VIO:
+	case TPS80031_ID_VIO:
 		mult_offset = SMPS_MULTOFFSET_VIO;
 		break;
-	case TPS80031_REGULATOR_SMPS1:
+	case TPS80031_ID_SMPS1:
 		mult_offset = SMPS_MULTOFFSET_SMPS1;
 		break;
-	case TPS80031_REGULATOR_SMPS2:
+	case TPS80031_ID_SMPS2:
 		mult_offset = SMPS_MULTOFFSET_SMPS2;
 		break;
-	case TPS80031_REGULATOR_SMPS3:
+	case TPS80031_ID_SMPS3:
 		mult_offset = SMPS_MULTOFFSET_SMPS3;
 		break;
-	case TPS80031_REGULATOR_SMPS4:
+	case TPS80031_ID_SMPS4:
 		mult_offset = SMPS_MULTOFFSET_SMPS4;
 		break;
-	case TPS80031_REGULATOR_LDO2:
+	case TPS80031_ID_LDO2:
 		ri->flags = (tps80031_get_smps_mult(parent) & (1 << 5)) ?
 						TRACK_MODE_ENABLE : 0;
 		/* TRACK mode the ldo2 varies from 600mV to 1300mV */
