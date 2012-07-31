@@ -221,6 +221,12 @@ obj-${CONFIG_MACH_KAI}                  += board-kai-sdhci.o
 obj-${CONFIG_MACH_KAI}                  += board-kai-sensors.o
 obj-y                                   += eeprom-wifi-mac.o
 
+obj-${CONFIG_MACH_DALMORE}              += board-dalmore.o
+obj-${CONFIG_MACH_DALMORE}              += board-dalmore-memory.o
+obj-${CONFIG_MACH_DALMORE}              += board-dalmore-pinmux.o
+obj-${CONFIG_MACH_DALMORE}              += board-dalmore-power.o
+obj-${CONFIG_MACH_DALMORE}              += board-dalmore-sdhci.o
+
 obj-${CONFIG_TEGRA_BB_XMM_POWER}        += baseband-xmm-power.o
 obj-${CONFIG_TEGRA_BB_XMM_POWER2}       += baseband-xmm-power2.o
 
