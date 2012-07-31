@@ -40,8 +40,6 @@ struct gpio_init_pin_info {
 };
 
 void tegra_gpio_config(struct tegra_gpio_table *table, int num);
-void tegra_gpio_enable(int gpio);
-void tegra_gpio_disable(int gpio);
 void tegra_gpio_init_configure(unsigned gpio, bool is_input, int value);
 void tegra_gpio_set_tristate(int gpio, enum tegra_tristate ts);
 int tegra_gpio_get_bank_int_nr(int gpio);
