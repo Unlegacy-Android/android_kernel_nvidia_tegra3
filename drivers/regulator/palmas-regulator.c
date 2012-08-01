@@ -84,6 +84,7 @@ static const struct regs_info palmas_regs_info[] = {
 	},
 	{
 		.name		= "SMPS10",
+		.ctrl_addr	= PALMAS_SMPS10_CTRL,
 	},
 	{
 		.name		= "LDO1",
@@ -397,7 +398,6 @@ static struct regulator_ops palmas_ops_smps = {
 	.get_voltage_sel	= palmas_get_voltage_smps_sel,
 	.set_voltage_sel	= palmas_set_voltage_smps_sel,
 	.list_voltage		= palmas_list_voltage_smps,
-	.map_voltage		= palmas_map_voltage_smps,
 };
 
 static int palmas_list_voltage_smps10(struct regulator_dev *dev,
@@ -407,11 +407,9 @@ static int palmas_list_voltage_smps10(struct regulator_dev *dev,
 }
 
 static struct regulator_ops palmas_ops_smps10 = {
-	.is_enabled		= regulator_is_enabled_regmap,
-	.enable			= regulator_enable_regmap,
-	.disable		= regulator_disable_regmap,
-	.get_voltage_sel	= regulator_get_voltage_sel_regmap,
-	.set_voltage_sel	= regulator_set_voltage_sel_regmap,
+	.is_enabled		= palmas_is_enabled_smps,
+	.enable			= palmas_enable_smps,
+	.disable		= palmas_disable_smps,
 	.list_voltage		= palmas_list_voltage_smps10,
 };
 
@@ -426,6 +424,36 @@ static int palmas_is_enabled_ldo(struct regulator_dev *dev)
 	reg &= PALMAS_LDO1_CTRL_STATUS;
 
 	return !!(reg);
+}
+
+static int palmas_enable_ldo(struct regulator_dev *dev)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int id = rdev_get_id(dev);
+	unsigned int reg;
+
+	palmas_ldo_read(pmic->palmas, palmas_regs_info[id].ctrl_addr, &reg);
+
+	reg |= SMPS_CTRL_MODE_ON;
+
+	palmas_smps_write(pmic->palmas, palmas_regs_info[id].ctrl_addr, reg);
+
+	return 0;
+}
+
+static int palmas_disable_ldo(struct regulator_dev *dev)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int id = rdev_get_id(dev);
+	unsigned int reg;
+
+	palmas_ldo_read(pmic->palmas, palmas_regs_info[id].ctrl_addr, &reg);
+
+	reg &= ~SMPS_CTRL_MODE_ON;
+
+	palmas_smps_write(pmic->palmas, palmas_regs_info[id].ctrl_addr, reg);
+
+	return 0;
 }
 
 static int palmas_list_voltage_ldo(struct regulator_dev *dev,
@@ -495,12 +523,11 @@ static int palmas_map_voltage_ldo(struct regulator_dev *rdev,
 
 static struct regulator_ops palmas_ops_ldo = {
 	.is_enabled		= palmas_is_enabled_ldo,
-	.enable			= regulator_enable_regmap,
-	.disable		= regulator_disable_regmap,
+	.enable			= palmas_enable_ldo,
+	.disable		= palmas_disable_ldo,
 	.get_voltage_sel	= palmas_get_voltage_ldo_sel,
 	.set_voltage_sel	= palmas_set_voltage_ldo_sel,
 	.list_voltage		= palmas_list_voltage_ldo,
-	.map_voltage		= palmas_map_voltage_ldo,
 };
 
 /*
@@ -601,9 +628,9 @@ static __devinit int palmas_probe(struct platform_device *pdev)
 	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
 	struct palmas_pmic_platform_data *pdata = pdev->dev.platform_data;
 	struct regulator_dev *rdev;
-	struct regulator_config config = { };
 	struct palmas_pmic *pmic;
 	struct palmas_reg_init *reg_init;
+	struct regulator_init_data *reg_data;
 	int id = 0, ret;
 	unsigned int addr, reg;
 
@@ -631,11 +658,8 @@ static __devinit int palmas_probe(struct platform_device *pdev)
 	if (reg & PALMAS_SMPS_CTRL_SMPS45_SMPS457_EN)
 		pmic->smps457 = 1;
 
-	config.regmap = palmas->regmap[REGULATOR_SLAVE];
-	config.dev = &pdev->dev;
-	config.driver_data = pmic;
-
 	for (id = 0; id < PALMAS_REG_LDO1; id++) {
+		reg_data = pdata->reg_data[id];
 
 		/*
 		 * Miss out regulators which are not available due
@@ -705,12 +729,9 @@ static __devinit int palmas_probe(struct platform_device *pdev)
 				pmic->range[id] = 1;
 		}
 
-		if (pdata && pdata->reg_data)
-			config.init_data = pdata->reg_data[id];
-		else
-			config.init_data = NULL;
+		rdev = regulator_register(&pmic->desc[id],
+			palmas->dev, reg_data, pmic, NULL);
 
-		rdev = regulator_register(&pmic->desc[id], &config);
 		if (IS_ERR(rdev)) {
 			dev_err(&pdev->dev,
 				"failed to register %s regulator\n",
@@ -726,6 +747,7 @@ static __devinit int palmas_probe(struct platform_device *pdev)
 	/* Start this loop from the id left from previous loop */
 	for (; id < PALMAS_NUM_REGS; id++) {
 
+		reg_data = pdata->reg_data[id];
 		/* Miss out regulators which are not available due
 		 * to alternate functions.
 		 */
@@ -742,12 +764,9 @@ static __devinit int palmas_probe(struct platform_device *pdev)
 		pmic->desc[id].enable_reg = palmas_regs_info[id].ctrl_addr;
 		pmic->desc[id].enable_mask = PALMAS_LDO1_CTRL_MODE_ACTIVE;
 
-		if (pdata && pdata->reg_data)
-			config.init_data = pdata->reg_data[id];
-		else
-			config.init_data = NULL;
+		rdev = regulator_register(&pmic->desc[id],
+			palmas->dev, reg_data, pmic, NULL);
 
-		rdev = regulator_register(&pmic->desc[id], &config);
 		if (IS_ERR(rdev)) {
 			dev_err(&pdev->dev,
 				"failed to register %s regulator\n",
