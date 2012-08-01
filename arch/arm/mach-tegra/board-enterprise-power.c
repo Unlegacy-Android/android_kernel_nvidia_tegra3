@@ -237,26 +237,26 @@ static struct regulator_consumer_supply tps80031_battery_charge_supply[] = {
 #define TPS_PDATA_INIT(_id, _sname, _minmv, _maxmv, _supply_reg, _always_on,		\
 	_boot_on, _apply_uv, _init_uV, _init_enable, _init_apply,			\
 	_flags, _ectrl, _delay)								\
-	static struct tps80031_regulator_platform_data pdata_##_id##_##_sname = {	\
-		.regulator = {								\
-			.constraints = {						\
-				.name = tps80031_rails(_id),				\
-				.min_uV = (_minmv)*1000,				\
-				.max_uV = (_maxmv)*1000,				\
-				.valid_modes_mask = (REGULATOR_MODE_NORMAL |		\
-						REGULATOR_MODE_STANDBY),		\
-				.valid_ops_mask = (REGULATOR_CHANGE_MODE |		\
-						REGULATOR_CHANGE_STATUS |		\
-						REGULATOR_CHANGE_VOLTAGE),		\
-				.always_on = _always_on,				\
-				.boot_on = _boot_on,					\
-				.apply_uV = _apply_uv,					\
-			},								\
-			.num_consumer_supplies =					\
-				ARRAY_SIZE(tps80031_##_id##_supply_##_sname),		\
-			.consumer_supplies = tps80031_##_id##_supply_##_sname,		\
-			.supply_regulator = _supply_reg,				\
+	static struct regulator_init_data reg_idata_##_id##_##_sname = {		\
+		.constraints = {							\
+			.name = tps80031_rails(_id),					\
+			.min_uV = (_minmv)*1000,					\
+			.max_uV = (_maxmv)*1000,					\
+			.valid_modes_mask = (REGULATOR_MODE_NORMAL |			\
+					REGULATOR_MODE_STANDBY),			\
+			.valid_ops_mask = (REGULATOR_CHANGE_MODE |			\
+					REGULATOR_CHANGE_STATUS |			\
+					REGULATOR_CHANGE_VOLTAGE),			\
+			.always_on = _always_on,					\
+			.boot_on = _boot_on,						\
+			.apply_uV = _apply_uv,						\
 		},									\
+		.num_consumer_supplies =						\
+			ARRAY_SIZE(tps80031_##_id##_supply_##_sname),			\
+		.consumer_supplies = tps80031_##_id##_supply_##_sname,			\
+	};										\
+	static struct tps80031_regulator_platform_data pdata_##_id##_##_sname = {	\
+		.reg_init_data = &reg_idata_##_id##_##_sname,				\
 		.init_uV =  _init_uV * 1000,						\
 		.init_enable = _init_enable,						\
 		.init_apply = _init_apply,						\
