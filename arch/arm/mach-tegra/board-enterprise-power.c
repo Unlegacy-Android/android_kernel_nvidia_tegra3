@@ -240,6 +240,7 @@ static struct regulator_consumer_supply tps80031_battery_charge_supply[] = {
 	static struct tps80031_regulator_platform_data pdata_##_id##_##_sname = {	\
 		.regulator = {								\
 			.constraints = {						\
+				.name = tps80031_rails(_id),				\
 				.min_uV = (_minmv)*1000,				\
 				.max_uV = (_maxmv)*1000,				\
 				.valid_modes_mask = (REGULATOR_MODE_NORMAL |		\
@@ -271,19 +272,19 @@ TPS_PDATA_INIT(smps2, common, 600, 2100, 0, 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_
 TPS_PDATA_INIT(smps3, common, 600, 2100, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0);
 TPS_PDATA_INIT(smps4, a02, 600, 2100, 0, 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
 TPS_PDATA_INIT(smps4, a03, 600, 2100, 0, 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
-TPS_PDATA_INIT(ldo1, a02, 1000, 3300, tps80031_rails(VIO), 0, 0, 0, -1, 0, 0, 0, 0, 0);
-TPS_PDATA_INIT(ldo1, a03, 1000, 3300, tps80031_rails(VIO), 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
+TPS_PDATA_INIT(ldo1, a02, 1000, 3300, tps80031_rails(vio), 0, 0, 0, -1, 0, 0, 0, 0, 0);
+TPS_PDATA_INIT(ldo1, a03, 1000, 3300, tps80031_rails(vio), 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
 TPS_PDATA_INIT(ldo2, common, 1000, 1000, 0, 1, 1, 1, -1, 0, 0, 0, 0, 0);
-TPS_PDATA_INIT(ldo3, common, 1000, 3300, tps80031_rails(VIO), 0, 0, 0, -1, 0, 0, 0, PWR_OFF_ON_SLEEP, 0);
+TPS_PDATA_INIT(ldo3, common, 1000, 3300, tps80031_rails(vio), 0, 0, 0, -1, 0, 0, 0, PWR_OFF_ON_SLEEP, 0);
 TPS_PDATA_INIT(ldo4, a02, 1000, 3300, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0);
-TPS_PDATA_INIT(ldo4, a03, 1000, 3300, tps80031_rails(VIO), 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
+TPS_PDATA_INIT(ldo4, a03, 1000, 3300, tps80031_rails(vio), 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
 TPS_PDATA_INIT(ldo5, common, 1000, 3300, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0);
 TPS_PDATA_INIT(ldo6, a02, 1000, 3300, 0, 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
 TPS_PDATA_INIT(ldo6, a03, 1000, 3300, 0, 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
-TPS_PDATA_INIT(ldo7, a02, 1000, 3300, tps80031_rails(VIO), 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
+TPS_PDATA_INIT(ldo7, a02, 1000, 3300, tps80031_rails(vio), 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
 TPS_PDATA_INIT(ldo7, a03, 1000, 3300, 0, 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
-TPS_PDATA_INIT(ldoln, a02, 1000, 3300, tps80031_rails(SMPS3), 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
-TPS_PDATA_INIT(ldoln, a03, 1000, 3300, tps80031_rails(VIO), 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
+TPS_PDATA_INIT(ldoln, a02, 1000, 3300, tps80031_rails(smps3), 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
+TPS_PDATA_INIT(ldoln, a03, 1000, 3300, tps80031_rails(vio), 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
 TPS_PDATA_INIT(ldousb, a02, 1000, 3300, 0, 0, 0, 0, -1, 0, 0, USBLDO_INPUT_VSYS, PWR_OFF_ON_SLEEP, 0);
 TPS_PDATA_INIT(ldousb, a03, 1000, 3300, 0, 0, 0, 0, -1, 0, 0, USBLDO_INPUT_VSYS, PWR_REQ_INPUT_PREQ1, 0);
 TPS_PDATA_INIT(vana, a02,  1000, 3300, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0);
@@ -595,7 +596,7 @@ static struct gpio gpio_reg_sdmmc3_vdd_sel_gpios[] = {
 		},							\
 	}
 
-GPIO_REG(4, sdmmc3_vdd_sel,  tps80031_rails(SMPS4),
+GPIO_REG(4, sdmmc3_vdd_sel,  tps80031_rails(smps4),
 		true, false, 0, 1000, 3300);
 
 /* Macro for defining fixed regulator sub device data */
