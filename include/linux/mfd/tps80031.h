@@ -206,6 +206,7 @@ struct tps80031_platform_data {
 	int num_regulator_pdata;
 	struct tps80031_rtc_platform_data *rtc_pdata;
 	struct tps80031_bg_platform_data *bg_pdata;
+	struct tps80031_charger_platform_data *battery_charger_pdata;
 };
 
 

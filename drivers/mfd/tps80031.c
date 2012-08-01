@@ -308,6 +308,9 @@ static struct mfd_cell tps80031_cell[] = {
 	{
 		.name = "tps80031-battery-gauge",
 	},
+	{
+		.name = "tps80031-charger",
+	},
 };
 
 

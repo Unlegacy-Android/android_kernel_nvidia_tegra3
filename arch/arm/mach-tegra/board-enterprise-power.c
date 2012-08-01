@@ -334,23 +334,16 @@ static struct tps80031_bg_platform_data battery_gauge_data = {
 	.battery_present = 1,
 };
 
-#define TPS_BATTERY()					\
-	{						\
-		.name   = "tps80031-charger",		\
-		.platform_data = &bcharger_pdata,	\
-	}
 #define TPS_GPADC()					\
 	{						\
 		.name	= "tps80031-gpadc",		\
 	}
 
 #define TPS80031_DEVS_COMMON		\
-	TPS_BATTERY(),			\
 	TPS_GPADC()
 
 
 static struct tps80031_subdev_info tps80031_devs[] = {
-	TPS_BATTERY(),
 	TPS_GPADC()
 };
 
@@ -438,6 +431,7 @@ static struct tps80031_platform_data tps_platform = {
 	.use_power_off	= true,
 	.rtc_pdata = &rtc_data,
 	.bg_pdata = &battery_gauge_data,
+	.battery_charger_pdata = &bcharger_pdata,
 };
 
 static struct i2c_board_info __initdata enterprise_regulators[] = {
