@@ -199,6 +199,7 @@ struct tps80031_platform_data {
 	int pupd_init_data_size;
 	struct tps80031_regulator_platform_data **regulator_pdata;
 	int num_regulator_pdata;
+	struct tps80031_rtc_platform_data *rtc_pdata;
 };
 
 struct tps80031_bg_platform_data {

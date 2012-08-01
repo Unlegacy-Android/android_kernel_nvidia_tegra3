@@ -302,6 +302,9 @@ static struct mfd_cell tps80031_cell[] = {
 	{
 		.name = "tps80031-regulators",
 	},
+	{
+		.name = "tps80031-rtc",
+	},
 };
 
 

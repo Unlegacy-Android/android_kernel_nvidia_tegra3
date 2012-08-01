@@ -350,12 +350,20 @@ static irqreturn_t tps80031_rtc_irq(int irq, void *data)
 
 static int __devinit tps80031_rtc_probe(struct platform_device *pdev)
 {
-	struct tps80031_rtc_platform_data *pdata = pdev->dev.platform_data;
+	struct tps80031_platform_data *tps80031_pdata;
+	struct tps80031_rtc_platform_data *pdata;
 	struct tps80031_rtc *rtc;
 	struct rtc_time tm;
 	int err;
 	u8 reg;
 
+	tps80031_pdata = dev_get_platdata(pdev->dev.parent);
+	if (!tps80031_pdata) {
+		dev_err(&pdev->dev, "no tps80031 platform_data specified\n");
+		return -EINVAL;
+	}
+
+	pdata = tps80031_pdata->rtc_pdata;
 	if (!pdata) {
 		dev_err(&pdev->dev, "no platform_data specified\n");
 		return -EINVAL;
@@ -470,7 +478,7 @@ static int __devexit tps80031_rtc_remove(struct platform_device *pdev)
 
 static struct platform_driver tps80031_rtc_driver = {
 	.driver	= {
-		.name	= "rtc_tps80031",
+		.name	= "tps80031-rtc",
 		.owner	= THIS_MODULE,
 	},
 	.probe	= tps80031_rtc_probe,
