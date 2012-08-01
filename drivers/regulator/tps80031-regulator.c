@@ -728,6 +728,22 @@ static int tps80031vbus_get_voltage(struct regulator_dev *rdev)
 	return ret;
 }
 
+static int tps80031_extreg_enable_time(struct regulator_dev *rdev)
+{
+	struct tps80031_regulator *ri = rdev_get_drvdata(rdev);
+	return ri->delay;
+}
+
+static int tps80031_extreg_get_voltage(struct regulator_dev *rdev)
+{
+	struct tps80031_regulator *ri = rdev_get_drvdata(rdev);
+	int ret;
+	ret = tps80031_reg_is_enabled(rdev);
+	if (ret > 0)
+		return ri->rinfo->max_mV * 1000;
+	return 0;
+}
+
 static struct regulator_ops tps80031dcdc_ops = {
 	.list_voltage	= tps80031dcdc_list_voltage,
 	.set_voltage	= tps80031dcdc_set_voltage,
@@ -755,6 +771,16 @@ static struct regulator_ops tps80031vbus_ops = {
 	.is_enabled	= tps80031_vbus_is_enabled,
 	.enable_time	= tps80031_vbus_enable_time,
 };
+
+static struct regulator_ops tps80031_ext_reg_ops = {
+	.enable		= tps80031_reg_enable,
+	.disable	= tps80031_reg_disable,
+	.is_enabled	= tps80031_reg_is_enabled,
+	.enable_time	= tps80031_extreg_enable_time,
+	.get_voltage	= tps80031_extreg_get_voltage,
+};
+
+
 
 #define TPS80031_REG(_id, _trans_reg, _state_reg, _force_reg, _volt_reg, \
 		_volt_id, min_mVolts, max_mVolts, _ops, _n_volt, _delay, \
@@ -813,6 +839,12 @@ static struct tps80031_regulator_info tps80031_regulator_info[] = {
 				tps80031ldo_ops, 25, 500, -1),
 	TPS80031_REG(VBUS,   0x0,  0x0,  0x00, 0x0,  SLAVE_ID1, 0,    5000,
 				tps80031vbus_ops, 2, 200000, -1),
+	TPS80031_REG(REGEN1, 0xAE,  0xAF,  0x00, 0x0,  SLAVE_ID1, 0,    3300,
+				tps80031_ext_reg_ops, 2, 500, 16),
+	TPS80031_REG(REGEN2, 0xB1,  0xB2,  0x00, 0x0,  SLAVE_ID1, 0,    3300,
+				tps80031_ext_reg_ops, 2, 500, 17),
+	TPS80031_REG(SYSEN,  0xB4,  0xB5,  0x00, 0x0,  SLAVE_ID1, 0,    3300,
+				tps80031_ext_reg_ops, 2, 500, 18),
 };
 
 static int tps80031_power_req_config(struct device *parent,
@@ -892,6 +924,34 @@ static int tps80031_regulator_preinit(struct device *parent,
 				"LDO3 as per platform data error %d\n", ret);
 			return ret;
 		}
+	}
+
+	switch (ri->rinfo->desc.id) {
+	case TPS80031_REGULATOR_REGEN1:
+	case TPS80031_REGULATOR_REGEN2:
+	case TPS80031_REGULATOR_SYSEN:
+		if (tps80031_pdata->reg_init_data->constraints.always_on ||
+			tps80031_pdata->reg_init_data->constraints.boot_on)
+			ret = tps80031_update(parent, SLAVE_ID1,
+				ri->rinfo->state_reg, STATE_ON, STATE_MASK);
+		else
+			ret = tps80031_update(parent, SLAVE_ID1,
+				ri->rinfo->state_reg, STATE_OFF, STATE_MASK);
+		if (ret < 0) {
+			dev_err(ri->dev,
+				"state reg update failed, e %d\n", ret);
+			return ret;
+		}
+		ret = tps80031_update(parent, SLAVE_ID1,
+					ri->rinfo->trans_reg, 1, 0x3);
+		if (ret < 0) {
+			dev_err(ri->dev,
+				"trans reg update failed, e %d\n", ret);
+			return ret;
+		}
+		break;
+	default:
+		break;
 	}
 
 	if (!tps80031_pdata->init_apply)
