@@ -123,6 +123,17 @@ int __init cardhu_scroll_init(void)
 		.debounce_interval = 10,	\
 	}
 
+#define GPIO_SW_KEY(_id, _gpio, _iswake)	\
+	{					\
+		.code = _id,			\
+		.gpio = _gpio,			\
+		.active_low = 1,		\
+		.desc = #_id,			\
+		.type = EV_SW,			\
+		.wakeup = _iswake,		\
+		.debounce_interval = 1,		\
+	}
+
 #define GPIO_IKEY(_id, _irq, _iswake, _deb)	\
 	{					\
 		.code = _id,			\
@@ -166,6 +177,7 @@ static struct gpio_keys_button cardhu_keys_e1291[] = {
 	[4] = GPIO_KEY(KEY_BACK, PQ0, 0),
 	[5] = GPIO_KEY(KEY_MENU, PQ1, 0),
 	[6] = GPIO_IKEY(KEY_POWER, TPS6591X_IRQ_BASE + TPS6591X_INT_PWRON, 1, 100),
+	[7] = GPIO_SW_KEY(SW_LID, TPS6591X_GPIO_5, 0),
 };
 
 static struct gpio_keys_button cardhu_keys_e1291_a04[] = {
@@ -177,6 +189,7 @@ static struct gpio_keys_button cardhu_keys_e1291_a04[] = {
 	[5] = GPIO_KEY(KEY_MENU, PQ1, 0),
 	[6] = GPIO_KEY(KEY_RESERVED, PV0, 1),
 	[7] = GPIO_IKEY(KEY_POWER, TPS6591X_IRQ_BASE + TPS6591X_INT_PWRON, 1, 100),
+	[8] = GPIO_SW_KEY(SW_LID, TPS6591X_GPIO_5, 0),
 };
 
 static struct gpio_keys_platform_data cardhu_keys_e1291_pdata = {
