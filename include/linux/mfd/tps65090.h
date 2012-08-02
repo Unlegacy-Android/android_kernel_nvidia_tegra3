@@ -22,16 +22,8 @@
 #ifndef __LINUX_MFD_TPS65090_H
 #define __LINUX_MFD_TPS65090_H
 
-struct tps65090_subdev_info {
-	int		id;
-	const char	*name;
-	void		*platform_data;
-};
-
 struct tps65090_platform_data {
 	int irq_base;
-	int num_subdevs;
-	struct tps65090_subdev_info *subdevs;
 	struct tps65090_regulator_platform_data **reg_pdata;
 	int num_reg_pdata;
 };
