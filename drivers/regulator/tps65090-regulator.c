@@ -166,7 +166,7 @@ static int __devinit tps65090_regulator_probe(struct platform_device *pdev)
 	ri->rinfo = rinfo;
 
 	rdev = regulator_register(&ri->rinfo->desc, &pdev->dev,
-				&tps_pdata->regulator, ri);
+				tps_pdata->reg_init_data, ri);
 	if (IS_ERR(rdev)) {
 		dev_err(&pdev->dev, "failed to register regulator %s\n",
 				ri->rinfo->desc.name);
