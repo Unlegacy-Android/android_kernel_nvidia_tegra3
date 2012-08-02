@@ -66,6 +66,7 @@ enum {
 /*
  * struct tps80031_regulator_platform_data - tps80031 regulator platform data.
  *
+ * @regulator_id" Regulator ID.
  * @reg_init_data: The regulator init data.
  * @init_uV: initial micro volts which need to be set.
  * @init_enable: Enable or do not enable the rails during initialization.
@@ -80,6 +81,7 @@ enum {
  */
 
 struct tps80031_regulator_platform_data {
+	int regulator_id;
 	struct regulator_init_data *reg_init_data;
 	int init_uV;
 	unsigned init_enable:1;

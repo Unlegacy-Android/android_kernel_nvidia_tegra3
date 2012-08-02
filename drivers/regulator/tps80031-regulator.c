@@ -1027,78 +1027,120 @@ static inline int tps80031_cache_regulator_register(struct device *parent,
 
 static int __devinit tps80031_regulator_probe(struct platform_device *pdev)
 {
-	struct tps80031_regulator_info *rinfo;
-	struct tps80031_regulator *ri = NULL;
-	struct regulator_dev *rdev;
+	struct tps80031_platform_data *pdata = dev_get_platdata(pdev->dev.parent);
 	struct tps80031_regulator_platform_data *tps_pdata;
-	int id = pdev->id;
-	int err;
+	struct tps80031_regulator_info *rinfo;
+	struct tps80031_regulator *ri;
+	struct tps80031_regulator *pmic;
+	struct regulator_dev *rdev;
+	int id;
+	int ret;
+	int num;
 
-	dev_dbg(&pdev->dev, "Probing reulator %d\n", id);
-
-	rinfo = find_regulator_info(id);
-	if (!rinfo) {
-		dev_err(&pdev->dev, "invalid regulator ID specified\n");
+	if (!pdata || !pdata->num_regulator_pdata) {
+		dev_err(&pdev->dev, "Number of regulator is 0\n");
 		return -EINVAL;
 	}
 
-	ri = devm_kzalloc(&pdev->dev, sizeof(*ri), GFP_KERNEL);
-	if (!ri) {
-		dev_err(&pdev->dev, "mem alloc for ri failed\n");
+	pmic = devm_kzalloc(&pdev->dev,
+			pdata->num_regulator_pdata * sizeof(*pmic), GFP_KERNEL);
+	if (!pmic) {
+		dev_err(&pdev->dev, "mem alloc for pmic failed\n");
 		return -ENOMEM;
 	}
 
-	ri->rinfo = rinfo;
-	tps_pdata = pdev->dev.platform_data;
-	ri->dev = &pdev->dev;
-	if (tps_pdata->delay_us > 0)
-		ri->delay = tps_pdata->delay_us;
-	else
-		ri->delay = rinfo->delay;
-	ri->tolerance_uv = tps_pdata->tolerance_uv;
+	for (num = 0; num < pdata->num_regulator_pdata; ++num) {
+		tps_pdata = pdata->regulator_pdata[num];
+		if (!tps_pdata->reg_init_data) {
+			dev_err(&pdev->dev,
+				"No regulator init data for index %d\n", num);
+			ret = -EINVAL;
+			goto fail;
+		}
 
-	check_smps_mode_mult(pdev->dev.parent, ri);
-	ri->platform_flags = tps_pdata->flags;
-	ri->ext_ctrl_flag = tps_pdata->ext_ctrl_flag;
+		id = tps_pdata->regulator_id;
+		rinfo = find_regulator_info(id);
+		if (!rinfo) {
+			dev_err(&pdev->dev, "invalid regulator ID specified\n");
+			ret = -EINVAL;
+			goto fail;
+		}
 
-	err = tps80031_cache_regulator_register(pdev->dev.parent, ri);
-	if (err) {
-		dev_err(&pdev->dev, "Register access for caching is failed\n");
-		return err;
-	}
-	err = tps80031_regulator_preinit(pdev->dev.parent, ri, tps_pdata);
-	if (err)
-		return err;
+		ri = &pmic[num];
+		ri->rinfo = rinfo;
+		ri->dev = &pdev->dev;
+		if (tps_pdata->delay_us)
+			ri->delay = tps_pdata->delay_us;
+		else
+			ri->delay = rinfo->delay;
+		ri->tolerance_uv = tps_pdata->tolerance_uv;
 
-	err = tps80031_power_req_config(pdev->dev.parent, ri, tps_pdata);
-	if (err)
-		return err;
+		check_smps_mode_mult(pdev->dev.parent, ri);
+		ri->platform_flags = tps_pdata->flags;
+		ri->ext_ctrl_flag = tps_pdata->ext_ctrl_flag;
 
-	rdev = regulator_register(&ri->rinfo->desc, &pdev->dev,
+		ret = tps80031_cache_regulator_register(pdev->dev.parent, ri);
+		if (ret < 0) {
+			dev_err(&pdev->dev,
+				"Register cache failed, err %d\n", ret);
+			goto fail;
+		}
+		ret = tps80031_regulator_preinit(pdev->dev.parent, ri, tps_pdata);
+		if (ret < 0) {
+			dev_err(&pdev->dev,
+				"regulator preinit failed, err %d\n", ret);
+			goto fail;
+		}
+
+		ret = tps80031_power_req_config(pdev->dev.parent, ri, tps_pdata);
+		if (ret < 0) {
+			dev_err(&pdev->dev,
+				"power req config failed, err %d\n", ret);
+			goto fail;
+		}
+
+		rdev = regulator_register(&ri->rinfo->desc, &pdev->dev,
 				tps_pdata->reg_init_data, ri, NULL);
-	if (IS_ERR_OR_NULL(rdev)) {
-		dev_err(&pdev->dev, "failed to register regulator %s\n",
-				ri->rinfo->desc.name);
-		return PTR_ERR(rdev);
+		if (IS_ERR_OR_NULL(rdev)) {
+			dev_err(&pdev->dev,
+				"register regulator failed %s\n",
+					ri->rinfo->desc.name);
+			ret = PTR_ERR(rdev);
+			goto fail;
+		}
+		ri->rdev = rdev;
 	}
-	ri->rdev = rdev;
 
-	platform_set_drvdata(pdev, ri);
-
+	platform_set_drvdata(pdev, pmic);
 	return 0;
+fail:
+	while(--num >= 0) {
+		ri = &pmic[num];
+		regulator_unregister(ri->rdev);
+	}
+	return ret;
 }
 
 static int __devexit tps80031_regulator_remove(struct platform_device *pdev)
 {
-	struct tps80031_regulator *ri = platform_get_drvdata(pdev);
+	struct tps80031_platform_data *pdata = pdev->dev.parent->platform_data;
+	struct tps80031_regulator *pmic = platform_get_drvdata(pdev);
+	struct tps80031_regulator *ri = NULL;
+	int num;
 
-	regulator_unregister(ri->rdev);
+	if (!pdata || !pdata->num_regulator_pdata)
+		return 0;
+
+	for (num = 0; num < pdata->num_regulator_pdata; ++num) {
+		ri = &pmic[num];
+		regulator_unregister(ri->rdev);
+	}
 	return 0;
 }
 
 static struct platform_driver tps80031_regulator_driver = {
 	.driver	= {
-		.name	= "tps80031-regulator",
+		.name	= "tps80031-regulators",
 		.owner	= THIS_MODULE,
 	},
 	.probe		= tps80031_regulator_probe,

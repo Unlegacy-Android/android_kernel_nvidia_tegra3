@@ -197,6 +197,8 @@ struct tps80031_platform_data {
 	bool use_power_off;
 	struct tps80031_pupd_init_data *pupd_init_data;
 	int pupd_init_data_size;
+	struct tps80031_regulator_platform_data **regulator_pdata;
+	int num_regulator_pdata;
 };
 
 struct tps80031_bg_platform_data {
