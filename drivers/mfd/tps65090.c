@@ -111,7 +111,7 @@ static irqreturn_t tps65090_irq(int irq, void *data)
 {
 	struct tps65090 *tps65090 = data;
 	int ret = 0;
-	u8 status, mask;
+	u8 status = 0, mask = 0;
 	unsigned long int acks = 0;
 	int i;
 
