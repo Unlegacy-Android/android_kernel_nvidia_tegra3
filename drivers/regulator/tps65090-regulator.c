@@ -98,10 +98,10 @@ static struct regulator_ops tps65090_ops = {
 {							\
 	.reg_en_reg	= _en_reg,			\
 	.en_bit		= _en_bit,			\
-	.id		= TPS65090_ID_##_id,		\
+	.id		= TPS65090_REGULATOR_##_id,	\
 	.desc = {					\
 		.name = tps65090_rails(_id),		\
-		.id = TPS65090_ID_##_id,		\
+		.id = TPS65090_REGULATOR_##_id,		\
 		.ops = &_ops,				\
 		.type = REGULATOR_VOLTAGE,		\
 		.owner = THIS_MODULE,			\
