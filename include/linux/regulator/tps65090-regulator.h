@@ -40,10 +40,12 @@ enum {
  * struct tps65090_regulator_platform_data
  *
  * @reg_init_data: The regulator init data.
+ * @id: Regulator ID.
  * @slew_rate_uV_per_us: Slew rate microvolt per microsec.
  */
 
 struct tps65090_regulator_platform_data {
+	int id;
 	struct regulator_init_data *reg_init_data;
 };
 

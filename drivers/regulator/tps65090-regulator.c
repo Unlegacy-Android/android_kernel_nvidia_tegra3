@@ -142,47 +142,89 @@ static inline struct tps65090_regulator_info *find_regulator_info(int id)
 static int __devinit tps65090_regulator_probe(struct platform_device *pdev)
 {
 	struct tps65090_regulator_info *rinfo = NULL;
-	struct tps65090_regulator *ri = NULL;
+	struct tps65090_regulator *ri;
+	struct tps65090_regulator *pmic;
 	struct regulator_dev *rdev;
 	struct tps65090_regulator_platform_data *tps_pdata;
-	int id = pdev->id;
+	struct tps65090_platform_data *tps65090_pdata;
+	int id;
+	int num;
+	int ret;
 
-	dev_dbg(&pdev->dev, "Probing regulator %d\n", id);
+	dev_dbg(&pdev->dev, "Probing regulator\n");
 
-	rinfo = find_regulator_info(id);
-	if (rinfo == NULL) {
-		dev_err(&pdev->dev, "invalid regulator ID specified\n");
+	tps65090_pdata = dev_get_platdata(pdev->dev.parent);
+	if (!tps65090_pdata || !tps65090_pdata->num_reg_pdata) {
+		dev_err(&pdev->dev, "Proper platform data missing\n");
 		return -EINVAL;
 	}
-	tps_pdata = pdev->dev.platform_data;
 
-	ri = devm_kzalloc(&pdev->dev, sizeof(*ri), GFP_KERNEL);
-	if (!ri) {
-		dev_err(&pdev->dev, "mem alloc for ri failed\n");
+	pmic = devm_kzalloc(&pdev->dev,
+			tps65090_pdata->num_reg_pdata * sizeof(*pmic),
+			GFP_KERNEL);
+	if (!pmic) {
+		dev_err(&pdev->dev, "mem alloc for pmic failed\n");
 		return -ENOMEM;
 	}
 
-	ri->dev = &pdev->dev;
-	ri->rinfo = rinfo;
+	for (num = 0; num < tps65090_pdata->num_reg_pdata; ++num) {
+		tps_pdata = tps65090_pdata->reg_pdata[num];
+		if (!tps_pdata || !tps_pdata->reg_init_data) {
+			dev_err(&pdev->dev,
+				"Null platform data for regultor %d\n", num);
+			ret = -EINVAL;
+			goto scrub;
+		}
 
-	rdev = regulator_register(&ri->rinfo->desc, &pdev->dev,
+		id = tps_pdata->id;
+		rinfo = find_regulator_info(id);
+		if (!rinfo) {
+			dev_err(&pdev->dev,
+				"invalid regulator ID %d specified\n", id);
+			ret = -EINVAL;
+			goto scrub;
+		}
+
+		ri = &pmic[num];
+		ri->dev = &pdev->dev;
+		ri->rinfo = rinfo;
+		rdev = regulator_register(&ri->rinfo->desc, &pdev->dev,
 				tps_pdata->reg_init_data, ri);
-	if (IS_ERR(rdev)) {
-		dev_err(&pdev->dev, "failed to register regulator %s\n",
+		if (IS_ERR(rdev)) {
+			dev_err(&pdev->dev, "failed to register regulator %s\n",
 				ri->rinfo->desc.name);
-		return PTR_ERR(rdev);
+			ret = PTR_ERR(rdev);
+			goto scrub;
+		}
+		ri->rdev = rdev;
 	}
-	ri->rdev = rdev;
 
-	platform_set_drvdata(pdev, ri);
+	platform_set_drvdata(pdev, pmic);
 	return 0;
+
+scrub:
+	while (--num >= 0) {
+		ri = &pmic[num];
+		regulator_unregister(ri->rdev);
+	}
+	return ret;
 }
 
 static int __devexit tps65090_regulator_remove(struct platform_device *pdev)
 {
-	struct tps65090_regulator *ri = platform_get_drvdata(pdev);
+	struct tps65090_regulator *pmic = platform_get_drvdata(pdev);
+	struct tps65090_platform_data *tps65090_pdata;
+	struct tps65090_regulator *ri;
+	int num;
 
-	regulator_unregister(ri->rdev);
+	tps65090_pdata = dev_get_platdata(pdev->dev.parent);
+	if (!tps65090_pdata || !tps65090_pdata->num_reg_pdata)
+		return 0;
+
+	for (num = 0; num < tps65090_pdata->num_reg_pdata; ++num) {
+		ri = &pmic[num];
+		regulator_unregister(ri->rdev);
+	}
 	return 0;
 }
 

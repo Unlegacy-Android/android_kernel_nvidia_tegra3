@@ -32,6 +32,8 @@ struct tps65090_platform_data {
 	int irq_base;
 	int num_subdevs;
 	struct tps65090_subdev_info *subdevs;
+	struct tps65090_regulator_platform_data **reg_pdata;
+	int num_reg_pdata;
 };
 
 /*
