@@ -26,14 +26,11 @@
 #include <linux/regmap.h>
 
 struct tps65090 {
-	struct mutex		lock;
 	struct device		*dev;
-	struct i2c_client	*client;
 	struct regmap		*rmap;
 	struct irq_chip		irq_chip;
 	struct mutex		irq_lock;
 	int			irq_base;
-	unsigned int		id;
 };
 
 struct tps65090_platform_data {
