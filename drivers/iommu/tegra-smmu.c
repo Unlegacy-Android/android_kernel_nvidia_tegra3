@@ -1044,7 +1044,7 @@ static int smmu_debugfs_stats_show(struct seq_file *s, void *v)
 
 		offs = SMMU_STATS_CACHE_COUNT(mc, cache, i);
 		val = smmu_read(smmu, offs);
-		seq_printf(s, "%s %08x ", stats[i], val);
+		seq_printf(s, "%s:%08x ", stats[i], val);
 
 		dev_dbg(smmu->dev, "%s() %s %08x @%08x\n", __func__,
 			stats[i], val, offs);
@@ -1077,7 +1077,7 @@ static void smmu_debugfs_create(struct smmu_device *smmu)
 	int i;
 	struct dentry *root;
 
-	root = debugfs_create_file(dev_name(smmu->dev),
+	root = debugfs_create_file("smmu",
 				   S_IFDIR | S_IRWXU | S_IRUGO | S_IXUGO,
 				   NULL, smmu, NULL);
 	if (!root)
