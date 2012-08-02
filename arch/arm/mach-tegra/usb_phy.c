@@ -248,20 +248,23 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 	if (!pdata) {
 		dev_err(&pdev->dev, "inst:[%d] Platform data missing\n",
 								pdev->id);
-		return ERR_PTR(-EINVAL);
+		err = -EINVAL;
+		goto fail_inval;
 	}
 
 	phy = devm_kzalloc(&pdev->dev, sizeof(struct tegra_usb_phy), GFP_KERNEL);
 	if (!phy) {
 		ERR("inst:[%d] malloc usb phy failed\n", pdev->id);
-		return ERR_PTR(-ENOMEM);
+		err = -ENOMEM;
+		goto fail_nomem;
 	}
 
 	phy->pdata = devm_kzalloc(&pdev->dev, plat_data_size, GFP_KERNEL);
 	if (!phy->pdata) {
 		ERR("inst:[%d] malloc usb phy pdata failed\n", pdev->id);
-		kfree(phy);
-		return ERR_PTR(-ENOMEM);
+		devm_kfree(&pdev->dev, phy);
+		err = -ENOMEM;
+		goto fail_nomem;
 	}
 
 	memcpy(phy->pdata, pdata, plat_data_size);
@@ -290,6 +293,8 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 		ERR("inst:[%d] couldn't get regulator avdd_usb: %ld\n",
 			phy->inst, PTR_ERR(phy->vdd_reg));
 		phy->vdd_reg = NULL;
+		err = PTR_ERR(phy->vdd_reg);
+		goto fail_io;
 	}
 
 	err = tegra_usb_phy_get_clocks(phy);
@@ -384,8 +389,11 @@ fail_clk:
 	regulator_put(phy->vdd_reg);
 	iounmap(phy->regs);
 fail_io:
-	kfree(phy);
+	devm_kfree(&pdev->dev, phy->pdata);
+	devm_kfree(&pdev->dev, phy);
 
+fail_nomem:
+fail_inval:
 	return ERR_PTR(err);
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_open);
@@ -427,8 +435,8 @@ void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 
 	tegra_usb_phy_release_clocks(phy);
 
-	kfree(phy->pdata);
-	kfree(phy);
+	devm_kfree(&phy->pdev->dev, phy->pdata);
+	devm_kfree(&phy->pdev->dev, phy);
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_close);
 
