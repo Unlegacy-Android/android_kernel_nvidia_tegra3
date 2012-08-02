@@ -715,7 +715,7 @@ static int smmu_debugfs_stats_show(struct seq_file *s, void *v)
 		offs += sizeof(u32) * i;
 		val = readl(smmu->regs + offs);
 
-		seq_printf(s, "%08x ", val);
+		seq_printf(s, "%s:%08x ", smmu_debugfs_stats[i], val);
 
 		pr_debug("%s() %s %08x @%08x\n", __func__,
 			 smmu_debugfs_stats[i], val, offs);
