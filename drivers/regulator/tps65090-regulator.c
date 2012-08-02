@@ -230,7 +230,7 @@ static int __devexit tps65090_regulator_remove(struct platform_device *pdev)
 
 static struct platform_driver tps65090_regulator_driver = {
 	.driver	= {
-		.name	= "tps65090-regulator",
+		.name	= "tps65090-pmic",
 		.owner	= THIS_MODULE,
 	},
 	.probe		= tps65090_regulator_probe,
