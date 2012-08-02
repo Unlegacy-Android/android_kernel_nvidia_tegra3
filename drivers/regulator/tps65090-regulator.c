@@ -52,7 +52,7 @@ static int tps65090_reg_is_enabled(struct regulator_dev *rdev)
 {
 	struct tps65090_regulator *ri = rdev_get_drvdata(rdev);
 	struct device *parent = to_tps65090_dev(rdev);
-	uint8_t control;
+	uint8_t control = 0;
 	int ret;
 
 	ret = tps65090_read(parent, ri->rinfo->reg_en_reg, &control);
