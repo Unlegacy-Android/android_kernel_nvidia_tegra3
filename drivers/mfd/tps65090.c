@@ -17,7 +17,6 @@
  */
 
 #include <linux/interrupt.h>
-#include <linux/irq.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
@@ -25,7 +24,6 @@
 #include <linux/i2c.h>
 #include <linux/mfd/core.h>
 #include <linux/mfd/tps65090.h>
-#include <linux/regmap.h>
 #include <linux/err.h>
 
 #define NUM_INT_REG 2
@@ -74,50 +72,6 @@ static struct mfd_cell tps65090s[] = {
 		.name = "tps65910-pmic",
 	},
 };
-
-struct tps65090 {
-	struct mutex		lock;
-	struct device		*dev;
-	struct i2c_client	*client;
-	struct regmap		*rmap;
-	struct irq_chip		irq_chip;
-	struct mutex		irq_lock;
-	int			irq_base;
-	unsigned int		id;
-};
-
-int tps65090_write(struct device *dev, int reg, uint8_t val)
-{
-	struct tps65090 *tps = dev_get_drvdata(dev);
-	return regmap_write(tps->rmap, reg, val);
-}
-EXPORT_SYMBOL_GPL(tps65090_write);
-
-int tps65090_read(struct device *dev, int reg, uint8_t *val)
-{
-	struct tps65090 *tps = dev_get_drvdata(dev);
-	unsigned int temp_val;
-	int ret;
-	ret = regmap_read(tps->rmap, reg, &temp_val);
-	if (!ret)
-		*val = temp_val;
-	return ret;
-}
-EXPORT_SYMBOL_GPL(tps65090_read);
-
-int tps65090_set_bits(struct device *dev, int reg, uint8_t bit_num)
-{
-	struct tps65090 *tps = dev_get_drvdata(dev);
-	return regmap_update_bits(tps->rmap, reg, BIT(bit_num), ~0u);
-}
-EXPORT_SYMBOL_GPL(tps65090_set_bits);
-
-int tps65090_clr_bits(struct device *dev, int reg, uint8_t bit_num)
-{
-	struct tps65090 *tps = dev_get_drvdata(dev);
-	return regmap_update_bits(tps->rmap, reg, BIT(bit_num), 0u);
-}
-EXPORT_SYMBOL_GPL(tps65090_clr_bits);
 
 static void tps65090_irq_lock(struct irq_data *data)
 {
