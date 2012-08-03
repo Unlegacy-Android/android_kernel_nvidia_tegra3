@@ -99,6 +99,9 @@ static struct regulator_ops tps65090_ops = {
 	.is_enabled	= tps65090_reg_is_enabled,
 };
 
+static struct regulator_ops tps65090_ldo_ops = {
+};
+
 #define tps65090_REG(_id, _en_reg, _en_bit, _ops)	\
 {							\
 	.reg_en_reg	= _en_reg,			\
@@ -117,6 +120,8 @@ static struct tps65090_regulator_info TPS65090_regulator_info[] = {
 	tps65090_REG(DCDC1, 12, 0, tps65090_ops),
 	tps65090_REG(DCDC2, 13, 0, tps65090_ops),
 	tps65090_REG(DCDC3, 14, 0, tps65090_ops),
+	tps65090_REG(LDO1, 0, 0, tps65090_ldo_ops),
+	tps65090_REG(LDO2, 0, 0, tps65090_ldo_ops),
 	tps65090_REG(FET1,  15, 0, tps65090_ops),
 	tps65090_REG(FET2,  16, 0, tps65090_ops),
 	tps65090_REG(FET3,  17, 0, tps65090_ops),
