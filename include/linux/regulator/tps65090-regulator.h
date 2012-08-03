@@ -43,11 +43,16 @@ enum {
  *
  * @reg_init_data: The regulator init data.
  * @id: Regulator ID.
- * @slew_rate_uV_per_us: Slew rate microvolt per microsec.
+ * @enable_ext_control: Enable extrenal control or not. Only available for
+ *	DCDC1, DCDC2 and DCDC3.
+ * @gpio: Gpio number if external control is enabled and controlled through
+ *	gpio.
  */
 
 struct tps65090_regulator_platform_data {
 	int id;
+	bool enable_ext_control;
+	int gpio;
 	struct regulator_init_data *reg_init_data;
 };
 

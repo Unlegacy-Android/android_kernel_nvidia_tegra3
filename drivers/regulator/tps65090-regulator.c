@@ -19,6 +19,7 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/init.h>
+#include <linux/gpio.h>
 #include <linux/slab.h>
 #include <linux/err.h>
 #include <linux/platform_device.h>
@@ -41,11 +42,23 @@ struct tps65090_regulator {
 	struct tps65090_regulator_info	*rinfo;
 	struct device			*dev;
 	struct regulator_dev		*rdev;
+	bool				enable_ext_control;
+	int				gpio;
+	int				gpio_state;
 };
 
 static inline struct device *to_tps65090_dev(struct regulator_dev *rdev)
 {
 	return rdev_get_dev(rdev)->parent->parent;
+}
+
+static inline bool is_dcdc(int id)
+{
+	if ((id == TPS65090_REGULATOR_DCDC1) ||
+			(id == TPS65090_REGULATOR_DCDC2) ||
+			(id == TPS65090_REGULATOR_DCDC2))
+		return true;
+	return false;
 }
 
 static int tps65090_reg_is_enabled(struct regulator_dev *rdev)
@@ -54,6 +67,12 @@ static int tps65090_reg_is_enabled(struct regulator_dev *rdev)
 	struct device *parent = to_tps65090_dev(rdev);
 	uint8_t control = 0;
 	int ret;
+
+	if (is_dcdc(ri->rinfo->desc.id) && ri->enable_ext_control) {
+		if (gpio_is_valid(ri->gpio))
+			return ri->gpio_state;
+		return 1;
+	}
 
 	ret = tps65090_read(parent, ri->rinfo->reg_en_reg, &control);
 	if (ret < 0) {
@@ -70,6 +89,14 @@ static int tps65090_reg_enable(struct regulator_dev *rdev)
 	struct device *parent = to_tps65090_dev(rdev);
 	int ret;
 
+	if (is_dcdc(ri->rinfo->desc.id) && ri->enable_ext_control) {
+		if (gpio_is_valid(ri->gpio)) {
+			gpio_set_value(ri->gpio, 1);
+			ri->gpio_state = 1;
+		}
+		return 0;
+	}
+
 	ret = tps65090_set_bits(parent, ri->rinfo->reg_en_reg,
 				ri->rinfo->en_bit);
 	if (ret < 0)
@@ -83,6 +110,14 @@ static int tps65090_reg_disable(struct regulator_dev *rdev)
 	struct tps65090_regulator *ri = rdev_get_drvdata(rdev);
 	struct device *parent = to_tps65090_dev(rdev);
 	int ret;
+
+	if (is_dcdc(ri->rinfo->desc.id) && ri->enable_ext_control) {
+		if (gpio_is_valid(ri->gpio)) {
+			gpio_set_value(ri->gpio, 0);
+			ri->gpio_state = 0;
+		}
+		return 0;
+	}
 
 	ret = tps65090_clr_bits(parent, ri->rinfo->reg_en_reg,
 				ri->rinfo->en_bit);
@@ -144,6 +179,54 @@ static inline struct tps65090_regulator_info *find_regulator_info(int id)
 	return NULL;
 }
 
+static int __devinit tps65090_regulator_preinit(int id,
+		struct tps65090_regulator *ri,
+		struct tps65090_regulator_platform_data *tps_pdata)
+{
+	int ret = 0;
+	struct device *parent = ri->dev->parent;
+
+	if (!tps_pdata->enable_ext_control) {
+		ret =  tps65090_clr_bits(parent,
+				ri->rinfo->reg_en_reg, 1);
+		if (ret < 0) {
+			dev_err(ri->dev, "Error in clr reg 0x%x\n",
+				ri->rinfo->reg_en_reg);
+			return ret;
+		}
+	}
+
+	if (gpio_is_valid(tps_pdata->gpio)) {
+		int gpio_flag = GPIOF_OUT_INIT_LOW;
+		const char *sname;
+
+		sname = tps_pdata->reg_init_data->constraints.name;
+		if (!sname)
+			sname = ri->rinfo->desc.name;
+		ri->gpio_state = 0;
+		if (tps_pdata->reg_init_data->constraints.always_on ||
+				tps_pdata->reg_init_data->constraints.boot_on) {
+			gpio_flag = GPIOF_OUT_INIT_HIGH;
+			ri->gpio_state = 1;
+		}
+
+		ret = gpio_request_one(tps_pdata->gpio, gpio_flag, sname);
+		if (ret < 0) {
+			dev_err(ri->dev, "gpio request failed, e %d\n", ret);
+			return ret;
+		}
+	}
+	ret = tps65090_set_bits(parent, ri->rinfo->reg_en_reg, 1);
+	if (ret < 0) {
+		dev_err(ri->dev, "Error in setting reg 0x%x\n",
+				ri->rinfo->reg_en_reg);
+		return ret;
+	}
+	ri->enable_ext_control = true;
+	ri->gpio = tps_pdata->gpio;
+	return ret;
+}
+
 static int __devinit tps65090_regulator_probe(struct platform_device *pdev)
 {
 	struct tps65090_regulator_info *rinfo = NULL;
@@ -193,6 +276,15 @@ static int __devinit tps65090_regulator_probe(struct platform_device *pdev)
 		ri = &pmic[num];
 		ri->dev = &pdev->dev;
 		ri->rinfo = rinfo;
+
+		if (is_dcdc(id)) {
+			ret = tps65090_regulator_preinit(id, ri, tps_pdata);
+			if (ret < 0) {
+				dev_err(&pdev->dev,
+					"failed to preinit regulator %d\n", id);
+				goto scrub;
+			}
+		}
 		rdev = regulator_register(&ri->rinfo->desc, &pdev->dev,
 				tps_pdata->reg_init_data, ri);
 		if (IS_ERR(rdev)) {
@@ -211,6 +303,10 @@ scrub:
 	while (--num >= 0) {
 		ri = &pmic[num];
 		regulator_unregister(ri->rdev);
+		if (is_dcdc(ri->rinfo->desc.id) && (ri->enable_ext_control)) {
+				if (gpio_is_valid(ri->gpio))
+					gpio_free(ri->gpio);
+		}
 	}
 	return ret;
 }
@@ -229,6 +325,10 @@ static int __devexit tps65090_regulator_remove(struct platform_device *pdev)
 	for (num = 0; num < tps65090_pdata->num_reg_pdata; ++num) {
 		ri = &pmic[num];
 		regulator_unregister(ri->rdev);
+		if (is_dcdc(ri->rinfo->desc.id) && (ri->enable_ext_control)) {
+				if (gpio_is_valid(ri->gpio))
+					gpio_free(ri->gpio);
+		}
 	}
 	return 0;
 }
