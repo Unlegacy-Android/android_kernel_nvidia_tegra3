@@ -126,8 +126,8 @@ int __cpuinit __cpu_up(unsigned int cpu)
 
 /* SoC helpers */
 static const struct arm_soc_smp_init_ops *soc_smp_init_ops  __initdata;
-static const struct arm_soc_smp_ops *soc_smp_ops  ;
-static struct arm_soc_smp_ops __soc_smp_ops __cpuinitdata;
+static const struct arm_soc_smp_ops *soc_smp_ops;
+static struct arm_soc_smp_ops __soc_smp_ops;
 
 void __init soc_smp_ops_register(struct arm_soc_smp_init_ops *smp_init_ops,
 				 struct arm_soc_smp_ops *smp_ops)
@@ -189,7 +189,7 @@ int dummy_cpu_disable(unsigned int cpu)
 	return cpu == 0 ? -EPERM : 0;
 }
 
-static int __cpuinit platform_cpu_kill(unsigned int cpu)
+static int platform_cpu_kill(unsigned int cpu)
 {
 	if (soc_smp_ops && soc_smp_ops->cpu_kill)
 		return soc_smp_ops->cpu_kill(cpu);
