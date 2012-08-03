@@ -137,13 +137,14 @@ static struct regulator_ops tps65090_ops = {
 static struct regulator_ops tps65090_ldo_ops = {
 };
 
-#define tps65090_REG(_id, _en_reg, _en_bit, _ops)	\
+#define tps65090_REG(_id, _sname, _en_reg, _en_bit, _ops)	\
 {							\
 	.reg_en_reg	= _en_reg,			\
 	.en_bit		= _en_bit,			\
 	.id		= TPS65090_REGULATOR_##_id,	\
 	.desc = {					\
 		.name = tps65090_rails(_id),		\
+		.supply_name = _sname,			\
 		.id = TPS65090_REGULATOR_##_id,		\
 		.ops = &_ops,				\
 		.type = REGULATOR_VOLTAGE,		\
@@ -152,18 +153,18 @@ static struct regulator_ops tps65090_ldo_ops = {
 }
 
 static struct tps65090_regulator_info TPS65090_regulator_info[] = {
-	tps65090_REG(DCDC1, 12, 0, tps65090_ops),
-	tps65090_REG(DCDC2, 13, 0, tps65090_ops),
-	tps65090_REG(DCDC3, 14, 0, tps65090_ops),
-	tps65090_REG(LDO1, 0, 0, tps65090_ldo_ops),
-	tps65090_REG(LDO2, 0, 0, tps65090_ldo_ops),
-	tps65090_REG(FET1,  15, 0, tps65090_ops),
-	tps65090_REG(FET2,  16, 0, tps65090_ops),
-	tps65090_REG(FET3,  17, 0, tps65090_ops),
-	tps65090_REG(FET4,  18, 0, tps65090_ops),
-	tps65090_REG(FET5,  19, 0, tps65090_ops),
-	tps65090_REG(FET6,  20, 0, tps65090_ops),
-	tps65090_REG(FET7,  21, 0, tps65090_ops),
+	tps65090_REG(DCDC1, "VSYS1",   12, 0, tps65090_ops),
+	tps65090_REG(DCDC2, "VSYS2",   13, 0, tps65090_ops),
+	tps65090_REG(DCDC3, "VSYS3",   14, 0, tps65090_ops),
+	tps65090_REG(LDO1,  "VSYS_L1", 0,  0, tps65090_ldo_ops),
+	tps65090_REG(LDO2,  "VSYS_L2", 0,  0, tps65090_ldo_ops),
+	tps65090_REG(FET1,  "INFET1",  15, 0, tps65090_ops),
+	tps65090_REG(FET2,  "INFET2",  16, 0, tps65090_ops),
+	tps65090_REG(FET3,  "INFET3",  17, 0, tps65090_ops),
+	tps65090_REG(FET4,  "INFET4",  18, 0, tps65090_ops),
+	tps65090_REG(FET5,  "INFET5",  19, 0, tps65090_ops),
+	tps65090_REG(FET6,  "INFET6",  20, 0, tps65090_ops),
+	tps65090_REG(FET7,  "INFET7",  21, 0, tps65090_ops),
 };
 
 static inline struct tps65090_regulator_info *find_regulator_info(int id)
