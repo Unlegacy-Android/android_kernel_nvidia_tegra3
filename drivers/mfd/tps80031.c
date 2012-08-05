@@ -691,17 +691,6 @@ static void tps80031_gpio_init(struct tps80031 *tps80031,
 		dev_warn(tps80031->dev, "GPIO registration failed: %d\n", ret);
 }
 
-static int __remove_subdev(struct device *dev, void *unused)
-{
-	platform_device_unregister(to_platform_device(dev));
-	return 0;
-}
-
-static int tps80031_remove_subdevs(struct tps80031 *tps80031)
-{
-	return device_for_each_child(tps80031->dev, NULL, __remove_subdev);
-}
-
 static void tps80031_irq_lock(struct irq_data *data)
 {
 	struct tps80031 *tps80031 = irq_data_get_irq_chip_data(data);
@@ -1024,32 +1013,6 @@ static void tps80031_clk32k_init(struct tps80031 *tps80031,
 	}
 }
 
-static int __devinit tps80031_add_subdevs(struct tps80031 *tps80031,
-					  struct tps80031_platform_data *pdata)
-{
-	struct tps80031_subdev_info *subdev;
-	struct platform_device *pdev;
-	int i, ret = 0;
-
-	for (i = 0; i < pdata->num_subdevs; i++) {
-		subdev = &pdata->subdevs[i];
-
-		pdev = platform_device_alloc(subdev->name, subdev->id);
-
-		pdev->dev.parent = tps80031->dev;
-		pdev->dev.platform_data = subdev->platform_data;
-
-		ret = platform_device_add(pdev);
-		if (ret)
-			goto failed;
-	}
-	return 0;
-
-failed:
-	tps80031_remove_subdevs(tps80031);
-	return ret;
-}
-
 #ifdef CONFIG_DEBUG_FS
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
@@ -1360,12 +1323,6 @@ static int __devinit tps80031_i2c_probe(struct i2c_client *client,
 		goto fail_mfd_add;
 	}
 
-	ret = tps80031_add_subdevs(tps80031, pdata);
-	if (ret) {
-		dev_err(&client->dev, "add devices failed: %d\n", ret);
-		goto fail_add_subdev;
-	}
-
 	tps80031_gpio_init(tps80031, pdata);
 
 	tps80031_clk32k_init(tps80031, pdata);
@@ -1380,9 +1337,6 @@ static int __devinit tps80031_i2c_probe(struct i2c_client *client,
 	tps80031_dev = tps80031;
 
 	return 0;
-
-fail_add_subdev:
-	mfd_remove_devices(tps80031->dev);
 
 fail_mfd_add:
 	if (client->irq)

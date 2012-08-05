@@ -722,9 +722,6 @@ int __init enterprise_regulator_init(void)
 		battery_gauge_data.battery_present = 0;
 	}
 
-	tps_platform.num_subdevs = ARRAY_SIZE(tps80031_devs);
-	tps_platform.subdevs = tps80031_devs;
-
 	if (board_info.fab < BOARD_FAB_A03) {
 		tps_platform.num_regulator_pdata = ARRAY_SIZE(tps80031_reg_pdata_a02);
 		tps_platform.regulator_pdata = tps80031_reg_pdata_a02;
