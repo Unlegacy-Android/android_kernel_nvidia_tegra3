@@ -662,25 +662,21 @@ FIXED_REG(8, lcd_1v8_en,  NULL,
 		TEGRA_GPIO_PB2, true, 1800, 0, 0);
 
 #define ADD_FIXED_REG(_name)	(&fixed_reg_##_name##_dev)
-
-#define FIXED_REGS_COMMON		\
-	ADD_FIXED_REG(pmu_5v15_en),	\
-	ADD_FIXED_REG(pmu_hdmi_5v0_en),	\
-	ADD_FIXED_REG(vdd_fuse_en),	\
-	ADD_FIXED_REG(cam_ldo_2v8_en),	\
-	ADD_FIXED_REG(cam_ldo_1v8_en)
-
 static struct platform_device *fixed_regs_devices_a02[] = {
-	ADD_FIXED_REG(pmu_5v15_en),	\
-	ADD_FIXED_REG(pmu_3v3_en),	\
-	ADD_FIXED_REG(pmu_hdmi_5v0_en),	\
-	ADD_FIXED_REG(vdd_fuse_en),	\
-	ADD_FIXED_REG(cam_ldo_2v8_en),	\
+	ADD_FIXED_REG(pmu_5v15_en),
+	ADD_FIXED_REG(pmu_3v3_en),
+	ADD_FIXED_REG(pmu_hdmi_5v0_en),
+	ADD_FIXED_REG(vdd_fuse_en),
+	ADD_FIXED_REG(cam_ldo_2v8_en),
 	ADD_FIXED_REG(cam_ldo_1v8_en)
 };
 
 static struct platform_device *fixed_regs_devices_a03[] = {
-	FIXED_REGS_COMMON,
+	ADD_FIXED_REG(pmu_5v15_en),
+	ADD_FIXED_REG(pmu_hdmi_5v0_en),
+	ADD_FIXED_REG(vdd_fuse_en),
+	ADD_FIXED_REG(cam_ldo_2v8_en),
+	ADD_FIXED_REG(cam_ldo_1v8_en),
 	ADD_FIXED_REG(vdd_sdmmc3_2v85_en),
 	ADD_FIXED_REG(lcd_1v8_en),
 };
