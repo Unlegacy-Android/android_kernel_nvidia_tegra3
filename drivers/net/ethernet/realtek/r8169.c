@@ -754,6 +754,7 @@ struct rtl8169_private {
 		} phy_action;
 	} *rtl_fw;
 #define RTL_FIRMWARE_UNKNOWN	ERR_PTR(-EAGAIN)
+	bool napi_disabled_in_suspend;
 };
 
 MODULE_AUTHOR("Realtek and the Linux r8169 crew <netdev@vger.kernel.org>");
@@ -5602,7 +5603,9 @@ static void rtl8169_down(struct net_device *dev)
 
 	del_timer_sync(&tp->timer);
 
-	napi_disable(&tp->napi);
+	/* call napi_disable only when it is not already disabled in suspend */
+	if (!tp->napi_disabled_in_suspend)
+		napi_disable(&tp->napi);
 	netif_stop_queue(dev);
 
 	rtl8169_hw_reset(tp);
@@ -5706,6 +5709,7 @@ static int rtl_open(struct net_device *dev)
 	set_bit(RTL_FLAG_TASK_ENABLED, tp->wk.flags);
 
 	napi_enable(&tp->napi);
+	tp->napi_disabled_in_suspend = false;
 
 	rtl8169_init_phy(dev, tp);
 
@@ -5788,6 +5792,7 @@ static void rtl8169_net_suspend(struct net_device *dev)
 
 	rtl_lock_work(tp);
 	napi_disable(&tp->napi);
+	tp->napi_disabled_in_suspend = true;
 	clear_bit(RTL_FLAG_TASK_ENABLED, tp->wk.flags);
 	rtl_unlock_work(tp);
 
@@ -5816,6 +5821,7 @@ static void __rtl8169_resume(struct net_device *dev)
 
 	rtl_lock_work(tp);
 	napi_enable(&tp->napi);
+	tp->napi_disabled_in_suspend = false;
 	set_bit(RTL_FLAG_TASK_ENABLED, tp->wk.flags);
 	rtl_unlock_work(tp);
 
