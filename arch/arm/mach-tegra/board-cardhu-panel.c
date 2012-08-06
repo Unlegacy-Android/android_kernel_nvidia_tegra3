@@ -1216,8 +1216,8 @@ static void cardhu_panel_preinit(void)
 		cardhu_disp1_out.enable = cardhu_panel_enable;
 		cardhu_disp1_out.disable = cardhu_panel_disable;
 		/* Set height and width in mm. */
-		cardhu_disp1_out.height = 127;
-		cardhu_disp1_out.width = 216;
+		cardhu_disp1_out.height = 125;
+		cardhu_disp1_out.width = 223;
 
 		cardhu_disp1_pdata.fb = &cardhu_fb_data;
 	} else {
@@ -1239,12 +1239,18 @@ static void cardhu_panel_preinit(void)
 				ARRAY_SIZE(cardhu_dsi_modes_218);
 			cardhu_dsi_fb_data.xres = 864;
 			cardhu_dsi_fb_data.yres = 480;
+			/* Set height and width in mm. */
+			cardhu_disp1_out.height = 47;
+			cardhu_disp1_out.width = 84;
 		} else if (is_panel_219) {
 			cardhu_disp1_out.modes	= cardhu_dsi_modes_219;
 			cardhu_disp1_out.n_modes =
 				ARRAY_SIZE(cardhu_dsi_modes_219);
 			cardhu_dsi_fb_data.xres = 540;
 			cardhu_dsi_fb_data.yres = 960;
+			/* Set height and width in mm. */
+			cardhu_disp1_out.height = 95;
+			cardhu_disp1_out.width = 53;
 		} else if (is_panel_1506) {
 			cardhu_disp1_out.modes	= cardhu_dsi_modes_1506;
 			cardhu_disp1_out.n_modes =
@@ -1321,8 +1327,8 @@ int __init cardhu_panel_init(void)
 		cardhu_disp1_out.depth = 24;
 #endif
 		/* Set height and width in mm. */
-		cardhu_disp1_out.height = 127;
-		cardhu_disp1_out.width = 203;
+		cardhu_disp1_out.height = 135;
+		cardhu_disp1_out.width = 217;
 		cardhu_fb_data.xres = 1920;
 		cardhu_fb_data.yres = 1200;
 
