@@ -180,6 +180,9 @@ static struct platform_device kai_bluesleep_device = {
 
 static noinline void __init kai_tegra_setup_tibluesleep(void)
 {
+	kai_bluesleep_device.resource[1].start =
+		kai_bluesleep_device.resource[1].end =
+			gpio_to_irq(TEGRA_GPIO_PU6);
 	platform_device_register(&kai_bluesleep_device);
 }
 
