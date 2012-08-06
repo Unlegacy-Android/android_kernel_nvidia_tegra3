@@ -22,6 +22,8 @@
 #include <linux/input.h>
 #include <linux/interrupt.h>
 #include <linux/slab.h>
+#define CREATE_TRACE_POINTS
+#include <trace/events/nvevent.h>
 
 /* Family ID */
 #define MXT224_ID		0x80

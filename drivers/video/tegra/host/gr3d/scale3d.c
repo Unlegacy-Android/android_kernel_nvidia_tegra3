@@ -37,6 +37,7 @@
 #include <linux/debugfs.h>
 #include <linux/types.h>
 #include <linux/clk.h>
+#include <linux/export.h>
 #include <mach/clk.h>
 #include <mach/hardware.h>
 #include "scale3d.h"
@@ -496,7 +497,6 @@ static void do_scale(int diff)
 
 #define scale_up() do_scale(scale3d.p_scale_step)
 #define scale_down() do_scale(-scale3d.p_scale_step)
-
 void nvhost_scale3d_set_throughput_hint(int hint)
 {
 	if (!scale3d.enable)

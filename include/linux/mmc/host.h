@@ -241,13 +241,6 @@ struct mmc_host {
 #define MMC_CAP2_HC_ERASE_SZ	(1 << 9)	/* High-capacity erase size */
 #define MMC_CAP2_BKOPS		(1 << 10)	/* Host supports BKOPS */
 
-	unsigned int		caps2;			/* More host capabilities */
-#define MMC_CAP2_BOOTPART_NOACC	(1 << 0)	/* Boot partition no access */
-#define MMC_CAP2_CACHE_CTRL		(1 << 1)	/* Allow cache control */
-#define MMC_CAP2_POWEROFF_NOTIFY	(1 << 2)	/* Notify poweroff supported */
-#define MMC_CAP2_NO_MULTI_READ	(1 << 3)	/* Multiblock reads don't work */
-#define MMC_CAP2_NO_SLEEP_CMD		(1 << 4)	/* Don't allow sleep command */
-
 	mmc_pm_flag_t		pm_caps;	/* supported pm features */
 	unsigned int        power_notify_type;
 #define MMC_HOST_PW_NOTIFY_NONE		0

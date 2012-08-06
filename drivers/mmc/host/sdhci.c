@@ -2494,16 +2494,17 @@ int sdhci_suspend_host(struct sdhci_host *host)
 			mmc->pm_flags = MMC_PM_KEEP_POWER;
 
 		ret = mmc_suspend_host(host->mmc);
-	if (ret) {
-		if (has_tuning_timer) {
-			host->flags |= SDHCI_NEEDS_RETUNING;
-			mod_timer(&host->tuning_timer, jiffies +
-					host->tuning_count * HZ);
+		if (ret) {
+			if (has_tuning_timer) {
+				host->flags |= SDHCI_NEEDS_RETUNING;
+				mod_timer(&host->tuning_timer, jiffies +
+						host->tuning_count * HZ);
+			}
+
+			sdhci_enable_card_detection(host);
+
+			return ret;
 		}
-
-		sdhci_enable_card_detection(host);
-
-		return ret;
 	}
 
 	if (mmc->pm_flags & MMC_PM_KEEP_POWER)
