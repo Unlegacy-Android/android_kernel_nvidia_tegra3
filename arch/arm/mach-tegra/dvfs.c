@@ -38,6 +38,7 @@
 #include "board.h"
 #include "clock.h"
 #include "dvfs.h"
+#include "timer.h"
 
 #define DVFS_RAIL_STATS_BIN	25
 #define DVFS_RAIL_STATS_SCALE	2
@@ -306,6 +307,13 @@ static int dvfs_rail_connect_to_regulator(struct dvfs_rail *rail)
 			return -EINVAL;
 		}
 		rail->reg = reg;
+	}
+
+	v = regulator_enable(rail->reg);
+	if (v < 0) {
+		pr_err("tegra_dvfs: failed on enabling regulator %s\n, err %d",
+			rail->reg_id, v);
+		return v;
 	}
 
 	v = regulator_get_voltage(rail->reg);
@@ -681,8 +689,12 @@ int __init tegra_dvfs_late_init(void)
 {
 	bool connected = true;
 	struct dvfs_rail *rail;
+	int cur_linear_age = tegra_get_linear_age();
 
 	mutex_lock(&dvfs_lock);
+
+	if (cur_linear_age >= 0)
+		tegra_dvfs_age_cpu(cur_linear_age);
 
 	list_for_each_entry(rail, &dvfs_rail_list, node)
 		if (dvfs_rail_connect_to_regulator(rail))

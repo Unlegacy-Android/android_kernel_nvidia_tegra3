@@ -308,8 +308,6 @@ static int mdm_request_wakeable_irq(struct tegra_usb_modem *modem,
 	if (ret)
 		return ret;
 
-	tegra_gpio_enable(irq_gpio);
-
 	/* enable IRQ for GPIO */
 	*irq = gpio_to_irq(irq_gpio);
 
@@ -401,7 +399,8 @@ static ssize_t load_unload_usb_host(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(load_host, 0666, show_usb_host, load_unload_usb_host);
+static DEVICE_ATTR(load_host, S_IRUSR | S_IWUSR, show_usb_host,
+		   load_unload_usb_host);
 
 static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 {

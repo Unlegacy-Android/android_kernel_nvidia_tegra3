@@ -873,6 +873,7 @@ struct hda_codec {
 #endif
 
 	unsigned int recv_dec_cap;
+	unsigned int max_pcm_channels;
 	/* codec-specific additional proc output */
 	void (*proc_widget_hook)(struct snd_info_buffer *buffer,
 				 struct hda_codec *codec, hda_nid_t nid);

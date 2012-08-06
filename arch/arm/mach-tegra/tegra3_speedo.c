@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra3_speedo.c
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,6 +26,8 @@
 #include <mach/iomap.h>
 #include <mach/tegra_fuse.h>
 #include <mach/hardware.h>
+#include <linux/module.h>
+#include <linux/moduleparam.h>
 
 #include "fuse.h"
 
@@ -131,6 +133,11 @@ static int core_process_id;
 static int cpu_speedo_id;
 static int soc_speedo_id;
 static int package_id;
+/*
+ * Only AP37 supports App Profile
+ * This informs user space of support without exposing cpu id's
+ */
+static int enable_app_profiles;
 
 static void fuse_speedo_calib(u32 *speedo_g, u32 *speedo_lp)
 {
@@ -270,6 +277,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 				cpu_speedo_id = 12;
 				soc_speedo_id = 2;
 				threshold_index = 9;
+				enable_app_profiles = 1;
 				break;
 			default:
 				pr_err("Tegra3 Rev-A02: Reserved pkg: %d\n",
@@ -562,3 +570,15 @@ int tegra_core_speedo_mv(void)
 		BUG();
 	}
 }
+
+static int get_enable_app_profiles(char *val, const struct kernel_param *kp)
+{
+	return param_get_uint(val, kp);
+}
+
+static struct kernel_param_ops tegra_profiles_ops = {
+	.get = get_enable_app_profiles,
+};
+
+module_param_cb(tegra_enable_app_profiles,
+	&tegra_profiles_ops, &enable_app_profiles, 0444);

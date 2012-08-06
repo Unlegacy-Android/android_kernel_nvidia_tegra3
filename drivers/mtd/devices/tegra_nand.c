@@ -1615,7 +1615,6 @@ static int __devinit tegra_nand_probe(struct platform_device *pdev)
 
 	if (plat->wp_gpio) {
 		gpio_request(plat->wp_gpio, "nand_wp");
-		tegra_gpio_enable(plat->wp_gpio);
 		gpio_direction_output(plat->wp_gpio, 1);
 	}
 

@@ -29,23 +29,26 @@
 #define tps80031_rails(_name) "tps80031_"#_name
 
 enum {
-	TPS80031_ID_VIO,
-	TPS80031_ID_SMPS1,
-	TPS80031_ID_SMPS2,
-	TPS80031_ID_SMPS3,
-	TPS80031_ID_SMPS4,
-	TPS80031_ID_VANA,
-	TPS80031_ID_LDO1,
-	TPS80031_ID_LDO2,
-	TPS80031_ID_LDO3,
-	TPS80031_ID_LDO4,
-	TPS80031_ID_LDO5,
-	TPS80031_ID_LDO6,
-	TPS80031_ID_LDO7,
-	TPS80031_ID_LDOLN,
-	TPS80031_ID_LDOUSB,
-	TPS80031_ID_VBUS,
-	TPS80031_ID_CHARGER,
+	TPS80031_REGULATOR_VIO,
+	TPS80031_REGULATOR_SMPS1,
+	TPS80031_REGULATOR_SMPS2,
+	TPS80031_REGULATOR_SMPS3,
+	TPS80031_REGULATOR_SMPS4,
+	TPS80031_REGULATOR_VANA,
+	TPS80031_REGULATOR_LDO1,
+	TPS80031_REGULATOR_LDO2,
+	TPS80031_REGULATOR_LDO3,
+	TPS80031_REGULATOR_LDO4,
+	TPS80031_REGULATOR_LDO5,
+	TPS80031_REGULATOR_LDO6,
+	TPS80031_REGULATOR_LDO7,
+	TPS80031_REGULATOR_LDOLN,
+	TPS80031_REGULATOR_LDOUSB,
+	TPS80031_REGULATOR_VBUS,
+	TPS80031_REGULATOR_REGEN1,
+	TPS80031_REGULATOR_REGEN2,
+	TPS80031_REGULATOR_SYSEN,
+	TPS80031_REGULATOR_CHARGER,
 };
 
 
@@ -66,7 +69,8 @@ enum {
 /*
  * struct tps80031_regulator_platform_data - tps80031 regulator platform data.
  *
- * @regulator: The regulator init data.
+ * @regulator_id" Regulator ID.
+ * @reg_init_data: The regulator init data.
  * @init_uV: initial micro volts which need to be set.
  * @init_enable: Enable or do not enable the rails during initialization.
  * @init_apply: Init parameter applied or not.
@@ -80,7 +84,8 @@ enum {
  */
 
 struct tps80031_regulator_platform_data {
-	struct regulator_init_data regulator;
+	int regulator_id;
+	struct regulator_init_data *reg_init_data;
 	int init_uV;
 	unsigned init_enable:1;
 	unsigned init_apply:1;

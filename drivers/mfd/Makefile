@@ -116,7 +116,6 @@ obj-$(CONFIG_MFD_INTEL_MSIC)	+= intel_msic.o
 obj-$(CONFIG_MFD_RC5T583)	+= rc5t583.o rc5t583-irq.o
 obj-$(CONFIG_MFD_S5M_CORE)	+= s5m-core.o s5m-irq.o
 obj-$(CONFIG_MFD_TPS6591X)	+= tps6591x.o
-obj-$(CONFIG_MFD_TPS65090)	+= tps65090.o
 obj-$(CONFIG_MFD_TPS80031)	+= tps80031.o
 obj-$(CONFIG_GPADC_TPS80031)	+= tps8003x-gpadc.o
 obj-$(CONFIG_MFD_MAX8907C)	+= max8907c.o

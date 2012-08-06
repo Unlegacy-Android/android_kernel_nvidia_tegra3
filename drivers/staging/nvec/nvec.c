@@ -802,6 +802,8 @@ static int __devinit tegra_nvec_probe(struct platform_device *pdev)
 		dev_err(nvec->dev, "couldn't request gpio\n");
 		goto failed;
 	}
+	gpio_direction_output(nvec->gpio, 1);
+	gpio_set_value(nvec->gpio, 1);
 
 	err = request_irq(nvec->irq, nvec_interrupt, 0, "nvec", nvec);
 	if (err) {

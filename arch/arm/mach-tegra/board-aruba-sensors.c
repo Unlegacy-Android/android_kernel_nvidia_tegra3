@@ -43,14 +43,12 @@
 
 static void aruba_isl29018_init(void)
 {
-	tegra_gpio_enable(ISL29018_IRQ_GPIO);
 	gpio_request(ISL29018_IRQ_GPIO, "isl29018");
 	gpio_direction_input(ISL29018_IRQ_GPIO);
 }
 
 static void aruba_akm8975_init(void)
 {
-	tegra_gpio_enable(AKM8975_IRQ_GPIO);
 	gpio_request(AKM8975_IRQ_GPIO, "akm8975");
 	gpio_direction_input(AKM8975_IRQ_GPIO);
 }

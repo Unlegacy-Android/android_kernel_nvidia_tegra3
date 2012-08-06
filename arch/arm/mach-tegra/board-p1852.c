@@ -199,7 +199,6 @@ static void __init p1852_uart_init(void)
 	platform_add_devices(p1852_uart_devices,
 				ARRAY_SIZE(p1852_uart_devices));
 }
-
 #if defined(CONFIG_TEGRA_P1852_TDM)
 static struct tegra_p1852_platform_data p1852_audio_tdm_pdata = {
 	.codec_info[0] = {
@@ -242,6 +241,7 @@ static struct tegra_p1852_platform_data p1852_audio_i2s_pdata = {
 		.name = "tegra-i2s-1",
 		.pcm_driver = "tegra-pcm-audio",
 		.i2s_format = format_i2s,
+		/* Defines whether the Audio codec chip is master or slave */
 		.master = 1,
 	},
 	.codec_info[1] = {
@@ -251,6 +251,7 @@ static struct tegra_p1852_platform_data p1852_audio_i2s_pdata = {
 		.name = "tegra-i2s-2",
 		.pcm_driver = "tegra-pcm-audio",
 		.i2s_format = format_i2s,
+		/* Defines whether the Audio codec chip is master or slave */
 		.master = 0,
 	},
 };
@@ -278,6 +279,8 @@ static struct platform_device tegra_snd_p1852 = {
 
 static void p1852_i2s_audio_init(void)
 {
+	struct tegra_p1852_platform_data *pdata;
+
 	platform_device_register(&tegra_pcm_device);
 	platform_device_register(&tegra_tdm_pcm_device);
 	platform_device_register(&generic_codec_1);
@@ -286,6 +289,11 @@ static void p1852_i2s_audio_init(void)
 	platform_device_register(&tegra_i2s_device4);
 	platform_device_register(&tegra_ahub_device);
 	platform_device_register(&tegra_snd_p1852);
+
+	/* Change pinmux of I2S4 for master mode */
+	pdata = tegra_snd_p1852.dev.platform_data;
+	if (!pdata->codec_info[1].master)
+		p1852_pinmux_set_i2s4_master();
 }
 
 
@@ -450,9 +458,6 @@ static __initdata struct tegra_clk_init_table spi_clk_init_table[] = {
 
 static int __init p1852_touch_init(void)
 {
-	tegra_gpio_enable(TOUCH_GPIO_IRQ_ATMEL_T9);
-	tegra_gpio_enable(TOUCH_GPIO_RST_ATMEL_T9);
-
 	gpio_request(TOUCH_GPIO_IRQ_ATMEL_T9, "atmel-irq");
 	gpio_direction_input(TOUCH_GPIO_IRQ_ATMEL_T9);
 
@@ -472,6 +477,32 @@ static int __init p1852_touch_init(void)
 
 #endif // CONFIG_TOUCHSCREEN_ATMEL_MXT
 
+#if defined(CONFIG_USB_G_ANDROID)
+static struct tegra_usb_platform_data tegra_udc_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_DEVICE,
+	.u_data.dev = {
+		.vbus_pmu_irq = 0,
+		.vbus_gpio = -1,
+		.charging_supported = false,
+		.remote_wakeup_supported = false,
+	},
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.idle_wait_delay = 17,
+		.elastic_limit = 16,
+		.term_range_adj = 6,
+		.xcvr_setup = 63,
+		.xcvr_setup_offset = 6,
+		.xcvr_use_fuses = 1,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_use_lsb = 1,
+	},
+};
+#else
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
@@ -497,6 +528,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 		.xcvr_use_lsb = 1,
 	},
 };
+#endif
 
 static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	.port_otg = false,
@@ -552,9 +584,16 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 
 static void p1852_usb_init(void)
 {
+	/* Need to parse sku info to decide host/device mode */
+
+	/* G_ANDROID require device mode */
+#if defined(CONFIG_USB_G_ANDROID)
+	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+	platform_device_register(&tegra_udc_device);
+#else
 	tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
 	platform_device_register(&tegra_ehci1_device);
-
+#endif
 	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
 	platform_device_register(&tegra_ehci2_device);
 

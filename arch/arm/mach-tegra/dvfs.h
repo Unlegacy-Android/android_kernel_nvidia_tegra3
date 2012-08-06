@@ -22,7 +22,7 @@
 #define _TEGRA_DVFS_H_
 
 #define MAX_DVFS_FREQS	40
-#define DVFS_RAIL_STATS_TOP_BIN	40
+#define DVFS_RAIL_STATS_TOP_BIN	42
 
 struct clk;
 struct dvfs_rail;
@@ -126,11 +126,14 @@ int tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 int tegra_dvfs_rail_disable_prepare(struct dvfs_rail *rail);
 int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail);
+void tegra_dvfs_age_cpu(int cur_linear_age);
 #else
 static inline int tegra_dvfs_rail_disable_prepare(struct dvfs_rail *rail)
 { return 0; }
 static inline int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 { return 0; }
+static inline void tegra_dvfs_age_cpu(int cur_linear_age)
+{ return; }
 #endif
 
 #endif

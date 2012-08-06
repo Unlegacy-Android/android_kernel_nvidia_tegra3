@@ -64,7 +64,7 @@ struct tegra_otg_data {
 	bool clk_enabled;
 	bool interrupt_mode;
 	bool builtin_host;
-	bool suspended
+	bool suspended;
 };
 
 static struct tegra_otg_data *tegra_clone;
@@ -107,7 +107,7 @@ static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
 		if (tegra->builtin_host)
 			val |= USB_INT_EN;
 		else
-			val = USB_VBUS_INT_EN | USB_VBUS_WAKEUP_EN | USB_ID_PIN_WAKEUP_EN;
+			val |= USB_VBUS_INT_EN | USB_VBUS_WAKEUP_EN | USB_ID_PIN_WAKEUP_EN;
 	}
 	else
 		val &= ~USB_INT_EN;
@@ -339,7 +339,7 @@ static ssize_t store_host_en(struct device *dev, struct device_attribute *attr,
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_otg_data *tegra = platform_get_drvdata(pdev);
-	unsigned long host;
+	unsigned int host;
 
 	if (sscanf(buf, "%d", &host) != 1 || host < 0 || host > 1)
 		return -EINVAL;
