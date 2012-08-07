@@ -1319,6 +1319,9 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	/* enable HS200 capable */
 	host->mmc->caps2 |= MMC_CAP2_HS200;
 
+	/* enable packed command support*/
+	host->mmc->caps2 |= MMC_CAP2_PACKED_CMD;
+
 	tegra_sdhost_min_freq = TEGRA_SDHOST_MIN_FREQ;
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	tegra_host->hw_ops = &tegra_2x_sdhci_ops;
