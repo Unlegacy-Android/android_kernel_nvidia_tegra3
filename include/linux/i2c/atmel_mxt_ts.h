@@ -29,15 +29,6 @@
 struct mxt_platform_data {
 	const u8 *config;
 	size_t config_length;
-
-	unsigned int x_line;
-	unsigned int y_line;
-	unsigned int x_size;
-	unsigned int y_size;
-	unsigned int blen;
-	unsigned int threshold;
-	unsigned int voltage;
-	unsigned char orient;
 	unsigned long irqflags;
 	u8(*read_chg) (void);
 	u32 config_crc;
