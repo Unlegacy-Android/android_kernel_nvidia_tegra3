@@ -671,7 +671,7 @@ static ssize_t store_als_high_threshold(struct device *dev,
 	if (strict_strtoul(buf, 10, &lval))
 		return -EINVAL;
 
-	if ((lval > 0xFFFF) || (lval < 0x0)) {
+	if ((lval > 0xFFF) || (lval < 0x0)) {
 		dev_err(dev, "The als threshold is not supported\n");
 		return -EINVAL;
 	}
@@ -714,7 +714,7 @@ static ssize_t store_ir_low_threshold(struct device *dev,
 	if (strict_strtoul(buf, 10, &lval))
 		return -EINVAL;
 
-	if ((lval > 0xFFFF) || (lval < 0x0)) {
+	if ((lval > 0xFFF) || (lval < 0x0)) {
 		dev_err(dev, "The IR threshold is not supported\n");
 		return -EINVAL;
 	}
