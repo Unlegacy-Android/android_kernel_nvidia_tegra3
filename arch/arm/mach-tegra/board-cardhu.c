@@ -126,13 +126,15 @@ static struct tegra_thermal_data thermal_data = {
 	.tc1 = 0,
 	.tc2 = 1,
 	.passive_delay = 2000,
+};
+
+static struct tegra_skin_data skin_data = {
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 	.skin_device_id = THERMAL_DEVICE_ID_SKIN,
 	.temp_throttle_skin = 43000,
 	.tc1_skin = 0,
 	.tc2_skin = 1,
 	.passive_delay_skin = 5000,
-
 	.skin_temp_offset = 9793,
 	.skin_period = 1100,
 	.skin_devs_size = 2,
@@ -158,8 +160,11 @@ static struct tegra_thermal_data thermal_data = {
 			}
 		},
 	},
+#else
+	.skin_device_id = THERMAL_DEVICE_ID_NULL,
 #endif
 };
+
 
 static struct rfkill_gpio_platform_data cardhu_bt_rfkill_pdata[] = {
 	{
@@ -1408,6 +1413,7 @@ static void cardhu_sata_init(void) { }
 static void __init tegra_cardhu_init(void)
 {
 	tegra_thermal_init(&thermal_data,
+				&skin_data,
 				throttle_list,
 				ARRAY_SIZE(throttle_list));
 	tegra_clk_init_from_table(cardhu_clk_init_table);
