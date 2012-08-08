@@ -4795,7 +4795,7 @@ static const struct tegra_emc_table cardhu_emc_tables_k4p8g304eb[] = {
 			0x00000000, /* EMC_CTT */
 			0x00000000, /* EMC_CTT_DURATION */
 			0x80000dff, /* EMC_DYN_SELF_REF_CONTROL */
-			0x00000006, /* MC_EMEM_ARB_CFG */
+			0x0000000d, /* MC_EMEM_ARB_CFG */
 			0xc000004f, /* MC_EMEM_ARB_OUTSTANDING_REQ */
 			0x00000002, /* MC_EMEM_ARB_TIMING_RCD */
 			0x00000003, /* MC_EMEM_ARB_TIMING_RP */
