@@ -651,10 +651,10 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 		tegra_usb_phy_power_on(tegra->phy);
 
 	usb_remove_hcd(hcd);
-	usb_put_hcd(hcd);
 	tegra_usb_phy_power_off(tegra->phy);
 	tegra_usb_phy_close(tegra->phy);
 	iounmap(hcd->regs);
+	usb_put_hcd(hcd);
 
 	return 0;
 }
