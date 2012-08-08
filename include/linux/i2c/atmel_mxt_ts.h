@@ -29,6 +29,7 @@
 struct mxt_platform_data {
 	unsigned long irqflags;
 	u8(*read_chg) (void);
+	const char *input_name;
 };
 
 #endif /* __LINUX_ATMEL_MXT_TS_H */
