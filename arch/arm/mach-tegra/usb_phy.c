@@ -293,8 +293,6 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 		ERR("inst:[%d] couldn't get regulator avdd_usb: %ld\n",
 			phy->inst, PTR_ERR(phy->vdd_reg));
 		phy->vdd_reg = NULL;
-		err = PTR_ERR(phy->vdd_reg);
-		goto fail_io;
 	}
 
 	err = tegra_usb_phy_get_clocks(phy);
