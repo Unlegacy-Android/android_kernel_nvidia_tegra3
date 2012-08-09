@@ -1151,22 +1151,16 @@ static __devinit int tegra_max98088_driver_probe(struct platform_device *pdev)
 #endif
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	for (i = 0; i < NUM_I2S_DEVICES ; i++) {
-		machine->codec_info[i].i2s_id =
-			pdata->i2s_param[i].audio_port_id;
-		machine->codec_info[i].bitsize =
-			pdata->i2s_param[i].sample_size;
-		machine->codec_info[i].is_i2smaster =
-			pdata->i2s_param[i].is_i2s_master;
-		machine->codec_info[i].rate =
-			pdata->i2s_param[i].rate;
-		machine->codec_info[i].channels =
-			pdata->i2s_param[i].channels;
-		if ((pdata->i2s_param[i].i2s_mode == TEGRA_DAIFMT_DSP_A) ||
-			(pdata->i2s_param[i].i2s_mode == TEGRA_DAIFMT_DSP_B))
-			machine->codec_info[i].is_format_dsp = 1;
-		else
-			machine->codec_info[i].is_format_dsp = 0;
+	for (i = 0; i < NUM_I2S_DEVICES ; i++)
+		machine->codec_info[i].i2s_id = pdata->audio_port_id[i];
+
+	machine->codec_info[BASEBAND].rate = pdata->baseband_param.rate;
+	machine->codec_info[BASEBAND].channels = pdata->baseband_param.channels;
+	machine->codec_info[BASEBAND].is_format_dsp = 0;
+
+	if ((pdata->baseband_param.bit_format == TEGRA_DAIFMT_DSP_A) ||
+	(pdata->baseband_param.bit_format == TEGRA_DAIFMT_DSP_B)) {
+			machine->codec_info[BASEBAND].is_format_dsp = 1;
 	}
 
 	tegra_max98088_dai[DAI_LINK_HIFI].cpu_dai_name =

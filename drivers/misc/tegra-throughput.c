@@ -26,7 +26,6 @@
 #include <linux/spinlock.h>
 #include <linux/throughput_ioctl.h>
 #include <linux/nvhost.h>
-#include <linux/module.h>
 #include <mach/dc.h>
 
 #define DEFAULT_SYNC_RATE 60000 /* 60 Hz */

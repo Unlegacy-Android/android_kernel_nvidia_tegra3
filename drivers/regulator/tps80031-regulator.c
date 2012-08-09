@@ -1101,6 +1101,36 @@ static int __devinit tps80031_regulator_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Number of regulator is 0\n");
 		return -EINVAL;
 	}
+	tps_pdata = pdev->dev.platform_data;
+	ri->dev = &pdev->dev;
+	if (tps_pdata->delay_us > 0)
+		ri->delay = tps_pdata->delay_us;
+	ri->tolerance_uv = tps_pdata->tolerance_uv;
+
+	check_smps_mode_mult(pdev->dev.parent, ri);
+	ri->platform_flags = tps_pdata->flags;
+	ri->ext_ctrl_flag = tps_pdata->ext_ctrl_flag;
+
+	err = tps80031_cache_regulator_register(pdev->dev.parent, ri);
+	if (err) {
+		dev_err(&pdev->dev, "Register access for caching is failed\n");
+		return err;
+	}
+	err = tps80031_regulator_preinit(pdev->dev.parent, ri, tps_pdata);
+	if (err)
+		return err;
+
+	err = tps80031_power_req_config(pdev->dev.parent, ri, tps_pdata);
+	if (err)
+		return err;
+
+	rdev = regulator_register(&ri->desc, &pdev->dev,
+				&tps_pdata->regulator, ri, NULL);
+	if (IS_ERR_OR_NULL(rdev)) {
+		dev_err(&pdev->dev, "failed to register regulator %s\n",
+				ri->desc.name);
+		return PTR_ERR(rdev);
+	}
 
 	pmic = devm_kzalloc(&pdev->dev,
 			pdata->num_regulator_pdata * sizeof(*pmic), GFP_KERNEL);
@@ -1160,7 +1190,7 @@ static int __devinit tps80031_regulator_probe(struct platform_device *pdev)
 		}
 
 		rdev = regulator_register(&ri->rinfo->desc, &pdev->dev,
-				tps_pdata->reg_init_data, ri, NULL);
+				tps_pdata->reg_init_data, ri);
 		if (IS_ERR_OR_NULL(rdev)) {
 			dev_err(&pdev->dev,
 				"register regulator failed %s\n",
