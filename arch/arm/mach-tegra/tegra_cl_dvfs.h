@@ -21,7 +21,7 @@
 
 #include "dvfs.h"
 
-#define MAX_CL_DVFS_VOLTAGES		41
+#define MAX_CL_DVFS_VOLTAGES		33
 
 enum tegra_cl_dvfs_ctrl_mode {
 	TEGRA_CL_DVFS_UNINITIALIZED = 0,
