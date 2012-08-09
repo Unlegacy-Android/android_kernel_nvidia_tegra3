@@ -529,11 +529,6 @@ void __init tegra_whistler_reserve(void)
 	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
-static const char *whistler_dt_board_compat[] = {
-	"nvidia,whistler",
-	NULL
-};
-
 MACHINE_START(WHISTLER, "whistler")
 	.atag_offset	= 0x100,
 	.soc		= &tegra_soc_desc,
@@ -545,5 +540,4 @@ MACHINE_START(WHISTLER, "whistler")
 	.timer          = &tegra_timer,
 	.init_machine   = tegra_whistler_init,
 	.restart	= tegra_assert_system_reset,
-	.dt_compat	= whistler_dt_board_compat,
 MACHINE_END

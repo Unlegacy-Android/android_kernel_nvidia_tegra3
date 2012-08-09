@@ -17,6 +17,7 @@
  */
 
 #include <linux/interrupt.h>
+#include <linux/irq.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
@@ -159,7 +160,7 @@ static irqreturn_t tps65090_irq(int irq, void *data)
 {
 	struct tps65090 *tps65090 = data;
 	int ret = 0;
-	u8 status = 0, mask = 0;
+	u8 status, mask;
 	unsigned long int acks = 0;
 	int i;
 
@@ -273,14 +274,16 @@ static int __devinit tps65090_i2c_probe(struct i2c_client *client,
 		return -EINVAL;
 	}
 
-	tps65090 = devm_kzalloc(&client->dev, sizeof(*tps65090), GFP_KERNEL);
-	if (!tps65090) {
-		dev_err(&client->dev, "mem alloc for tps65090 failed\n");
+	tps65090 = devm_kzalloc(&client->dev, sizeof(struct tps65090),
+		GFP_KERNEL);
+	if (tps65090 == NULL)
 		return -ENOMEM;
-	}
 
+	tps65090->client = client;
 	tps65090->dev = &client->dev;
 	i2c_set_clientdata(client, tps65090);
+
+	mutex_init(&tps65090->lock);
 
 	if (client->irq) {
 		ret = tps65090_irq_init(tps65090, client->irq, pdata->irq_base);
@@ -334,15 +337,13 @@ static int __devexit tps65090_i2c_remove(struct i2c_client *client)
 #ifdef CONFIG_PM
 static int tps65090_i2c_suspend(struct i2c_client *client, pm_message_t state)
 {
-	struct i2c_client *client = to_i2c_client(dev);
 	if (client->irq)
 		disable_irq(client->irq);
 	return 0;
 }
 
-static int tps65090_resume(struct device *dev)
+static int tps65090_i2c_resume(struct i2c_client *client)
 {
-	struct i2c_client *client = to_i2c_client(dev);
 	if (client->irq)
 		enable_irq(client->irq);
 	return 0;
@@ -359,10 +360,13 @@ static struct i2c_driver tps65090_driver = {
 	.driver	= {
 		.name	= "tps65090",
 		.owner	= THIS_MODULE,
-		.pm	= &tps65090_pm_ops,
 	},
 	.probe		= tps65090_i2c_probe,
 	.remove		= __devexit_p(tps65090_i2c_remove),
+#ifdef CONFIG_PM
+	.suspend	= tps65090_i2c_suspend,
+	.resume		= tps65090_i2c_resume,
+#endif
 	.id_table	= tps65090_id_table,
 };
 

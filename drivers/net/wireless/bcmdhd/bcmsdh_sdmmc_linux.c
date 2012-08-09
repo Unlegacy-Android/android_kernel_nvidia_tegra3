@@ -34,7 +34,6 @@
 
 #include <linux/mmc/core.h>
 #include <linux/mmc/card.h>
-#include <linux/mmc/host.h>
 #include <linux/mmc/sdio_func.h>
 #include <linux/mmc/sdio_ids.h>
 
@@ -128,9 +127,9 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 		gInstance->func[func->num] = func;
 
 	if (func->num == 2) {
-#ifdef WL_CFG80211
+	#ifdef WL_CFG80211
 			wl_cfg80211_set_parent_dev(&func->dev);
-#endif
+	#endif
 			sd_trace(("F2 found, calling bcmsdh_probe...\n"));
 			ret = bcmsdh_probe_bcmdhd(&func->dev);
 		}

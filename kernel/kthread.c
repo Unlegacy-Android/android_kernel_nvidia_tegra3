@@ -16,7 +16,6 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/freezer.h>
-#include <linux/preempt.h>
 #include <trace/events/sched.h>
 
 static DEFINE_SPINLOCK(kthread_create_lock);
@@ -114,17 +113,7 @@ static int kthread(void *_create)
 	/* OK, tell user we're spawned, wait for stop or wakeup */
 	__set_current_state(TASK_UNINTERRUPTIBLE);
 	create->result = current;
-
-	/*
-	 * Disable preemption so we enter TASK_UNINTERRUPTIBLE after
-	 * complete() instead of possibly being preempted. This speeds
-	 * up clients that do a kthread_bind() directly after
-	 * creation.
-	 */
-	preempt_disable();
 	complete(&create->done);
-	preempt_enable_no_resched();
-
 	schedule();
 
 	ret = -EINTR;

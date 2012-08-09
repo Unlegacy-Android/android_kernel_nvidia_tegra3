@@ -154,31 +154,6 @@ static int tegra_max98095_hw_params(struct snd_pcm_substream *substream,
 		break;
 	}
 
-	i2s_daifmt = SND_SOC_DAIFMT_NB_NF;
-	i2s_daifmt |= pdata->i2s_param[HIFI_CODEC].is_i2s_master ?
-			SND_SOC_DAIFMT_CBS_CFS : SND_SOC_DAIFMT_CBM_CFM;
-
-	switch (pdata->i2s_param[HIFI_CODEC].i2s_mode) {
-		case TEGRA_DAIFMT_I2S :
-			i2s_daifmt |= SND_SOC_DAIFMT_I2S;
-			break;
-		case TEGRA_DAIFMT_DSP_A :
-			i2s_daifmt |= SND_SOC_DAIFMT_DSP_A;
-			break;
-		case TEGRA_DAIFMT_DSP_B :
-			i2s_daifmt |= SND_SOC_DAIFMT_DSP_B;
-			break;
-		case TEGRA_DAIFMT_LEFT_J :
-			i2s_daifmt |= SND_SOC_DAIFMT_LEFT_J;
-			break;
-		case TEGRA_DAIFMT_RIGHT_J :
-			i2s_daifmt |= SND_SOC_DAIFMT_RIGHT_J;
-			break;
-		default :
-			dev_err(card->dev, "Can't configure i2s format\n");
-			return -EINVAL;
-	}
-
 	err = tegra_asoc_utils_set_rate(&machine->util_data, srate, mclk);
 	if (err < 0) {
 		if (!(machine->util_data.set_mclk % mclk))

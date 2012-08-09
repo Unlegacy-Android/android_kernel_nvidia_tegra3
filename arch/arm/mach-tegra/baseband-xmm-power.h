@@ -15,7 +15,7 @@
  */
 
 #ifndef BASEBAND_XMM_POWER_H
-#define BASEBAND_XMM_POWER_H
+#define BASREBAND_XMM_POWER_H
 
 #include <linux/pm.h>
 #include <linux/suspend.h>
@@ -102,18 +102,9 @@ enum baseband_xmm_powerstate_t {
 	BBXMM_PS_LAST	= -1,
 };
 
-enum ipc_ap_wake_state_t {
-	IPC_AP_WAKE_UNINIT,
-	IPC_AP_WAKE_IRQ_READY,
-	IPC_AP_WAKE_INIT1,
-	IPC_AP_WAKE_INIT2,
-	IPC_AP_WAKE_L,
-	IPC_AP_WAKE_H,
-};
-
-irqreturn_t xmm_power_ipc_ap_wake_irq(int value);
+irqreturn_t xmm_power_ipc_ap_wake_irq(int irq, void *dev_id);
 
 void baseband_xmm_set_power_status(unsigned int status);
 extern struct xmm_power_data xmm_power_drv_data;
 
-#endif  /* BASEBAND_XMM_POWER_H */
+#endif  /* BASREBAND_XMM_POWER_H */

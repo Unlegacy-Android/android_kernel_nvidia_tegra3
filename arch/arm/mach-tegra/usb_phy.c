@@ -145,7 +145,7 @@ static irqreturn_t usb_phy_dev_vbus_pmu_irq_thr(int irq, void *pdata)
 
 	if (phy->vdd_reg && !phy->vdd_reg_on) {
 		regulator_enable(phy->vdd_reg);
-		phy->vdd_reg_on = true;
+		phy->vdd_reg_on = 1;
 		/*
 		 * Optimal time to get the regulator turned on
 		 * before detecting vbus interrupt.
@@ -182,8 +182,7 @@ static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 	phy->pllu_clk = clk_get_sys(NULL, "pll_u");
 	if (IS_ERR(phy->pllu_clk)) {
 		ERR("inst:[%d] Can't get pllu_clk clock\n", phy->inst);
-		err = PTR_ERR(phy->pllu_clk);
-		goto fail_pll;
+		return PTR_ERR(phy->pllu_clk);
 	}
 	clk_enable(phy->pllu_clk);
 
@@ -231,7 +230,6 @@ fail_ctrlr_clk:
 	clk_disable(phy->pllu_clk);
 	clk_put(phy->pllu_clk);
 
-fail_pll:
 	return err;
 }
 
@@ -248,23 +246,20 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 	if (!pdata) {
 		dev_err(&pdev->dev, "inst:[%d] Platform data missing\n",
 								pdev->id);
-		err = -EINVAL;
-		goto fail_inval;
+		return ERR_PTR(-EINVAL);
 	}
 
 	phy = devm_kzalloc(&pdev->dev, sizeof(struct tegra_usb_phy), GFP_KERNEL);
 	if (!phy) {
 		ERR("inst:[%d] malloc usb phy failed\n", pdev->id);
-		err = -ENOMEM;
-		goto fail_nomem;
+		return ERR_PTR(-ENOMEM);
 	}
 
 	phy->pdata = devm_kzalloc(&pdev->dev, plat_data_size, GFP_KERNEL);
 	if (!phy->pdata) {
 		ERR("inst:[%d] malloc usb phy pdata failed\n", pdev->id);
-		devm_kfree(&pdev->dev, phy);
-		err = -ENOMEM;
-		goto fail_nomem;
+		kfree(phy);
+		return ERR_PTR(-ENOMEM);
 	}
 
 	memcpy(phy->pdata, pdata, plat_data_size);
@@ -277,24 +272,20 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		ERR("inst:[%d] failed to get I/O memory\n", phy->inst);
-		err = -ENXIO;
-		goto fail_io;
+		return ERR_PTR(-ENXIO);
 	}
 
 	phy->regs = ioremap(res->start, resource_size(res));
 	if (!phy->regs) {
 		ERR("inst:[%d] Failed to remap I/O memory\n", phy->inst);
-		err = -ENOMEM;
-		goto fail_io;
+		return ERR_PTR(-ENOMEM);
 	}
 
-	phy->vdd_reg = regulator_get(&pdev->dev, "avdd_usb");
+	phy->vdd_reg = regulator_get(NULL, "avdd_usb");
 	if (IS_ERR_OR_NULL(phy->vdd_reg)) {
 		ERR("inst:[%d] couldn't get regulator avdd_usb: %ld\n",
 			phy->inst, PTR_ERR(phy->vdd_reg));
 		phy->vdd_reg = NULL;
-		err = PTR_ERR(phy->vdd_reg);
-		goto fail_io;
 	}
 
 	err = tegra_usb_phy_get_clocks(phy);
@@ -336,6 +327,8 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 						 req failed\n", phy->inst);
 					goto fail_init;
 				}
+				if (gpio < TEGRA_NR_GPIOS)
+					tegra_gpio_enable(gpio);
 				if (gpio_direction_output(gpio, 1) < 0) {
 					ERR("inst:[%d] host vbus gpio \
 						 dir failed\n", phy->inst);
@@ -388,12 +381,6 @@ fail_init:
 fail_clk:
 	regulator_put(phy->vdd_reg);
 	iounmap(phy->regs);
-fail_io:
-	devm_kfree(&pdev->dev, phy->pdata);
-	devm_kfree(&pdev->dev, phy);
-
-fail_nomem:
-fail_inval:
 	return ERR_PTR(err);
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_open);
@@ -433,10 +420,8 @@ void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 		regulator_put(phy->vdd_reg);
 	}
 
-	tegra_usb_phy_release_clocks(phy);
 
-	devm_kfree(&phy->pdev->dev, phy->pdata);
-	devm_kfree(&phy->pdev->dev, phy);
+	tegra_usb_phy_release_clocks(phy);
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_close);
 
@@ -488,29 +473,25 @@ int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 	clk_disable(phy->sys_clk);
 	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST) {
 		if (!phy->pdata->u_data.host.hot_plug &&
-			!phy->pdata->u_data.host.remote_wakeup_supported) {
+			!phy->pdata->u_data.host.remote_wakeup_supported)
 			clk_disable(phy->ctrlr_clk);
-			phy->ctrl_clk_on = false;
-			if (phy->vdd_reg && phy->vdd_reg_on) {
-				regulator_disable(phy->vdd_reg);
-				phy->vdd_reg_on = false;
-			}
-		}
 	} else {
-		/* In device mode clock regulator/clocks will be turned off
-		 * only if pmu interrupt is present on the board and host mode
-		 * support through OTG is supported on the board.
+		/* In device mode clock is turned on by pmu irq handler
+		 * if pmu irq is not available clocks will not be turned off/on
 		 */
-		if (phy->pdata->u_data.dev.vbus_pmu_irq &&
-			phy->pdata->builtin_host_disabled) {
+		if (phy->pdata->u_data.dev.vbus_pmu_irq) {
 			clk_disable(phy->ctrlr_clk);
 			phy->ctrl_clk_on = false;
-			if (phy->vdd_reg && phy->vdd_reg_on) {
-				regulator_disable(phy->vdd_reg);
-				phy->vdd_reg_on = false;
-			}
 		}
 	}
+
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	if (phy->vdd_reg && phy->vdd_reg_on)
+		if (phy->pdata->has_hostpc || phy->pdata->builtin_host_disabled) {
+			regulator_disable(phy->vdd_reg);
+			phy->vdd_reg_on = false;
+	}
+#endif
 
 	phy->phy_power_on = false;
 

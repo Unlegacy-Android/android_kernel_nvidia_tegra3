@@ -353,15 +353,8 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c,
 		val = smmu_read(smmu, offs);
 		if (on) {
 #if !defined(SKIP_SWGRP_CHECK)
-			if (WARN_ON(val & mask)) {
-				for_each_set_bit(i, &map, HWGRP_COUNT) {
-					offs = HWGRP_ASID_REG(i);
-					val = smmu_read(smmu, offs);
-					val &= ~mask;
-					smmu_write(smmu, val, offs);
-				}
-				return -EBUSY;
-			}
+			if (WARN_ON(val & mask))
+				goto err_hw_busy;
 #endif
 			val |= mask;
 		} else {
@@ -376,6 +369,14 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c,
 	c->hwgrp = map;
 	return 0;
 
+err_hw_busy:
+	for_each_set_bit(i, &map, HWGRP_COUNT) {
+		offs = HWGRP_ASID_REG(i);
+		val = smmu_read(smmu, offs);
+		val &= ~mask;
+		smmu_write(smmu, val, offs);
+	}
+	return -EBUSY;
 }
 
 static int smmu_client_set_hwgrp(struct smmu_client *c, u32 map, int on)

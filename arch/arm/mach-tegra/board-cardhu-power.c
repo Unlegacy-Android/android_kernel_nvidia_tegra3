@@ -539,10 +539,7 @@ static struct regulator_consumer_supply fixed_reg_en_3v3_sys_supply[] = {
 	REGULATOR_SUPPLY("hvdd_pex_pmu", NULL),
 	REGULATOR_SUPPLY("avdd_hdmi", NULL),
 	REGULATOR_SUPPLY("vpp_fuse", NULL),
-	REGULATOR_SUPPLY("avdd_usb", "tegra-udc.0"),
-	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
-	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
-	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("avdd_usb", NULL),
 	REGULATOR_SUPPLY("vdd_ddr_rx", NULL),
 	REGULATOR_SUPPLY("vcore_nand", NULL),
 	REGULATOR_SUPPLY("hvdd_sata", NULL),
@@ -1162,27 +1159,22 @@ int __init cardhu_suspend_init(void)
 		if (board_info.fab == BOARD_FAB_A03)
 			cardhu_suspend_data.corereq_high = true;
 		if (board_info.fab < BOARD_FAB_A03)
-			/* post E1291-A02 revisions VBUS wake supported */
+			/* post E1291-A02 revisions WAKE19/USB1-VBUS wake supported */
 			tegra_disable_wake_source(TEGRA_WAKE_USB1_VBUS);
 		break;
 	case BOARD_E1198:
 		if (board_info.fab < BOARD_FAB_A02)
-			/* post E1198-A01 revisions VBUS wake supported */
+			/* post E1198-A01 revisions WAKE19/USB1-VBUS wake supported */
 			tegra_disable_wake_source(TEGRA_WAKE_USB1_VBUS);
 		break;
 	case BOARD_PM269:
 	case BOARD_PM305:
 	case BOARD_PM311:
 		break;
-	case BOARD_E1256:
-	case BOARD_E1257:
-		cardhu_suspend_data.cpu_timer = 5000;
-		cardhu_suspend_data.cpu_off_timer = 5000;
-		break;
 	case BOARD_E1187:
 	case BOARD_E1186:
-		/* VBUS repeated wakeup seen on older E1186 boards */
-		tegra_disable_wake_source(TEGRA_WAKE_USB1_VBUS);
+	case BOARD_E1256:
+	case BOARD_E1257:
 		cardhu_suspend_data.cpu_timer = 5000;
 		cardhu_suspend_data.cpu_off_timer = 5000;
 		break;

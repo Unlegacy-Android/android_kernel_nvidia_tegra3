@@ -31,7 +31,6 @@
 #include <linux/io.h>
 #include <linux/syscore_ops.h>
 #include <linux/cpu_pm.h>
-#include <linux/rtc.h>
 
 #include <asm/mach/time.h>
 #include <asm/arch_timer.h>
@@ -551,96 +550,6 @@ void tegra_tsc_wait_for_resume(void)
 #else
 static inline int tegra_init_arch_timer(void) { return -ENODEV; }
 static inline int tegra_init_late_arch_timer(void) { return -ENODEV; }
-#endif
-
-#ifdef CONFIG_RTC_CLASS
-/**
- * has_readtime - check rtc device has readtime ability
- * @dev: current device
- * @name_ptr: name to be returned
- *
- * This helper function checks to see if the rtc device can be
- * used for reading time
- */
-static int has_readtime(struct device *dev, void *name_ptr)
-{
-	struct rtc_device *candidate = to_rtc_device(dev);
-
-	if (!candidate->ops->read_time)
-		return 0;
-
-	return 1;
-}
-
-/**
- * tegra_get_linear_age - helper function to return linear age
- * from Jan 2012.
- *
- * @return
- * 1 - Jan 2012,
- * 2 - Feb 2012,
- * .....
- * 13 - Jan 2013
- */
-int tegra_get_linear_age(void)
-{
-	struct rtc_time tm;
-	int year, month, linear_age;
-	struct rtc_device *rtc_dev = NULL;
-	const char *name = NULL;
-	int ret;
-	struct device *dev = NULL;
-
-	linear_age = -1;
-	year = month = 0;
-	dev = class_find_device(rtc_class, NULL, &name, has_readtime);
-
-	if (!dev) {
-		pr_err("DVFS: No device with readtime capability\n");
-		goto done;
-	}
-
-	name = dev_name(dev);
-
-	pr_info("DVFS: Got RTC device name:%s\n", name);
-
-	if (name)
-		rtc_dev = rtc_class_open((char *)name);
-
-	if (!rtc_dev) {
-		pr_err("DVFS: No RTC device\n");
-		goto error_dev;
-	}
-
-	ret = rtc_read_time(rtc_dev, &tm);
-
-	if (ret < 0) {
-		pr_err("DVFS: Can't read RTC time\n");
-		goto error_rtc;
-	}
-
-	year = tm.tm_year;
-	/*Normalize it to 2012*/
-	year -= 112;
-	month = tm.tm_mon + 1;
-
-	if (year >= 0)
-		linear_age = year * 12 + month;
-
-error_rtc:
-	rtc_class_close(rtc_dev);
-error_dev:
-	put_device(dev);
-done:
-	return linear_age;
-
-}
-
-#else
-int tegra_get_linear_age()
-{
-	return -1;
-}
 #endif
 
 void __init tegra_init_timer(void)

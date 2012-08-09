@@ -450,12 +450,12 @@ config REGULATOR_TPS51632
 	  The TPS52632 is 3-2-1 Phase D-Cap+ Step Down Driverless Controller
 	  with Serial VID control and DVFS.
 
-config REGULATOR_TPS65090
-	tristate "TI TPS65090 Power regulator"
-	depends on MFD_TPS65090
+config REGULATOR_WM8350
+	tristate "Wolfson Microelectronics WM8350 AudioPlus PMIC"
+	depends on MFD_WM8350
 	help
-	  This driver provides support for the voltage regulators on the
-	  TI TPS65090 PMIC.
+	  This driver provides support for the voltage and current regulators
+          of the WM8350 AudioPlus PMIC.
 
 config REGULATOR_TPS65910
 	tristate "TI TPS65910/TPS65911 Power Regulators"
@@ -483,13 +483,6 @@ config REGULATOR_TPS6238X0
 	  high-frequency synchronous step down dc-dc converter optimized
 	  for battery-powered portable applications.
 
-config REGULATOR_WM8350
-	tristate "Wolfson Microelectronics WM8350 AudioPlus PMIC"
-	depends on MFD_WM8350
-	help
-	  This driver provides support for the voltage and current regulators
-          of the WM8350 AudioPlus PMIC.
-
 config REGULATOR_WM8400
 	tristate "Wolfson Microelectronics WM8400 AudioPlus PMIC"
 	depends on MFD_WM8400
@@ -510,6 +503,12 @@ config REGULATOR_TPS6591X
 	default n
 	help
 	  This driver supports TPS6591X voltage regulator chips.
+
+config REGULATOR_TPS65090
+	tristate "TI TPS65090 Power regulators"
+	depends on MFD_TPS65090
+	help
+	  This driver supports TPS65090 voltage regulator chips.
 
 config REGULATOR_TPS80031
 	tristate "TI TPS80031 Power regulators"
