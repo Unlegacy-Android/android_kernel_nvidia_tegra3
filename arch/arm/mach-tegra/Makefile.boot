@@ -1,9 +1,12 @@
-zreladdr-$(CONFIG_ARCH_TEGRA_2x_SOC)	:= 0x00008000
-params_phys-$(CONFIG_ARCH_TEGRA_2x_SOC)	:= 0x00000100
-initrd_phys-$(CONFIG_ARCH_TEGRA_2x_SOC)	:= 0x00800000
-zreladdr-$(CONFIG_ARCH_TEGRA_3x_SOC)	:= 0x80008000
-params_phys-$(CONFIG_ARCH_TEGRA_3x_SOC)	:= 0x80000100
-initrd_phys-$(CONFIG_ARCH_TEGRA_3x_SOC)	:= 0x80800000
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+zreladdr-y	:= 0x00008000
+params_phys-y	:= 0x00000100
+initrd_phys-y	:= 0x00800000
+#else
+zreladdr-y	:= 0x80008000
+params_phys-y	:= 0x80000100
+initrd_phys-y	:= 0x80800000
+#endif
 
 dtb-$(CONFIG_ARCH_TEGRA_2x_SOC) += tegra20-harmony.dtb
 dtb-$(CONFIG_ARCH_TEGRA_2x_SOC) += tegra20-paz00.dtb
