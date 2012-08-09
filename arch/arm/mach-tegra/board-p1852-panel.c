@@ -39,6 +39,15 @@
 #define P1852_LVDS_SER1_ADDR 0xd
 #define P1852_LVDS_SER2_ADDR 0xc
 
+#define LVDS_SER_REG_CONFIG_1                   0x4
+#define LVDS_SER_REG_CONFIG_1_BKWD_OVERRIDE     3
+#define LVDS_SER_REG_CONFIG_1_BKWD              2
+
+#define LVDS_SER_REG_DATA_PATH_CTRL             0x12
+#define LVDS_SER_REG_DATA_PATH_CTRL_PASS_RGB    6
+
+#define LVDS_SER_REG_CONFIG_0                   0x3
+#define LVDS_SER_REG_CONFIG_0_TRFB              0
 
 /* RGB panel requires no special enable/disable */
 static int p1852_panel_enable(void)
@@ -51,15 +60,98 @@ static int p1852_panel_disable(void)
 	return 0;
 }
 
+static int ser_i2c_read(struct i2c_client *client,
+						u8 reg_addr, u8 *pval)
+{
+	struct i2c_msg msg[] = {
+		{
+			.addr = client->addr,
+			.flags = 0,
+			.len = 1,
+			.buf = &reg_addr,
+		},
+		{
+			.addr = client->addr,
+			.flags = I2C_M_RD,
+			.len = 1,
+			.buf = pval,
+		},
+	};
+
+	return i2c_transfer(client->adapter, msg, 2);
+}
+
+static int ser_i2c_write(struct i2c_client *client,
+						u8 reg_addr, u8 val)
+{
+	u8 buffer[] = {reg_addr, val};
+	struct i2c_msg msg[] = {
+		{
+			.addr = client->addr,
+			.flags = 0,
+			.len = 2,
+			.buf = buffer,
+		},
+	};
+
+	return i2c_transfer(client->adapter, msg, 1);
+}
+
+static int lvds_ser_init(struct i2c_client *client,
+						bool is_fpdlinkII,
+						bool support_hdcp,
+						bool clk_rise_edge)
+{
+	u8 val;
+	int err = 0;
+
+	/* intentional call make register & bus ready */
+	ser_i2c_read(client, LVDS_SER_REG_CONFIG_1, &val);
+
+	if (is_fpdlinkII) {
+		err = ser_i2c_read(client, LVDS_SER_REG_CONFIG_1, &val);
+		if (err < 0)
+			return err;
+
+		val |= (1 << LVDS_SER_REG_CONFIG_1_BKWD_OVERRIDE);
+		val |= (1 << LVDS_SER_REG_CONFIG_1_BKWD);
+
+		err = ser_i2c_write(client, LVDS_SER_REG_CONFIG_1, val);
+		if (err < 0)
+			return err;
+	}
+	else if (!support_hdcp) {
+		err = ser_i2c_read(client, LVDS_SER_REG_DATA_PATH_CTRL, &val);
+		if (err < 0)
+			return err;
+
+		val |= (1 << LVDS_SER_REG_DATA_PATH_CTRL_PASS_RGB);
+
+		err = ser_i2c_write(client, LVDS_SER_REG_DATA_PATH_CTRL, val);
+		if (err < 0)
+			return err;
+	}
+
+	if (clk_rise_edge) {
+		err = ser_i2c_read(client, LVDS_SER_REG_CONFIG_0, &val);
+		if (err < 0)
+			return err;
+
+		val |= (1 << LVDS_SER_REG_CONFIG_0_TRFB);
+
+		err = ser_i2c_write(client, LVDS_SER_REG_CONFIG_0, val);
+	}
+
+	return (err < 0 ? err : 0);
+}
+
 /* enable primary LVDS */
 static int p1852_lvds_enable(void)
 {
 	struct i2c_adapter *adapter;
 	struct i2c_board_info info = {{0}};
 	static struct i2c_client *client;
-	struct i2c_msg msg[2];
-	u8 cmd_buf[] = {0x4, 0};
-	int status=-1;
+	int err = -1;
 
 	/* Turn on serializer chip */
 	gpio_set_value(P1852_LVDS_ENA1, 1);
@@ -76,47 +168,13 @@ static int p1852_lvds_enable(void)
 		if (!client)
 			pr_warning("%s: client is null\n", __func__);
 		else {
-			msg[0].addr = P1852_LVDS_SER1_ADDR;
-			msg[0].flags = 0;
-			msg[0].len = 1;
-			msg[0].buf = &cmd_buf[0];
-
-			status = i2c_transfer(client->adapter, msg, 1);
-			/* ignore first write status */
-
-			msg[0].addr = P1852_LVDS_SER1_ADDR;
-			msg[0].flags = 0;
-			msg[0].len = 1;
-			msg[0].buf = &cmd_buf[0];
-
-			msg[1].addr = P1852_LVDS_SER1_ADDR;
-			msg[1].flags = I2C_M_RD;
-			msg[1].len = 1;
-			msg[1].buf = &cmd_buf[1];
-
-			status = i2c_transfer(client->adapter, msg, 2);
-			if (status < 0) {
-				pr_warning("%s: i2c failed, addr=0x%x, reg=%d, ret=%d\n",
-					__func__, P1852_LVDS_SER1_ADDR, cmd_buf[0], status);
-			}
-			else {
-				cmd_buf[1] |= (1 << 2);
-				cmd_buf[1] |= (1 << 3);
-
-				msg[0].addr = P1852_LVDS_SER1_ADDR;
-				msg[0].flags = 0;
-				msg[0].len = 2;
-				msg[0].buf = &cmd_buf[0];
-
-				status = i2c_transfer(client->adapter, msg, 1);
-				if (status < 0) {
-					pr_warning("%s: i2c err, addr=0x%x, reg=%d, ret=%d\n",
-						__func__, P1852_LVDS_SER1_ADDR, cmd_buf[0], status);
-				}
-			}
+			err = lvds_ser_init(client,
+								true,  /* is_fpdlinkII*/
+								false, /* support_hdcp */
+								true); /* clk_rise_edge */
 		}
 	}
-	return (status<0 ? status : 0);
+	return err;
 }
 
 /* Disable primary LVDS */
@@ -134,9 +192,7 @@ static int p1852_lvds2_enable(void)
 	struct i2c_adapter *adapter;
 	struct i2c_board_info info = {{0}};
 	static struct i2c_client *client;
-	struct i2c_msg msg[2];
-	u8 cmd_buf[] = {0x4, 0};
-	int status=-1;
+	int err = -1;
 
 	/* Enable HDMI HPD */
 	/* need nothing here */
@@ -159,47 +215,13 @@ static int p1852_lvds2_enable(void)
 		if (!client)
 			pr_warning("%s: client is null\n", __func__);
 		else {
-			msg[0].addr = P1852_LVDS_SER2_ADDR;
-			msg[0].flags = 0;
-			msg[0].len = 1;
-			msg[0].buf = &cmd_buf[0];
-
-			status = i2c_transfer(client->adapter, msg, 1);
-			/* ignore first write status */
-
-			msg[0].addr = P1852_LVDS_SER2_ADDR;
-			msg[0].flags = 0;
-			msg[0].len = 1;
-			msg[0].buf = &cmd_buf[0];
-
-			msg[1].addr = P1852_LVDS_SER2_ADDR;
-			msg[1].flags = I2C_M_RD;
-			msg[1].len = 1;
-			msg[1].buf = &cmd_buf[1];
-
-			status = i2c_transfer(client->adapter, msg, 2);
-			if (status < 0) {
-				pr_warning("%s: i2c failed, addr=0x%x, reg=%d, ret=%d\n",
-					__func__, P1852_LVDS_SER2_ADDR, cmd_buf[0], status);
-			}
-			else {
-				cmd_buf[1] |= (1 << 2);
-				cmd_buf[1] |= (1 << 3);
-
-				msg[0].addr = P1852_LVDS_SER2_ADDR;
-				msg[0].flags = 0;
-				msg[0].len = 2;
-				msg[0].buf = &cmd_buf[0];
-
-				status = i2c_transfer(client->adapter, msg, 1);
-				if (status < 0) {
-					pr_warning("%s: i2c err, addr=0x%x, reg=%d, ret=%d\n",
-						__func__, P1852_LVDS_SER2_ADDR, cmd_buf[0], status);
-				}
-			}
+			err = lvds_ser_init(client,
+								true,  /* is_fpdlinkII*/
+								false, /* support_hdcp */
+								true); /* clk_rise_edge */
 		}
 	}
-	return (status<0 ? status : 0);
+	return err;
 }
 
 /* Disable secondary LVDS */
