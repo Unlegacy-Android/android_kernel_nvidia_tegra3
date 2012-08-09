@@ -48,19 +48,17 @@ struct tegra_twd_context {
 };
 
 void __init tegra_cpu_timer_init(void);
+int tegra_get_linear_age(void);
 
 #ifdef CONFIG_HAVE_ARM_TWD
 int tegra_twd_get_state(struct tegra_twd_context *context);
 void tegra_twd_suspend(struct tegra_twd_context *context);
 void tegra_twd_resume(struct tegra_twd_context *context);
-int tegra_get_linear_age(void);
 #else
 static inline int tegra_twd_get_state(struct tegra_twd_context *context)
 { return -ENODEV; }
 static inline void tegra_twd_suspend(struct tegra_twd_context *context) {}
 static inline void tegra_twd_resume(struct tegra_twd_context *context) {}
-static inline int tegra_get_linear_age()
-{ return -1; }
 #endif
 
 #ifdef CONFIG_ARM_ARCH_TIMER
