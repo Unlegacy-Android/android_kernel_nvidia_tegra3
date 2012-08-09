@@ -270,7 +270,8 @@ static int configure_charging_parameter(struct tps80031_charger *charger)
 	}
 
 	/* set Pre Charge current to 400mA */
-	ret = tps80031_write(charger->dev->parent, SLAVE_ID2, 0xDE, 0x3);
+	ret = tps80031_write(charger->dev->parent, SLAVE_ID2,
+			CHARGERUSB_VICHRG_PC, 0x3);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
 				__func__, 0xDD);
@@ -353,10 +354,18 @@ static int tps80031_charger_probe(struct platform_device *pdev)
 	int ret = 0;
 	struct device *dev = &pdev->dev;
 	struct tps80031_charger *charger;
-	struct tps80031_charger_platform_data *pdata = pdev->dev.platform_data;
+	struct tps80031_platform_data *tps80031_pdata;
+	struct tps80031_charger_platform_data *pdata;
 
 	dev_info(dev, "%s()\n", __func__);
 
+	tps80031_pdata = dev_get_platdata(pdev->dev.parent);
+	if (!tps80031_pdata) {
+		dev_err(&pdev->dev, "no tps80031 platform_data specified\n");
+		return -EINVAL;
+	}
+
+	pdata = tps80031_pdata->battery_charger_pdata;
 	if (!pdata) {
 		dev_err(dev, "%s() No platform data, exiting..\n", __func__);
 		return -ENODEV;

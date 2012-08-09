@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-enterprise.c
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -190,7 +190,6 @@ static __initdata struct tegra_clk_init_table enterprise_clk_init_table[] = {
 	{ "blink",	"clk_32k",	32768,		true},
 	{ "i2s0",	"pll_a_out0",	0,		false},
 	{ "i2s1",	"pll_a_out0",	0,		false},
-	{ "i2s2",	"pll_a_out0",	0,		false},
 	{ "i2s3",	"pll_a_out0",	0,		false},
 	{ "spdif_out",	"pll_a_out0",	0,		false},
 	{ "d_audio",	"clk_m",	12000000,	false},
@@ -203,6 +202,19 @@ static __initdata struct tegra_clk_init_table enterprise_clk_init_table[] = {
 	{ "audio3",	"i2s3_sync",	0,		false},
 	{ "vi",		"pll_p",	0,		false},
 	{ "vi_sensor",	"pll_p",	0,		false},
+	{ "i2c5",	"pll_p",	3200000,	false},
+	{ NULL,		NULL,		0,		0},
+};
+
+static __initdata struct tegra_clk_init_table enterprise_clk_i2s2_table[] = {
+	/* name		parent		rate		enabled */
+	{ "i2s2",	"pll_a_out0",	0,		false},
+	{ NULL,		NULL,		0,		0},
+};
+
+static __initdata struct tegra_clk_init_table enterprise_clk_i2s4_table[] = {
+	/* name		parent		rate		enabled */
+	{ "i2s4",	"pll_a_out0",	0,		false},
 	{ NULL,		NULL,		0,		0},
 };
 
@@ -246,7 +258,7 @@ static struct tegra_i2c_platform_data enterprise_i2c4_platform_data = {
 static struct tegra_i2c_platform_data enterprise_i2c5_platform_data = {
 	.adapter_nr	= 4,
 	.bus_count	= 1,
-	.bus_clk_rate	= { 400000, 0 },
+	.bus_clk_rate	= { 390000, 0 },
 	.scl_gpio		= {TEGRA_GPIO_PZ6, 0},
 	.sda_gpio		= {TEGRA_GPIO_PZ7, 0},
 	.arb_recovery = arb_lost_recovery,
@@ -715,17 +727,8 @@ static struct tegra_usb_platform_data tegra_ehci2_hsic_xmm_pdata = {
 		.remote_wakeup_supported = false,
 		.power_off_on_suspend = false,
 	},
-	.u_cfg.hsic = {
-		.sync_start_delay = 9,
-		.idle_wait_delay = 17,
-		.term_range_adj = 0,
-		.elastic_underrun_limit = 16,
-		.elastic_overrun_limit = 16,
-	},
 	.ops = &hsic_xmm_plat_ops,
 };
-
-
 
 static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.port_otg = true,
@@ -839,7 +842,6 @@ static struct platform_device *enterprise_audio_devices[] __initdata = {
 	&tegra_dam_device2,
 	&tegra_i2s_device0,
 	&tegra_i2s_device1,
-	&tegra_i2s_device2,
 	&tegra_i2s_device3,
 	&tegra_spdif_device,
 	&spdif_dit_device,
@@ -858,11 +860,17 @@ static void enterprise_audio_init(void)
 
 	if (board_info.board_id == BOARD_E1197)
 		enterprise_audio_pdata.audio_port_id[HIFI_CODEC] = 1;
+	else if (board_info.fab == BOARD_FAB_A04) {
+		enterprise_audio_pdata.audio_port_id[BASEBAND] = 4;
+		platform_device_register(&tegra_i2s_device4);
+	} else {
+		enterprise_audio_pdata.audio_port_id[BASEBAND] = 2;
+		platform_device_register(&tegra_i2s_device2);
+	}
 
 	platform_add_devices(enterprise_audio_devices,
 			ARRAY_SIZE(enterprise_audio_devices));
 }
-
 
 static struct baseband_power_platform_data tegra_baseband_power_data = {
 	.baseband_type = BASEBAND_XMM,
@@ -968,6 +976,13 @@ static void enterprise_nfc_init(void)
 
 static void __init tegra_enterprise_init(void)
 {
+	struct board_info board_info;
+	tegra_get_board_info(&board_info);
+	if (board_info.fab == BOARD_FAB_A04)
+		tegra_clk_init_from_table(enterprise_clk_i2s4_table);
+	else
+		tegra_clk_init_from_table(enterprise_clk_i2s2_table);
+
 	tegra_thermal_init(&thermal_data,
 				throttle_list,
 				ARRAY_SIZE(throttle_list));
@@ -1010,6 +1025,11 @@ static void __init tegra_enterprise_reserve(void)
 	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
+static const char *enterprise_dt_board_compat[] = {
+	"nvidia,enterprise",
+	NULL
+};
+
 MACHINE_START(TEGRA_ENTERPRISE, "tegra_enterprise")
 	.atag_offset	= 0x100,
 	.soc		= &tegra_soc_desc,
@@ -1021,4 +1041,5 @@ MACHINE_START(TEGRA_ENTERPRISE, "tegra_enterprise")
 	.timer          = &tegra_timer,
 	.init_machine   = tegra_enterprise_init,
 	.restart	= tegra_assert_system_reset,
+	.dt_compat	= enterprise_dt_board_compat,
 MACHINE_END

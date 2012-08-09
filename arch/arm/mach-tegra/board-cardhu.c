@@ -1041,13 +1041,6 @@ static struct tegra_usb_platform_data tegra_ehci2_hsic_xmm_pdata = {
 		.remote_wakeup_supported = false,
 		.power_off_on_suspend = false,
 	},
-	.u_cfg.hsic = {
-		.sync_start_delay = 9,
-		.idle_wait_delay = 17,
-		.term_range_adj = 0,
-		.elastic_underrun_limit = 16,
-		.elastic_overrun_limit = 16,
-	},
 	.ops = &hsic_xmm_plat_ops,
 };
 #endif
@@ -1068,10 +1061,6 @@ void hsic_platform_open(void)
 		gpio_direction_output(hsic_enable_gpio, 0 /* deasserted */);
 	if (!reset_gpio)
 		gpio_direction_output(hsic_reset_gpio, 0 /* asserted */);
-	if (!enable_gpio)
-		tegra_gpio_enable(hsic_enable_gpio);
-	if (!reset_gpio)
-		tegra_gpio_enable(hsic_reset_gpio);
 	/* keep hsic reset asserted for 1 ms */
 	udelay(1000);
 	/* enable (power on) hsic */
@@ -1130,13 +1119,6 @@ static struct tegra_usb_platform_data tegra_ehci2_hsic_pdata = {
 		.hot_plug = false,
 		.remote_wakeup_supported = false,
 		.power_off_on_suspend = false,
-	},
-	.u_cfg.hsic = {
-		.sync_start_delay = 9,
-		.idle_wait_delay = 17,
-		.term_range_adj = 0,
-		.elastic_underrun_limit = 16,
-		.elastic_overrun_limit = 16,
 	},
 	.ops = &hsic_plat_ops,
 };
@@ -1457,6 +1439,11 @@ static void __init tegra_cardhu_reserve(void)
 	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
+static const char *cardhu_dt_board_compat[] = {
+	"nvidia,cardhu",
+	NULL
+};
+
 MACHINE_START(CARDHU, "cardhu")
 	.atag_offset    = 0x100,
 	.soc		= &tegra_soc_desc,
@@ -1468,4 +1455,5 @@ MACHINE_START(CARDHU, "cardhu")
 	.timer          = &tegra_timer,
 	.init_machine   = tegra_cardhu_init,
 	.restart	= tegra_assert_system_reset,
+	.dt_compat	= cardhu_dt_board_compat,
 MACHINE_END

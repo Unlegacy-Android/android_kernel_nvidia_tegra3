@@ -184,9 +184,12 @@ struct tps80031_pupd_init_data {
 	int setting;
 };
 
+struct tps80031_bg_platform_data {
+	int irq_base;
+	int battery_present;
+};
+
 struct tps80031_platform_data {
-	int num_subdevs;
-	struct tps80031_subdev_info *subdevs;
 	int gpio_base;
 	int irq_base;
 	struct tps80031_32kclock_plat_data *clk32k_pdata;
@@ -197,12 +200,13 @@ struct tps80031_platform_data {
 	bool use_power_off;
 	struct tps80031_pupd_init_data *pupd_init_data;
 	int pupd_init_data_size;
+	struct tps80031_regulator_platform_data **regulator_pdata;
+	int num_regulator_pdata;
+	struct tps80031_rtc_platform_data *rtc_pdata;
+	struct tps80031_bg_platform_data *bg_pdata;
+	struct tps80031_charger_platform_data *battery_charger_pdata;
 };
 
-struct tps80031_bg_platform_data {
-	int irq_base;
-	int battery_present;
-};
 
 /*
  * NOTE: the functions below are not intended for use outside

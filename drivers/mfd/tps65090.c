@@ -17,7 +17,6 @@
  */
 
 #include <linux/interrupt.h>
-#include <linux/irq.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
@@ -25,7 +24,6 @@
 #include <linux/i2c.h>
 #include <linux/mfd/core.h>
 #include <linux/mfd/tps65090.h>
-#include <linux/regmap.h>
 #include <linux/err.h>
 
 #define NUM_INT_REG 2
@@ -73,54 +71,7 @@ static struct mfd_cell tps65090s[] = {
 	{
 		.name = "tps65910-pmic",
 	},
-	{
-		.name = "tps65910-regulator",
-	},
 };
-
-struct tps65090 {
-	struct mutex		lock;
-	struct device		*dev;
-	struct i2c_client	*client;
-	struct regmap		*rmap;
-	struct irq_chip		irq_chip;
-	struct mutex		irq_lock;
-	int			irq_base;
-	unsigned int		id;
-};
-
-int tps65090_write(struct device *dev, int reg, uint8_t val)
-{
-	struct tps65090 *tps = dev_get_drvdata(dev);
-	return regmap_write(tps->rmap, reg, val);
-}
-EXPORT_SYMBOL_GPL(tps65090_write);
-
-int tps65090_read(struct device *dev, int reg, uint8_t *val)
-{
-	struct tps65090 *tps = dev_get_drvdata(dev);
-	unsigned int temp_val;
-	int ret;
-	ret = regmap_read(tps->rmap, reg, &temp_val);
-	if (!ret)
-		*val = temp_val;
-	return ret;
-}
-EXPORT_SYMBOL_GPL(tps65090_read);
-
-int tps65090_set_bits(struct device *dev, int reg, uint8_t bit_num)
-{
-	struct tps65090 *tps = dev_get_drvdata(dev);
-	return regmap_update_bits(tps->rmap, reg, BIT(bit_num), ~0u);
-}
-EXPORT_SYMBOL_GPL(tps65090_set_bits);
-
-int tps65090_clr_bits(struct device *dev, int reg, uint8_t bit_num)
-{
-	struct tps65090 *tps = dev_get_drvdata(dev);
-	return regmap_update_bits(tps->rmap, reg, BIT(bit_num), 0u);
-}
-EXPORT_SYMBOL_GPL(tps65090_clr_bits);
 
 static void tps65090_irq_lock(struct irq_data *data)
 {
@@ -160,7 +111,7 @@ static irqreturn_t tps65090_irq(int irq, void *data)
 {
 	struct tps65090 *tps65090 = data;
 	int ret = 0;
-	u8 status, mask;
+	u8 status = 0, mask = 0;
 	unsigned long int acks = 0;
 	int i;
 
@@ -274,16 +225,14 @@ static int __devinit tps65090_i2c_probe(struct i2c_client *client,
 		return -EINVAL;
 	}
 
-	tps65090 = devm_kzalloc(&client->dev, sizeof(struct tps65090),
-		GFP_KERNEL);
-	if (tps65090 == NULL)
+	tps65090 = devm_kzalloc(&client->dev, sizeof(*tps65090), GFP_KERNEL);
+	if (!tps65090) {
+		dev_err(&client->dev, "mem alloc for tps65090 failed\n");
 		return -ENOMEM;
+	}
 
-	tps65090->client = client;
 	tps65090->dev = &client->dev;
 	i2c_set_clientdata(client, tps65090);
-
-	mutex_init(&tps65090->lock);
 
 	if (client->irq) {
 		ret = tps65090_irq_init(tps65090, client->irq, pdata->irq_base);
@@ -294,26 +243,22 @@ static int __devinit tps65090_i2c_probe(struct i2c_client *client,
 		}
 	}
 
-	tps65090->rmap = regmap_init_i2c(tps65090->client,
-		&tps65090_regmap_config);
+	tps65090->rmap = devm_regmap_init_i2c(client, &tps65090_regmap_config);
 	if (IS_ERR(tps65090->rmap)) {
-		dev_err(&client->dev, "regmap_init failed with err: %ld\n",
-			PTR_ERR(tps65090->rmap));
+		ret = PTR_ERR(tps65090->rmap);
+		dev_err(&client->dev, "regmap_init failed with err: %d\n", ret);
 		goto err_irq_exit;
-	};
+	}
 
 	ret = mfd_add_devices(tps65090->dev, -1, tps65090s,
 		ARRAY_SIZE(tps65090s), NULL, 0);
 	if (ret) {
 		dev_err(&client->dev, "add mfd devices failed with err: %d\n",
 			ret);
-		goto err_regmap_exit;
+		goto err_irq_exit;
 	}
 
 	return 0;
-
-err_regmap_exit:
-	regmap_exit(tps65090->rmap);
 
 err_irq_exit:
 	if (client->irq)
@@ -327,28 +272,33 @@ static int __devexit tps65090_i2c_remove(struct i2c_client *client)
 	struct tps65090 *tps65090 = i2c_get_clientdata(client);
 
 	mfd_remove_devices(tps65090->dev);
-	regmap_exit(tps65090->rmap);
 	if (client->irq)
 		free_irq(client->irq, tps65090);
 
 	return 0;
 }
 
-#ifdef CONFIG_PM
-static int tps65090_i2c_suspend(struct i2c_client *client, pm_message_t state)
+#ifdef CONFIG_PM_SLEEP
+static int tps65090_suspend(struct device *dev)
 {
+	struct i2c_client *client = to_i2c_client(dev);
 	if (client->irq)
 		disable_irq(client->irq);
 	return 0;
 }
 
-static int tps65090_i2c_resume(struct i2c_client *client)
+static int tps65090_resume(struct device *dev)
 {
+	struct i2c_client *client = to_i2c_client(dev);
 	if (client->irq)
 		enable_irq(client->irq);
 	return 0;
 }
 #endif
+
+static const struct dev_pm_ops tps65090_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(tps65090_suspend, tps65090_resume)
+};
 
 static const struct i2c_device_id tps65090_id_table[] = {
 	{ "tps65090", 0 },
@@ -360,13 +310,10 @@ static struct i2c_driver tps65090_driver = {
 	.driver	= {
 		.name	= "tps65090",
 		.owner	= THIS_MODULE,
+		.pm	= &tps65090_pm_ops,
 	},
 	.probe		= tps65090_i2c_probe,
 	.remove		= __devexit_p(tps65090_i2c_remove),
-#ifdef CONFIG_PM
-	.suspend	= tps65090_i2c_suspend,
-	.resume		= tps65090_i2c_resume,
-#endif
 	.id_table	= tps65090_id_table,
 };
 

@@ -3001,7 +3001,6 @@ struct regulator_dev *regulator_register(struct regulator_desc *regulator_desc,
 		struct regulator_dev *r;
 
 		r = regulator_dev_lookup(dev, supply);
-
 		if (!r) {
 			dev_err(dev, "Failed to find supply %s\n", supply);
 			ret = -EPROBE_DEFER;

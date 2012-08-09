@@ -323,9 +323,15 @@ static int __devinit tps62360_init_dcdc(struct tps62360_chip *tps,
 	return ret;
 }
 
+static bool is_volatile_reg(struct device *dev, unsigned int reg)
+{
+	return false;
+}
+
 static const struct regmap_config tps62360_regmap_config = {
 	.reg_bits		= 8,
 	.val_bits		= 8,
+	.volatile_reg		= is_volatile_reg,
 	.max_register		= REG_CHIPID,
 	.cache_type		= REGCACHE_RBTREE,
 };

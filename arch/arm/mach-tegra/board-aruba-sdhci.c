@@ -224,9 +224,6 @@ static int __init aruba_wifi_init(void)
 	gpio_request(ARUBA_WLAN_PWR, "wlan_power");
 	gpio_request(ARUBA_WLAN_RST, "wlan_rst");
 
-	tegra_gpio_enable(ARUBA_WLAN_PWR);
-	tegra_gpio_enable(ARUBA_WLAN_RST);
-
 	gpio_direction_output(ARUBA_WLAN_PWR, 0);
 	gpio_direction_output(ARUBA_WLAN_RST, 0);
 

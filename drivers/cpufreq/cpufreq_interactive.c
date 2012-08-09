@@ -44,6 +44,7 @@ struct cpufreq_interactive_cpuinfo {
 	u64 freq_change_time;
 	u64 freq_change_time_in_idle;
 	u64 freq_change_time_in_iowait;
+	u64 last_high_freq_time;
 	struct cpufreq_policy *policy;
 	struct cpufreq_frequency_table *freq_table;
 	unsigned int target_freq;
@@ -87,6 +88,24 @@ static unsigned long min_sample_time;
  */
 #define DEFAULT_TIMER_RATE 20000;
 static unsigned long timer_rate;
+
+/*
+ * The minimum delay before frequency is allowed to raise over normal rate.
+ * Since it must remain at high frequency for a minimum of MIN_SAMPLE_TIME
+ * once it rises, setting this delay to a multiple of MIN_SAMPLE_TIME
+ * becomes the best way to enforce a square wave.
+ * e.g. 5*MIN_SAMPLE_TIME = 20% high freq duty cycle
+ */
+#define DEFAULT_HIGH_FREQ_MIN_DELAY 5*DEFAULT_MIN_SAMPLE_TIME
+static unsigned long high_freq_min_delay;
+
+/*
+ * The maximum frequency CPUs are allowed to run normally
+ * 0 if disabled
+ */
+#define DEFAULT_MAX_NORMAL_FREQ 0
+static unsigned long max_normal_freq;
+
 
 /* Defines to control mid-range frequencies */
 #define DEFAULT_MID_RANGE_GO_MAXSPEED_LOAD 95
@@ -264,6 +283,20 @@ static void cpufreq_interactive_timer(unsigned long data)
 		if (pcpu->timer_run_time - pcpu->freq_change_time
 		    < min_sample_time)
 			goto rearm;
+	}
+
+	/*
+	 * Can only overclock if the delay is satisfy. Otherwise, cap it to
+	 * maximum allowed normal frequency
+	 */
+	if (max_normal_freq && (new_freq > max_normal_freq)) {
+		if ((pcpu->timer_run_time - pcpu->last_high_freq_time)
+				< high_freq_min_delay) {
+			new_freq = max_normal_freq;
+		}
+		else {
+			pcpu->last_high_freq_time = pcpu->timer_run_time;
+		}
 	}
 
 	pcpu->target_freq = new_freq;
@@ -493,7 +526,9 @@ DECL_CPUFREQ_INTERACTIVE_ATTR(max_boost)
 DECL_CPUFREQ_INTERACTIVE_ATTR(midrange_max_boost)
 DECL_CPUFREQ_INTERACTIVE_ATTR(sustain_load)
 DECL_CPUFREQ_INTERACTIVE_ATTR(min_sample_time)
-DECL_CPUFREQ_INTERACTIVE_ATTR(timer_rate);
+DECL_CPUFREQ_INTERACTIVE_ATTR(timer_rate)
+DECL_CPUFREQ_INTERACTIVE_ATTR(high_freq_min_delay)
+DECL_CPUFREQ_INTERACTIVE_ATTR(max_normal_freq)
 
 #undef DECL_CPUFREQ_INTERACTIVE_ATTR
 
@@ -508,6 +543,8 @@ static struct attribute *interactive_attributes[] = {
 	&sustain_load_attr.attr,
 	&min_sample_time_attr.attr,
 	&timer_rate_attr.attr,
+	&high_freq_min_delay_attr.attr,
+	&max_normal_freq_attr.attr,
 	NULL,
 };
 
@@ -565,7 +602,8 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			pcpu->freq_change_time_in_iowait =
 				get_cpu_iowait_time(j, NULL);
 			pcpu->time_in_iowait = pcpu->freq_change_time_in_iowait;
-
+			if (!pcpu->last_high_freq_time)
+				pcpu->last_high_freq_time = pcpu->freq_change_time;
 			pcpu->timer_idlecancel = 1;
 			pcpu->governor_enabled = 1;
 			smp_wmb();
@@ -636,6 +674,8 @@ static int __init cpufreq_interactive_init(void)
 	midrange_go_maxspeed_load = DEFAULT_MID_RANGE_GO_MAXSPEED_LOAD;
 	min_sample_time = DEFAULT_MIN_SAMPLE_TIME;
 	timer_rate = DEFAULT_TIMER_RATE;
+	high_freq_min_delay = DEFAULT_HIGH_FREQ_MIN_DELAY;
+	max_normal_freq = DEFAULT_MAX_NORMAL_FREQ;
 
 	/* Initalize per-cpu timers */
 	for_each_possible_cpu(i) {

@@ -132,7 +132,7 @@
 #define TPS80031_ID2_PWM			0xBA ... 0xBE
 #define TPS80031_ID2_FUEL_GAUSE			0xC0 ... 0xCB
 #define TPS80031_ID2_INTERFACE_INTERRUPTS	0xD0 ... 0xD8
-#define TPS80031_ID2_CHARGER			0xE0 ... 0xF5
+#define TPS80031_ID2_CHARGER			0xDA ... 0xF5
 
 #define TPS80031_ID3_TEST_LDO			0x00 ... 0x09
 #define TPS80031_ID3_TEST_SMPS			0x10 ... 0x2B
@@ -296,6 +296,26 @@ struct tps80031 {
 	struct tps80031_client	tps_clients[TPS_NUM_SLAVES];
 	struct regmap		*regmap[TPS_NUM_SLAVES];
 };
+
+/* TPS80031 sub mfd devices */
+static struct mfd_cell tps80031_cell[] = {
+	{
+		.name = "tps80031-regulators",
+	},
+	{
+		.name = "tps80031-rtc",
+	},
+	{
+		.name = "tps80031-gpadc",
+	},
+	{
+		.name = "tps80031-battery-gauge",
+	},
+	{
+		.name = "tps80031-charger",
+	},
+};
+
 
 int tps80031_write(struct device *dev, int sid, int reg, uint8_t val)
 {
@@ -671,17 +691,6 @@ static void tps80031_gpio_init(struct tps80031 *tps80031,
 		dev_warn(tps80031->dev, "GPIO registration failed: %d\n", ret);
 }
 
-static int __remove_subdev(struct device *dev, void *unused)
-{
-	platform_device_unregister(to_platform_device(dev));
-	return 0;
-}
-
-static int tps80031_remove_subdevs(struct tps80031 *tps80031)
-{
-	return device_for_each_child(tps80031->dev, NULL, __remove_subdev);
-}
-
 static void tps80031_irq_lock(struct irq_data *data)
 {
 	struct tps80031 *tps80031 = irq_data_get_irq_chip_data(data);
@@ -1004,32 +1013,6 @@ static void tps80031_clk32k_init(struct tps80031 *tps80031,
 	}
 }
 
-static int __devinit tps80031_add_subdevs(struct tps80031 *tps80031,
-					  struct tps80031_platform_data *pdata)
-{
-	struct tps80031_subdev_info *subdev;
-	struct platform_device *pdev;
-	int i, ret = 0;
-
-	for (i = 0; i < pdata->num_subdevs; i++) {
-		subdev = &pdata->subdevs[i];
-
-		pdev = platform_device_alloc(subdev->name, subdev->id);
-
-		pdev->dev.parent = tps80031->dev;
-		pdev->dev.platform_data = subdev->platform_data;
-
-		ret = platform_device_add(pdev);
-		if (ret)
-			goto failed;
-	}
-	return 0;
-
-failed:
-	tps80031_remove_subdevs(tps80031);
-	return ret;
-}
-
 #ifdef CONFIG_DEBUG_FS
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
@@ -1226,6 +1209,8 @@ static int __devexit tps80031_i2c_remove(struct i2c_client *client)
 	struct tps80031 *tps80031 = i2c_get_clientdata(client);
 	int i;
 
+	mfd_remove_devices(tps80031->dev);
+
 	if (client->irq)
 		free_irq(client->irq, tps80031);
 
@@ -1303,7 +1288,7 @@ static int __devinit tps80031_i2c_probe(struct i2c_client *client,
 		if (!tps->client) {
 			dev_err(&client->dev, "can't attach client %d\n", i);
 			ret = -ENOMEM;
-			goto fail;
+			goto fail_client_reg;
 		}
 		i2c_set_clientdata(tps->client, tps80031);
 		mutex_init(&tps->lock);
@@ -1314,7 +1299,7 @@ static int __devinit tps80031_i2c_probe(struct i2c_client *client,
 			ret = PTR_ERR(tps80031->regmap[i]);
 			dev_err(&client->dev,
 				"regmap %d init failed, err %d\n", i, ret);
-			goto fail;
+			goto fail_client_reg;
 		}
 	}
 
@@ -1323,7 +1308,7 @@ static int __devinit tps80031_i2c_probe(struct i2c_client *client,
 					pdata->irq_base);
 		if (ret) {
 			dev_err(&client->dev, "IRQ init failed: %d\n", ret);
-			goto fail;
+			goto fail_client_reg;
 		}
 	}
 
@@ -1331,10 +1316,11 @@ static int __devinit tps80031_i2c_probe(struct i2c_client *client,
 
 	tps80031_init_ext_control(tps80031, pdata);
 
-	ret = tps80031_add_subdevs(tps80031, pdata);
-	if (ret) {
-		dev_err(&client->dev, "add devices failed: %d\n", ret);
-		goto fail;
+	ret = mfd_add_devices(tps80031->dev, -1,
+			tps80031_cell, ARRAY_SIZE(tps80031_cell), NULL, 0);
+	if (ret < 0) {
+		dev_err(&client->dev, "mfd_add_devices failed: %d\n", ret);
+		goto fail_mfd_add;
 	}
 
 	tps80031_gpio_init(tps80031, pdata);
@@ -1352,8 +1338,17 @@ static int __devinit tps80031_i2c_probe(struct i2c_client *client,
 
 	return 0;
 
-fail:
-	tps80031_i2c_remove(client);
+fail_mfd_add:
+	if (client->irq)
+		free_irq(client->irq, tps80031);
+fail_client_reg:
+	for (i = 0; i < TPS_NUM_SLAVES; i++) {
+		struct tps80031_client *tps = &tps80031->tps_clients[i];
+		if (tps->client && tps->client != client)
+			i2c_unregister_device(tps->client);
+		tps80031->tps_clients[i].client = NULL;
+		mutex_destroy(&tps->lock);
+	}
 	return ret;
 }
 
