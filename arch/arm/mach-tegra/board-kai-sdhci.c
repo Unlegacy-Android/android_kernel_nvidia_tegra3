@@ -28,6 +28,7 @@
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/sdhci.h>
+#include <mach/gpio-tegra.h>
 #include <mach/io_dpd.h>
 
 #include "gpio-names.h"

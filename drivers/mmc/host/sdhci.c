@@ -2489,22 +2489,22 @@ int sdhci_suspend_host(struct sdhci_host *host)
 		 * but Vcc would still be powered on. In resume, we only restore
 		 * the controller context. So, set MMC_PM_KEEP_POWER flag.
 		 */
-		if (mmc_card_can_sleep(mmc) &&
-			!(mmc->caps & MMC_CAP2_NO_SLEEP_CMD))
+		if (mmc_card_can_sleep(mmc) && !(mmc->caps & MMC_CAP2_NO_SLEEP_CMD))
 			mmc->pm_flags = MMC_PM_KEEP_POWER;
 
 		ret = mmc_suspend_host(host->mmc);
-		if (ret) {
-			if (has_tuning_timer) {
-				host->flags |= SDHCI_NEEDS_RETUNING;
-				mod_timer(&host->tuning_timer, jiffies +
-						host->tuning_count * HZ);
-			}
+	}
 
-			sdhci_enable_card_detection(host);
-
-			return ret;
+	if (ret) {
+		if (has_tuning_timer) {
+			host->flags |= SDHCI_NEEDS_RETUNING;
+			mod_timer(&host->tuning_timer, jiffies +
+					host->tuning_count * HZ);
 		}
+
+		sdhci_enable_card_detection(host);
+
+		return ret;
 	}
 
 	if (mmc->pm_flags & MMC_PM_KEEP_POWER)

@@ -48,7 +48,6 @@ struct tegra_twd_context {
 };
 
 void __init tegra_cpu_timer_init(void);
-
 int tegra_get_linear_age(void);
 
 #ifdef CONFIG_HAVE_ARM_TWD

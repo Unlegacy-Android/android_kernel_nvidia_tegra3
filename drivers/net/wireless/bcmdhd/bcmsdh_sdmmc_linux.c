@@ -128,11 +128,13 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 		gInstance->func[func->num] = func;
 
 	if (func->num == 2) {
-#ifdef WL_CFG80211
+	#ifdef WL_CFG80211
 			wl_cfg80211_set_parent_dev(&func->dev);
-#endif
+	#endif
 			sd_trace(("F2 found, calling bcmsdh_probe...\n"));
 			ret = bcmsdh_probe_bcmdhd(&func->dev);
+			if (mmc_power_save_host(func->card->host))
+				sd_err(("%s: card power save fail", __FUNCTION__));
 		}
 	} else {
 		ret = -ENODEV;

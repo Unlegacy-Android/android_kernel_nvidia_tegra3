@@ -497,6 +497,7 @@ static void do_scale(int diff)
 
 #define scale_up() do_scale(scale3d.p_scale_step)
 #define scale_down() do_scale(-scale3d.p_scale_step)
+
 void nvhost_scale3d_set_throughput_hint(int hint)
 {
 	if (!scale3d.enable)

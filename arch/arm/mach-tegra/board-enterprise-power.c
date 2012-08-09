@@ -334,42 +334,6 @@ static struct tps80031_bg_platform_data battery_gauge_data = {
 	.battery_present = 1,
 };
 
-#define TPS_RTC()				\
-	{						\
-		.id	= 0,		\
-		.name	= "rtc_tps80031",	\
-		.platform_data = &rtc_data,	\
-	}
-
-#define TPS_BATTERY()					\
-	{						\
-		.name   = "tps80031-charger",		\
-		.platform_data = &bcharger_pdata,	\
-	}
-#define TPS_BATTERY_GAUGE()				\
-	{						\
-		.name   = "tps80031-battery-gauge",	\
-		.platform_data = &battery_gauge_data,	\
-	}
-#define TPS_GPADC()					\
-	{						\
-		.name	= "tps80031-gpadc",		\
-	}
-
-#define TPS80031_DEVS_COMMON		\
-	TPS_RTC(),			\
-	TPS_BATTERY(),			\
-	TPS_BATTERY_GAUGE(),		\
-	TPS_GPADC()
-
-
-static struct tps80031_subdev_info tps80031_devs[] = {
-	TPS_RTC(),
-	TPS_BATTERY(),
-	TPS_BATTERY_GAUGE(),
-	TPS_GPADC()
-};
-
 #define TPS_REG_PDATA(_id, _sname) &pdata_##_id##_##_sname
 static struct tps80031_regulator_platform_data *tps80031_reg_pdata_a02[] = {
 	TPS_REG_PDATA(vio, a02),
@@ -452,6 +416,9 @@ static struct tps80031_platform_data tps_platform = {
 	.clk32k_init_data	= clk32k_idata,
 	.clk32k_init_data_size	= ARRAY_SIZE(clk32k_idata),
 	.use_power_off	= true,
+	.rtc_pdata = &rtc_data,
+	.bg_pdata = &battery_gauge_data,
+	.battery_charger_pdata = &bcharger_pdata,
 };
 
 static struct i2c_board_info __initdata enterprise_regulators[] = {
@@ -662,25 +629,21 @@ FIXED_REG(8, lcd_1v8_en,  NULL,
 		TEGRA_GPIO_PB2, true, 1800, 0, 0);
 
 #define ADD_FIXED_REG(_name)	(&fixed_reg_##_name##_dev)
-
-#define FIXED_REGS_COMMON		\
-	ADD_FIXED_REG(pmu_5v15_en),	\
-	ADD_FIXED_REG(pmu_hdmi_5v0_en),	\
-	ADD_FIXED_REG(vdd_fuse_en),	\
-	ADD_FIXED_REG(cam_ldo_2v8_en),	\
-	ADD_FIXED_REG(cam_ldo_1v8_en)
-
 static struct platform_device *fixed_regs_devices_a02[] = {
-	ADD_FIXED_REG(pmu_5v15_en),	\
-	ADD_FIXED_REG(pmu_3v3_en),	\
-	ADD_FIXED_REG(pmu_hdmi_5v0_en),	\
-	ADD_FIXED_REG(vdd_fuse_en),	\
-	ADD_FIXED_REG(cam_ldo_2v8_en),	\
+	ADD_FIXED_REG(pmu_5v15_en),
+	ADD_FIXED_REG(pmu_3v3_en),
+	ADD_FIXED_REG(pmu_hdmi_5v0_en),
+	ADD_FIXED_REG(vdd_fuse_en),
+	ADD_FIXED_REG(cam_ldo_2v8_en),
 	ADD_FIXED_REG(cam_ldo_1v8_en)
 };
 
 static struct platform_device *fixed_regs_devices_a03[] = {
-	FIXED_REGS_COMMON,
+	ADD_FIXED_REG(pmu_5v15_en),
+	ADD_FIXED_REG(pmu_hdmi_5v0_en),
+	ADD_FIXED_REG(vdd_fuse_en),
+	ADD_FIXED_REG(cam_ldo_2v8_en),
+	ADD_FIXED_REG(cam_ldo_1v8_en),
 	ADD_FIXED_REG(vdd_sdmmc3_2v85_en),
 	ADD_FIXED_REG(lcd_1v8_en),
 };
@@ -758,9 +721,6 @@ int __init enterprise_regulator_init(void)
 		bcharger_pdata.consumer_supplies = NULL;
 		battery_gauge_data.battery_present = 0;
 	}
-
-	tps_platform.num_subdevs = ARRAY_SIZE(tps80031_devs);
-	tps_platform.subdevs = tps80031_devs;
 
 	if (board_info.fab < BOARD_FAB_A03) {
 		tps_platform.num_regulator_pdata = ARRAY_SIZE(tps80031_reg_pdata_a02);

@@ -457,6 +457,13 @@ config REGULATOR_TPS65090
 	  This driver provides support for the voltage regulators on the
 	  TI TPS65090 PMIC.
 
+config REGULATOR_WM8350
+	tristate "Wolfson Microelectronics WM8350 AudioPlus PMIC"
+	depends on MFD_WM8350
+	help
+	  This driver provides support for the voltage and current regulators
+          of the WM8350 AudioPlus PMIC.
+
 config REGULATOR_TPS65910
 	tristate "TI TPS65910/TPS65911 Power Regulators"
 	depends on MFD_TPS65910
@@ -482,13 +489,6 @@ config REGULATOR_TPS6238X0
 	  regulator is meant for processor core supply. This chip is
 	  high-frequency synchronous step down dc-dc converter optimized
 	  for battery-powered portable applications.
-
-config REGULATOR_WM8350
-	tristate "Wolfson Microelectronics WM8350 AudioPlus PMIC"
-	depends on MFD_WM8350
-	help
-	  This driver provides support for the voltage and current regulators
-          of the WM8350 AudioPlus PMIC.
 
 config REGULATOR_WM8400
 	tristate "Wolfson Microelectronics WM8400 AudioPlus PMIC"
