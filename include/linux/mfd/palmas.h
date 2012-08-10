@@ -23,6 +23,7 @@
 #define PALMAS_NUM_CLIENTS		3
 
 struct palmas_pmic;
+struct palmas_rtc;
 
 struct palmas {
 	struct device *dev;
@@ -41,6 +42,7 @@ struct palmas {
 
 	/* Child Devices */
 	struct palmas_pmic *pmic;
+	struct palmas_rtc *rtc;
 
 	/* GPIO MUXing */
 	u8 gpio_muxed;
@@ -242,6 +244,7 @@ struct palmas_pmic {
 /* helper macro to get correct slave number */
 #define PALMAS_BASE_TO_SLAVE(x)		((x >> 8) - 1)
 #define PALMAS_BASE_TO_REG(x, y)	((x & 0xff) + y)
+#define RTC_SLAVE			0
 
 /* Base addresses of IP blocks in Palmas */
 #define PALMAS_SMPS_DVS_BASE					0x20
