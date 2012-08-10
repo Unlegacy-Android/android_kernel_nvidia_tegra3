@@ -49,6 +49,7 @@
 
 #include <asm/hardware/gic.h>
 
+#include <mach/edp.h>
 #include <mach/clk.h>
 #include <mach/iomap.h>
 #include <mach/irqs.h>
@@ -139,6 +140,14 @@ static struct tegra_thermal_data thermal_data = {
 				.tc2 = 1,
 				.passive_delay = 2000,
 			}
+		},
+		/* EDP Capping */
+		{
+			.tdev_id = THERMAL_DEVICE_ID_NCT_EXT,
+			.cdev_id = CDEV_EDPTABLE_ID_EDP,
+			.type = THERMAL_TRIP_ACTIVE,
+			.get_trip_temp = tegra_edp_get_trip_temp,
+			.get_trip_size = tegra_edp_get_trip_size,
 		},
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 		/* Skin Thermal Throttling */
