@@ -340,7 +340,7 @@ static int cardhu_right_ov5650_power_off(void)
 	gpio_direction_output(CAMERA_CSI_MUX_SEL_GPIO, 0);
 
 	/* Boards E1198 and E1291 are of Cardhu personality
-	 * and donot have TCA6416 exp for camera */
+	 * and do not have TCA6416 for camera */
 	if ((board_info.board_id == BOARD_E1198) ||
 		(board_info.board_id == BOARD_E1291)) {
 		gpio_direction_output(CAM1_POWER_DWN_GPIO, 1);
@@ -387,27 +387,6 @@ static int cardhu_ov2710_power_on(void)
 	/* CSI-B and front sensor are muxed on cardhu */
 	gpio_direction_output(CAMERA_CSI_MUX_SEL_GPIO, 1);
 
-	/* Boards E1198 and E1291 are of Cardhu personality
-	 * and donot have TCA6416 exp for camera */
-	if ((board_info.board_id == BOARD_E1198) ||
-		(board_info.board_id == BOARD_E1291)) {
-
-		gpio_direction_output(CAM1_POWER_DWN_GPIO, 0);
-		gpio_direction_output(CAM2_POWER_DWN_GPIO, 0);
-		gpio_direction_output(CAM3_POWER_DWN_GPIO, 0);
-		mdelay(10);
-
-		if (cardhu_vdd_cam3 == NULL) {
-			cardhu_vdd_cam3 = regulator_get(NULL, "vdd_cam3");
-			if (WARN_ON(IS_ERR(cardhu_vdd_cam3))) {
-				pr_err("%s: couldn't get regulator vdd_cam3: %ld\n",
-					__func__, PTR_ERR(cardhu_vdd_cam3));
-				goto reg_alloc_fail;
-			}
-		}
-		regulator_enable(cardhu_vdd_cam3);
-	}
-
 	/* Enable VDD_1V8_Cam3 */
 	if (cardhu_1v8_cam3 == NULL) {
 		cardhu_1v8_cam3 = regulator_get(NULL, "vdd_1v8_cam3");
@@ -418,7 +397,31 @@ static int cardhu_ov2710_power_on(void)
 		}
 	}
 	regulator_enable(cardhu_1v8_cam3);
-	mdelay(5);
+
+	/* Boards E1198 and E1291 are of Cardhu personality
+	 * and do not have TCA6416 for camera */
+	if ((board_info.board_id == BOARD_E1198) ||
+		(board_info.board_id == BOARD_E1291)) {
+		if (cardhu_vdd_cam3 == NULL) {
+			cardhu_vdd_cam3 = regulator_get(NULL, "vdd_cam3");
+			if (WARN_ON(IS_ERR(cardhu_vdd_cam3))) {
+				pr_err("%s: couldn't get regulator vdd_cam3: %ld\n",
+					__func__, PTR_ERR(cardhu_vdd_cam3));
+				goto reg_alloc_fail;
+			}
+		}
+		regulator_enable(cardhu_vdd_cam3);
+
+		mdelay(5);
+
+		gpio_direction_output(CAM1_POWER_DWN_GPIO, 0);
+		gpio_direction_output(CAM2_POWER_DWN_GPIO, 0);
+		gpio_direction_output(CAM3_POWER_DWN_GPIO, 0);
+		mdelay(10);
+
+	}
+
+	mdelay(20);
 
 	return 0;
 
@@ -447,12 +450,12 @@ static int cardhu_ov2710_power_off(void)
 		gpio_direction_output(CAM1_POWER_DWN_GPIO, 1);
 		gpio_direction_output(CAM2_POWER_DWN_GPIO, 1);
 		gpio_direction_output(CAM3_POWER_DWN_GPIO, 1);
+		if (cardhu_vdd_cam3)
+			regulator_disable(cardhu_vdd_cam3);
 	}
 
 	if (cardhu_1v8_cam3)
 		regulator_disable(cardhu_1v8_cam3);
-	if (cardhu_vdd_cam3)
-		regulator_disable(cardhu_vdd_cam3);
 
 	return 0;
 }
