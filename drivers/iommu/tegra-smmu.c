@@ -30,8 +30,6 @@
 #include <linux/sched.h>
 #include <linux/iommu.h>
 #include <linux/io.h>
-#include <linux/of.h>
-#include <linux/of_iommu.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 
@@ -286,9 +284,6 @@ struct smmu_device {
 	struct dentry *debugfs_root;
 
 	struct device_node *ahb;
-
-	int		num_as;
-	struct smmu_as	as[0];		/* Run-time allocated array */
 };
 
 static struct smmu_device *smmu_handle; /* unique for a system */
@@ -640,7 +635,7 @@ err_out:
 	return err;
 }
 
-static void __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
+static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
 {
 	unsigned long *pte;
 	struct page *page;
@@ -648,10 +643,10 @@ static void __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
 
 	pte = locate_pte(as, iova, false, &page, &count);
 	if (WARN_ON(!pte))
-		return;
+		return -EINVAL;
 
-	if (WARN_ON(*pte == _PTE_VACANT(iova)))
-		return;
+	if (*pte == _PTE_VACANT(iova))
+		return -EINVAL;
 
 	*pte = _PTE_VACANT(iova);
 	FLUSH_CPU_DCACHE(pte, page, sizeof(*pte));
@@ -660,6 +655,8 @@ static void __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
 		free_ptbl(as, iova);
 		smmu_flush_regs(as->smmu, 0);
 	}
+
+	return 0;
 }
 
 static void __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
@@ -707,13 +704,14 @@ static size_t smmu_iommu_unmap(struct iommu_domain *domain, unsigned long iova,
 {
 	struct smmu_as *as = domain->priv;
 	unsigned long flags;
+	int err;
 
 	dev_dbg(as->smmu->dev, "[%d] %08lx\n", as->asid, iova);
 
 	spin_lock_irqsave(&as->lock, flags);
-	__smmu_iommu_unmap(as, iova);
+	err = __smmu_iommu_unmap(as, iova);
 	spin_unlock_irqrestore(&as->lock, flags);
-	return SMMU_PAGE_SIZE;
+	return err ? 0 : SMMU_PAGE_SIZE;
 }
 
 static phys_addr_t smmu_iommu_iova_to_phys(struct iommu_domain *domain,
@@ -723,14 +721,14 @@ static phys_addr_t smmu_iommu_iova_to_phys(struct iommu_domain *domain,
 	unsigned long *pte;
 	unsigned int *count;
 	struct page *page;
-	unsigned long pfn;
+	unsigned long pfn = 0;
 	unsigned long flags;
 
 	spin_lock_irqsave(&as->lock, flags);
 
-	pte = locate_pte(as, iova, true, &page, &count);
-	pfn = *pte & SMMU_PFN_MASK;
-	WARN_ON(!pfn_valid(pfn));
+	pte = locate_pte(as, iova, false, &page, &count);
+	if (pte)
+		pfn = *pte & SMMU_PFN_MASK;
 	dev_dbg(as->smmu->dev,
 		"iova:%08lx pfn:%08lx asid:%d\n", iova, pfn, as->asid);
 
@@ -794,7 +792,8 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		page = as->smmu->avp_vector_page;
 		__smmu_iommu_map_pfn(as, 0, page_to_pfn(page));
 
-		pr_info("Reserve \"page zero\" for AVP vectors using a common dummy\n");
+		pr_debug("Reserve \"page zero\" \
+			for AVP vectors using a common dummy\n");
 	}
 
 	dev_dbg(smmu->dev, "%s is attached\n", dev_name(dev));

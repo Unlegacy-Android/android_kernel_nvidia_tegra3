@@ -158,8 +158,6 @@ static int tegra_ehci_map_urb_for_dma(struct usb_hcd *hcd,
 static void tegra_ehci_unmap_urb_for_dma(struct usb_hcd *hcd,
 	struct urb *urb)
 {
-	usb_hcd_unmap_urb_for_dma(hcd, urb);
-	free_align_buffer(urb, hcd);
 
 	if (urb->transfer_dma) {
 		enum dma_data_direction dir;
@@ -169,6 +167,9 @@ static void tegra_ehci_unmap_urb_for_dma(struct usb_hcd *hcd,
 				urb->transfer_dma, urb->transfer_buffer_length,
 									   DMA_FROM_DEVICE);
 	}
+
+	usb_hcd_unmap_urb_for_dma(hcd, urb);
+	free_align_buffer(urb, hcd);
 }
 
 static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
@@ -650,10 +651,10 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 		tegra_usb_phy_power_on(tegra->phy);
 
 	usb_remove_hcd(hcd);
-	usb_put_hcd(hcd);
 	tegra_usb_phy_power_off(tegra->phy);
 	tegra_usb_phy_close(tegra->phy);
 	iounmap(hcd->regs);
+	usb_put_hcd(hcd);
 
 	return 0;
 }

@@ -25,6 +25,7 @@
 #ifndef __ASSEMBLY__
 
 #include <linux/clkdev.h>
+#include <linux/clk.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
@@ -278,6 +279,8 @@ void tegra3_set_cpu_skipper_delay(int delay);
 int tegra_emc_set_rate(unsigned long rate);
 long tegra_emc_round_rate(unsigned long rate);
 struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value);
+bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
+		unsigned long *parent_rate, unsigned long *backup_rate);
 void tegra_emc_timing_invalidate(void);
 unsigned long tegra_clk_measure_input_freq(void);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -326,6 +329,21 @@ static inline void clk_unlock_restore(struct clk *c, unsigned long *flags)
 	} else {
 		spin_unlock_irqrestore(&c->spinlock, *flags);
 	}
+}
+
+static inline int tegra_clk_prepare_enable(struct clk *c)
+{
+	if (clk_cansleep(c))
+		return clk_prepare_enable(c);
+	return clk_enable(c);
+}
+
+static inline void tegra_clk_disable_unprepare(struct clk *c)
+{
+	if (clk_cansleep(c))
+		clk_disable_unprepare(c);
+	else
+		clk_disable(c);
 }
 
 static inline void clk_lock_init(struct clk *c)

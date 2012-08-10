@@ -990,7 +990,7 @@ void __init tegra_protected_aperture_init(unsigned long aperture)
  * Due to conflicting restrictions on the placement of the framebuffer,
  * the bootloader is likely to leave the framebuffer pointed at a location
  * in memory that is outside the grhost aperture.  This function will move
- * the framebuffer contents from a physical address that is anywher (lowmem,
+ * the framebuffer contents from a physical address that is anywhere (lowmem,
  * highmem, or outside the memory map) to a physical address that is outside
  * the memory map.
  */
@@ -1000,7 +1000,7 @@ void tegra_move_framebuffer(unsigned long to, unsigned long from,
 	struct page *page;
 	void __iomem *to_io;
 	void *from_virt;
-	unsigned long i;
+	unsigned long i, addr[] = { to, from, };
 
 	BUG_ON(PAGE_ALIGN((unsigned long)to) != (unsigned long)to);
 	BUG_ON(PAGE_ALIGN(from) != from);
@@ -1032,6 +1032,9 @@ void tegra_move_framebuffer(unsigned long to, unsigned long from,
 
 		iounmap(from_io);
 	}
+
+	for (i = 0; i < ARRAY_SIZE(addr); i++)
+		dma_map_linear_at(NULL, addr[i], size, DMA_TO_DEVICE);
 out:
 	iounmap(to_io);
 }

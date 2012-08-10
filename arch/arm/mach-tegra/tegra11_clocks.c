@@ -1362,9 +1362,7 @@ static void tegra11_sbus_cmplx_init(struct clk *c)
 
 /* This special sbus round function is implemented because:
  *
- * (a) fractional dividers can not be used to derive system bus clock with one
- * exception: 1 : 2.5 divider is allowed at 1.2V and above (and we do need this
- * divider to reach top sbus frequencies from high frequency source).
+ * (a) fractional 1 : 1.5 divider can not be used to derive system bus clock
  *
  * (b) since sbus is a shared bus, and its frequency is set to the highest
  * enabled shared_bus_user clock, the target rate should be rounded up divider
@@ -1375,51 +1373,34 @@ static void tegra11_sbus_cmplx_init(struct clk *c)
  * recursive calls. Lost 1Hz is added in tegra11_sbus_cmplx_set_rate before
  * actually setting divider rate.
  */
-static unsigned long sclk_high_2_5_rate;
-static bool sclk_high_2_5_valid;
-
 static long tegra11_sbus_cmplx_round_rate(struct clk *c, unsigned long rate)
 {
-	int i, divider;
+	int divider;
 	unsigned long source_rate, round_rate;
 	struct clk *new_parent;
 
 	rate = max(rate, c->min_rate);
-
-	if (!sclk_high_2_5_rate) {
-		source_rate = clk_get_rate(c->u.system.sclk_high->parent);
-		sclk_high_2_5_rate = 2 * source_rate / 5;
-		i = tegra_dvfs_predict_millivolts(c, sclk_high_2_5_rate);
-		if (!IS_ERR_VALUE(i) && (i >= 1200) &&
-		    (sclk_high_2_5_rate <= c->max_rate))
-			sclk_high_2_5_valid = true;
-	}
 
 	new_parent = (rate <= c->u.system.threshold) ?
 		c->u.system.sclk_low : c->u.system.sclk_high;
 	source_rate = clk_get_rate(new_parent->parent);
 
 	divider = clk_div71_get_divider(source_rate, rate,
-		new_parent->flags | DIV_U71_INT, ROUND_DIVIDER_DOWN);
+		new_parent->flags, ROUND_DIVIDER_DOWN);
 	if (divider < 0)
 		return divider;
 
+	if (divider == 1)
+		divider = 0;
+
 	round_rate = source_rate * 2 / (divider + 2);
 	if (round_rate > c->max_rate) {
-		divider += 2;
+		divider = max(2, (divider + 1));
 		round_rate = source_rate * 2 / (divider + 2);
 	}
 
 	if (new_parent == c->u.system.sclk_high) {
-		/* Check if 1 : 2.5 ratio provides better approximation */
-		if (sclk_high_2_5_valid) {
-			if (((sclk_high_2_5_rate < round_rate) &&
-			    (sclk_high_2_5_rate >= rate)) ||
-			    ((round_rate < sclk_high_2_5_rate) &&
-			     (round_rate < rate)))
-				round_rate = sclk_high_2_5_rate;
-		}
-
+		/* Prevent oscillation across threshold */
 		if (round_rate <= c->u.system.threshold)
 			round_rate = c->u.system.threshold;
 	}
@@ -3795,7 +3776,7 @@ static void tegra11_emc_clk_init(struct clk *c)
 
 static long tegra11_emc_clk_round_rate(struct clk *c, unsigned long rate)
 {
-	long new_rate = rate;
+	long new_rate = max(rate, c->min_rate);
 
 	new_rate = tegra_emc_round_rate(new_rate);
 	if (new_rate < 0)
@@ -3818,8 +3799,11 @@ static int tegra11_emc_clk_set_rate(struct clk *c, unsigned long rate)
 	 * to achieve requested rate. */
 	p = tegra_emc_predict_parent(rate, &div_value);
 	div_value += 2;		/* emc has fractional DIV_U71 divider */
-	if (!p)
+	if (IS_ERR_OR_NULL(p)) {
+		pr_err("%s: Failed to predict emc parent for rate %lu\n",
+		       __func__, rate);
 		return -EINVAL;
+	}
 
 	if (p == c->parent) {
 		if (div_value == c->div)
@@ -3843,7 +3827,8 @@ static int tegra11_emc_clk_set_rate(struct clk *c, unsigned long rate)
 
 static int tegra11_clk_emc_bus_update(struct clk *bus)
 {
-	unsigned long rate, old_rate;
+	struct clk *p = NULL;
+	unsigned long rate, parent_rate, backup_rate;
 
 	if (detach_shared_bus)
 		return 0;
@@ -3851,9 +3836,31 @@ static int tegra11_clk_emc_bus_update(struct clk *bus)
 	rate = tegra11_clk_shared_bus_update(bus, NULL, NULL);
 	rate = clk_round_rate_locked(bus, rate);
 
-	old_rate = clk_get_rate_locked(bus);
-	if (rate == old_rate)
+	if (rate == clk_get_rate_locked(bus))
 		return 0;
+
+	if (!tegra_emc_is_parent_ready(rate, &p, &parent_rate, &backup_rate)) {
+		if (bus->parent == p) {
+			/* need backup to re-lock current parent */
+			if (IS_ERR_VALUE(backup_rate) ||
+			    clk_set_rate_locked(bus, backup_rate)) {
+				pr_err("%s: Failed to backup %s for rate %lu\n",
+				       __func__, bus->name, rate);
+				return -EINVAL;
+			}
+
+			if (p->refcnt) {
+				pr_err("%s: %s has other than emc child\n",
+				       __func__, p->name);
+				return -EINVAL;
+			}
+		}
+		if (clk_set_rate(p, parent_rate)) {
+			pr_err("%s: Failed to set %s rate %lu\n",
+			       __func__, p->name, parent_rate);
+			return -EINVAL;
+		}
+	}
 
 	return clk_set_rate_locked(bus, rate);
 }
@@ -4131,6 +4138,7 @@ static int get_next_backup_div(struct clk *c, unsigned long rate)
 	unsigned long backup_rate = clk_get_rate(c->shared_bus_backup.input);
 
 	rate = max(rate, clk_get_rate_locked(c));
+	rate = rate - (rate >> 2);	/* 25% margin for backup rate */
 	if ((u64)rate * div < backup_rate)
 		div = DIV_ROUND_UP(backup_rate, rate);
 
@@ -5958,6 +5966,9 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("2d.emc",	"tegra_gr2d",		"emc",	&tegra_clk_emc, NULL, 0, 0),
 	SHARED_CLK("msenc.emc",	"tegra_msenc",		"emc",	&tegra_clk_emc, NULL, 0, 0),
 	SHARED_CLK("tsec.emc",	"tegra_tsec",		"emc",	&tegra_clk_emc, NULL, 0, 0),
+	SHARED_CLK("sdmmc4.emc", "sdhci-tegra.3",	"emc",	&tegra_clk_emc, NULL, 0, 0),
+	SHARED_CLK("camera.emc", "tegra_camera",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW),
+	SHARED_CLK("iso.emc",	"iso",			"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW),
 	SHARED_CLK("floor.emc",	"floor.emc",		NULL,	&tegra_clk_emc, NULL, 0, 0),
 
 #ifdef CONFIG_TEGRA_DUAL_CBUS
@@ -6050,8 +6061,8 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("dsia", "tegra_dc_dsi_vs1.1", "dsia"),
 	CLK_DUPLICATE("dsialp", "tegra_dc_dsi_vs1.0", "dsialp"),
 	CLK_DUPLICATE("dsialp", "tegra_dc_dsi_vs1.1", "dsialp"),
-	CLK_DUPLICATE("dsi1_fixed", "tegra_dc_dsi_vs1.0", "dsi_fixed"),
-	CLK_DUPLICATE("dsi1_fixed", "tegra_dc_dsi_vs1.1", "dsi_fixed"),
+	CLK_DUPLICATE("dsi1-fixed", "tegra_dc_dsi_vs1.0", "dsi-fixed"),
+	CLK_DUPLICATE("dsi1-fixed", "tegra_dc_dsi_vs1.1", "dsi-fixed"),
 	CLK_DUPLICATE("pwm", "tegra_pwm.0", NULL),
 	CLK_DUPLICATE("pwm", "tegra_pwm.1", NULL),
 	CLK_DUPLICATE("pwm", "tegra_pwm.2", NULL),
@@ -6063,8 +6074,6 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("vde", "tegra-aes", "vde"),
 	CLK_DUPLICATE("bsea", "tegra-aes", "bsea"),
 	CLK_DUPLICATE("bsea", "nvavp", "bsea"),
-	CLK_DUPLICATE("cml1", "tegra_sata_cml", NULL),
-	CLK_DUPLICATE("cml0", "tegra_pcie", "cml"),
 	CLK_DUPLICATE("pciex", "tegra_pcie", "pciex"),
 	CLK_DUPLICATE("i2c1", "tegra-i2c-slave.0", NULL),
 	CLK_DUPLICATE("i2c2", "tegra-i2c-slave.1", NULL),
@@ -6260,7 +6269,15 @@ bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 	 * respective muxes statically.
 	 */
 
-	/* No other policy limitations for now */
+	/* pll_c can be used as a clock source for EMC only on configuration
+	   with dual cbus, or as a clock source for single cbus */
+	if (p == &tegra_pll_c) {
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+		return c->flags & PERIPH_EMC_ENB;
+#else
+		return c->flags & PERIPH_ON_CBUS;
+#endif
+	}
 	return true;
 }
 

@@ -35,6 +35,10 @@
 #include <mach/usb_phy.h>
 #include <mach/tegra_smmu.h>
 
+#ifdef CONFIG_PLATFORM_IOMMUABLE
+#include <asm/dma-iommu.h>
+#endif
+
 #include "gpio-names.h"
 #include "devices.h"
 
@@ -1666,10 +1670,27 @@ struct platform_device tegra_gart_device = {
 };
 #endif
 
-#if defined(CONFIG_TEGRA_IOVMM_SMMU)
+#if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
+static struct resource tegra_smmu_resources[] = {
+	{
+		.name	= "mc",
+		.flags	= IORESOURCE_MEM,
+		.start	= TEGRA_MC_BASE,
+		.end	= TEGRA_MC_BASE + TEGRA_MC_SIZE - 1,
+	},
+	{
+		.name   = "ahbarb",
+		.flags  = IORESOURCE_MEM,
+		.start  = TEGRA_AHB_ARB_BASE,
+		.end    = TEGRA_AHB_ARB_BASE + TEGRA_AHB_ARB_SIZE - 1,
+	},
+};
+
 struct platform_device tegra_smmu_device = {
 	.name		= "tegra_smmu",
 	.id		= -1,
+	.num_resources	= ARRAY_SIZE(tegra_smmu_resources),
+	.resource	= tegra_smmu_resources
 };
 
 static struct resource tegra_smmu[] = {
@@ -1687,6 +1708,30 @@ struct resource *tegra_smmu_window(int wnum)
 int tegra_smmu_window_count(void)
 {
 	return ARRAY_SIZE(tegra_smmu);
+}
+
+#ifdef CONFIG_PLATFORM_IOMMUABLE
+static void tegra_smmu_map_init(struct platform_device *pdev)
+{
+	struct dma_iommu_mapping *map;
+
+	map = arm_iommu_create_mapping(&platform_bus_type,
+				       TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE, 0);
+	if (IS_ERR(map))
+		dev_err(&pdev->dev, "Failed create IOVA map %08x-%08x\n",
+			TEGRA_IOMMU_BASE,
+			TEGRA_IOMMU_BASE + TEGRA_IOMMU_SIZE - 1);
+}
+#else
+static inline void tegra_smmu_map_init(struct platform_device *pdev)
+{
+}
+#endif
+
+void tegra_smmu_init(void)
+{
+	platform_device_register(&tegra_smmu_device);
+	tegra_smmu_map_init(&tegra_smmu_device);
 }
 #endif
 
