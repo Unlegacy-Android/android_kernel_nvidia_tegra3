@@ -600,6 +600,14 @@ static struct tegra_suspend_platform_data kai_suspend_data = {
 	.cpu_lp2_min_residency = 2000,
 	.board_suspend = kai_board_suspend,
 	.board_resume = kai_board_resume,
+#ifdef CONFIG_TEGRA_LP1_950
+	.lp1_lowvolt_support = true,
+	.i2c_base_addr = TEGRA_I2C5_BASE,
+	.pmuslave_addr = 0x78,
+	.core_reg_addr = 0x17,
+	.lp1_core_volt_low = 0x0C,
+	.lp1_core_volt_high = 0x20,
+#endif
 };
 
 int __init kai_suspend_init(void)

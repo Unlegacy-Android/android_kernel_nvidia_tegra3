@@ -780,6 +780,14 @@ static struct tegra_suspend_platform_data enterprise_suspend_data = {
 	.sysclkreq_high	= true,
 	.board_suspend = enterprise_board_suspend,
 	.board_resume = enterprise_board_resume,
+#ifdef CONFIG_TEGRA_LP1_950
+	.lp1_lowvolt_support = true,
+	.i2c_base_addr = TEGRA_I2C5_BASE,
+	.pmuslave_addr = 0x24,
+	.core_reg_addr = 0x5B,
+	.lp1_core_volt_low = 0x1D,
+	.lp1_core_volt_high = 0x33,
+#endif
 };
 
 static void enterprise_init_deep_sleep_mode(void)
