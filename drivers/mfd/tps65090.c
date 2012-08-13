@@ -234,20 +234,20 @@ static int __devinit tps65090_i2c_probe(struct i2c_client *client,
 	tps65090->dev = &client->dev;
 	i2c_set_clientdata(client, tps65090);
 
+	tps65090->rmap = devm_regmap_init_i2c(client, &tps65090_regmap_config);
+	if (IS_ERR(tps65090->rmap)) {
+		ret = PTR_ERR(tps65090->rmap);
+		dev_err(&client->dev, "regmap_init failed with err: %d\n", ret);
+		return ret;
+	}
+
 	if (client->irq) {
 		ret = tps65090_irq_init(tps65090, client->irq, pdata->irq_base);
 		if (ret) {
 			dev_err(&client->dev, "IRQ init failed with err: %d\n",
 				ret);
-			goto err_exit;
+			return ret;
 		}
-	}
-
-	tps65090->rmap = devm_regmap_init_i2c(client, &tps65090_regmap_config);
-	if (IS_ERR(tps65090->rmap)) {
-		ret = PTR_ERR(tps65090->rmap);
-		dev_err(&client->dev, "regmap_init failed with err: %d\n", ret);
-		goto err_irq_exit;
 	}
 
 	ret = mfd_add_devices(tps65090->dev, -1, tps65090s,
@@ -263,7 +263,6 @@ static int __devinit tps65090_i2c_probe(struct i2c_client *client,
 err_irq_exit:
 	if (client->irq)
 		free_irq(client->irq, tps65090);
-err_exit:
 	return ret;
 }
 
