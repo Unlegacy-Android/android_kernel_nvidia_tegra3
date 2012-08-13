@@ -710,6 +710,7 @@ static struct tegra_usb_phy_platform_ops hsic_xmm_plat_ops = {
 	.post_suspend = enterprise_usb_hsic_postsupend,
 	.pre_resume = enterprise_usb_hsic_preresume,
 	.port_power = enterprise_usb_hsic_phy_power,
+	.post_phy_on = enterprise_usb_hsic_phy_power,
 	.post_phy_off = enterprise_usb_hsic_post_phy_off,
 };
 
