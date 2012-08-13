@@ -165,7 +165,7 @@ void __init p852_sdhci_init(void)
 					gpio_request(p852_sdhci_platform_data
 						     [i].cd_gpio,
 						     gpio_name[cd]);
-					tegra_gpio_enable
+					gpio_direction_input
 					    (p852_sdhci_platform_data[i].
 					     cd_gpio);
 				}
@@ -176,7 +176,7 @@ void __init p852_sdhci_init(void)
 					gpio_request(p852_sdhci_platform_data
 						     [i].wp_gpio,
 						     gpio_name[wp]);
-					tegra_gpio_enable
+					gpio_direction_input
 					    (p852_sdhci_platform_data[i].
 					     wp_gpio);
 				}
@@ -187,7 +187,7 @@ void __init p852_sdhci_init(void)
 					gpio_request(p852_sdhci_platform_data
 						     [i].power_gpio,
 						     gpio_name[pw]);
-					tegra_gpio_enable
+					gpio_direction_input
 					    (p852_sdhci_platform_data[i].
 					     power_gpio);
 				}
