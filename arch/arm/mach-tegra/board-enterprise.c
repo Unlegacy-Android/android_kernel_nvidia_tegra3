@@ -560,7 +560,7 @@ static struct tegra_asoc_platform_data enterprise_audio_pdata = {
 	/*defaults for Enterprise board*/
 	.i2s_param[HIFI_CODEC]	= {
 		.audio_port_id	= 0,
-		.is_i2s_master	= 1,
+		.is_i2s_master	= 0,
 		.i2s_mode	= TEGRA_DAIFMT_I2S,
 		.sample_size	= 16,
 	},
