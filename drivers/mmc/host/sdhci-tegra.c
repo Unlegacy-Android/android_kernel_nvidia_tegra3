@@ -1313,7 +1313,7 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	host->mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY;
 
 #ifdef CONFIG_MMC_BKOPS
-	host->mmc->caps |= MMC_CAP_BKOPS;
+	host->mmc->caps2 |= MMC_CAP2_BKOPS;
 #endif
 
 	/* enable HS200 capable */
