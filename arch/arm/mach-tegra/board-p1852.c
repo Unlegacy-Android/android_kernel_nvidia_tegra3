@@ -51,6 +51,7 @@
 #include <asm/mach/flash.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
+#include <asm/system.h>
 #include <mach/usb_phy.h>
 #include <mach/tegra_fiq_debugger.h>
 #include <sound/wm8903.h>
@@ -678,7 +679,7 @@ MACHINE_START(P1852, "p1852")
 	.atag_offset    = 0x100,
 	.soc		= &tegra_soc_desc,
 	.init_irq       = tegra_init_irq,
-	.init_early     = tegra_init_early,
+	.init_early     = tegra30_init_early,
 	.init_machine   = tegra_p1852_init,
 	.map_io         = tegra_map_common_io,
 	.reserve        = tegra_p1852_reserve,

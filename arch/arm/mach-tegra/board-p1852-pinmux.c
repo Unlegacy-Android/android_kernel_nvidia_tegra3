@@ -17,6 +17,8 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <mach/pinmux.h>
+#include <mach/pinmux-tegra30.h>
+#include <mach/gpio-tegra.h>
 #include "board.h"
 #include "board-p1852.h"
 #include "gpio-names.h"
