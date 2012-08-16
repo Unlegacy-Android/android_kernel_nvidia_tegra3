@@ -38,12 +38,16 @@ static struct dvfs *cpu_dvfs;
 
 static int cpu_millivolts[MAX_DVFS_FREQS] = CPU_MILLIVOLTS;
 
-static const int cpu_millivolts_aged[MAX_DVFS_FREQS] = CPU_MILLIVOLTS;
+static int cpu_millivolts_aged[MAX_DVFS_FREQS];
 
-static const unsigned int cpu_cold_offs_mhz[MAX_DVFS_FREQS] = {
+static struct dvfs_data *cpu_dvfs_data;
+static struct dvfs_data *cpu_0_dvfs_data;
+static struct dvfs_data *core_dvfs_data;
+
+static unsigned int cpu_cold_offs_mhz[MAX_DVFS_FREQS] = {
 	 50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50};
 
-static const int core_millivolts[MAX_DVFS_FREQS] = {
+static int core_millivolts[MAX_DVFS_FREQS] = {
 	950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350};
 
 #define KHZ 1000
@@ -75,6 +79,33 @@ static struct dvfs_rail *tegra3_dvfs_rails[] = {
 	&tegra3_dvfs_rail_vdd_cpu,
 	&tegra3_dvfs_rail_vdd_core,
 };
+
+#ifdef CONFIG_OF
+static int of_cpu_millivolts[MAX_DVFS_FREQS];
+static int of_core_millivolts[MAX_DVFS_FREQS];
+
+static struct dvfs of_cpu_dvfs[MAX_DVFS_TABLES];
+static struct dvfs of_cpu_0_dvfs[MAX_DVFS_TABLES];
+static struct dvfs of_core_dvfs[MAX_DVFS_TABLES];
+
+static struct dvfs_data of_cpu_data = {
+	.tables = of_cpu_dvfs,
+	.millivolts = of_cpu_millivolts,
+	.rail = &tegra3_dvfs_rail_vdd_cpu,
+};
+
+static struct dvfs_data of_cpu_0_data = {
+	.tables = of_cpu_0_dvfs,
+	.millivolts = of_cpu_millivolts,
+	.rail = &tegra3_dvfs_rail_vdd_cpu,
+};
+
+static struct dvfs_data of_core_data = {
+	.tables = of_core_dvfs,
+	.millivolts = of_core_millivolts,
+	.rail = &tegra3_dvfs_rail_vdd_core,
+};
+#endif
 
 static int tegra3_get_core_floor_mv(int cpu_mv)
 {
@@ -371,6 +402,30 @@ static unsigned long cpu_cold_freqs[MAX_DVFS_FREQS];
 /* CPU alternative DVFS table for single G CPU core 0 */
 static unsigned long *cpu_0_freqs;
 
+static struct dvfs_data tegra30_cpu_data = {
+	.tables = cpu_dvfs_table,
+	.num_tables = ARRAY_SIZE(cpu_dvfs_table),
+	.millivolts = cpu_millivolts,
+	.num_voltages = ARRAY_SIZE(cpu_millivolts),
+	.rail = &tegra3_dvfs_rail_vdd_cpu,
+};
+
+static struct dvfs_data tegra30_cpu_0_data = {
+	.tables = cpu_0_dvfs_table,
+	.num_tables = ARRAY_SIZE(cpu_0_dvfs_table),
+	.millivolts = cpu_millivolts,
+	.num_voltages = ARRAY_SIZE(cpu_millivolts),
+	.rail = &tegra3_dvfs_rail_vdd_cpu,
+};
+
+static struct dvfs_data tegra30_core_data = {
+	.tables = core_dvfs_table,
+	.num_tables = ARRAY_SIZE(core_dvfs_table),
+	.millivolts = core_millivolts,
+	.num_voltages = ARRAY_SIZE(core_millivolts),
+	.rail = &tegra3_dvfs_rail_vdd_core,
+};
+
 int tegra_dvfs_disable_core_set(const char *arg, const struct kernel_param *kp)
 {
 	int ret;
@@ -524,10 +579,10 @@ static void __init init_cpu_0_dvfs(struct dvfs *cpud)
 
 	/* Init single G CPU core 0 dvfs if this particular SKU/bin has it.
 	   Max rates in multi-core and single-core tables must be the same */
-	for (i = 0; i <  ARRAY_SIZE(cpu_0_dvfs_table); i++) {
-		if (match_dvfs_one(&cpu_0_dvfs_table[i],
+	for (i = 0; i < cpu_0_dvfs_data->num_tables; i++) {
+		if (match_dvfs_one(&cpu_0_dvfs_data->tables[i],
 				   cpud->speedo_id, cpud->process_id)) {
-			d = &cpu_0_dvfs_table[i];
+			d = &cpu_0_dvfs_data->tables[i];
 			break;
 		}
 	}
@@ -550,7 +605,7 @@ static int __init get_cpu_nominal_mv_index(
 	int speedo_id, int process_id, struct dvfs **cpu_dvfs)
 {
 	int i, j, mv;
-	struct dvfs *d;
+	struct dvfs *d = NULL;
 	struct clk *c;
 
 	/*
@@ -559,13 +614,13 @@ static int __init get_cpu_nominal_mv_index(
 	 * result to the nominal cpu level for the chips with this speedo_id.
 	 */
 	mv = tegra3_dvfs_rail_vdd_core.nominal_millivolts;
-	for (i = 0; i < MAX_DVFS_FREQS; i++) {
-		if ((cpu_millivolts[i] == 0) ||
-		    tegra3_get_core_floor_mv(cpu_millivolts[i]) > mv)
+	for (i = 0; i < cpu_dvfs_data->num_voltages; i++) {
+		if ((cpu_dvfs_data->millivolts[i] == 0) ||
+		    tegra3_get_core_floor_mv(cpu_dvfs_data->millivolts[i]) > mv)
 			break;
 	}
 	BUG_ON(i == 0);
-	mv = cpu_millivolts[i - 1];
+	mv = cpu_dvfs_data->millivolts[i - 1];
 	BUG_ON(mv < tegra3_dvfs_rail_vdd_cpu.min_millivolts);
 	mv = min(mv, tegra_cpu_speedo_mv());
 
@@ -576,16 +631,16 @@ static int __init get_cpu_nominal_mv_index(
 	 *   the dvfs entry and clock tree
 	 * - does not violate cpu_to_core dependency as determined above
 	 */
-	for (i = 0, j = 0; j <  ARRAY_SIZE(cpu_dvfs_table); j++) {
-		d = &cpu_dvfs_table[j];
+	for (i = 0, j = 0; j < cpu_dvfs_data->num_tables; j++) {
+		d = &cpu_dvfs_data->tables[j];
 		if (match_dvfs_one(d, speedo_id, process_id)) {
 			c = tegra_get_clock_by_name(d->clk_name);
 			BUG_ON(!c);
 
 			for (; i < MAX_DVFS_FREQS; i++) {
 				if ((d->freqs[i] == 0) ||
-				    (cpu_millivolts[i] == 0) ||
-				    (mv < cpu_millivolts[i]))
+				    (cpu_dvfs_data->millivolts[i] == 0) ||
+				    (mv < cpu_dvfs_data->millivolts[i]))
 					break;
 
 				if (c->max_rate <= d->freqs[i]*d->freqs_mult) {
@@ -598,7 +653,7 @@ static int __init get_cpu_nominal_mv_index(
 	}
 
 	BUG_ON(i == 0);
-	if (j == (ARRAY_SIZE(cpu_dvfs_table) - 1))
+	if (j == (cpu_dvfs_data->num_tables - 1))
 		pr_err("tegra3_dvfs: WARNING!!!\n"
 		       "tegra3_dvfs: no cpu dvfs table found for chip speedo_id"
 		       " %d and process_id %d: set CPU rate limit at %lu\n"
@@ -624,8 +679,9 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 		mv = min(mv, core_edp_limit);
 
 	/* Round nominal level down to the nearest core scaling step */
-	for (i = 0; i < MAX_DVFS_FREQS; i++) {
-		if ((core_millivolts[i] == 0) || (mv < core_millivolts[i]))
+	for (i = 0; i < core_dvfs_data->num_voltages; i++) {
+		if ((core_dvfs_data->millivolts[i] == 0) ||
+				(mv < core_dvfs_data->millivolts[i]))
 			break;
 	}
 
@@ -643,8 +699,8 @@ static void tegra_adjust_cpu_mvs(int mvs)
 
 	BUG_ON(ARRAY_SIZE(cpu_millivolts) != ARRAY_SIZE(cpu_millivolts_aged));
 
-	for (i = 0; i < ARRAY_SIZE(cpu_millivolts); i++)
-		cpu_millivolts[i] = cpu_millivolts_aged[i] - mvs;
+	for (i = 0; i < cpu_dvfs_data->num_voltages; i++)
+		cpu_dvfs_data->millivolts[i] = cpu_millivolts_aged[i] - mvs;
 }
 
 /**
@@ -672,6 +728,142 @@ void tegra_dvfs_age_cpu(int cur_linear_age)
 	}
 }
 
+#ifdef CONFIG_OF
+static int __init of_read_dvfs_properties(struct device_node *np,
+					struct dvfs *d, struct dvfs_data *data)
+{
+	bool auto_dvfs = !of_property_read_bool(np, "nvidia,manual-dvfs");
+	const char *clk_name;
+	int speedo_id;
+	int process_id;
+
+	if (of_property_read_string(np, "nvidia,clock-name", &clk_name))
+		return -ENODATA;
+
+	if (of_property_read_u32(np, "nvidia,speedo-id", &speedo_id))
+		speedo_id = -1;
+
+	if (of_property_read_u32(np, "nvidia,process-id", &process_id))
+		process_id = -1;
+
+	d->clk_name = clk_name;
+	d->speedo_id = speedo_id;
+	d->process_id = process_id;
+	d->freqs_mult = KHZ;
+	d->dvfs_rail = data->rail;
+	d->millivolts = data->millivolts;
+	d->auto_dvfs = auto_dvfs;
+
+	return 0;
+}
+
+static int __init of_read_dvfs_data(struct device_node *np,
+						struct dvfs_data *data)
+{
+	struct device_node *next = NULL;
+	struct property *prop;
+	int ret = 0;
+	int count = 0;
+	const __be32 *p;
+	u32 u;
+
+	if (!data->tables || !data->millivolts)
+		return -ENODEV;
+
+	of_property_for_each_u32(np, "nvidia,voltage-table", prop, p, u) {
+		if (count == MAX_DVFS_FREQS)
+			return -EOVERFLOW;
+		data->millivolts[count] = u;
+		count++;
+	}
+
+	if (!count)
+		return -ENODATA;
+
+	data->num_voltages = count;
+
+	while (data->num_tables < MAX_DVFS_TABLES) {
+		struct dvfs *d = NULL;
+		int i = 0;
+
+		next = of_get_next_child(np, next);
+		if (!next)
+			break;
+
+		d = &data->tables[data->num_tables];
+		ret = of_read_dvfs_properties(next, d, data);
+		if (ret) {
+			pr_warn("Failed to read DVFS table properties\n");
+			return ret;
+		}
+
+		prop = of_find_property(next, "nvidia,frequencies", NULL);
+		if (!prop) {
+			pr_debug("Frequencies property not found in DT\n");
+			return -ENODATA;
+		}
+
+		p = of_prop_next_u32(prop, NULL, &u);
+		while (p && i < data->num_voltages) {
+			d->freqs[i] = u;
+			p = of_prop_next_u32(prop, p, &u);
+			i++;
+		}
+
+		d->num_freqs = i;
+		data->num_tables++;
+	};
+
+	return ret;
+}
+#endif /* CONFIG_OF */
+
+static int __init of_read_cpu_g_dvfs_data(struct device_node *np)
+{
+	int ret;
+	int i;
+	struct dvfs *d;
+	int cpu_speedo_id = tegra_cpu_speedo_id();
+	int cpu_process_id = tegra_cpu_process_id();
+
+	ret = of_read_dvfs_data(np, &of_cpu_data);
+	if (ret) {
+		pr_debug("Failed to read CPU DVFS tables from DT\n");
+		return ret;
+	}
+
+	for (i = 0; i < of_cpu_data.num_tables; i++) {
+		d = &of_cpu_data.tables[i];
+		if (match_dvfs_one(d, cpu_speedo_id, cpu_process_id))
+			break;
+	}
+
+	if (i >= of_cpu_data.num_tables)
+		return -ENODATA;
+
+	return 0;
+}
+
+static int __init of_read_cpu_0_dvfs_data(struct device_node *np)
+{
+	return of_read_dvfs_data(np, &of_cpu_0_data);
+}
+
+static int __init of_read_core_dvfs_data(struct device_node *np)
+{
+	return of_read_dvfs_data(np, &of_core_data);
+}
+
+static const __initconst struct of_device_id dvfs_match[] = {
+	{ .compatible = "nvidia,tegra30-cpu-dvfs",
+				.data = of_read_cpu_g_dvfs_data, },
+	{ .compatible = "nvidia,tegra30-cpu0-dvfs",
+				.data = of_read_cpu_0_dvfs_data, },
+	{ .compatible = "nvidia,tegra30-core-dvfs",
+				.data = of_read_core_dvfs_data, },
+	{}
+};
+
 void __init tegra3_init_dvfs(void)
 {
 	int cpu_speedo_id = tegra_cpu_speedo_id();
@@ -690,6 +882,20 @@ void __init tegra3_init_dvfs(void)
 	tegra_dvfs_cpu_disabled = true;
 #endif
 
+	if (!of_tegra_dvfs_init(dvfs_match) && of_cpu_data.num_tables > 0 &&
+				of_core_data.num_tables > 0) {
+		cpu_dvfs_data = &of_cpu_data;
+		cpu_0_dvfs_data = &of_cpu_0_data;
+		core_dvfs_data = &of_core_data;
+	} else {
+		cpu_dvfs_data = &tegra30_cpu_data;
+		cpu_0_dvfs_data = &tegra30_cpu_0_data;
+		core_dvfs_data = &tegra30_core_data;
+	}
+
+	for (i = 0; i < cpu_dvfs_data->num_voltages; i++)
+		cpu_millivolts_aged[i] = cpu_dvfs_data->millivolts[i];
+
 	/*
 	 * Find nominal voltages for core (1st) and cpu rails before rail
 	 * init. Nominal voltage index in the scaling ladder will also be
@@ -702,13 +908,14 @@ void __init tegra3_init_dvfs(void)
 		core_nominal_mv_index = 0;
 	}
 	tegra3_dvfs_rail_vdd_core.nominal_millivolts =
-		core_millivolts[core_nominal_mv_index];
+		core_dvfs_data->millivolts[core_nominal_mv_index];
 
 	cpu_nominal_mv_index = get_cpu_nominal_mv_index(
 		cpu_speedo_id, cpu_process_id, &cpu_dvfs);
+
 	BUG_ON((cpu_nominal_mv_index < 0) || (!cpu_dvfs));
 	tegra3_dvfs_rail_vdd_cpu.nominal_millivolts =
-		cpu_millivolts[cpu_nominal_mv_index];
+		cpu_dvfs->millivolts[cpu_nominal_mv_index];
 
 	/* Init rail structures and dependencies */
 	tegra_dvfs_init_rails(tegra3_dvfs_rails, ARRAY_SIZE(tegra3_dvfs_rails));
@@ -717,8 +924,8 @@ void __init tegra3_init_dvfs(void)
 
 	/* Search core dvfs table for speedo/process matching entries and
 	   initialize dvfs-ed clocks */
-	for (i = 0; i <  ARRAY_SIZE(core_dvfs_table); i++) {
-		struct dvfs *d = &core_dvfs_table[i];
+	for (i = 0; i <  core_dvfs_data->num_tables; i++) {
+		struct dvfs *d = &core_dvfs_data->tables[i];
 		if (!match_dvfs_one(d, soc_speedo_id, core_process_id))
 			continue;
 		init_dvfs_one(d, core_nominal_mv_index);
@@ -840,13 +1047,13 @@ static void core_cap_level_set(int level)
 {
 	int i, j;
 
-	for (j = 0; j < ARRAY_SIZE(core_millivolts); j++) {
-		int v = core_millivolts[j];
+	for (j = 0; j < core_dvfs_data->num_voltages; j++) {
+		int v = core_dvfs_data->millivolts[j];
 		if ((v == 0) || (level < v))
 			break;
 	}
 	j = (j == 0) ? 0 : j - 1;
-	level = core_millivolts[j];
+	level = core_dvfs_data->millivolts[j];
 
 	if (level < tegra3_core_cap.level) {
 		for (i = 0; i < ARRAY_SIZE(core_cap_table); i++)
@@ -1057,8 +1264,8 @@ static int __init init_core_cap_one(struct clk *c, unsigned long *freqs)
 	int i, v, next_v = 0;
 	unsigned long rate, next_rate = 0;
 
-	for (i = 0; i < ARRAY_SIZE(core_millivolts); i++) {
-		v = core_millivolts[i];
+	for (i = 0; i < core_dvfs_data->num_voltages; i++) {
+		v = core_dvfs_data->millivolts[i];
 		if (v == 0)
 			break;
 
