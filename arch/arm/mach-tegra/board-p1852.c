@@ -1,6 +1,4 @@
 /*
- * arch/arm/mach-tegra/board-p1852.c
- *
  * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -14,6 +12,8 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * arch/arm/mach-tegra/board-p1852.c
  *
  */
 
@@ -605,6 +605,10 @@ static struct tegra_nor_platform_data p1852_nor_data = {
 		.width = 2,
 	},
 	.chip_parms = {
+		.MuxMode = NorMuxMode_ADNonMux,
+		.ReadMode = NorReadMode_Page,
+		.PageLength = NorPageLength_8Word,
+		.ReadyActive = NorReadyActive_WithData,
 		/* FIXME: Need to use characterized value */
 		.timing_default = {
 			.timing0 = 0x30300263,
