@@ -1223,6 +1223,8 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 {
 	void __iomem *base = phy->regs;
 	unsigned long val = 0;
+	bool remote_wakeup = false;
+	int irq_status = IRQ_HANDLED;
 
 	if (phy->phy_clk_on) {
 		DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
@@ -1234,8 +1236,10 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 
 	usb_phy_fence_read(phy);
 	/* check if there is any remote wake event */
-	if (utmi_phy_remotewake_detected(phy))
+	if (utmi_phy_remotewake_detected(phy)) {
 		pr_info("%s: utmip remote wake detected\n", __func__);
+		remote_wakeup = true;
+	}
 
 	if (phy->pdata->u_data.host.hot_plug) {
 		val = readl(base + USB_SUSP_CTRL);
@@ -1245,17 +1249,23 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 			writel(val , (base + USB_SUSP_CTRL));
 			pr_info("%s: usb device plugged-in\n", __func__);
 			val = readl(base + USB_USBSTS);
-			if (!(val  & USB_USBSTS_PCI))
-				return IRQ_NONE;
+			if (!(val  & USB_USBSTS_PCI)) {
+				irq_status = IRQ_NONE;
+				goto exit;
+			}
 			val = readl(base + USB_PORTSC);
 			val &= ~(USB_PORTSC_WKCN | USB_PORTSC_RWC_BITS);
 			writel(val , (base + USB_PORTSC));
 		} else if (!phy->phy_clk_on) {
-			return IRQ_NONE;
+			if (remote_wakeup)
+				irq_status = IRQ_HANDLED;
+			else
+				irq_status = IRQ_NONE;
+			goto exit;
 		}
 	}
-
-	return IRQ_HANDLED;
+exit:
+	return irq_status;
 }
 
 static void utmi_phy_enable_obs_bus(struct tegra_usb_phy *phy)
@@ -2662,6 +2672,9 @@ static void ulpi_null_phy_close(struct tegra_usb_phy *phy)
 
 static int ulpi_null_phy_power_off(struct tegra_usb_phy *phy)
 {
+	unsigned int val;
+	void __iomem *base = phy->regs;
+
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
 	if (!phy->phy_clk_on) {
@@ -2673,6 +2686,9 @@ static int ulpi_null_phy_power_off(struct tegra_usb_phy *phy)
 	phy->phy_clk_on = false;
 	phy->hw_accessible = false;
 	ulpi_null_phy_set_tristate(true);
+	val = readl(base + ULPIS2S_CTRL);
+	val &= ~ULPIS2S_PLLU_MASTER_BLASTER60;
+	writel(val, base + ULPIS2S_CTRL);
 	return 0;
 }
 

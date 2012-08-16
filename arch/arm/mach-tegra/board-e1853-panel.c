@@ -30,6 +30,9 @@
 #include "board.h"
 #include "devices.h"
 #include "tegra3_host1x_devices.h"
+#include "gpio-names.h"
+
+#define E1853_HDMI_HPD TEGRA_GPIO_PB2
 
 static int e1853_panel_enable(void)
 {
@@ -82,6 +85,47 @@ static struct tegra_dc_platform_data e1853_disp1_pdata = {
 	.fb		= &e1853_fb_data,
 };
 
+static int e1853_hdmi_enable(void)
+{
+	return 0;
+}
+
+static int e1853_hdmi_disable(void)
+{
+	return 0;
+}
+
+static struct tegra_fb_data e1853_hdmi_fb_data = {
+	.win            = 0,
+	.xres           = 800,
+	.yres           = 480,
+	.bits_per_pixel = 32,
+	.flags          = TEGRA_FB_FLIP_ON_PROBE,
+};
+
+static struct tegra_dc_out e1853_hdmi_out = {
+	.align		= TEGRA_DC_ALIGN_MSB,
+	.order		= TEGRA_DC_ORDER_RED_BLUE,
+	.parent_clk     = "pll_d2_out0",
+	.type		= TEGRA_DC_OUT_HDMI,
+	.flags          = TEGRA_DC_OUT_HOTPLUG_LOW |
+			  TEGRA_DC_OUT_NVHDCP_POLICY_ON_DEMAND,
+	.max_pixclock   = KHZ2PICOS(148500),
+	 /* XXX: Check the GPIO */
+	.hotplug_gpio   = E1853_HDMI_HPD,
+	.enable		= e1853_hdmi_enable,
+	.disable	= e1853_hdmi_disable,
+	/* XXX: Check the I2C instance */
+	.dcc_bus        = 3,
+};
+
+static struct tegra_dc_platform_data e1853_hdmi_pdata = {
+	.flags           = 0,
+	.default_out     = &e1853_hdmi_out,
+	.emc_clk_rate    = 300000000,
+	.fb              = &e1853_hdmi_fb_data,
+};
+
 static struct nvmap_platform_carveout e1853_carveouts[] = {
 	[0] = {
 		.name		= "iram",
@@ -117,15 +161,7 @@ int __init e1853_panel_init(void)
 	e1853_carveouts[1].size = tegra_carveout_size;
 	tegra_nvmap_device.dev.platform_data = &e1853_nvmap_data;
 	tegra_disp1_device.dev.platform_data = &e1853_disp1_pdata;
-
-	res = nvhost_get_resource_byname(&tegra_disp1_device,
-					 IORESOURCE_MEM, "fbmem");
-	if (!res) {
-		pr_err("No memory resources\n");
-		return -ENODEV;
-	}
-	res->start = tegra_fb_start;
-	res->end = tegra_fb_start + tegra_fb_size - 1;
+	tegra_disp2_device.dev.platform_data = &e1853_hdmi_pdata;
 
 #ifdef CONFIG_TEGRA_GRHOST
 	err = tegra3_register_host1x_devices();
@@ -135,8 +171,28 @@ int __init e1853_panel_init(void)
 
 	err = platform_add_devices(e1853_gfx_devices,
 				ARRAY_SIZE(e1853_gfx_devices));
+
+#if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
+	res = nvhost_get_resource_byname(&tegra_disp1_device,
+					 IORESOURCE_MEM, "fbmem");
+	if (res) {
+		res->start = tegra_fb_start;
+		res->end = tegra_fb_start + tegra_fb_size - 1;
+	}
+
 	if (!err)
 		err = nvhost_device_register(&tegra_disp1_device);
+
+	res = nvhost_get_resource_byname(&tegra_disp2_device,
+					 IORESOURCE_MEM, "fbmem");
+	if (res) {
+		res->start = tegra_fb2_start;
+		res->end = tegra_fb2_start + tegra_fb2_size - 1;
+	}
+
+	if (!err)
+		err = nvhost_device_register(&tegra_disp2_device);
+#endif
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_NVAVP)
 	if (!err)

@@ -57,7 +57,6 @@ static int aruba_backlight_init(struct device *dev) {
 static void aruba_backlight_exit(struct device *dev) {
 	gpio_set_value(aruba_bl_enb, 0);
 	gpio_free(aruba_bl_enb);
-	tegra_gpio_disable(aruba_bl_enb);
 }
 
 static int aruba_backlight_notify(struct device *unused, int brightness)

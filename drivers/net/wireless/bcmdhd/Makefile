@@ -16,6 +16,7 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER                     \
 	-DWIFI_ACT_FRAME -DARP_OFFLOAD_SUPPORT                                \
 	-DKEEP_ALIVE -DPKT_FILTER_SUPPORT             \
 	-DEMBEDDED_PLATFORM            \
+	-DDHD_USE_IDLECOUNT                                                   \
 	-Idrivers/net/wireless/bcmdhd -Idrivers/net/wireless/bcmdhd/include
 
 ifeq ($(CONFIG_BCMDHD_WIFI_CONTROL_FUNC),y)

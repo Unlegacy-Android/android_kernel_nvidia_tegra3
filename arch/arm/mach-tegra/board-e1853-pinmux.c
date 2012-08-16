@@ -496,7 +496,6 @@ int __init e1853_gpio_init(void)
 
 	gpio_request_array(gpios_info, pin_count);
 	for (i = 0; i < pin_count; i++) {
-		tegra_gpio_enable(gpios_info[i].gpio);
 		gpio_export(gpios_info[i].gpio, true);
 	}
 	return 0;

@@ -342,12 +342,10 @@ static void p852_usb_gpio_config(void)
 	if (has_onboard_ethernet) {
 		gpio_request_one(usbeth_mux_gpio, GPIOF_OUT_INIT_LOW,
 				 "eth_ena");
-		tegra_gpio_enable(usbeth_mux_gpio);
 
 		/* eth reset */
 		gpio_request_one(p852_eth_reset, GPIOF_OUT_INIT_LOW,
 				 "eth_reset");
-		tegra_gpio_enable(p852_eth_reset);
 		udelay(1);
 		gpio_direction_output(p852_eth_reset, 1);
 
@@ -432,7 +430,6 @@ void __init p852_spi_i2s_init(void)
 		gpio_request_one(pdata->gpio_i2s.gpio_no, GPIOF_OUT_INIT_HIGH,
 				 "i2s_cpld_dir1");
 	}
-	tegra_gpio_enable(pdata->gpio_i2s.gpio_no);
 	if (pdata->gpio_spi.active_state) {
 		gpio_request_one(pdata->gpio_spi.gpio_no, GPIOF_OUT_INIT_LOW,
 				 "spi_cpld_dir2");
@@ -441,7 +438,6 @@ void __init p852_spi_i2s_init(void)
 				 "spi_cpld_dir2");
 	}
 
-	tegra_gpio_enable(pdata->gpio_spi.gpio_no);
 	spi_register_board_info(&tegra_spi_i2s_device, 1);
 }
 #endif
@@ -498,7 +494,6 @@ static void ulpi_link_platform_open(void)
 
 	gpio_request(reset_gpio, "ulpi_phy_reset");
 	gpio_direction_output(reset_gpio, 0);
-	tegra_gpio_enable(reset_gpio);
 
 	gpio_direction_output(reset_gpio, 0);
 	msleep(5);

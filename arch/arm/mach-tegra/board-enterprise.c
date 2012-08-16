@@ -710,6 +710,7 @@ static struct tegra_usb_phy_platform_ops hsic_xmm_plat_ops = {
 	.post_suspend = enterprise_usb_hsic_postsupend,
 	.pre_resume = enterprise_usb_hsic_preresume,
 	.port_power = enterprise_usb_hsic_phy_power,
+	.post_phy_on = enterprise_usb_hsic_phy_power,
 	.post_phy_off = enterprise_usb_hsic_post_phy_off,
 };
 
@@ -819,9 +820,15 @@ error:
 	return NULL;
 }
 
-void tegra_usb_hsic_host_unregister(struct platform_device *pdev)
+void tegra_usb_hsic_host_unregister(struct platform_device **platdev)
 {
-	platform_device_unregister(pdev);
+	struct platform_device *pdev = *platdev;
+
+	if (pdev && &pdev->dev) {
+		platform_device_unregister(pdev);
+		*platdev = NULL;
+	} else
+		pr_err("%s: no platform device\n", __func__);
 }
 
 static void enterprise_usb_init(void)
