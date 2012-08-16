@@ -6,6 +6,7 @@
 #
 
 obj-$(CONFIG_EDP_FRAMEWORK)	+= edp/
+obj-$(CONFIG_CPUQUIET_FRAMEWORK) += cpuquiet/
 # GPIO must come after pinctrl as gpios may need to mux pins etc
 obj-y				+= pinctrl/
 obj-y				+= gpio/
