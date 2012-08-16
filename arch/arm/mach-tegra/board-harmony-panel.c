@@ -66,7 +66,6 @@ static void harmony_backlight_exit(struct device *dev)
 {
 	gpio_set_value(harmony_bl_enb, 0);
 	gpio_free(harmony_bl_enb);
-	tegra_gpio_disable(harmony_bl_enb);
 }
 
 static int harmony_backlight_notify(struct device *unused, int brightness)

@@ -22,6 +22,7 @@
 #include <linux/power_supply.h>
 #include <linux/power/smb347-charger.h>
 #include <linux/seq_file.h>
+#include <linux/delay.h>
 
 /*
  * Configuration registers. These are mirrored to volatile RAM and can be
@@ -38,6 +39,8 @@
 #define CFG_CURRENT_LIMIT_DC_MASK		0xf0
 #define CFG_CURRENT_LIMIT_DC_SHIFT		4
 #define CFG_CURRENT_LIMIT_USB_MASK		0x0f
+#define CFG_VARIOUS_FUNCTION                    0x02
+#define CFG_INPUT_SOURCE_PRIORITY               BIT(2)
 #define CFG_FLOAT_VOLTAGE			0x03
 #define CFG_FLOAT_VOLTAGE_THRESHOLD_MASK	0xc0
 #define CFG_FLOAT_VOLTAGE_THRESHOLD_SHIFT	6
@@ -89,6 +92,7 @@
 #define CMD_A_OTG_ENABLE			BIT(4)
 #define CMD_A_ALLOW_WRITE			BIT(7)
 #define CMD_B					0x31
+#define CMD_B_POR				BIT(7)
 #define CMD_B_USB59_MODE			BIT(1)
 #define CMD_B_HC_MODE				BIT(0)
 #define CMD_C					0x33
@@ -779,8 +783,16 @@ fail:
 static irqreturn_t smb347_interrupt(int irq, void *data)
 {
 	struct smb347_charger *smb = data;
-	int stat_c, irqstat_e, irqstat_c;
+	int stat_c, t;
+	u8 irqstat[6];
 	irqreturn_t ret = IRQ_NONE;
+
+	t = i2c_smbus_read_i2c_block_data(smb->client, IRQSTAT_A, 6, irqstat);
+	if (t < 0) {
+		dev_warn(&smb->client->dev,
+			 "reading IRQSTAT registers failed\n");
+		return IRQ_NONE;
+	}
 
 	stat_c = smb347_read(smb, STAT_C);
 	if (stat_c < 0) {
@@ -788,17 +800,9 @@ static irqreturn_t smb347_interrupt(int irq, void *data)
 		return IRQ_NONE;
 	}
 
-	irqstat_c = smb347_read(smb, IRQSTAT_C);
-	if (irqstat_c < 0) {
-		dev_warn(&smb->client->dev, "reading IRQSTAT_C failed\n");
-		return IRQ_NONE;
-	}
-
-	irqstat_e = smb347_read(smb, IRQSTAT_E);
-	if (irqstat_e < 0) {
-		dev_warn(&smb->client->dev, "reading IRQSTAT_E failed\n");
-		return IRQ_NONE;
-	}
+	pr_debug("%s: stat c=%x irq a=%x b=%x c=%x d=%x e=%x f=%x\n",
+		 __func__, stat_c, irqstat[0], irqstat[1], irqstat[2],
+		 irqstat[3], irqstat[4], irqstat[5]);
 
 	/*
 	 * If we get charger error we report the error back to user and
@@ -818,21 +822,21 @@ static irqreturn_t smb347_interrupt(int irq, void *data)
 	 * If we reached the termination current the battery is charged.
 	 * Disable charging to ACK the interrupt and update status.
 	 */
-	if (irqstat_c & (IRQSTAT_C_TERMINATION_IRQ |
-			 IRQSTAT_C_TERMINATION_STAT)) {
+	if (irqstat[2] & (IRQSTAT_C_TERMINATION_IRQ |
+			  IRQSTAT_C_TERMINATION_STAT)) {
 		smb347_charging_disable(smb);
 		power_supply_changed(&smb->battery);
 		ret = IRQ_HANDLED;
 	}
 
-	if (irqstat_c & IRQSTAT_C_TAPER_IRQ)
+	if (irqstat[2] & IRQSTAT_C_TAPER_IRQ)
 		ret = IRQ_HANDLED;
 
 	/*
 	 * If we got an under voltage interrupt it means that AC/USB input
 	 * was disconnected.
 	 */
-	if (irqstat_e & (IRQSTAT_E_USBIN_UV_IRQ | IRQSTAT_E_DCIN_UV_IRQ))
+	if (irqstat[4] & (IRQSTAT_E_USBIN_UV_IRQ | IRQSTAT_E_DCIN_UV_IRQ))
 		ret = IRQ_HANDLED;
 
 	if (smb347_update_status(smb) > 0) {
@@ -995,8 +999,34 @@ static int smb347_mains_set_property(struct power_supply *psy,
 {
 	struct smb347_charger *smb =
 		container_of(psy, struct smb347_charger, mains);
+	int ret;
+	bool oldval;
 
 	switch (prop) {
+	case POWER_SUPPLY_PROP_ONLINE:
+		oldval = smb->mains_online;
+
+		smb->mains_online = val->intval;
+
+		smb347_set_writable(smb, true);
+
+		ret = smb347_read(smb, CMD_A);
+		if (ret < 0)
+			return -EINVAL;
+
+		ret &= ~CMD_A_SUSPEND_ENABLED;
+		if (val->intval)
+			ret |= CMD_A_SUSPEND_ENABLED;
+
+		ret = smb347_write(smb, CMD_A, ret);
+
+		smb347_hw_init(smb);
+
+		smb347_set_writable(smb, false);
+
+		if (smb->mains_online != oldval)
+			power_supply_changed(psy);
+		return 0;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		smb->mains_current_limit = val->intval;
 		smb347_hw_init(smb);
@@ -1060,8 +1090,17 @@ static int smb347_usb_set_property(struct power_supply *psy,
 	int ret = -EINVAL;
 	struct smb347_charger *smb =
 		container_of(psy, struct smb347_charger, usb);
+	bool oldval;
 
 	switch (prop) {
+	case POWER_SUPPLY_PROP_ONLINE:
+		oldval = smb->usb_online;
+		smb->usb_online = val->intval;
+
+		if (smb->usb_online != oldval)
+			power_supply_changed(psy);
+		ret = 0;
+		break;
 	case POWER_SUPPLY_PROP_USB_HC:
 		smb347_set_writable(smb, true);
 		ret = smb347_write(smb, CMD_B, val->intval ?
@@ -1375,6 +1414,18 @@ static int smb347_probe(struct i2c_client *client,
 			dev_warn(dev, "failed to claim EN GPIO: %d\n", ret);
 		else
 			smb->en_gpio = pdata->en_gpio;
+	}
+
+	ret = smb347_write(smb, CMD_B, CMD_B_POR);
+	if (ret < 0)
+		return ret;
+
+	msleep(20);
+
+	ret = smb347_read(smb, CMD_B);
+	if (ret < 0) {
+		dev_err(dev, "failed read after reset\n");
+		return ret;
 	}
 
 	ret = smb347_hw_init(smb);
