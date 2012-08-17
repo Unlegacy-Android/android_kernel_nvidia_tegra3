@@ -443,6 +443,13 @@
 		};
 	};
 
+	memory-controller@0x7000f400 {
+		compatible = "nvidia,tegra30-emc";
+		reg = <0x7000f400 0x200>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
 	apbdma: dma@6000a000 {
 		compatible = "nvidia,tegra30-apbdma", "nvidia,tegra20-apbdma";
 		reg = <0x6000a000 0x1400>;
