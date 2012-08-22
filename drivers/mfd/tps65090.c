@@ -68,9 +68,8 @@ static const struct tps65090_irq_data tps65090_irqs[] = {
 };
 
 static struct mfd_cell tps65090s[] = {
-	{
-		.name = "tps65090-pmic",
-	},
+	{.name = "tps65090-pmic", },
+	{.name = "tps65090-charger", },
 };
 
 static void tps65090_irq_lock(struct irq_data *data)
