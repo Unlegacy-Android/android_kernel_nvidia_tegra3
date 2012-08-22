@@ -38,6 +38,9 @@
 #include <linux/i2c/atmel_mxt_ts.h>
 #include <linux/memblock.h>
 #include <linux/rfkill-gpio.h>
+#include <linux/mfd/tlv320aic3262-registers.h>
+#include <linux/mfd/tlv320aic3262-core.h>
+
 #include <linux/nfc/pn544.h>
 
 #include <sound/max98088.h>
@@ -238,6 +241,44 @@ static __initdata struct tegra_clk_init_table enterprise_clk_i2s4_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
+static struct aic3262_gpio_setup aic3262_gpio[] = {
+	/* GPIO 1*/
+	{
+		.used		= 1,
+		.in		= 0,
+		.value		= AIC3262_GPIO1_FUNC_INT1_OUTPUT ,
+	},
+	/* GPIO 2*/
+	{
+		.used		= 1,
+		.in		= 0,
+		.value		= AIC3262_GPIO2_FUNC_ADC_MOD_CLK_OUTPUT,
+	},
+	/* GPIO 1 */
+	{
+		.used		= 0,
+	},
+	{// GPI2
+		.used		= 1,
+		.in		= 1,
+		.in_reg         = AIC3262_DMIC_INPUT_CNTL,
+		.in_reg_bitmask	= AIC3262_DMIC_CONFIGURE_MASK,
+		.in_reg_shift	= AIC3262_DMIC_CONFIGURE_SHIFT,
+		.value		= AIC3262_DMIC_GPI2_LEFT_GPI2_RIGHT,
+	},
+	{// GPO1
+		.used		= 0,
+		.value		= AIC3262_GPO1_FUNC_DISABLED,
+	},
+};
+
+static struct aic3262_pdata aic3262_codec_pdata = {
+	.gpio_irq	= 1,
+	.gpio		= aic3262_gpio,
+	.naudint_irq    = TEGRA_GPIO_HP_DET,
+	.irq_base       = AIC3262_CODEC_IRQ_BASE,
+};
+
 static struct tegra_i2c_platform_data enterprise_i2c1_platform_data = {
 	.adapter_nr	= 0,
 	.bus_count	= 1,
@@ -391,7 +432,9 @@ static struct i2c_board_info __initdata max98088_board_info = {
 };
 
 static struct i2c_board_info __initdata enterprise_codec_aic326x_info = {
-	I2C_BOARD_INFO("aic3262-codec", 0x18),
+	I2C_BOARD_INFO("tlv320aic3262", 0x18),
+	.platform_data = &aic3262_codec_pdata,
+	.irq = TEGRA_GPIO_HP_DET,
 };
 
 static struct i2c_board_info __initdata nfc_board_info = {
@@ -413,8 +456,6 @@ static void enterprise_i2c_init(void)
 	platform_device_register(&tegra_i2c_device2);
 	platform_device_register(&tegra_i2c_device1);
 
-	max98088_board_info.irq = enterprise_codec_aic326x_info.irq =
-		gpio_to_irq(TEGRA_GPIO_HP_DET);
 	i2c_register_board_info(0, &max98088_board_info, 1);
 	i2c_register_board_info(0, &enterprise_codec_aic326x_info, 1);
 	nfc_board_info.irq = gpio_to_irq(TEGRA_GPIO_PS4);
