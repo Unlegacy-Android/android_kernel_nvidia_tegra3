@@ -41,18 +41,21 @@
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/gpio.h>
-
+#include <linux/clk.h>
 #include <media/ar0832_main.h>
 #include <media/tps61050.h>
 #include <media/ov9726.h>
 #include <mach/edp.h>
 #include <mach/thermal.h>
 #include <mach/gpio-tegra.h>
-
+#include <mach/clk.h>
 #include "cpu-tegra.h"
 #include "gpio-names.h"
 #include "board-enterprise.h"
 #include "board.h"
+#include "clock.h"
+
+static struct board_info board_info;
 
 static int nct_get_temp(void *_data, long *temp)
 {
@@ -290,6 +293,14 @@ struct enterprise_power_rail {
 
 static struct enterprise_power_rail ent_vicsi_pwr[NUM_OF_CAM];
 
+static __initdata struct tegra_clk_init_table tai_front_cam_clk_init_table[] = {
+	/* name		parent		rate			enabled */
+	{ "extern3",	"pll_p",	24000000,		false},
+	{ "clk_out_3",	"extern3",	24000000,		false},
+	{ NULL,		NULL,		0,			0},
+};
+
+
 static int enterprise_cam_pwr(enum CAMERA_INDEX cam, bool pwr_on)
 {
 	struct enterprise_power_rail *reg_cam = &ent_vicsi_pwr[cam];
@@ -364,7 +375,8 @@ static int enterprise_ar0832_ri_power_on(int is_stereo)
 	/* Release Reset */
 	if (is_stereo) {
 		gpio_set_value(CAM1_RST_L_GPIO, 1);
-		gpio_set_value(CAM2_RST_L_GPIO, 1);
+		if (board_info.board_id != BOARD_E1239)
+			gpio_set_value(CAM2_RST_L_GPIO, 1);
 	} else
 		gpio_set_value(CAM1_RST_L_GPIO, 1);
 	/*
@@ -382,11 +394,12 @@ static int enterprise_ar0832_le_power_on(int is_stereo)
 	int ret = 0;
 
 	pr_info("%s: ++\n", __func__);
-	ret = enterprise_cam_pwr(CAM_REAR_LEFT, true);
 
-	/* Release Reset */
-	gpio_set_value(CAM2_RST_L_GPIO, 1);
-
+	if (board_info.board_id != BOARD_E1239) {
+		ret = enterprise_cam_pwr(CAM_REAR_LEFT, true);
+		/* Release Reset */
+		gpio_set_value(CAM2_RST_L_GPIO, 1);
+	}
 	/*
 	It takes 2400 EXTCLK for ar0832 to be ready for I2c.
 	EXTCLK is 10 ~ 24MHz. 1 ms should be enough to cover
@@ -394,8 +407,10 @@ static int enterprise_ar0832_le_power_on(int is_stereo)
 	*/
 	enterprise_msleep(1);
 
-	/* CSI B is shared between Front camera and Rear Left camera */
-	gpio_set_value(CAM_CSI_MUX_SEL_GPIO, 1);
+	if (board_info.board_id != BOARD_E1239) {
+		/* CSI B is shared between Front camera and Rear Left camera */
+		gpio_set_value(CAM_CSI_MUX_SEL_GPIO, 1);
+	}
 
 	return ret;
 }
@@ -410,7 +425,8 @@ static int enterprise_ar0832_ri_power_off(int is_stereo)
 	/* Assert Reset */
 	if (is_stereo) {
 		gpio_set_value(CAM1_RST_L_GPIO, 0);
-		gpio_set_value(CAM2_RST_L_GPIO, 0);
+		if (board_info.board_id != BOARD_E1239)
+			gpio_set_value(CAM2_RST_L_GPIO, 0);
 	} else
 		gpio_set_value(CAM1_RST_L_GPIO, 0);
 
@@ -419,14 +435,15 @@ static int enterprise_ar0832_ri_power_off(int is_stereo)
 
 static int enterprise_ar0832_le_power_off(int is_stereo)
 {
-	int ret;
+	int ret = 0;
 
-	pr_info("%s: ++\n", __func__);
-	ret = enterprise_cam_pwr(CAM_REAR_LEFT, false);
+	if (board_info.board_id != BOARD_E1239) {
+		pr_info("%s: ++\n", __func__);
+		ret = enterprise_cam_pwr(CAM_REAR_LEFT, false);
 
-	/* Assert Reset */
-	gpio_set_value(CAM2_RST_L_GPIO, 0);
-
+		/* Assert Reset */
+		gpio_set_value(CAM2_RST_L_GPIO, 0);
+	}
 	return ret;
 }
 
@@ -434,9 +451,14 @@ static int enterprise_ov9726_power_on(void)
 {
 	pr_info("ov9726 power on\n");
 
-	/* switch mipi mux to front camera */
-	gpio_set_value(CAM_CSI_MUX_SEL_GPIO, CAM_CSI_MUX_SEL_FRONT);
+	if (board_info.board_id != BOARD_E1239) {
+		/* switch mipi mux to front camera */
+		gpio_set_value(CAM_CSI_MUX_SEL_GPIO, CAM_CSI_MUX_SEL_FRONT);
+	}
 	enterprise_cam_pwr(CAM_FRONT, true);
+
+	if (board_info.board_id == BOARD_E1239)
+		clk_enable(tegra_get_clock_by_name("clk_out_3"));
 
 	return 0;
 }
@@ -446,6 +468,9 @@ static int enterprise_ov9726_power_off(void)
 	pr_info("ov9726 power off\n");
 
 	enterprise_cam_pwr(CAM_FRONT, false);
+
+	if (board_info.board_id == BOARD_E1239)
+		clk_disable(tegra_get_clock_by_name("clk_out_3"));
 
 	return 0;
 }
@@ -492,7 +517,13 @@ static struct enterprise_cam_gpio enterprise_cam_gpio_data[] = {
 	[5] = TEGRA_CAMERA_GPIO(CAM_FLASH_EN_GPIO, "flash_en", 1),
 	[6] = TEGRA_CAMERA_GPIO(CAM_I2C_MUX_RST_EXP, "cam_i2c_mux_rst", 1),
 };
-
+static struct enterprise_cam_gpio tai_cam_gpio_data[] = {
+	[0] = TEGRA_CAMERA_GPIO(CAM1_RST_L_GPIO, "cam1_rst_lo", 0),
+	[1] = TEGRA_CAMERA_GPIO(CAM3_RST_L_GPIO, "cam3_rst_lo", 0),
+	[2] = TEGRA_CAMERA_GPIO(CAM3_PWDN_GPIO, "cam3_pwdn", 1),
+	[3] = TEGRA_CAMERA_GPIO(CAM_FLASH_EN_GPIO, "flash_en", 1),
+	[4] = TEGRA_CAMERA_GPIO(CAM_I2C_MUX_RST_EXP, "cam_i2c_mux_rst", 1),
+};
 static struct pca954x_platform_mode enterprise_pca954x_modes[] = {
 	{ .adap_id = PCA954x_I2C_BUS0, .deselect_on_exit = true, },
 	{ .adap_id = PCA954x_I2C_BUS1, .deselect_on_exit = true, },
@@ -572,49 +603,87 @@ static struct i2c_board_info enterprise_i2c7_boardinfo[] = {
 		.platform_data = &enterprise_ar0832_ri_data,
 	},
 };
+static struct i2c_board_info ar0832_i2c2_boardinfo_tai[] = {
+	{
+		/* 0x36: alternative slave address */
+		I2C_BOARD_INFO("ar0832", 0x36),
+		.platform_data = &enterprise_ar0832_ri_data,
+	},
+	{
+		I2C_BOARD_INFO("tps61050", 0x33),
+		.platform_data = &enterprise_tps61050_pdata,
+	},
+	{
+		I2C_BOARD_INFO("ov9726", OV9726_I2C_ADDR >> 1),
+		.platform_data = &enterprise_ov9726_data,
+	},
+};
 
 static int enterprise_cam_init(void)
 {
 	int ret;
 	int i;
-	struct board_info bi;
 	struct board_info cam_bi;
 	bool i2c_mux = false;
 
 	pr_info("%s:++\n", __func__);
 	memset(ent_vicsi_pwr, 0, sizeof(ent_vicsi_pwr));
-	for (i = 0; i < ARRAY_SIZE(enterprise_cam_gpio_data); i++) {
-		ret = gpio_request(enterprise_cam_gpio_data[i].gpio,
-				   enterprise_cam_gpio_data[i].label);
-		if (ret < 0) {
-			pr_err("%s: gpio_request failed for gpio #%d\n",
-				__func__, i);
-			goto fail_free_gpio;
-		}
-		gpio_direction_output(enterprise_cam_gpio_data[i].gpio,
-				      enterprise_cam_gpio_data[i].value);
-		gpio_export(enterprise_cam_gpio_data[i].gpio, false);
-	}
 
-	tegra_get_board_info(&bi);
 	tegra_get_camera_board_info(&cam_bi);
 
-	if (bi.board_id == BOARD_E1205) {
-		if (bi.fab == BOARD_FAB_A00 || bi.fab == BOARD_FAB_A01)
+	if (board_info.board_id == BOARD_E1239) {
+		for (i = 0; i < ARRAY_SIZE(tai_cam_gpio_data); i++) {
+			ret = gpio_request(tai_cam_gpio_data[i].gpio,
+					   tai_cam_gpio_data[i].label);
+			if (ret < 0) {
+				pr_err("%s: gpio_request failed for gpio #%d\n",
+					__func__, i);
+				goto fail_free_gpio;
+			}
+			gpio_direction_output(tai_cam_gpio_data[i].gpio,
+					      tai_cam_gpio_data[i].value);
+			gpio_export(tai_cam_gpio_data[i].gpio, false);
+		}
+
+		tegra_clk_init_from_table(tai_front_cam_clk_init_table);
+
+	} else {
+		for (i = 0; i < ARRAY_SIZE(enterprise_cam_gpio_data); i++) {
+			ret = gpio_request(enterprise_cam_gpio_data[i].gpio,
+					   enterprise_cam_gpio_data[i].label);
+			if (ret < 0) {
+				pr_err("%s: gpio_request failed for gpio #%d\n",
+					__func__, i);
+				goto fail_free_gpio;
+			}
+			gpio_direction_output(enterprise_cam_gpio_data[i].gpio,
+					enterprise_cam_gpio_data[i].value);
+			gpio_export(enterprise_cam_gpio_data[i].gpio, false);
+		}
+	}
+
+	if (board_info.board_id == BOARD_E1205) {
+		if (board_info.fab == BOARD_FAB_A00 ||
+			board_info.fab == BOARD_FAB_A01)
 			i2c_mux = false;
-		else if (bi.fab == BOARD_FAB_A02)
+		else if (board_info.fab == BOARD_FAB_A02)
 			i2c_mux = true;
-	} else if (bi.board_id == BOARD_E1197) {
+	} else if (board_info.board_id == BOARD_E1197) {
 		if (cam_bi.fab == BOARD_FAB_A00)
 			i2c_mux = false;
 		else if (cam_bi.fab == BOARD_FAB_A01)
 			i2c_mux = true;
 	}
 
-	if (!i2c_mux)
-		i2c_register_board_info(2, ar0832_i2c2_boardinfo,
-			ARRAY_SIZE(ar0832_i2c2_boardinfo));
-	else {
+	if (!i2c_mux) {
+		if (board_info.board_id == BOARD_E1239) {
+			i2c_register_board_info(2, ar0832_i2c2_boardinfo_tai,
+				ARRAY_SIZE(ar0832_i2c2_boardinfo));
+		} else {
+			i2c_register_board_info(2, ar0832_i2c2_boardinfo,
+				ARRAY_SIZE(ar0832_i2c2_boardinfo));
+		}
+	} else {
 		i2c_register_board_info(2, enterprise_i2c2_boardinfo,
 			ARRAY_SIZE(enterprise_i2c2_boardinfo));
 		/*
@@ -630,8 +699,14 @@ static int enterprise_cam_init(void)
 
 fail_free_gpio:
 	pr_err("%s enterprise_cam_init failed!\n", __func__);
-	while (i--)
-		gpio_free(enterprise_cam_gpio_data[i].gpio);
+	if (board_info.board_id == BOARD_E1239) {
+		while (i--)
+			gpio_free(tai_cam_gpio_data[i].gpio);
+
+	} else {
+		while (i--)
+			gpio_free(enterprise_cam_gpio_data[i].gpio);
+	}
 	return ret;
 }
 
@@ -664,9 +739,12 @@ int __init enterprise_sensors_init(void)
 {
 	int ret;
 
+	tegra_get_board_info(&board_info);
+
 	enterprise_isl_init();
 	enterprise_nct1008_init();
-	mpuirq_init();
+	if (board_info.board_id != BOARD_E1239)
+		mpuirq_init();
 #if ENTERPRISE_INA230_ENABLED
 	enterprise_ina230_init();
 #endif

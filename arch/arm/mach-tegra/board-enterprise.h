@@ -28,6 +28,7 @@
 /* Processor Board  ID */
 #define BOARD_E1205		0x0C05
 #define BOARD_E1197		0x0B61
+#define BOARD_E1239		0x0C27
 #define SKU_BATTERY_SUPPORT	0x1
 
 /* Board Fab version */
@@ -113,6 +114,7 @@ void enterprise_bpc_mgmt_init(void);
 
 /* Audio-related GPIOs */
 #define TEGRA_GPIO_HP_DET	TEGRA_GPIO_PW3
+#define TEGRA_GPIO_CODEC_RST	TEGRA_GPIO_PX0
 
 /* Baseband GPIO addresses */
 
@@ -159,6 +161,7 @@ enum tegra_bb_type {
 };
 
 /* Indicate the pwm of backlight, DC pwm or external pwm3. */
+/* External pwm is used for TAI (E1239) but do not set this compiler switch */
 #define IS_EXTERNAL_PWM		0
 
 #endif /*_MACH_TEGRA_BOARD_ENTERPRISE_H */

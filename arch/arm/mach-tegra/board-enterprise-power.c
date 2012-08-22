@@ -447,6 +447,10 @@ static struct regulator_consumer_supply fixed_reg_pmu_3v3_en_supply[] = {
 static struct regulator_consumer_supply fixed_reg_pmu_hdmi_5v0_en_supply[] = {
 	REGULATOR_SUPPLY("hdmi_5v0", NULL),
 };
+static struct regulator_consumer_supply
+fixed_reg_pmu_hdmi_5v0_en_tai_supply[] = {
+	REGULATOR_SUPPLY("hdmi_5v0", NULL),
+};
 
 /* LCD-D16 (GPIO M0) from T30*/
 static struct regulator_consumer_supply fixed_reg_vdd_fuse_en_supply[] = {
@@ -628,6 +632,9 @@ FIXED_REG(7, vdd_sdmmc3_2v85_en,  NULL,
 FIXED_REG(8, lcd_1v8_en,  NULL,
 		TEGRA_GPIO_PB2, true, 1800, 0, 0);
 
+FIXED_REG(9, pmu_hdmi_5v0_en_tai, NULL,
+		ENT_TPS80031_GPIO_SYSEN, true, 5000, 0, 0);
+
 #define ADD_FIXED_REG(_name)	(&fixed_reg_##_name##_dev)
 static struct platform_device *fixed_regs_devices_a02[] = {
 	ADD_FIXED_REG(pmu_5v15_en),
@@ -648,6 +655,14 @@ static struct platform_device *fixed_regs_devices_a03[] = {
 	ADD_FIXED_REG(lcd_1v8_en),
 };
 
+static struct platform_device *fixed_regs_devices_tai[] = {
+	ADD_FIXED_REG(pmu_hdmi_5v0_en_tai),
+	ADD_FIXED_REG(cam_ldo_2v8_en),
+	ADD_FIXED_REG(cam_ldo_1v8_en),
+	ADD_FIXED_REG(vdd_sdmmc3_2v85_en),
+	ADD_FIXED_REG(lcd_1v8_en),
+};
+
 #define ADD_GPIO_REG(_name) (&gpio_reg_##_name##_dev)
 static struct platform_device *gpio_regs_devices[] = {
 	ADD_GPIO_REG(sdmmc3_vdd_sel),
@@ -661,14 +676,18 @@ static int __init enterprise_fixed_regulator_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (board_info.fab < BOARD_FAB_A03) {
-		fixed_regs_devices = fixed_regs_devices_a02;
-		nfixreg_devs = ARRAY_SIZE(fixed_regs_devices_a02);
+	if (board_info.board_id == BOARD_E1239) {
+		fixed_regs_devices = fixed_regs_devices_tai;
+		nfixreg_devs = ARRAY_SIZE(fixed_regs_devices_tai);
 	} else {
-		fixed_regs_devices = fixed_regs_devices_a03;
-		nfixreg_devs = ARRAY_SIZE(fixed_regs_devices_a03);
+		if (board_info.fab < BOARD_FAB_A03) {
+			fixed_regs_devices = fixed_regs_devices_a02;
+			nfixreg_devs = ARRAY_SIZE(fixed_regs_devices_a02);
+		} else {
+			fixed_regs_devices = fixed_regs_devices_a03;
+			nfixreg_devs = ARRAY_SIZE(fixed_regs_devices_a03);
+		}
 	}
-
 	return platform_add_devices(fixed_regs_devices, nfixreg_devs);
 }
 
@@ -722,7 +741,8 @@ int __init enterprise_regulator_init(void)
 		battery_gauge_data.battery_present = 0;
 	}
 
-	if (board_info.fab < BOARD_FAB_A03) {
+	if ((board_info.fab < BOARD_FAB_A03) &&
+			(board_info.board_id != BOARD_E1239)) {
 		tps_platform.num_regulator_pdata = ARRAY_SIZE(tps80031_reg_pdata_a02);
 		tps_platform.regulator_pdata = tps80031_reg_pdata_a02;
 	} else {
@@ -771,6 +791,7 @@ static void enterprise_init_deep_sleep_mode(void)
 		enterprise_suspend_data.suspend_mode = TEGRA_SUSPEND_LP1;
 
 	if ((bi.board_id == BOARD_E1205 && (bi.sku & BOARD_SKU_VF_BIT) == 0) ||
+	    (bi.board_id == BOARD_E1239 && (bi.sku & BOARD_SKU_VF_BIT) == 0) ||
 	    (bi.board_id == BOARD_E1197 && (bi.sku & BOARD_SKU_VF_BIT)))
 		enterprise_suspend_data.cpu_timer = 8000;
 }

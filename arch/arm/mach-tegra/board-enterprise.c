@@ -901,18 +901,31 @@ static void enterprise_audio_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_E1197)
-		enterprise_audio_pdata.i2s_param[HIFI_CODEC].audio_port_id = 1;
-	else if (board_info.fab == BOARD_FAB_A04) {
-		enterprise_audio_pdata.i2s_param[BASEBAND].audio_port_id = 4;
+	if (board_info.board_id == BOARD_E1239) {
+		enterprise_audio_aic326x_pdata.i2s_param[BASEBAND].
+					audio_port_id = 4;
+		enterprise_audio_aic326x_pdata.i2s_param[BASEBAND].
+					i2s_mode	= TEGRA_DAIFMT_I2S;
+		enterprise_audio_aic326x_pdata.i2s_param[BASEBAND].
+					channels	= 2;
 		platform_device_register(&tegra_i2s_device4);
 	} else {
-		enterprise_audio_pdata.i2s_param[BASEBAND].audio_port_id = 2;
-		platform_device_register(&tegra_i2s_device2);
-	}
+		if (board_info.board_id == BOARD_E1197)
+			enterprise_audio_pdata.i2s_param[HIFI_CODEC].
+					audio_port_id = 1;
+		else if (board_info.fab == BOARD_FAB_A04) {
+			enterprise_audio_pdata.i2s_param[BASEBAND].
+					audio_port_id = 4;
+			platform_device_register(&tegra_i2s_device4);
+		} else {
+			enterprise_audio_pdata.i2s_param[BASEBAND].
+					audio_port_id = 2;
+			platform_device_register(&tegra_i2s_device2);
+		}
 
+	}
 	platform_add_devices(enterprise_audio_devices,
-			ARRAY_SIZE(enterprise_audio_devices));
+		ARRAY_SIZE(enterprise_audio_devices));
 }
 
 static struct baseband_power_platform_data tegra_baseband_power_data = {
@@ -978,7 +991,11 @@ static struct platform_device tegra_baseband_m7400_device = {
 
 static void enterprise_baseband_init(void)
 {
+	struct board_info board_info;
+
 	int modem_id = tegra_get_modem_id();
+
+	tegra_get_board_info(&board_info);
 
 	switch (modem_id) {
 	case TEGRA_BB_PH450: /* PH450 ULPI */
@@ -992,7 +1009,13 @@ static void enterprise_baseband_init(void)
 						&tegra_usb_hsic_host_register;
 		tegra_baseband_power_data.hsic_unregister =
 						&tegra_usb_hsic_host_unregister;
-
+		if ((board_info.board_id == BOARD_E1239) &&
+			(board_info.fab <= BOARD_FAB_A02)) {
+			tegra_baseband_power_data.modem.
+				xmm.ipc_hsic_active  = BB_GPIO_LCD_PWR2;
+			tegra_baseband_power_data.modem.
+				xmm.ipc_hsic_sus_req = BB_GPIO_LCD_PWR1;
+		}
 		platform_device_register(&tegra_baseband_power_device);
 		platform_device_register(&tegra_baseband_power2_device);
 		break;
@@ -1014,6 +1037,8 @@ static void enterprise_nfc_init(void)
 	tegra_get_board_info(&bi);
 	if (bi.board_id == BOARD_E1205 && bi.fab >= BOARD_FAB_A03) {
 		nfc_pdata.firm_gpio = TEGRA_GPIO_PX7;
+	} else if (bi.board_id == BOARD_E1239) {
+		nfc_pdata.firm_gpio = TEGRA_GPIO_PN6;
 	}
 }
 
@@ -1037,6 +1062,9 @@ static void __init tegra_enterprise_init(void)
 	enterprise_i2c_init();
 	enterprise_uart_init();
 	enterprise_usb_init();
+	if (board_info.board_id == BOARD_E1239)
+		enterprise_bt_rfkill_pdata[0].shutdown_gpio = TEGRA_GPIO_PF4;
+
 	platform_add_devices(enterprise_devices, ARRAY_SIZE(enterprise_devices));
 	tegra_ram_console_debug_init();
 	enterprise_regulator_init();
