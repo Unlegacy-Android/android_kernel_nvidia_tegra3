@@ -279,6 +279,11 @@ config TWL6040_CORE
 	  additional drivers must be enabled in order to use the
 	  functionality of the device (audio, vibra).
 
+config AIC3262_CODEC
+	bool
+	select MFD_CORE
+	default n
+
 config MFD_STMPE
 	bool "Support STMicroelectronics STMPE"
 	depends on (I2C=y || SPI_MASTER=y) && GENERIC_HARDIRQS
