@@ -254,6 +254,12 @@ config MACH_P1852
        help
          Support for NVIDIA P1852 development platform
 
+config MACH_E1853
+       bool "E1853 board"
+       depends on ARCH_TEGRA_3x_SOC
+       help
+         Support for NVIDIA E1853 development platform
+
 config MACH_TEGRA_ENTERPRISE
        bool "Enterprise board"
        depends on ARCH_TEGRA_3x_SOC
@@ -365,6 +371,13 @@ config TEGRA_P1852_TDM
 	depends on MACH_P1852
 	help
 		Enables TDM mode driver for P1852 SKUs. If this
+		is not defined then I2S mode is selected by default.
+
+config TEGRA_TDM
+	bool "Enable TDM mode for Automotive SKUs"
+	depends on MACH_E1853
+	help
+		Enables TDM mode driver for Automotive SKUs. If this
 		is not defined then I2S mode is selected by default.
 
 config TEGRA_CARDHU_DSI

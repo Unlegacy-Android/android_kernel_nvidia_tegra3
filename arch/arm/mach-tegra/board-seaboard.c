@@ -262,7 +262,6 @@ static void __init tegra_kaen_init(void)
 	debug_uart_platform_data[0].irq = INT_UARTB;
 
 	seaboard_audio_pdata.gpio_hp_mute = TEGRA_GPIO_KAEN_HP_MUTE;
-	tegra_gpio_enable(TEGRA_GPIO_KAEN_HP_MUTE);
 
 	seaboard_common_init();
 
@@ -280,7 +279,6 @@ static void __init tegra_wario_init(void)
 
 	seaboard_i2c_init();
 }
-
 
 MACHINE_START(SEABOARD, "seaboard")
 	.atag_offset    = 0x100,
