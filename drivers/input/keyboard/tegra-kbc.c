@@ -365,6 +365,7 @@ static void tegra_kbc_set_fifo_interrupt(struct tegra_kbc *kbc, bool enable)
 	writel(val, kbc->mmio + KBC_CONTROL_0);
 }
 
+#ifdef CONFIG_PM_SLEEP
 static void tegra_kbc_set_keypress_interrupt(struct tegra_kbc *kbc, bool enable)
 {
 	u32 val;
@@ -376,6 +377,7 @@ static void tegra_kbc_set_keypress_interrupt(struct tegra_kbc *kbc, bool enable)
 		val &= ~KBC_CONTROL_KEYPRESS_INT_EN;
 	writel(val, kbc->mmio + KBC_CONTROL_0);
 }
+#endif
 
 static void tegra_kbc_keypress_timer(unsigned long data)
 {
