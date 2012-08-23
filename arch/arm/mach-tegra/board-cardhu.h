@@ -256,6 +256,4 @@ extern struct tegra_uart_platform_data cardhu_irda_pdata;
 #define XMM_GPIO_IPC_BB_WAKE		BB_GPIO_AWR
 #define XMM_GPIO_IPC_AP_WAKE		BB_GPIO_CWR
 
-#define TDIODE_OFFSET	(10000)	/* in millicelsius */
-
 #endif

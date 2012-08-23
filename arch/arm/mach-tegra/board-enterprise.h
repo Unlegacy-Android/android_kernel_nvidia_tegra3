@@ -146,8 +146,6 @@ void enterprise_bpc_mgmt_init(void);
 #define XMM_GPIO_IPC_BB_WAKE		BB_GPIO_HS1_AP2BB
 #define XMM_GPIO_IPC_AP_WAKE		BB_GPIO_HS1_BB2AP
 
-#define TDIODE_OFFSET	(9000)	/* in millicelsius */
-
 /* Battery Peak Current Management */
 #define TEGRA_BPC_TRIGGER		TEGRA_GPIO_PR3
 #define TEGRA_BPC_TIMEOUT		100 /* ms */

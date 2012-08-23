@@ -60,6 +60,7 @@
 #include "gpio-names.h"
 #include "board-cardhu.h"
 #include "cpu-tegra.h"
+#include "devices.h"
 
 static struct regulator *cardhu_1v8_cam1 = NULL;
 static struct regulator *cardhu_1v8_cam2 = NULL;
@@ -830,12 +831,6 @@ static int nct_get_temp(void *_data, long *temp)
 	return nct1008_thermal_get_temp(data, temp);
 }
 
-static int nct_get_temp_low(void *_data, long *temp)
-{
-	struct nct1008_data *data = _data;
-	return nct1008_thermal_get_temp_low(data, temp);
-}
-
 static int nct_set_limits(void *_data,
 			long lo_limit_milli,
 			long hi_limit_milli)
@@ -852,12 +847,6 @@ static int nct_set_alert(void *_data,
 {
 	struct nct1008_data *data = _data;
 	return nct1008_thermal_set_alert(data, alert_func, alert_data);
-}
-
-static int nct_set_shutdown_temp(void *_data, long shutdown_temp)
-{
-	struct nct1008_data *data = _data;
-	return nct1008_thermal_set_shutdown_temp(data, shutdown_temp);
 }
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
@@ -882,12 +871,9 @@ static void nct1008_probe_callback(struct nct1008_data *data)
 	ext_nct->name = "nct_ext";
 	ext_nct->id = THERMAL_DEVICE_ID_NCT_EXT;
 	ext_nct->data = data;
-	ext_nct->offset = TDIODE_OFFSET;
 	ext_nct->get_temp = nct_get_temp;
-	ext_nct->get_temp_low = nct_get_temp_low;
 	ext_nct->set_limits = nct_set_limits;
 	ext_nct->set_alert = nct_set_alert;
-	ext_nct->set_shutdown_temp = nct_set_shutdown_temp;
 
 	tegra_thermal_device_register(ext_nct);
 
@@ -968,6 +954,80 @@ static int cardhu_nct1008_init(void)
 
 	return ret;
 }
+
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+static int tegra_skin_get_temp(void *data, long *temp)
+{
+	enum thermal_device_id id = (enum thermal_device_id)data;
+	struct tegra_thermal_device *device = tegra_thermal_get_device(id);
+
+	/* if sensor has not loaded use 25C as default */
+	if (!device || device->get_temp(device->data, temp))
+		*temp = 25000;
+
+	return 0;
+}
+
+static struct therm_est_data skin_data = {
+	.toffset = 9793,
+	.polling_period = 1100,
+	.ndevs = 2,
+	.devs = {
+			{
+				.dev_data = (void *)THERMAL_DEVICE_ID_NCT_EXT,
+				.get_temp = tegra_skin_get_temp,
+				.coeffs = {
+					2, 1, 1, 1,
+					1, 1, 1, 1,
+					1, 1, 1, 0,
+					1, 1, 0, 0,
+					0, 0, -1, -7
+				},
+			},
+			{
+				.dev_data = (void *)THERMAL_DEVICE_ID_NCT_INT,
+				.get_temp = tegra_skin_get_temp,
+				.coeffs = {
+					-11, -7, -5, -3,
+					-3, -2, -1, 0,
+					0, 0, 1, 1,
+					1, 2, 2, 3,
+					4, 6, 11, 18
+				},
+			},
+	},
+	.trip_temp = 43000,
+	.tc1 = 1,
+	.tc2 = 15,
+	.passive_delay = 15000,
+};
+
+static struct balanced_throttle skin_throttle = {
+	.throt_tab_size = 6,
+	.throt_tab = {
+		{ 640000, 1200 },
+		{ 640000, 1200 },
+		{ 760000, 1200 },
+		{ 760000, 1200 },
+		{1000000, 1200 },
+		{1000000, 1200 },
+	},
+};
+
+static int __init cardhu_skin_init(void)
+{
+	struct thermal_cooling_device *skin_cdev;
+
+	skin_cdev = balanced_throttle_register(&skin_throttle);
+
+	skin_data.cdev = skin_cdev;
+	tegra_skin_therm_est_device.dev.platform_data = &skin_data;
+	platform_device_register(&tegra_skin_therm_est_device);
+
+	return 0;
+}
+late_initcall(cardhu_skin_init);
+#endif
 
 #if defined(CONFIG_GPIO_PCA953X)
 static struct pca953x_platform_data cardhu_pmu_tca6416_data = {

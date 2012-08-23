@@ -101,22 +101,6 @@ static struct balanced_throttle throttle_list[] = {
 			{1000000, 1100 },
 		},
 	},
-#ifdef CONFIG_TEGRA_SKIN_THROTTLE
-	{
-		.tegra_cdev = {
-			.id = CDEV_BTHROT_ID_SKIN,
-		},
-		.throt_tab_size = 6,
-		.throt_tab = {
-			{ 640000, 1200 },
-			{ 640000, 1200 },
-			{ 760000, 1200 },
-			{ 760000, 1200 },
-			{1000000, 1200 },
-			{1000000, 1200 },
-		},
-	},
-#endif
 };
 
 static struct tegra_thermal_bind thermal_binds[] = {
@@ -140,58 +124,10 @@ static struct tegra_thermal_bind thermal_binds[] = {
 		.get_trip_temp = tegra_edp_get_trip_temp,
 		.get_trip_size = tegra_edp_get_trip_size,
 	},
-#ifdef CONFIG_TEGRA_SKIN_THROTTLE
-	/* Skin Thermal Throttling */
-	{
-		.tdev_id = THERMAL_DEVICE_ID_SKIN,
-		.cdev_id = CDEV_BTHROT_ID_SKIN,
-		.type = THERMAL_TRIP_PASSIVE,
-		.passive = {
-			.trip_temp = 43000,
-			.tc1 = 10,
-			.tc2 = 1,
-			.passive_delay = 15000,
-		}
-	},
-#endif
 	{
 		.tdev_id = THERMAL_DEVICE_ID_NULL,
 	},
 };
-
-static struct tegra_skin_data skin_data = {
-#ifdef CONFIG_TEGRA_SKIN_THROTTLE
-	.skin_device_id = THERMAL_DEVICE_ID_THERM_EST_SKIN,
-	.skin_temp_offset = 9793,
-	.skin_period = 1100,
-	.skin_devs_size = 2,
-	.skin_devs = {
-		{
-			THERMAL_DEVICE_ID_NCT_EXT,
-			{
-				2, 1, 1, 1,
-				1, 1, 1, 1,
-				1, 1, 1, 0,
-				1, 1, 0, 0,
-				0, 0, -1, -7
-			}
-		},
-		{
-			THERMAL_DEVICE_ID_NCT_INT,
-			{
-				-11, -7, -5, -3,
-				-3, -2, -1, 0,
-				0, 0, 1, 1,
-				1, 2, 2, 3,
-				4, 6, 11, 18
-			}
-		},
-	},
-#else
-	.skin_device_id = THERMAL_DEVICE_ID_NULL,
-#endif
-};
-
 
 static struct rfkill_gpio_platform_data cardhu_bt_rfkill_pdata[] = {
 	{
@@ -1435,12 +1371,21 @@ static void cardhu_sata_init(void)
 static void cardhu_sata_init(void) { }
 #endif
 
+/* This needs to be inialized later hand */
+static int __init cardhu_throttle_list_init(void)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(throttle_list); i++)
+		if (balanced_throttle_register(&throttle_list[i]))
+			return -ENODEV;
+
+	return 0;
+}
+late_initcall(cardhu_throttle_list_init);
+
 static void __init tegra_cardhu_init(void)
 {
-	tegra_thermal_init(thermal_binds,
-				&skin_data,
-				throttle_list,
-				ARRAY_SIZE(throttle_list));
+	tegra_thermal_init(thermal_binds);
 	tegra_clk_init_from_table(cardhu_clk_init_table);
 	tegra_enable_pinmux();
 	tegra_smmu_init();
