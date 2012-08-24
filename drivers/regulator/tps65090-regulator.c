@@ -188,6 +188,17 @@ static int __devinit tps65090_regulator_preinit(int id,
 	struct device *parent = ri->dev->parent;
 
 	if (!tps_pdata->enable_ext_control) {
+		if (tps_pdata->reg_init_data->constraints.always_on ||
+				tps_pdata->reg_init_data->constraints.boot_on) {
+			ret =  tps65090_set_bits(parent,
+					ri->rinfo->reg_en_reg, 0);
+			if (ret < 0) {
+				dev_err(ri->dev, "Error in set reg 0x%x\n",
+					ri->rinfo->reg_en_reg);
+				return ret;
+			}
+		}
+
 		ret =  tps65090_clr_bits(parent,
 				ri->rinfo->reg_en_reg, 1);
 		if (ret < 0) {
