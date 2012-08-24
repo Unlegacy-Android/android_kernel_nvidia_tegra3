@@ -145,6 +145,7 @@ struct tegra_i2c_chipdata {
 	bool has_hw_arb_support;
 	bool has_fast_clock;
 	bool has_clk_divisor_std_fast_mode;
+	bool has_continue_xfer_support;
 	u16 clk_divisor_std_fast_mode;
 	u16 clk_divisor_hs_mode;
 	int clk_multiplier_hs_mode;
@@ -859,12 +860,22 @@ static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	struct tegra_i2c_dev *i2c_dev = i2c_bus->dev;
 	int i;
 	int ret = 0;
+	bool continue_xfer = i2c_dev->chipdata->has_continue_xfer_support;
 
 	rt_mutex_lock(&i2c_dev->dev_lock);
 
 	if (i2c_dev->is_suspended) {
 		rt_mutex_unlock(&i2c_dev->dev_lock);
 		return -EBUSY;
+	}
+
+	/* Support I2C_M_NOSTART only if HW support continue xfer. */
+	for (i = 0; i < num - 1; i++) {
+			if ((msgs[i + 1].flags & I2C_M_NOSTART) && !continue_xfer) {
+			dev_err(i2c_dev->dev, "mesg %d have illegal flag\n", i + 1);
+			rt_mutex_unlock(&i2c_dev->dev_lock);
+			return -EINVAL;
+		}
 	}
 
 	if (i2c_dev->last_mux != i2c_bus->mux) {
@@ -989,6 +1000,10 @@ static int __devinit tegra_i2c_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+	chip_data->has_continue_xfer_support = true;
+#endif
+
 	if (plat->bus_count <= 0 || plat->adapter_nr < 0) {
 		dev_err(&pdev->dev, "invalid platform data?\n");
 		return -ENODEV;
@@ -1063,6 +1078,9 @@ static int __devinit tegra_i2c_probe(struct platform_device *pdev)
 				"clock-frequency", NULL);
 		if (prop)
 			i2c_dev->last_bus_clk_rate = be32_to_cpup(prop);
+
+		/* FIXME! Populate the Tegra30 and then support M_NOSTART */
+		i2c_dev->chipdata->has_continue_xfer_support = false;
 	}
 
 	i2c_dev->is_high_speed_enable = plat->is_high_speed_enable;
@@ -1168,7 +1186,7 @@ static int __devexit tegra_i2c_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 static int tegra_i2c_suspend_noirq(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
