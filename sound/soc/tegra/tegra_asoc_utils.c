@@ -167,8 +167,10 @@ int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
 	case 88200:
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 		new_baseclock = 56448000;
-#else
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 		new_baseclock = 564480000;
+#else
+		new_baseclock = 282240000;
 #endif
 		break;
 	case 8000:
@@ -179,8 +181,10 @@ int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
 	case 96000:
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 		new_baseclock = 73728000;
-#else
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 		new_baseclock = 552960000;
+#else
+		new_baseclock = 368640000;
 #endif
 		break;
 	default:
