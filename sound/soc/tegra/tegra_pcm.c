@@ -70,7 +70,11 @@ static void tegra_pcm_queue_dma(struct tegra_runtime_data *prtd)
 	if (++prtd->dma_req_idx >= prtd->dma_req_count)
 		prtd->dma_req_idx -= prtd->dma_req_count;
 
-	addr = buf->addr + prtd->dma_pos;
+	if (prtd->avp_dma_addr)
+		addr = prtd->avp_dma_addr + prtd->dma_pos;
+	else
+		addr = buf->addr + prtd->dma_pos;
+
 	prtd->dma_pos += dma_req->size;
 	if (prtd->dma_pos >= prtd->dma_pos_end)
 		prtd->dma_pos = 0;
