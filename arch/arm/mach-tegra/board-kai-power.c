@@ -225,12 +225,6 @@ MAX77663_PDATA_INIT(ldo8, 800000, 3950000, max77663_rails(sd3), 0, 0, 0,
 		.pdata_size = sizeof(max77663_regulator_pdata_##_data),	\
 	}
 
-#define MAX77663_RTC()							\
-	{								\
-		.name = "max77663-rtc",					\
-		.id = 0,						\
-	}
-
 static struct mfd_cell max77663_subdevs[] = {
 	MAX77663_REG(SD0, sd0),
 	MAX77663_REG(SD1, sd1),
@@ -245,7 +239,6 @@ static struct mfd_cell max77663_subdevs[] = {
 	MAX77663_REG(LDO6, ldo6),
 	MAX77663_REG(LDO7, ldo7),
 	MAX77663_REG(LDO8, ldo8),
-	MAX77663_RTC(),
 };
 
 static struct max77663_gpio_config max77663_gpio_cfgs[] = {
