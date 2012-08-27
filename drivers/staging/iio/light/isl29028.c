@@ -4,7 +4,7 @@
  * IIO Light driver for monitoring ambient light intensity in lux and proximity
  * ir.
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA Corporation, All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,6 +31,8 @@
 #include <linux/interrupt.h>
 #include "../iio.h"
 #include "../sysfs.h"
+
+#define ISL29028_PROX_PERIOD		800
 #define CONVERSION_TIME_MS		100
 
 #define ISL29028_REG_ADD_CONFIGURE	0x01
@@ -1082,7 +1084,7 @@ static int isl29028_chip_init(struct i2c_client *client)
 	chip->is_prox_enable  = 0;
 	chip->prox_low_thres = 0;
 	chip->prox_high_thres = 0xFF;
-	chip->prox_period = 0;
+	chip->prox_period = ISL29028_PROX_PERIOD;
 	chip->prox_reading = 0;
 
 	chip->als_low_thres = 0;
