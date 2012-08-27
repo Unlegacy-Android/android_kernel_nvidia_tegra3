@@ -274,9 +274,10 @@ static struct aic3262_gpio_setup aic3262_gpio[] = {
 
 static struct aic3262_pdata aic3262_codec_pdata = {
 	.gpio_irq	= 1,
+	.gpio_reset	= TEGRA_GPIO_CODEC_RST,
 	.gpio		= aic3262_gpio,
-	.naudint_irq    = TEGRA_GPIO_HP_DET,
-	.irq_base       = AIC3262_CODEC_IRQ_BASE,
+	.naudint_irq	= TEGRA_GPIO_HP_DET,
+	.irq_base	= AIC3262_CODEC_IRQ_BASE,
 };
 
 static struct tegra_i2c_platform_data enterprise_i2c1_platform_data = {
