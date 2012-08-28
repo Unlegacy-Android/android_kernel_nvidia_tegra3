@@ -270,6 +270,12 @@ config MACH_TEGRA_ENTERPRISE
        help
          Support for NVIDIA Enterprise development platform
 
+config MACH_TAI
+       bool "Tai board"
+       depends on MACH_TEGRA_ENTERPRISE
+       help
+         Support for NVIDIA Tai development platform
+
 config MACH_KAI
        bool "Kai board"
        depends on ARCH_TEGRA_3x_SOC
