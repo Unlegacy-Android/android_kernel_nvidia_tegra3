@@ -122,6 +122,8 @@ void enterprise_bpc_mgmt_init(void);
 #define TEGRA_GPIO_HP_DET	TEGRA_GPIO_PW3
 #define TEGRA_GPIO_CODEC_RST	TEGRA_GPIO_PX0
 
+/* UART port which is used by bluetooth*/
+#define BLUETOOTH_UART_DEV_NAME "/dev/ttyHS2"
 /* Baseband GPIO addresses */
 
 #define GPIO_BB_RESET		TEGRA_GPIO_PE1
