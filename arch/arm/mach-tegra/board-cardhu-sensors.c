@@ -956,13 +956,18 @@ static int cardhu_nct1008_init(void)
 }
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
+static int tegra_skin_match(struct thermal_zone_device *thz, void *data)
+{
+	return strcmp((char *)data, thz->type) == 0;
+}
+
 static int tegra_skin_get_temp(void *data, long *temp)
 {
-	enum thermal_device_id id = (enum thermal_device_id)data;
-	struct tegra_thermal_device *device = tegra_thermal_get_device(id);
+	struct thermal_zone_device *thz;
 
-	/* if sensor has not loaded use 25C as default */
-	if (!device || device->get_temp(device->data, temp))
+	thz = thermal_zone_device_find(data, tegra_skin_match);
+
+	if (!thz || thz->ops->get_temp(thz, temp))
 		*temp = 25000;
 
 	return 0;
@@ -974,7 +979,7 @@ static struct therm_est_data skin_data = {
 	.ndevs = 2,
 	.devs = {
 			{
-				.dev_data = (void *)THERMAL_DEVICE_ID_NCT_EXT,
+				.dev_data = "nct_ext",
 				.get_temp = tegra_skin_get_temp,
 				.coeffs = {
 					2, 1, 1, 1,
@@ -985,7 +990,7 @@ static struct therm_est_data skin_data = {
 				},
 			},
 			{
-				.dev_data = (void *)THERMAL_DEVICE_ID_NCT_INT,
+				.dev_data = "nct_int",
 				.get_temp = tegra_skin_get_temp,
 				.coeffs = {
 					-11, -7, -5, -3,
