@@ -1088,6 +1088,23 @@ leave:
 }
 EXPORT_SYMBOL(thermal_zone_device_update);
 
+struct thermal_zone_device *thermal_zone_device_find(void *data,
+	int (*match)(struct thermal_zone_device *, void *))
+{
+	struct thermal_zone_device *thz;
+
+	mutex_lock(&thermal_list_lock);
+	list_for_each_entry(thz, &thermal_tz_list, node)
+		if (match(thz, data)) {
+			mutex_unlock(&thermal_list_lock);
+			return thz;
+		}
+
+	mutex_unlock(&thermal_list_lock);
+	return NULL;
+}
+EXPORT_SYMBOL(thermal_zone_device_find);
+
 /**
  * thermal_zone_device_register - register a new thermal zone device
  * @type:	the thermal zone device type
