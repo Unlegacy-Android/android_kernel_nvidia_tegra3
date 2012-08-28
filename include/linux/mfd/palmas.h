@@ -25,6 +25,8 @@
 struct palmas_pmic;
 struct palmas_rtc;
 
+#define palmas_rails(_name) "palmas_"#_name
+
 struct palmas {
 	struct device *dev;
 
@@ -141,7 +143,7 @@ struct palmas_pmic_platform_data {
 	/* An array of pointers to regulator init data indexed by regulator
 	 * ID
 	 */
-	struct regulator_init_data *reg_data[PALMAS_NUM_REGS];
+	struct regulator_init_data **reg_data;
 
 	/* An array of pointers to structures containing sleep mode and DVS
 	 * configuration for regulators indexed by ID
@@ -156,6 +158,7 @@ struct palmas_pmic_platform_data {
 
 struct palmas_platform_data {
 	int gpio_base;
+	int irq_base;
 
 	/* bit value to be loaded to the POWER_CTRL register */
 	u8 power_ctrl;
