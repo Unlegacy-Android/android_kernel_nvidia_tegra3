@@ -765,14 +765,6 @@ static int nct_set_alert(void *_data,
 	return nct1008_thermal_set_alert(data, alert_func, alert_data);
 }
 
-#ifdef CONFIG_TEGRA_SKIN_THROTTLE
-static int nct_get_itemp(void *dev_data, long *temp)
-{
-	struct nct1008_data *data = dev_data;
-	return nct1008_thermal_get_temps(data, NULL, temp);
-}
-#endif
-
 static void nct1008_probe_callback(struct nct1008_data *data)
 {
 	struct tegra_thermal_device *ext_nct;
@@ -792,26 +784,6 @@ static void nct1008_probe_callback(struct nct1008_data *data)
 	ext_nct->set_alert = nct_set_alert;
 
 	tegra_thermal_device_register(ext_nct);
-
-#ifdef CONFIG_TEGRA_SKIN_THROTTLE
-	{
-		struct tegra_thermal_device *int_nct;
-		int_nct = kzalloc(sizeof(struct tegra_thermal_device),
-						GFP_KERNEL);
-		if (!int_nct) {
-			kfree(int_nct);
-			pr_err("unable to allocate thermal device\n");
-			return;
-		}
-
-		int_nct->name = "nct_int";
-		int_nct->id = THERMAL_DEVICE_ID_NCT_INT;
-		int_nct->data = data;
-		int_nct->get_temp = nct_get_itemp;
-
-		tegra_thermal_device_register(int_nct);
-	}
-#endif
 }
 
 static struct nct1008_platform_data cardhu_nct1008_pdata = {
@@ -819,6 +791,8 @@ static struct nct1008_platform_data cardhu_nct1008_pdata = {
 	.ext_range = true,
 	.conv_rate = 0x08,
 	.offset = 8, /* 4 * 2C. Bug 844025 - 1C for device accuracies */
+	.shutdown_ext_limit = 90,
+	.shutdown_local_limit = 100,
 	.probe_callback = nct1008_probe_callback,
 };
 
