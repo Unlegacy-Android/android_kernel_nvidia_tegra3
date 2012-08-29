@@ -33,14 +33,138 @@
 #include "gpio-names.h"
 
 #define E1853_HDMI_HPD TEGRA_GPIO_PB2
+#define E1853_LVDS_SER_ADDR  0xd
 
-static int e1853_panel_enable(struct device *dev)
+#define LVDS_SER_REG_CONFIG_1                   0x4
+#define LVDS_SER_REG_CONFIG_1_BKWD_OVERRIDE     3
+#define LVDS_SER_REG_CONFIG_1_BKWD              2
+
+#define LVDS_SER_REG_DATA_PATH_CTRL             0x12
+#define LVDS_SER_REG_DATA_PATH_CTRL_PASS_RGB    6
+
+#define LVDS_SER_REG_CONFIG_0                   0x3
+#define LVDS_SER_REG_CONFIG_0_TRFB              0
+
+static int ser_i2c_read(struct i2c_client *client,
+						u8 reg_addr, u8 *pval)
 {
-	return 0;
+	struct i2c_msg msg[] = {
+		{
+			.addr = client->addr,
+			.flags = 0,
+			.len = 1,
+			.buf = &reg_addr,
+		},
+		{
+			.addr = client->addr,
+			.flags = I2C_M_RD,
+			.len = 1,
+			.buf = pval,
+		},
+	};
+
+	return i2c_transfer(client->adapter, msg, 2);
 }
 
-static int e1853_panel_disable(void)
+static int ser_i2c_write(struct i2c_client *client,
+						u8 reg_addr, u8 val)
 {
+	u8 buffer[] = {reg_addr, val};
+	struct i2c_msg msg[] = {
+		{
+			.addr = client->addr,
+			.flags = 0,
+			.len = 2,
+			.buf = buffer,
+		},
+	};
+
+	return i2c_transfer(client->adapter, msg, 1);
+}
+
+static int lvds_ser_init(struct i2c_client *client,
+						bool is_fpdlinkII,
+						bool support_hdcp,
+						bool clk_rise_edge)
+{
+	u8 val;
+	int err = 0;
+
+	if (is_fpdlinkII) {
+		err = ser_i2c_read(client, LVDS_SER_REG_CONFIG_1, &val);
+		if (err < 0)
+			return err;
+
+		val |= (1 << LVDS_SER_REG_CONFIG_1_BKWD_OVERRIDE);
+		val |= (1 << LVDS_SER_REG_CONFIG_1_BKWD);
+
+		err = ser_i2c_write(client, LVDS_SER_REG_CONFIG_1, val);
+		if (err < 0)
+			return err;
+	} else if (!support_hdcp) {
+		err = ser_i2c_read(client, LVDS_SER_REG_DATA_PATH_CTRL, &val);
+		if (err < 0)
+			return err;
+
+		val |= (1 << LVDS_SER_REG_DATA_PATH_CTRL_PASS_RGB);
+
+		err = ser_i2c_write(client, LVDS_SER_REG_DATA_PATH_CTRL, val);
+		if (err < 0)
+			return err;
+	}
+
+	if (clk_rise_edge) {
+		err = ser_i2c_read(client, LVDS_SER_REG_CONFIG_0, &val);
+		if (err < 0)
+			return err;
+
+		val |= (1 << LVDS_SER_REG_CONFIG_0_TRFB);
+
+		err = ser_i2c_write(client, LVDS_SER_REG_CONFIG_0, val);
+	}
+
+	return (err < 0 ? err : 0);
+}
+
+/* enable primary LVDS */
+static int e1853_lvds_enable(struct device *dev)
+{
+	struct i2c_adapter *adapter;
+	struct i2c_board_info info = { {0} };
+	static struct i2c_client *client;
+	int err = -1;
+
+	/* Program the serializer */
+	if (!client) {
+		adapter = i2c_get_adapter(1);
+		if (!adapter)
+			pr_warning("%s: adapter is null\n", __func__);
+		else {
+			info.addr = E1853_LVDS_SER_ADDR;
+			client = i2c_new_device(adapter, &info);
+			i2c_put_adapter(adapter);
+		}
+	}
+
+	if (!client)
+		pr_warning("%s: client is null\n", __func__);
+	else {
+		err = lvds_ser_init(client,
+					true,  /* is_fpdlinkII*/
+					false, /* support_hdcp */
+					true); /* clk_rise_edge */
+		if (err)
+			pr_warning("%s: lvds failed\n", __func__);
+	}
+
+	return err;
+}
+
+/* Disable primary LVDS */
+static int e1853_lvds_disable(void)
+{
+	/* Turn off serializer chip */
+
 	return 0;
 }
 
@@ -68,19 +192,20 @@ static struct tegra_fb_data e1853_fb_data = {
 	.bits_per_pixel	= 32,
 };
 
-static struct tegra_dc_out e1853_disp1_out = {
+static struct tegra_dc_out e1853_ser_out = {
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
+	.parent_clk	= "pll_d_out0",
 	.type		= TEGRA_DC_OUT_RGB,
 	.modes		= e1853_panel_modes,
 	.n_modes	= ARRAY_SIZE(e1853_panel_modes),
-	.enable		= e1853_panel_enable,
-	.disable	= e1853_panel_disable,
+	.enable		= e1853_lvds_enable,
+	.disable	= e1853_lvds_disable,
 };
 
 static struct tegra_dc_platform_data e1853_disp1_pdata = {
 	.flags		= TEGRA_DC_FLAG_ENABLED,
-	.default_out	= &e1853_disp1_out,
+	.default_out	= &e1853_ser_out,
 	.emc_clk_rate	= 300000000,
 	.fb		= &e1853_fb_data,
 };
@@ -111,11 +236,9 @@ static struct tegra_dc_out e1853_hdmi_out = {
 	.flags          = TEGRA_DC_OUT_HOTPLUG_LOW |
 			  TEGRA_DC_OUT_NVHDCP_POLICY_ON_DEMAND,
 	.max_pixclock   = KHZ2PICOS(148500),
-	 /* XXX: Check the GPIO */
 	.hotplug_gpio   = E1853_HDMI_HPD,
 	.enable		= e1853_hdmi_enable,
 	.disable	= e1853_hdmi_disable,
-	/* XXX: Check the I2C instance */
 	.dcc_bus        = 3,
 };
 
