@@ -513,6 +513,17 @@ static void __init enterprise_uart_init(void)
 	platform_add_devices(enterprise_uart_devices,
 				ARRAY_SIZE(enterprise_uart_devices));
 }
+/* add vibrator for enterprise */
+static struct platform_device vibrator_device = {
+	.name = "tegra-vibrator",
+	.id = -1,
+};
+
+static noinline void __init enterprise_vibrator_init(void)
+{
+	platform_device_register(&vibrator_device);
+}
+
 
 static struct resource tegra_rtc_resources[] = {
 	[0] = {
@@ -1101,6 +1112,7 @@ static void __init tegra_enterprise_init(void)
 	enterprise_bpc_mgmt_init();
 	tegra_release_bootloader_fb();
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
+	enterprise_vibrator_init();
 }
 
 static void __init tegra_enterprise_dt_init(void)
