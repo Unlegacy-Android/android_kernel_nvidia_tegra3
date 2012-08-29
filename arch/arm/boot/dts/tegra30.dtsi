@@ -117,6 +117,7 @@
 		gpio-controller;
 		#interrupt-cells = <2>;
 		interrupt-controller;
+		status = "disable";
 	};
 
 	serial@70006000 {
@@ -182,5 +183,6 @@
 		compatible = "nvidia,tegra30-pinmux";
 		reg = < 0x70000868 0xd0     /* Pad control registers */
 			0x70003000 0x3e0 >; /* Mux registers */
+		status = "disable";
 	};
 };

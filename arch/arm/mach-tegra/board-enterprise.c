@@ -42,6 +42,7 @@
 #include <linux/mfd/tlv320aic3262-core.h>
 
 #include <linux/nfc/pn544.h>
+#include <linux/of_platform.h>
 
 #include <sound/max98088.h>
 
@@ -1130,6 +1131,14 @@ static void __init tegra_enterprise_init(void)
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 }
 
+static void __init tegra_enterprise_dt_init(void)
+{
+	tegra_enterprise_init();
+
+	of_platform_populate(NULL,
+		of_default_bus_match_table, NULL, NULL);
+}
+
 static void __init tegra_enterprise_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
@@ -1154,7 +1163,7 @@ MACHINE_START(TEGRA_ENTERPRISE, "tegra_enterprise")
 	.init_irq       = tegra_init_irq,
 	.handle_irq	= gic_handle_irq,
 	.timer          = &tegra_timer,
-	.init_machine   = tegra_enterprise_init,
+	.init_machine   = tegra_enterprise_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= enterprise_dt_board_compat,
 MACHINE_END

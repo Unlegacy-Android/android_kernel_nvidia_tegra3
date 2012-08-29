@@ -1,8 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu.c
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.  All rights reserved.
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,7 +40,7 @@
 #include <linux/spi-tegra.h>
 #include <linux/nfc/pn544.h>
 #include <linux/rfkill-gpio.h>
-
+#include <linux/of_platform.h>
 
 #include <sound/wm8903.h>
 #include <sound/max98095.h>
@@ -1483,6 +1482,14 @@ static void __init tegra_cardhu_init(void)
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 }
 
+static void __init tegra_cardhu_dt_init(void)
+{
+	tegra_cardhu_init();
+
+	of_platform_populate(NULL,
+		of_default_bus_match_table, NULL, NULL);
+}
+
 static void __init tegra_cardhu_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
@@ -1508,7 +1515,7 @@ MACHINE_START(CARDHU, "cardhu")
 	.init_irq       = tegra_init_irq,
 	.handle_irq	= gic_handle_irq,
 	.timer          = &tegra_timer,
-	.init_machine   = tegra_cardhu_init,
+	.init_machine   = tegra_cardhu_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= cardhu_dt_board_compat,
 MACHINE_END
