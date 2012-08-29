@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-enterprise.h
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 /* Processor Board  ID */
 #define BOARD_E1205		0x0C05
 #define BOARD_E1197		0x0B61
+#define BOARD_E1239		0x0C27
 #define SKU_BATTERY_SUPPORT	0x1
 
 /* Board Fab version */
@@ -93,6 +94,11 @@ void enterprise_bpc_mgmt_init(void);
 #define ENT_TPS80031_IRQ_BASE	TEGRA_NR_IRQS
 #define ENT_TPS80031_IRQ_END  (ENT_TPS80031_IRQ_BASE + TPS80031_INT_NR)
 
+/* AIC326X IRQs */
+/* Assuming TPS is the PMIC on Ent */
+#define AIC3262_CODEC_IRQ_BASE ENT_TPS80031_IRQ_END
+#define AIC3262_CODEC_IRQ_END  (AIC3262_CODEC_IRQ_BASE + 6)
+
 /*****************Camera GPIOs ******************/
 #define CAM_CSI_MUX_SEL_GPIO	TEGRA_GPIO_PM3
 #define CAM_CSI_MUX_SEL_REAR	1
@@ -113,6 +119,7 @@ void enterprise_bpc_mgmt_init(void);
 
 /* Audio-related GPIOs */
 #define TEGRA_GPIO_HP_DET	TEGRA_GPIO_PW3
+#define TEGRA_GPIO_CODEC_RST	TEGRA_GPIO_PX0
 
 /* Baseband GPIO addresses */
 
@@ -159,6 +166,7 @@ enum tegra_bb_type {
 };
 
 /* Indicate the pwm of backlight, DC pwm or external pwm3. */
+/* External pwm is used for TAI (E1239) but do not set this compiler switch */
 #define IS_EXTERNAL_PWM		0
 
 #endif /*_MACH_TEGRA_BOARD_ENTERPRISE_H */
