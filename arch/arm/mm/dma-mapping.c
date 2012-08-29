@@ -1899,6 +1899,13 @@ arm_iommu_create_mapping(struct bus_type *bus, dma_addr_t base, size_t size,
 	mapping->order = order;
 	spin_lock_init(&mapping->lock);
 
+#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
+	if (WARN_ON(bus->map))
+		goto err3;
+
+	bus->map = mapping;
+#endif
+
 	mapping->domain = iommu_domain_alloc(bus);
 	if (!mapping->domain)
 		goto err3;
