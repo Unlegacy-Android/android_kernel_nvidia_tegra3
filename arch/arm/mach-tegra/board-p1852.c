@@ -47,7 +47,7 @@
 #include <mach/io.h>
 #include <mach/pci.h>
 #include <mach/audio.h>
-#include <mach/tegra_p1852_pdata.h>
+#include <mach/tegra_asoc_vcm_pdata.h>
 #include <asm/mach/flash.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -202,7 +202,7 @@ static void __init p1852_uart_init(void)
 				ARRAY_SIZE(p1852_uart_devices));
 }
 #if defined(CONFIG_TEGRA_P1852_TDM)
-static struct tegra_p1852_platform_data p1852_audio_tdm_pdata = {
+static struct tegra_asoc_vcm_platform_data p1852_audio_tdm_pdata = {
 	.codec_info[0] = {
 		.codec_dai_name = "dit-hifi",
 		.cpu_dai_name = "tegra30-i2s.0",
@@ -235,7 +235,7 @@ static struct tegra_p1852_platform_data p1852_audio_tdm_pdata = {
 	},
 };
 #else
-static struct tegra_p1852_platform_data p1852_audio_i2s_pdata = {
+static struct tegra_asoc_vcm_platform_data p1852_audio_i2s_pdata = {
 	.codec_info[0] = {
 		.codec_dai_name = "dit-hifi",
 		.cpu_dai_name = "tegra30-i2s.0",
@@ -281,7 +281,7 @@ static struct platform_device tegra_snd_p1852 = {
 
 static void p1852_i2s_audio_init(void)
 {
-	struct tegra_p1852_platform_data *pdata;
+	struct tegra_asoc_vcm_platform_data *pdata;
 
 	platform_device_register(&tegra_pcm_device);
 	platform_device_register(&tegra_tdm_pcm_device);

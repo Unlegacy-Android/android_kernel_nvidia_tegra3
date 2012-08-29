@@ -43,7 +43,7 @@
 #include <mach/io.h>
 #include <mach/pci.h>
 #include <mach/audio.h>
-#include <mach/tegra_e1853_pdata.h>
+#include <mach/tegra_asoc_vcm_pdata.h>
 #include <asm/mach/flash.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -202,6 +202,91 @@ static void __init e1853_uart_init(void)
 	platform_add_devices(e1853_uart_devices,
 				ARRAY_SIZE(e1853_uart_devices));
 }
+
+#if defined(CONFIG_TEGRA_TDM)
+static struct tegra_asoc_vcm_platform_data e1853_audio_tdm_pdata = {
+	.codec_info[0] = {
+		.codec_dai_name = "dit-hifi",
+		.cpu_dai_name = "tegra30-i2s.0",
+		.codec_name = "spdif-dit.0",
+		.name = "tegra-i2s-1",
+		.pcm_driver = "tegra-tdm-pcm-audio",
+		.i2s_format = format_tdm,
+		.master = 1,
+		.num_slots = 4,
+		.slot_width = 32,
+		.tx_mask = 0x0f,
+		.rx_mask = 0x0f,
+	},
+	.codec_info[1] = {
+		.codec_dai_name = "dit-hifi",
+		.cpu_dai_name = "tegra30-i2s.3",
+		.codec_name = "spdif-dit.1",
+		.name = "tegra-i2s-2",
+		.pcm_driver = "tegra-tdm-pcm-audio",
+		.i2s_format = format_tdm,
+		.master = 1,
+		.num_slots = 8,
+		.slot_width = 32,
+		.tx_mask = 0xff,
+		.rx_mask = 0xff,
+	},
+};
+#else
+static struct tegra_asoc_vcm_platform_data e1853_audio_i2s_pdata = {
+	.codec_info[0] = {
+		.codec_dai_name = "dit-hifi",
+		.cpu_dai_name = "tegra30-i2s.0",
+		.codec_name = "spdif-dit.0",
+		.name = "tegra-i2s-1",
+		.pcm_driver = "tegra-pcm-audio",
+		.i2s_format = format_i2s,
+		.master = 1,
+	},
+	.codec_info[1] = {
+		.codec_dai_name = "dit-hifi",
+		.cpu_dai_name = "tegra30-i2s.3",
+		.codec_name = "spdif-dit.1",
+		.name = "tegra-i2s-2",
+		.pcm_driver = "tegra-pcm-audio",
+		.i2s_format = format_i2s,
+		.master = 0,
+	},
+};
+#endif
+static struct platform_device generic_codec_1 = {
+	.name		= "spdif-dit",
+	.id			= 0,
+};
+static struct platform_device generic_codec_2 = {
+	.name		= "spdif-dit",
+	.id			= 1,
+};
+
+static struct platform_device tegra_snd_e1853 = {
+	.name       = "tegra-snd-e1853",
+	.id = 0,
+	.dev    = {
+#if defined(CONFIG_TEGRA_TDM)
+		.platform_data = &e1853_audio_tdm_pdata,
+#else
+		.platform_data = &e1853_audio_i2s_pdata,
+#endif
+	},
+};
+
+static void e1853_i2s_audio_init(void)
+{
+	platform_device_register(&tegra_pcm_device);
+	platform_device_register(&tegra_tdm_pcm_device);
+	platform_device_register(&generic_codec_1);
+	platform_device_register(&generic_codec_2);
+	platform_device_register(&tegra_i2s_device0);
+	platform_device_register(&tegra_i2s_device3);
+	platform_device_register(&tegra_ahub_device);
+	platform_device_register(&tegra_snd_e1853);
+}
+
 
 #if defined(CONFIG_SPI_TEGRA) && defined(CONFIG_SPI_SPIDEV)
 static struct spi_board_info tegra_spi_devices[] __initdata = {
@@ -427,6 +512,7 @@ static void __init tegra_e1853_init(void)
 	tegra_soc_device_init("e1853");
 	e1853_pinmux_init();
 	e1853_i2c_init();
+	e1853_i2s_audio_init();
 	e1853_gpio_init();
 	e1853_uart_init();
 	e1853_usb_init();
