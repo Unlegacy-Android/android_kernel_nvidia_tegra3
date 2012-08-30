@@ -61,7 +61,6 @@
 #include <mach/i2s.h>
 #include <mach/tegra_aic326x_pdata.h>
 #include <mach/tegra_asoc_pdata.h>
-#include <mach/thermal.h>
 #include <mach/tegra-bb-power.h>
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_fiq_debugger.h>
@@ -81,71 +80,33 @@
 #include "pm.h"
 #include "common.h"
 
-static struct balanced_throttle throttle_list[] = {
-	{
-		.tegra_cdev = {
-			.id = CDEV_BTHROT_ID_TJ,
-		},
-		.throt_tab_size = 10,
-		.throt_tab = {
-			{      0, 1000 },
-			{ 640000, 1000 },
-			{ 640000, 1000 },
-			{ 640000, 1000 },
-			{ 640000, 1000 },
-			{ 640000, 1000 },
-			{ 760000, 1000 },
-			{ 760000, 1050 },
-			{1000000, 1050 },
-			{1000000, 1100 },
-		},
-	},
-};
-
-/* All units are in millicelsius */
-static struct tegra_thermal_bind thermal_binds[] = {
-	{
-		.tdev_id = THERMAL_DEVICE_ID_NCT_EXT,
-		.cdev_id = CDEV_BTHROT_ID_TJ,
-		.type = THERMAL_TRIP_PASSIVE,
-		.passive = {
-			.trip_temp = 85000,
-			.tc1 = 0,
-			.tc2 = 1,
-			.passive_delay = 2000,
-		}
-	},
-	{
-		.tdev_id = THERMAL_DEVICE_ID_NULL,
-	},
-};
-
 /* wl128x BT, FM, GPS connectivity chip */
 struct ti_st_plat_data enterprise_wilink_pdata = {
-	.nshutdown_gpio = TEGRA_GPIO_PE6,
-	.dev_name = BLUETOOTH_UART_DEV_NAME,
-	.flow_cntrl = 1,
-	.baud_rate = 3000000,
+       .nshutdown_gpio = TEGRA_GPIO_PE6,
+       .dev_name = BLUETOOTH_UART_DEV_NAME,
+       .flow_cntrl = 1,
+       .baud_rate = 3000000,
 };
 
 static struct platform_device wl128x_device = {
-	.name		= "kim",
-	.id		= -1,
-	.dev.platform_data = &enterprise_wilink_pdata,
+       .name           = "kim",
+       .id             = -1,
+       .dev.platform_data = &enterprise_wilink_pdata,
 };
 
 static struct platform_device btwilink_device = {
-	.name = "btwilink",
-	.id = -1,
+       .name = "btwilink",
+       .id = -1,
 };
 
 static noinline void __init enterprise_bt_st(void)
 {
-	pr_info("enterprise_bt_st");
+       pr_info("enterprise_bt_st");
 
-	platform_device_register(&wl128x_device);
-	platform_device_register(&btwilink_device);
+       platform_device_register(&wl128x_device);
+       platform_device_register(&btwilink_device);
 }
+
 static struct rfkill_gpio_platform_data enterprise_bt_rfkill_pdata[] = {
 	{
 		.name           = "bt_rfkill",
@@ -1110,7 +1071,6 @@ static void __init tegra_enterprise_init(void)
 	else
 		tegra_clk_init_from_table(enterprise_clk_i2s2_table);
 
-	tegra_thermal_init(thermal_binds);
 	tegra_clk_init_from_table(enterprise_clk_init_table);
 	tegra_enable_pinmux();
 	tegra_smmu_init();

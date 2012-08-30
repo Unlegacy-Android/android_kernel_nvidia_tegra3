@@ -47,7 +47,6 @@
 #include <media/tps61050.h>
 #include <media/ov9726.h>
 #include <mach/edp.h>
-#include <mach/thermal.h>
 #include <mach/gpio-tegra.h>
 #include <mach/clk.h>
 #include "cpu-tegra.h"
@@ -58,57 +57,11 @@
 
 static struct board_info board_info;
 
-static int nct_get_temp(void *_data, long *temp)
-{
-	struct nct1008_data *data = _data;
-	return nct1008_thermal_get_temp(data, temp);
-}
-
-static int nct_set_limits(void *_data,
-			long lo_limit_milli,
-			long hi_limit_milli)
-{
-	struct nct1008_data *data = _data;
-	return nct1008_thermal_set_limits(data,
-					lo_limit_milli,
-					hi_limit_milli);
-}
-
-static int nct_set_alert(void *_data,
-				void (*alert_func)(void *),
-				void *alert_data)
-{
-	struct nct1008_data *data = _data;
-	return nct1008_thermal_set_alert(data, alert_func, alert_data);
-}
-
-static void nct1008_probe_callback(struct nct1008_data *data)
-{
-	struct tegra_thermal_device *thermal_device;
-
-	thermal_device = kzalloc(sizeof(struct tegra_thermal_device),
-					GFP_KERNEL);
-	if (!thermal_device) {
-		pr_err("unable to allocate thermal device\n");
-		return;
-	}
-
-	thermal_device->name = "nct1008";
-	thermal_device->data = data;
-	thermal_device->id = THERMAL_DEVICE_ID_NCT_EXT;
-	thermal_device->get_temp = nct_get_temp;
-	thermal_device->set_limits = nct_set_limits;
-	thermal_device->set_alert = nct_set_alert;
-
-	tegra_thermal_device_register(thermal_device);
-}
-
 static struct nct1008_platform_data enterprise_nct1008_pdata = {
 	.supported_hwrev = true,
 	.ext_range = true,
 	.conv_rate = 0x08,
 	.offset = 8, /* 4 * 2C. Bug 844025 - 1C for device accuracies */
-	.probe_callback = nct1008_probe_callback,
 };
 
 static struct i2c_board_info enterprise_i2c4_nct1008_board_info[] = {

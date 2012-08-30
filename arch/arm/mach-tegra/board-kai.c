@@ -61,7 +61,6 @@
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <mach/usb_phy.h>
-#include <mach/thermal.h>
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_fiq_debugger.h>
 
@@ -76,45 +75,6 @@
 #include "pm.h"
 #include "wdt-recovery.h"
 #include "common.h"
-
-static struct balanced_throttle throttle_list[] = {
-	{
-		.tegra_cdev = {
-			.id = CDEV_BTHROT_ID_TJ,
-		},
-		.throt_tab_size = 10,
-		.throt_tab = {
-			{      0, 1000 },
-			{ 640000, 1000 },
-			{ 640000, 1000 },
-			{ 640000, 1000 },
-			{ 640000, 1000 },
-			{ 640000, 1000 },
-			{ 760000, 1000 },
-			{ 760000, 1050 },
-			{1000000, 1050 },
-			{1000000, 1100 },
-		},
-	},
-};
-
-/* All units are in millicelsius */
-static struct tegra_thermal_bind thermal_binds[] = {
-	{
-		.tdev_id = THERMAL_DEVICE_ID_NCT_EXT,
-		.cdev_id = CDEV_BTHROT_ID_TJ,
-		.type = THERMAL_TRIP_PASSIVE,
-		.passive = {
-			.trip_temp = 85000,
-			.tc1 = 0,
-			.tc2 = 1,
-			.passive_delay = 2000,
-		}
-	},
-	{
-		.tdev_id = THERMAL_DEVICE_ID_NULL,
-	},
-};
 
 /* wl128x BT, FM, GPS connectivity chip */
 struct ti_st_plat_data kai_wilink_pdata = {
@@ -863,7 +823,6 @@ late_initcall(kai_throttle_list_init);
 
 static void __init tegra_kai_init(void)
 {
-	tegra_thermal_init(thermal_binds);
 	tegra_clk_init_from_table(kai_clk_init_table);
 	tegra_enable_pinmux();
 	tegra_smmu_init();

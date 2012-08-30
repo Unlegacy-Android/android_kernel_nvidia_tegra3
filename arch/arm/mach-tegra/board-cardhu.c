@@ -61,11 +61,9 @@
 #include <mach/tegra_asoc_pdata.h>
 #include <mach/tegra_wm8903_pdata.h>
 #include <mach/usb_phy.h>
-#include <mach/thermal.h>
 #include <mach/pci.h>
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_fiq_debugger.h>
-#include <linux/thermal.h>
 
 #include <asm/hardware/gic.h>
 #include <asm/mach-types.h>
@@ -83,53 +81,6 @@
 #include "baseband-xmm-power.h"
 #include "wdt-recovery.h"
 #include "common.h"
-
-static struct balanced_throttle throttle_list[] = {
-	{
-		.tegra_cdev = {
-			.id = CDEV_BTHROT_ID_TJ,
-		},
-		.throt_tab_size = 10,
-		.throt_tab = {
-			{      0, 1000 },
-			{ 640000, 1000 },
-			{ 640000, 1000 },
-			{ 640000, 1000 },
-			{ 640000, 1000 },
-			{ 640000, 1000 },
-			{ 760000, 1000 },
-			{ 760000, 1050 },
-			{1000000, 1050 },
-			{1000000, 1100 },
-		},
-	},
-};
-
-static struct tegra_thermal_bind thermal_binds[] = {
-	/* Thermal Throttling */
-	{
-		.tdev_id = THERMAL_DEVICE_ID_NCT_EXT,
-		.cdev_id = CDEV_BTHROT_ID_TJ,
-		.type = THERMAL_TRIP_PASSIVE,
-		.passive = {
-			.trip_temp = 85000,
-			.tc1 = 0,
-			.tc2 = 1,
-			.passive_delay = 2000,
-		}
-	},
-	/* EDP Capping */
-	{
-		.tdev_id = THERMAL_DEVICE_ID_NCT_EXT,
-		.cdev_id = CDEV_EDPTABLE_ID_EDP,
-		.type = THERMAL_TRIP_ACTIVE,
-		.get_trip_temp = tegra_edp_get_trip_temp,
-		.get_trip_size = tegra_edp_get_trip_size,
-	},
-	{
-		.tdev_id = THERMAL_DEVICE_ID_NULL,
-	},
-};
 
 static struct rfkill_gpio_platform_data cardhu_bt_rfkill_pdata[] = {
 	{
@@ -1289,7 +1240,6 @@ late_initcall(cardhu_throttle_list_init);
 
 static void __init tegra_cardhu_init(void)
 {
-	tegra_thermal_init(thermal_binds);
 	tegra_clk_init_from_table(cardhu_clk_init_table);
 	tegra_enable_pinmux();
 	tegra_smmu_init();
