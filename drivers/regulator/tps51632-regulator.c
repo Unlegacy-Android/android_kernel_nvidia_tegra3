@@ -161,6 +161,7 @@ static int __devinit tps51632_init_dcdc(struct tps51632_chip *tps,
 	int ret;
 	uint8_t	control = 0;
 	int vsel;
+	unsigned int vmax;
 
 	if (pdata->enable_pwm) {
 		control = TPS51632_DVFS_PWMEN;
@@ -182,6 +183,20 @@ static int __devinit tps51632_init_dcdc(struct tps51632_chip *tps,
 	if (pdata->enable_overcurrent_alram)
 		control = TPS51632_DVFS_OCA_EN;
 	if (pdata->max_voltage_uV) {
+		/**
+		 * TPS51632 hw behavior: VMAX register can be write only
+		 * once as it get locked after first write. The lock get
+		 * reset only when device is power-reset.
+		 * Write register only when lock bit is not enabled.
+		 */
+		ret = regmap_read(tps->regmap, TPS51632_VMAX_REG, &vmax);
+		if (ret < 0) {
+			dev_err(tps->dev, "VMAX read failed, err %d\n", ret);
+			return ret;
+		}
+		if (vmax & TPS51632_VMAX_LOCK)
+			goto skip_vmax_config;
+
 		vsel = DIV_ROUND_UP(pdata->max_voltage_uV -
 			TPS51632_MIN_VOLATGE, TPS51632_VOLATGE_STEP) + 0x19;
 		ret = regmap_write(tps->regmap, TPS51632_VMAX_REG, vsel);
@@ -190,6 +205,8 @@ static int __devinit tps51632_init_dcdc(struct tps51632_chip *tps,
 			return ret;
 		}
 	}
+
+skip_vmax_config:
 	ret = regmap_write(tps->regmap, TPS51632_DVFS_CONTROL_REG, control);
 	if (ret < 0) {
 		dev_err(tps->dev, "DVFS reg write failed, err %d\n", ret);
