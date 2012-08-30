@@ -1,5 +1,5 @@
 /*
- * tps51632-regulator.c -- Maxim tps51632
+ * tps51632-regulator.c -- TI tps51632
  *
  * Regulator driver for TPS51632 3-2-1 Phase D-Cap Step Down Driverless
  * Controller with serial VID control and DVFS.
