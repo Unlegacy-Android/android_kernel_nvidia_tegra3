@@ -79,6 +79,8 @@
 
 #define GPIO4_F_IT_MSK (1 << 1)
 
+#define RTC_ALARM_IT_MSK (1 << 6)
+
 enum irq_type {
 	EVENT,
 	GPIO,
@@ -974,6 +976,9 @@ static void tps6591x_i2c_shutdown(struct i2c_client *client)
 	ret = tps6591x_set_bits(&client->dev, TPS6591X_INT_MSK3, GPIO4_F_IT_MSK);
 	if (ret < 0)
 		pr_err("%s(): Setting GPIO4_F_IT_MSK fail.\n", __func__);
+	ret = tps6591x_set_bits(&client->dev, TPS6591X_INT_MSK, RTC_ALARM_IT_MSK);
+	if (ret < 0)
+		pr_err("%s(): Setting RTC_ALARM_IT_MSK fail.\n", __func__);
 }
 
 static const struct i2c_device_id tps6591x_id_table[] = {
