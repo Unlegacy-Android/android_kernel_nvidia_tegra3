@@ -67,7 +67,10 @@ static struct regulator_consumer_supply tps80031_vio_supply_a02[] = {
 	REGULATOR_SUPPLY("vddio_bb", NULL),
 	REGULATOR_SUPPLY("pwrdet_bb", NULL),
 	REGULATOR_SUPPLY("vddio_gmi", NULL),
-	REGULATOR_SUPPLY("avdd_usb_pll", NULL),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("vddio_cam", NULL),
 	REGULATOR_SUPPLY("pwrdet_cam", NULL),
 	REGULATOR_SUPPLY("vddio_sdmmc1", NULL),
@@ -197,7 +200,10 @@ static struct regulator_consumer_supply tps80031_ldo6_supply_a02[] = {
 
 static struct regulator_consumer_supply tps80031_ldo6_supply_a03[] = {
 	REGULATOR_SUPPLY("avdd_osc", NULL),
-	REGULATOR_SUPPLY("avdd_usb_pll", NULL),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
 };
 
 static struct regulator_consumer_supply tps80031_ldo7_supply_a02[] = {

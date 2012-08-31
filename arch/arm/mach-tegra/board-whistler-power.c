@@ -63,7 +63,10 @@ static struct regulator_consumer_supply max8907c_LDO3_supply[] = {
 
 static struct regulator_consumer_supply max8907c_LDO4_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb", NULL),
-	REGULATOR_SUPPLY("avdd_usb_pll", NULL),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
 };
 
 static struct regulator_consumer_supply max8907c_LDO5_supply[] = {

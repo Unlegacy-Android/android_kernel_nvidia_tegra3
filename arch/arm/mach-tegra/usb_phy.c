@@ -177,6 +177,16 @@ static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 {
 	int err = 0;
 
+	phy->pllu_reg = regulator_get(&phy->pdev->dev, "avdd_usb_pll");
+	if (IS_ERR_OR_NULL(phy->vdd_reg)) {
+		ERR("Couldn't get regulator avdd_usb_pll: %ld\n",
+			PTR_ERR(phy->vdd_reg));
+		err = PTR_ERR(phy->vdd_reg);
+		phy->pllu_reg = NULL;
+		goto fail_pllu_reg;
+	}
+	regulator_enable(phy->pllu_reg);
+
 	phy->pllu_clk = clk_get_sys(NULL, "pll_u");
 	if (IS_ERR(phy->pllu_clk)) {
 		ERR("inst:[%d] Can't get pllu_clk clock\n", phy->inst);
@@ -230,6 +240,10 @@ fail_ctrlr_clk:
 	clk_put(phy->pllu_clk);
 
 fail_pll:
+	regulator_disable(phy->pllu_reg);
+	regulator_put(phy->pllu_reg);
+
+fail_pllu_reg:
 	return err;
 }
 
@@ -429,6 +443,11 @@ void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 	}
 
 	tegra_usb_phy_release_clocks(phy);
+
+	if (phy->pllu_reg) {
+		regulator_disable(phy->pllu_reg);
+		regulator_put(phy->pllu_reg);
+	}
 
 	devm_kfree(&phy->pdev->dev, phy->pdata);
 	devm_kfree(&phy->pdev->dev, phy);
