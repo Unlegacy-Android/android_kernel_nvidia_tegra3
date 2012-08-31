@@ -1963,11 +1963,11 @@ static int _regulator_do_set_voltage(struct regulator_dev *rdev,
 	min_uV += rdev->constraints->uV_offset;
 	max_uV += rdev->constraints->uV_offset;
 
-	if (_regulator_is_enabled(rdev))
-		_notifier_call_chain(rdev, REGULATOR_EVENT_OUT_PRECHANGE,
-				     NULL);
-
 	if (rdev->desc->ops->set_voltage) {
+		if (_regulator_is_enabled(rdev))
+			_notifier_call_chain(rdev,
+			REGULATOR_EVENT_OUT_PRECHANGE, (void *)min_uV);
+
 		ret = rdev->desc->ops->set_voltage(rdev, min_uV, max_uV,
 						   &selector);
 
@@ -2017,6 +2017,10 @@ static int _regulator_do_set_voltage(struct regulator_dev *rdev,
 		}
 
 		if (best_val != INT_MAX) {
+			if (_regulator_is_enabled(rdev))
+				_notifier_call_chain(rdev,
+				REGULATOR_EVENT_OUT_PRECHANGE, (void *)best_val);
+
 			ret = rdev->desc->ops->set_voltage_sel(rdev, selector);
 			selector = best_val;
 		} else {
@@ -2038,9 +2042,12 @@ static int _regulator_do_set_voltage(struct regulator_dev *rdev,
 		_notifier_call_chain(rdev, REGULATOR_EVENT_VOLTAGE_CHANGE,
 				     NULL);
 
-	if (_regulator_is_enabled(rdev))
+	if (_regulator_is_enabled(rdev)) {
+		if (selector != -1)
+			min_uV = selector;
 		_notifier_call_chain(rdev, REGULATOR_EVENT_OUT_POSTCHANGE,
-				     NULL);
+				     (void *)min_uV);
+	}
 
 	trace_regulator_set_voltage_complete(rdev_get_name(rdev), selector);
 
@@ -2527,7 +2534,7 @@ static void _notifier_call_chain(struct regulator_dev *rdev,
 				  unsigned long event, void *data)
 {
 	/* call rdev chain first */
-	blocking_notifier_call_chain(&rdev->notifier, event, NULL);
+	blocking_notifier_call_chain(&rdev->notifier, event, data);
 }
 
 /**
