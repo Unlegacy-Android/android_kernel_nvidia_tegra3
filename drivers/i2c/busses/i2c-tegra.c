@@ -29,6 +29,7 @@
 #include <linux/io.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
+#include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/i2c-tegra.h>
 #include <linux/of_device.h>
@@ -716,10 +717,6 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_bus *i2c_bus,
 
 	tegra_i2c_flush_fifos(i2c_dev);
 
-	/* Toggle the direction flag if rev dir is selected */
-	if (msg->flags & I2C_M_REV_DIR_ADDR)
-		msg->flags ^= I2C_M_RD;
-
 	i2c_dev->msg_buf = msg->buf;
 	i2c_dev->msg_buf_remaining = msg->len;
 	i2c_dev->msg_err = I2C_ERR_NONE;
@@ -784,10 +781,6 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_bus *i2c_bus,
 
 	if (i2c_dev->is_dvc)
 		dvc_i2c_mask_irq(i2c_dev, DVC_CTRL_REG3_I2C_DONE_INTR_EN);
-
-	/* Restore the message flag */
-	if (msg->flags & I2C_M_REV_DIR_ADDR)
-		msg->flags ^= I2C_M_RD;
 
 	if (WARN_ON(ret == 0)) {
 		dev_err(i2c_dev->dev,
@@ -895,6 +888,7 @@ static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	i2c_dev->msgs = msgs;
 	i2c_dev->msgs_num = num;
 
+	pm_runtime_get_sync(&adap->dev);
 	tegra_i2c_clock_enable(i2c_dev);
 
 	for (i = 0; i < num; i++) {
@@ -911,6 +905,7 @@ static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	}
 
 	tegra_i2c_clock_disable(i2c_dev);
+	pm_runtime_put(&adap->dev);
 
 	rt_mutex_unlock(&i2c_dev->dev_lock);
 
@@ -1045,14 +1040,14 @@ static int __devinit tegra_i2c_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	div_clk = devm_clk_get(&pdev->dev, "i2c-div");
+	div_clk = devm_clk_get(&pdev->dev, "div-clk");
 	if (IS_ERR(div_clk)) {
 		dev_err(&pdev->dev, "missing controller clock");
 		return PTR_ERR(div_clk);
 	}
 
 	if (i2c_dev->chipdata->has_fast_clock) {
-		fast_clk = devm_clk_get(&pdev->dev, "i2c-fast");
+		fast_clk = devm_clk_get(&pdev->dev, "fast-clk");
 		if (IS_ERR(fast_clk)) {
 			dev_err(&pdev->dev, "missing controller fast clock");
 			return PTR_ERR(fast_clk);
@@ -1123,6 +1118,7 @@ static int __devinit tegra_i2c_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	pm_runtime_enable(&pdev->dev);
 
 	for (i = 0; i < nbus; i++) {
 		struct tegra_i2c_bus *i2c_bus = &i2c_dev->busses[i];
@@ -1161,9 +1157,11 @@ static int __devinit tegra_i2c_probe(struct platform_device *pdev)
 		}
 
 		of_i2c_register_devices(&i2c_bus->adapter);
+		pm_runtime_enable(&i2c_bus->adapter.dev);
 
 		i2c_dev->bus_count++;
 	}
+
 
 	return 0;
 
@@ -1177,12 +1175,15 @@ static int __devexit tegra_i2c_remove(struct platform_device *pdev)
 {
 	struct tegra_i2c_dev *i2c_dev = platform_get_drvdata(pdev);
 
-	while (i2c_dev->bus_count--)
+	while (i2c_dev->bus_count--) {
 		i2c_del_adapter(&i2c_dev->busses[i2c_dev->bus_count].adapter);
+		pm_runtime_disable(&i2c_dev->busses[i2c_dev->bus_count].adapter.dev);
+	}
 
 	if (i2c_dev->is_clkon_always)
 		tegra_i2c_clock_disable(i2c_dev);
 
+	pm_runtime_disable(&pdev->dev);
 	return 0;
 }
 

@@ -355,6 +355,35 @@ static void e1853_usb_init(void)
 	platform_device_register(&tegra_ehci3_device);
 }
 
+static struct tegra_nor_platform_data e1853_nor_data = {
+	.flash = {
+		.map_name = "cfi_probe",
+		.width = 2,
+	},
+	.chip_parms = {
+		.MuxMode = NorMuxMode_ADMux,
+		.BurstLength = NorBurstLength_CntBurst,
+		.ReadMode = NorReadMode_Async,
+		.ReadyActive = NorReadyActive_BeforeData,
+		/* FIXME: Need to use characterized value */
+		.timing_default = {
+			.timing0 = 0xA0A05585,
+			.timing1 = 0x200A0406,
+		},
+		.timing_read = {
+			.timing0 = 0xA0A05585,
+			.timing1 = 0x00050406,
+		},
+	},
+};
+
+static void e1853_nor_init(void)
+{
+	tegra_nor_device.resource[2].end = TEGRA_NOR_FLASH_BASE + SZ_64M - 1;
+	tegra_nor_device.dev.platform_data = &e1853_nor_data;
+	platform_device_register(&tegra_nor_device);
+}
+
 static void __init tegra_e1853_init(void)
 {
 	tegra_init_board_info();
@@ -368,6 +397,7 @@ static void __init tegra_e1853_init(void)
 	e1853_spi_init();
 	platform_add_devices(e1853_devices, ARRAY_SIZE(e1853_devices));
 	e1853_panel_init();
+	e1853_nor_init();
 	e1853_pcie_init();
 }
 

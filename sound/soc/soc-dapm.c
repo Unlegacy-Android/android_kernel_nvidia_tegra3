@@ -2347,18 +2347,20 @@ int snd_soc_dapm_put_volsw(struct snd_kcontrol *kcontrol,
 	int wi;
 
 	val = (ucontrol->value.integer.value[0] & mask);
+	connect = !!val;
 
 	if (invert)
 		val = max - val;
 	mask = mask << shift;
 	val = val << shift;
-
+#if 0
 	if (val)
 		/* new connection */
 		connect = invert ? 0 : 1;
 	else
 		/* old connection must be powered down */
 		connect = invert ? 1 : 0;
+#endif
 
 	mutex_lock(&codec->mutex);
 

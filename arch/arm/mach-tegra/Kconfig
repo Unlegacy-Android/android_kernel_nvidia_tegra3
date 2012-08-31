@@ -84,6 +84,8 @@ config ARCH_TEGRA_3x_SOC
 	select TEGRA_LP2_CPU_TIMER if HAVE_ARM_TWD && !TEGRA_RAIL_OFF_MULTIPLE_CPUS
 	select CPA
 	select NVMAP_CACHE_MAINT_BY_SET_WAYS
+	select PL310_ERRATA_727915
+	select TEGRA_LATENCY_ALLOWANCE if !TEGRA_FPGA_PLATFORM
 	help
 	  Support for NVIDIA Tegra T30 processor family, based on the
 	  ARM CortexA9MP CPU and the ARM PL310 L2 cache controller
@@ -268,6 +270,12 @@ config MACH_TEGRA_ENTERPRISE
        select TEGRA_SLOW_CSITE
        help
          Support for NVIDIA Enterprise development platform
+
+config MACH_TAI
+       bool "Tai board"
+       depends on MACH_TEGRA_ENTERPRISE
+       help
+         Support for NVIDIA Tai development platform
 
 config MACH_KAI
        bool "Kai board"
@@ -673,4 +681,29 @@ config ARCH_TEGRA_4GB_MEMORY
 	help
 	  Harmless to select this even if hardware does not support full
 	  4GB physical memory.
+
+config TEGRA_LP1_950
+	bool "LP1 low core voltage"
+	default n
+	depends on ARCH_TEGRA_3x_SOC
+	help
+		Enable support for LP1 Core voltage to set to lowest
+config TEGRA_LATENCY_ALLOWANCE
+	bool "Allow memory clients to configure latency allowance"
+	help
+	  Latency allowance is a per-memory-client setting that tells the
+	  memory controller how long it can ignore a request in favor of
+	  others. In other words, It indicates how long a request from specific
+	  memory client can wait before it is served.
+	  Enabling this option allows memory clients configure the
+	  latency allowance as per their bandwidth requirement.
 endif
+
+config TEGRA_DC_USE_HW_BPP
+	bool "Default Bits Per Pixel value from tegra DC hardware"
+	depends on TEGRA_DC
+	default n
+        help
+	  Programs platform data to inform DC driver to use current
+	  hardware value for bits per pixel setting.  Useful for
+          preserving and displaying framebuffer content from bootloader.

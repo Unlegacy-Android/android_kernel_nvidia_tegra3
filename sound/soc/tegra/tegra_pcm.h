@@ -59,6 +59,7 @@ struct tegra_runtime_data {
 	struct tegra_dma_channel *dma_chan;
 	int dma_req_count;
 	int disable_intr;
+	unsigned int avp_dma_addr;
 };
 
 #ifdef TEGRA30_USE_SMMU

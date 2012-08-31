@@ -114,7 +114,7 @@ int __init touch_init_synaptics_kai(void);
 #define MPU_COMPASS_IRQ_GPIO	0
 #define MPU_COMPASS_ADDR	0x0C
 #define MPU_COMPASS_BUS_NUM	2
-#define MPU_COMPASS_ORIENTATION	{ 1, 0, 0, 0, 1, 0, 0, 0, 1 }
+#define MPU_COMPASS_ORIENTATION	{ 0, 1, 0, 1, 0, 0, 0, 0, -1 }
 
 #define TDIODE_OFFSET	(10000) /* in millicelsius */
 

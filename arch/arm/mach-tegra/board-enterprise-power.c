@@ -141,6 +141,13 @@ static struct regulator_consumer_supply tps80031_smps4_supply_a03[] = {
 	REGULATOR_SUPPLY("vddf_core_emmc", NULL),
 };
 
+static struct regulator_consumer_supply tps80031_smps4_supply_tai[] = {
+	REGULATOR_SUPPLY("vddio_sdmmc_2v85", NULL),
+	REGULATOR_SUPPLY("pwrdet_sdmmc3", NULL),
+	REGULATOR_SUPPLY("vdd_ddr_rx", NULL),
+	REGULATOR_SUPPLY("vddf_core_emmc", NULL),
+};
+
 static struct regulator_consumer_supply tps80031_vana_supply_a02[] = {
 	REGULATOR_SUPPLY("unused_vana", NULL),
 };
@@ -273,6 +280,7 @@ TPS_PDATA_INIT(SMPS2, smps2, common, 600, 2100, 0, 0, 0, 0, -1, 0, 0, 0, PWR_REQ
 TPS_PDATA_INIT(SMPS3, smps3, common, 600, 2100, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0);
 TPS_PDATA_INIT(SMPS4, smps4, a02, 600, 2100, 0, 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
 TPS_PDATA_INIT(SMPS4, smps4, a03, 600, 2100, 0, 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
+TPS_PDATA_INIT(SMPS4, smps4, tai, 600, 2100, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0);
 TPS_PDATA_INIT(LDO1, ldo1, a02, 1000, 3300, tps80031_rails(vio), 0, 0, 0, -1, 0, 0, 0, 0, 0);
 TPS_PDATA_INIT(LDO1, ldo1, a03, 1000, 3300, tps80031_rails(vio), 0, 0, 0, -1, 0, 0, 0, PWR_REQ_INPUT_PREQ1, 0);
 TPS_PDATA_INIT(LDO2, ldo2, common, 1000, 1000, 0, 1, 1, 1, -1, 0, 0, 0, 0, 0);
@@ -364,6 +372,25 @@ static struct tps80031_regulator_platform_data *tps80031_reg_pdata_a03[] = {
 	TPS_REG_PDATA(ldo5, common),
 	TPS_REG_PDATA(vbus, common),
 	TPS_REG_PDATA(smps4, a03),
+	TPS_REG_PDATA(ldo1, a03),
+	TPS_REG_PDATA(ldo4, a03),
+	TPS_REG_PDATA(ldo6, a03),
+	TPS_REG_PDATA(ldo7, a03),
+	TPS_REG_PDATA(ldoln, a03),
+	TPS_REG_PDATA(ldousb, a03),
+	TPS_REG_PDATA(vana, a03),
+};
+
+static struct tps80031_regulator_platform_data *tps80031_reg_pdata_tai[] = {
+	TPS_REG_PDATA(vio, a03),
+	TPS_REG_PDATA(smps1, common),
+	TPS_REG_PDATA(smps2, common),
+	TPS_REG_PDATA(smps3, common),
+	TPS_REG_PDATA(ldo2, common),
+	TPS_REG_PDATA(ldo3, common),
+	TPS_REG_PDATA(ldo5, common),
+	TPS_REG_PDATA(vbus, common),
+	TPS_REG_PDATA(smps4, tai),
 	TPS_REG_PDATA(ldo1, a03),
 	TPS_REG_PDATA(ldo4, a03),
 	TPS_REG_PDATA(ldo6, a03),
@@ -746,8 +773,16 @@ int __init enterprise_regulator_init(void)
 		tps_platform.num_regulator_pdata = ARRAY_SIZE(tps80031_reg_pdata_a02);
 		tps_platform.regulator_pdata = tps80031_reg_pdata_a02;
 	} else {
-		tps_platform.num_regulator_pdata = ARRAY_SIZE(tps80031_reg_pdata_a03);
-		tps_platform.regulator_pdata = tps80031_reg_pdata_a03;
+		if (machine_is_tai()) {
+			tps_platform.num_regulator_pdata =
+					ARRAY_SIZE(tps80031_reg_pdata_tai);
+			tps_platform.regulator_pdata =
+						tps80031_reg_pdata_tai;
+		} else {
+			tps_platform.num_regulator_pdata =
+					ARRAY_SIZE(tps80031_reg_pdata_a03);
+			tps_platform.regulator_pdata = tps80031_reg_pdata_a03;
+		}
 		tps_platform.pupd_init_data = pupd_idata;
 		tps_platform.pupd_init_data_size = ARRAY_SIZE(pupd_idata);
 		tps_platform.gpio_init_data = gpio_idata_a03;
@@ -780,6 +815,14 @@ static struct tegra_suspend_platform_data enterprise_suspend_data = {
 	.sysclkreq_high	= true,
 	.board_suspend = enterprise_board_suspend,
 	.board_resume = enterprise_board_resume,
+#ifdef CONFIG_TEGRA_LP1_950
+	.lp1_lowvolt_support = true,
+	.i2c_base_addr = TEGRA_I2C5_BASE,
+	.pmuslave_addr = 0x24,
+	.core_reg_addr = 0x5B,
+	.lp1_core_volt_low = 0x1D,
+	.lp1_core_volt_high = 0x33,
+#endif
 };
 
 static void enterprise_init_deep_sleep_mode(void)

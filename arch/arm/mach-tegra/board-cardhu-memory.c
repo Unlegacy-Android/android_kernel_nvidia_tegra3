@@ -4620,7 +4620,7 @@ static const struct tegra_emc_table cardhu_emc_tables_k4p8g304eb[] = {
 			0x00000004, /* EMC_TCKE */
 			0x0000000e, /* EMC_TFAW */
 			0x00000006, /* EMC_TRPAB */
-			0x00000001, /* EMC_TCLKSTABLE */
+			0x00000004, /* EMC_TCLKSTABLE */
 			0x00000002, /* EMC_TCLKSTOP */
 			0x00000455, /* EMC_TREFBW */
 			0x00000000, /* EMC_QUSE_EXTRA */
@@ -4675,8 +4675,8 @@ static const struct tegra_emc_table cardhu_emc_tables_k4p8g304eb[] = {
 			0x00000000, /* EMC_CTT */
 			0x00000000, /* EMC_CTT_DURATION */
 			0x800008ee, /* EMC_DYN_SELF_REF_CONTROL */
-			0x00000004, /* MC_EMEM_ARB_CFG */
-			0x80000030, /* MC_EMEM_ARB_OUTSTANDING_REQ */
+			0x00000008, /* MC_EMEM_ARB_CFG */
+			0xc0000030, /* MC_EMEM_ARB_OUTSTANDING_REQ */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RCD */
 			0x00000002, /* MC_EMEM_ARB_TIMING_RP */
 			0x00000008, /* MC_EMEM_ARB_TIMING_RC */
@@ -4795,7 +4795,7 @@ static const struct tegra_emc_table cardhu_emc_tables_k4p8g304eb[] = {
 			0x00000000, /* EMC_CTT */
 			0x00000000, /* EMC_CTT_DURATION */
 			0x80000dff, /* EMC_DYN_SELF_REF_CONTROL */
-			0x00000006, /* MC_EMEM_ARB_CFG */
+			0x0000000d, /* MC_EMEM_ARB_CFG */
 			0xc000004f, /* MC_EMEM_ARB_OUTSTANDING_REQ */
 			0x00000002, /* MC_EMEM_ARB_TIMING_RCD */
 			0x00000003, /* MC_EMEM_ARB_TIMING_RP */

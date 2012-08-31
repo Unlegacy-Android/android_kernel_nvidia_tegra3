@@ -1135,15 +1135,25 @@ static struct tegra_suspend_platform_data cardhu_suspend_data = {
 	.cpu_lp2_min_residency = 2000,
 	.board_suspend = cardhu_board_suspend,
 	.board_resume = cardhu_board_resume,
+#ifdef CONFIG_TEGRA_LP1_950
+	.lp1_lowvolt_support = false,
+	.i2c_base_addr = 0,
+	.pmuslave_addr = 0,
+	.core_reg_addr = 0,
+	.lp1_core_volt_low = 0,
+	.lp1_core_volt_high = 0,
+#endif
 };
 
 int __init cardhu_suspend_init(void)
 {
 	struct board_info board_info;
 	struct board_info pmu_board_info;
+	struct board_info display_board_info;
 
 	tegra_get_board_info(&board_info);
 	tegra_get_pmu_board_info(&pmu_board_info);
+	tegra_get_display_board_info(&display_board_info);
 
 	/* For PMU Fab A03, A04 and A05 make core_pwr_req to high */
 	if ((pmu_board_info.fab == BOARD_FAB_A03) ||
@@ -1171,6 +1181,17 @@ int __init cardhu_suspend_init(void)
 			tegra_disable_wake_source(TEGRA_WAKE_USB1_VBUS);
 		break;
 	case BOARD_PM269:
+#ifdef CONFIG_TEGRA_LP1_950
+		/* AP37 board supports the LP1_950mV feature */
+		if (is_display_board_dsi(display_board_info.board_id)) {
+			cardhu_suspend_data.lp1_lowvolt_support = true;
+			cardhu_suspend_data.i2c_base_addr = TEGRA_I2C5_BASE;
+			cardhu_suspend_data.pmuslave_addr = 0xC0;
+			cardhu_suspend_data.core_reg_addr = 0x03;
+			cardhu_suspend_data.lp1_core_volt_low = 0x2D;
+			cardhu_suspend_data.lp1_core_volt_high = 0x50;
+		}
+#endif
 	case BOARD_PM305:
 	case BOARD_PM311:
 		break;

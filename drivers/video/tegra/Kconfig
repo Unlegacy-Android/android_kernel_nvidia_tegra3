@@ -124,18 +124,36 @@ config NVMAP_PAGE_POOLS
 	  when system is low on memory and acquired back during release of
 	  memory.
 
+config NVMAP_PAGE_POOLS_INIT_FILLUP
+	bool "Fill up page pools during page pools init"
+	depends on NVMAP_PAGE_POOLS
+	default y
+	help
+	  Say Y here to fill up the page pools during page pool init time.
+	  This helps in faster alloctions right from the early alloction
+	  requests. Page pools fill up during init would increase the boot time.
+	  If increase in boot time is not acceptable, keep this option disabled.
+
 config NVMAP_PAGE_POOL_SIZE
 	hex
 	default 0x0
 
 config NVMAP_CACHE_MAINT_BY_SET_WAYS
-	bool "Enalbe cache maintenance by set/ways"
+	bool "Enable cache maintenance by set/ways"
 	depends on TEGRA_NVMAP
 	help
 	 Say Y here to reduce cache maintenance overhead by MVA.
 	 This helps in reducing cache maintenance overhead in the systems,
 	 where inner cache includes only L1. For the systems, where inner cache
 	 includes L1 and L2, keep this option disabled.
+
+config NVMAP_OUTER_CACHE_MAINT_BY_SET_WAYS
+	bool "Enable outer cache maintenance by set/ways"
+	depends on TEGRA_NVMAP
+	help
+	  Say Y here if you want to optimize cache maintenance for ranges
+	  bigger than size of outer cache. This option has no effect on
+	  system without outer cache.
 
 config NVMAP_VPR
 	bool "Enable VPR Heap."
