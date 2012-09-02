@@ -480,8 +480,8 @@ fixed_reg_pmu_hdmi_5v0_en_tai_supply[] = {
 };
 
 /* LCD-D16 (GPIO M0) from T30*/
-static struct regulator_consumer_supply fixed_reg_vdd_fuse_en_supply[] = {
-	REGULATOR_SUPPLY("vdd_fuse", NULL),
+static struct regulator_consumer_supply fixed_reg_vpp_fuse_en_supply[] = {
+	REGULATOR_SUPPLY("vpp_fuse", NULL),
 };
 
 /* LCD-D17 (GPIO M1) from T30*/
@@ -642,7 +642,7 @@ FIXED_REG(0, pmu_5v15_en,     NULL,
 		ENT_TPS80031_GPIO_REGEN1, true, 5000, 0 , 0);
 FIXED_REG(2, pmu_hdmi_5v0_en, "fixed_reg_pmu_5v15_en",
 		ENT_TPS80031_GPIO_SYSEN, true, 5000, 0, 0);
-FIXED_REG(3, vdd_fuse_en,     "fixed_reg_pmu_3v3_en",
+FIXED_REG(3, vpp_fuse_en,     "fixed_reg_pmu_3v3_en",
 		TEGRA_GPIO_PM0, true, 3300, 0, 0);
 FIXED_REG(5, cam_ldo_2v8_en,  NULL,
 		TEGRA_GPIO_PM7, true, 2800, 0, 0);
@@ -667,7 +667,7 @@ static struct platform_device *fixed_regs_devices_a02[] = {
 	ADD_FIXED_REG(pmu_5v15_en),
 	ADD_FIXED_REG(pmu_3v3_en),
 	ADD_FIXED_REG(pmu_hdmi_5v0_en),
-	ADD_FIXED_REG(vdd_fuse_en),
+	ADD_FIXED_REG(vpp_fuse_en),
 	ADD_FIXED_REG(cam_ldo_2v8_en),
 	ADD_FIXED_REG(cam_ldo_1v8_en)
 };
@@ -675,7 +675,7 @@ static struct platform_device *fixed_regs_devices_a02[] = {
 static struct platform_device *fixed_regs_devices_a03[] = {
 	ADD_FIXED_REG(pmu_5v15_en),
 	ADD_FIXED_REG(pmu_hdmi_5v0_en),
-	ADD_FIXED_REG(vdd_fuse_en),
+	ADD_FIXED_REG(vpp_fuse_en),
 	ADD_FIXED_REG(cam_ldo_2v8_en),
 	ADD_FIXED_REG(cam_ldo_1v8_en),
 	ADD_FIXED_REG(vdd_sdmmc3_2v85_en),

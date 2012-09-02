@@ -389,7 +389,7 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_sdmmc1_supply[] = {
 };
 
 static struct regulator_consumer_supply fixed_reg_en_3v3_fuse_supply[] = {
-	REGULATOR_SUPPLY("vdd_fuse", NULL),
+	REGULATOR_SUPPLY("vpp_fuse", NULL),
 };
 
 /* Macro for defining fixed regulator sub device data */

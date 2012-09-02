@@ -538,7 +538,6 @@ static struct regulator_consumer_supply fixed_reg_en_3v3_sys_supply[] = {
 	REGULATOR_SUPPLY("pwrdet_pex_ctl", NULL),
 	REGULATOR_SUPPLY("hvdd_pex_pmu", NULL),
 	REGULATOR_SUPPLY("avdd_hdmi", NULL),
-	REGULATOR_SUPPLY("vpp_fuse", NULL),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-udc.0"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
@@ -646,7 +645,7 @@ static struct regulator_consumer_supply fixed_reg_en_3v3_pex_hvdd_supply[] = {
 
 /* EN_3v3_FUSE from AP GPIO VI_D08 L06*/
 static struct regulator_consumer_supply fixed_reg_en_3v3_fuse_supply[] = {
-	REGULATOR_SUPPLY("vdd_fuse", NULL),
+	REGULATOR_SUPPLY("vpp_fuse", NULL),
 };
 
 /* EN_1V8_CAM from AP GPIO GPIO_PBB4 PBB04*/
