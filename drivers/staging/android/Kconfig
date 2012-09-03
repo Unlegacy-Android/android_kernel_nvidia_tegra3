@@ -67,8 +67,6 @@ config ANDROID_LOW_MEMORY_KILLER
 	---help---
 	  Register processes to be killed when memory is low
 
-source "drivers/staging/android/switch/Kconfig"
-
 config ANDROID_INTF_ALARM_DEV
 	bool "Android alarm driver"
 	depends on RTC_CLASS
