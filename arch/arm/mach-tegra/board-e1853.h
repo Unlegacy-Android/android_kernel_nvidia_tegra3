@@ -25,4 +25,10 @@ int e1853_panel_init(void);
 int e1853_gpio_init(void);
 int e1853_pins_state_init(void);
 
+#ifdef CONFIG_TOUCHSCREEN_ATMEL_MXT
+#define TOUCH_GPIO_IRQ_ATMEL_T9 TEGRA_GPIO_PEE1
+#define TOUCH_GPIO_RST_ATMEL_T9 TEGRA_GPIO_PR2
+#define TOUCH_BUS_ATMEL_T9  0
+#endif
+
 #endif

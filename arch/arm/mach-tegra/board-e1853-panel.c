@@ -168,6 +168,34 @@ static int e1853_lvds_disable(void)
 	return 0;
 }
 
+#ifdef CONFIG_TOUCHSCREEN_ATMEL_MXT
+
+static struct tegra_dc_mode e1853_panel_modes[] = {
+	{
+		/* 1366x768@60Hz */
+		.pclk = 74180000,
+		.h_ref_to_sync = 1,
+		.v_ref_to_sync = 1,
+		.h_sync_width = 30,
+		.v_sync_width = 5,
+		.h_back_porch = 52,
+		.v_back_porch = 20,
+		.h_active = 1366,
+		.v_active = 768,
+		.h_front_porch = 64,
+		.v_front_porch = 25,
+	},
+};
+
+static struct tegra_fb_data e1853_fb_data = {
+	.win        = 0,
+	.xres       = 1366,
+	.yres       = 768,
+	.bits_per_pixel = 32,
+};
+
+#else
+
 static struct tegra_dc_mode e1853_panel_modes[] = {
 	{
 		/* 800x480@60 */
@@ -191,6 +219,8 @@ static struct tegra_fb_data e1853_fb_data = {
 	.yres		= 480,
 	.bits_per_pixel	= 32,
 };
+
+#endif
 
 static struct tegra_dc_out e1853_ser_out = {
 	.align		= TEGRA_DC_ALIGN_MSB,
