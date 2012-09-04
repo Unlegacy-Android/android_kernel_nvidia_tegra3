@@ -25,6 +25,421 @@
 			      0 147 0x04>;
 	};
 
+	dvfs-tables {
+		cpudvfs {
+			compatible = "nvidia,tegra30-cpu-dvfs";
+			nvidia,voltage-table = <750 762 775 787 800 825 837 850 862 875 887 900 912 916 925 937 950 962 975 987 1000 1007 1012 1025 1037 1050 1062 1075 1087 1100 1112 1125 1137 1150 1162 1175 1187 1200 1212 1237>;
+			#address-cells = <0>;
+			#size-cells = <1>;
+
+			frequency-table@0 {
+				reg = <0>;
+				nvidia,speedo-id = <2>;
+				nvidia,process-id = <2>;
+				nvidia,clock-name = "cpu_g";
+				nvidia,frequencies = <1000 1000 1000 1000 520000 520000 520000 700000 700000 700000 700000 860000 860000 860000 860000 860000 860000 860000 1050000 1050000 1150000 1150000 1150000 1200000 1200000 1280000 1280000 1300000 1300000 1350000 1350000 1400000>;
+			};
+
+			frequency-table@1 {
+				reg = <1>;
+				nvidia,speedo-id = <9>;
+				nvidia,clock-name = "cpu_g";
+				nvidia,frequencies = <1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000>;
+			};
+		};
+
+		cpu0_dvfs {
+			compatible = "nvidia,tegra30-cpu0-dvfs";
+			nvidia,voltage-table = <750 762 775 787 800 825 837 850 862 875 887 900 912 916 925 937 950 962 975 987 1000 1007 1012 1025 1037 1050 1062 1075 1087 1100 1112 1125 1137 1150 1162 1175 1187 1200 1212 1237>;
+			#address-cells = <0>;
+			#size-cells = <1>;
+
+			frequency-table@0 {
+				reg = <0>;
+				nvidia,speedo-id = <4>;
+				nvidia,process-id = <0>;
+				nvidia,clock-name = "cpu0";
+				nvidia,frequencies = <1000 1000 1000 475000 475000 475000 475000 640000 640000 640000 760000 760000 760000 760000 860000 860000 860000 860000 860000 1000000 1000000 1000000 1000000 1100000 1100000 1100000 1100000 1200000 1200000 1200000 1200000 1200000 1300000 1300000 1300000 1300000 1400000 1400000 1400000 1500000>;
+			};
+		};
+
+		core_dvfs: coredvfs {
+			compatible = "nvidia,tegra30-core-dvfs";
+			nvidia,voltage-table = <950 1000 1050 1100 1150 1200 1250 1300 1350>;
+			#address-cells = <0>;
+			#size-cells = <1>;
+
+			frequency-table@0 {
+				reg = <0>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "cpu_lp";
+				nvidia,frequencies = <1 294000 342000 427000 475000 500000 500000 500000 500000>;
+			};
+
+			frequency-table@1 {
+				reg = <1>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "emc";
+				nvidia,frequencies = <1 266500 266500 266500 266500 533000 533000 533000 533000>;
+			};
+
+			frequency-table@2 {
+				reg = <2>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "sbus";
+				nvidia,frequencies = <1 136000 164000 191000 216000 216000 216000 216000 216000>;
+			};
+
+			frequency-table@3 {
+				reg = <3>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "vi";
+				nvidia,frequencies = <1 216000 285000 300000 300000 300000 300000 300000 300000>;
+			};
+
+			frequency-table@4 {
+				reg = <4>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "vde";
+				nvidia,frequencies = <1 228000 275000 332000 380000 416000 416000 416000 416000>;
+			};
+
+			frequency-table@5 {
+				reg = <5>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "mpe";
+				nvidia,frequencies = <1 234000 285000 332000 380000 416000 416000 416000 416000>;
+			};
+
+			frequency-table@6 {
+				reg = <6>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "2d";
+				nvidia,frequencies = <1 267000 285000 332000 380000 416000 416000 416000 416000>;
+			};
+
+			frequency-table@7 {
+				reg = <7>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "epp";
+				nvidia,frequencies = <1 267000 285000 332000 380000 416000 416000 416000 416000>;
+			};
+
+			frequency-table@8 {
+				reg = <8>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "3d";
+				nvidia,frequencies = <1 234000 285000 332000 380000 416000 416000 416000 416000>;
+			};
+
+			frequency-table@9 {
+				reg = <9>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "3d2";
+				nvidia,frequencies = <1 234000 285000 332000 380000 416000 416000 416000 416000>;
+			};
+
+			frequency-table@10 {
+				reg = <10>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "se";
+				nvidia,frequencies = <1 267000 285000 332000 380000 416000 416000 416000 416000>;
+			};
+
+			frequency-table@11 {
+				reg = <11>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "host1x";
+				nvidia,frequencies = <1 152000 188000 222000 254000 267000 267000 267000 267000>;
+			};
+
+			frequency-table@12 {
+				reg = <12>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "cbus";
+				nvidia,frequencies = <1 228000 275000 332000 380000 416000 416000 416000 416000>;
+			};
+
+			frequency-table@13 {
+				reg = <13>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "mipi";
+				nvidia,frequencies = <1 1 1 1 1 1 1 1 1>;
+			};
+
+			frequency-table@14 {
+				reg = <14>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "nor";
+				nvidia,frequencies = <1 115000 130000 130000 133000 133000 133000 133000 133000>;
+			};
+
+			frequency-table@15 {
+				reg = <15>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "cpu_lp";
+				nvidia,frequencies = <204000 295000 370000 428000 475000 513000 579000 620000 620000>;
+			};
+
+			frequency-table@16 {
+				reg = <16>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "emc";
+				nvidia,frequencies = <102000 450000 450000 450000 450000 667000 667000 800000 900000>;
+			};
+
+			frequency-table@17 {
+				reg = <17>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "sbus";
+				nvidia,frequencies = <102000 205000 205000 227000 227000 267000 334000 334000 334000>;
+			};
+
+			frequency-table@18 {
+				reg = <18>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "vi";
+				nvidia,frequencies = <1 219000 267000 300000 371000 409000 425000 425000 425000>;
+			};
+
+			frequency-table@19 {
+				reg = <19>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "vde";
+				nvidia,frequencies = <200000 247000 304000 352000 400000 437000 484000 520000 600000>;
+			};
+
+			frequency-table@20 {
+				reg = <20>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "mpe";
+				nvidia,frequencies = <200000 247000 304000 361000 408000 446000 484000 520000 600000>;
+			};
+
+			frequency-table@21 {
+				reg = <21>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "2d";
+				nvidia,frequencies = <200000 267000 304000 361000 408000 446000 484000 520000 600000>;
+			};
+
+			frequency-table@22 {
+				reg = <22>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "epp";
+				nvidia,frequencies = <200000 267000 304000 361000 408000 446000 484000 520000 600000>;
+			};
+
+			frequency-table@23 {
+				reg = <23>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "3d";
+				nvidia,frequencies = <200000 247000 304000 361000 408000 446000 484000 520000 600000>;
+			};
+
+			frequency-table@24 {
+				reg = <24>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "3d2";
+				nvidia,frequencies = <200000 247000 304000 361000 408000 446000 484000 520000 600000>;
+			};
+
+			frequency-table@25 {
+				reg = <25>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "se";
+				nvidia,frequencies = <200000 267000 304000 361000 408000 446000 484000 520000 600000>;
+			};
+
+			frequency-table@26 {
+				reg = <26>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "host1x";
+				nvidia,frequencies = <100000 152000 188000 222000 254000 267000 267000 267000 300000>;
+			};
+
+			frequency-table@27 {
+				reg = <27>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "cbus";
+				nvidia,frequencies = <200000 247000 304000 352000 400000 437000 484000 520000 600000>;
+			};
+
+			frequency-table@28 {
+				reg = <28>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "mipi";
+				nvidia,frequencies = <1 1 1 1 1 60000 60000 60000 60000>;
+			};
+
+			frequency-table@29 {
+				reg = <29>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "nor";
+				nvidia,frequencies = <102000 115000 130000 130000 133000 133000 133000 133000 133000>;
+			};
+
+			frequency-table@30 {
+				reg = <30>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "pll_m";
+				nvidia,frequencies = <533000 900000 900000 900000 900000 1066000 1066000 1066000 1066000>;
+			};
+
+			frequency-table@31 {
+				reg = <31>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "disp1";
+				nvidia,manual-dvfs;
+				nvidia,frequencies = <1000 120000 120000 120000 120000 190000 190000 190000 190000>;
+			};
+
+			frequency-table@32 {
+				reg = <32>;
+				nvidia,speedo-id = <0>;
+				nvidia,clock-name = "disp2";
+				nvidia,manual-dvfs;
+				nvidia,frequencies = <1000 120000 120000 120000 120000 190000 190000 190000 190000>;
+			};
+
+			frequency-table@33 {
+				reg = <33>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "disp1";
+				nvidia,manual-dvfs;
+				nvidia,frequencies = <155000 155000 268000 268000 268000 268000 268000 268000 268000>;
+			};
+
+			frequency-table@34 {
+				reg = <34>;
+				nvidia,speedo-id = <2>;
+				nvidia,clock-name = "disp2";
+				nvidia,manual-dvfs;
+				nvidia,frequencies = <155000 155000 268000 268000 268000 268000 268000 268000 268000>;
+			};
+
+			frequency-table@35 {
+				reg = <35>;
+				nvidia,clock-name = "pll_c";
+				nvidia,frequencies = <533000 667000 667000 800000 800000 1066000 1066000 1066000 1200000>;
+			};
+
+			frequency-table@36 {
+				reg = <36>;
+				nvidia,clock-name = "pll_m";
+				nvidia,frequencies = <533000 667000 667000 800000 800000 1066000 1066000 1066000 1066000>;
+			};
+
+			frequency-table@37 {
+				reg = <37>;
+				nvidia,clock-name = "fuse_burn";
+				nvidia,frequencies = <1 1 1 1 26000 26000 26000 26000 26000>;
+			};
+
+			frequency-table@38 {
+				reg = <38>;
+				nvidia,clock-name = "sdmmc1";
+				nvidia,frequencies = <104000 104000 104000 104000 104000 208000 208000 208000 208000>;
+			};
+
+			frequency-table@39 {
+				reg = <39>;
+				nvidia,clock-name = "sdmmc3";
+				nvidia,frequencies = <104000 104000 104000 104000 104000 208000 208000 208000 208000>;
+			};
+
+			frequency-table@40 {
+				reg = <40>;
+				nvidia,clock-name = "sdmmc4";
+				nvidia,frequencies = <51000 102000 102000 102000 102000 102000 102000 102000 102000>;
+			};
+
+			frequency-table@41 {
+				reg = <41>;
+				nvidia,clock-name = "ndflash";
+				nvidia,frequencies = <120000 120000 120000 120000 200000 200000 200000 200000 200000>;
+			};
+
+			frequency-table@42 {
+				reg = <42>;
+				nvidia,clock-name = "sbc1";
+				nvidia,frequencies = <36000 52000 60000 60000 60000 100000 100000 100000 100000>;
+			};
+
+			frequency-table@43 {
+				reg = <43>;
+				nvidia,clock-name = "sbc2";
+				nvidia,frequencies = <36000 52000 60000 60000 60000 100000 100000 100000 100000>;
+			};
+
+			frequency-table@44 {
+				reg = <44>;
+				nvidia,clock-name = "sbc3";
+				nvidia,frequencies = <36000 52000 60000 60000 60000 100000 100000 100000 100000>;
+			};
+
+			frequency-table@45 {
+				reg = <45>;
+				nvidia,clock-name = "sbc4";
+				nvidia,frequencies = <36000 52000 60000 60000 60000 100000 100000 100000 100000>;
+			};
+
+			frequency-table@46 {
+				reg = <46>;
+				nvidia,clock-name = "sbc5";
+				nvidia,frequencies = <36000 52000 60000 60000 60000 100000 100000 100000 100000>;
+			};
+
+			frequency-table@47 {
+				reg = <47>;
+				nvidia,clock-name = "sbc6";
+				nvidia,frequencies = <36000 52000 60000 60000 60000 100000 100000 100000 100000>;
+			};
+
+			frequency-table@48 {
+				reg = <48>;
+				nvidia,clock-name = "sata";
+				nvidia,frequencies = <1 216000 216000 216000 216000 216000 216000 216000 216000>;
+			};
+
+			frequency-table@49 {
+				reg = <49>;
+				nvidia,clock-name = "sata_oob";
+				nvidia,frequencies = <1 216000 216000 216000 216000 216000 216000 216000 216000>;
+			};
+
+			frequency-table@50 {
+				reg = <50>;
+				nvidia,clock-name = "tvo";
+				nvidia,frequencies = <1 1 297000 297000 297000 297000 297000 297000 297000>;
+			};
+
+			frequency-table@51 {
+				reg = <51>;
+				nvidia,clock-name = "cve";
+				nvidia,frequencies = <1 1 297000 297000 297000 297000 297000 297000 297000>;
+			};
+
+			frequency-table@52 {
+				reg = <52>;
+				nvidia,clock-name = "dsia";
+				nvidia,frequencies = <432500 432500 432500 432500 432500 432500 432500 432500 432500>;
+			};
+
+			frequency-table@53 {
+				reg = <53>;
+				nvidia,clock-name = "dsib";
+				nvidia,frequencies = <432500 432500 432500 432500 432500 432500 432500 432500 432500>;
+			};
+
+			frequency-table@54 {
+				reg = <54>;
+				nvidia,clock-name = "pwm";
+				nvidia,frequencies = <204000 408000 408000 408000 408000 408000 408000 408000 408000>;
+			};
+		};
+	};
+
 	apbdma: dma@6000a000 {
 		compatible = "nvidia,tegra30-apbdma", "nvidia,tegra20-apbdma";
 		reg = <0x6000a000 0x1400>;
