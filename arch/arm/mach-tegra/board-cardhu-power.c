@@ -666,12 +666,12 @@ static struct regulator_consumer_supply fixed_reg_en_vbrtr_supply[] = {
 
 /* EN_USB1_VBUS_OC*/
 static struct regulator_consumer_supply fixed_reg_en_usb1_vbus_oc_supply[] = {
-	REGULATOR_SUPPLY("vdd_vbus_micro_usb", NULL),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
 };
 
 /*EN_USB3_VBUS_OC*/
 static struct regulator_consumer_supply fixed_reg_en_usb3_vbus_oc_supply[] = {
-	REGULATOR_SUPPLY("vdd_vbus_typea_usb", NULL),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
 };
 
 /* EN_VDDIO_VID_OC from AP GPIO VI_PCLK T00*/

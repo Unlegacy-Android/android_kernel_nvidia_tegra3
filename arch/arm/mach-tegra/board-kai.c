@@ -330,7 +330,7 @@ static struct regulator_consumer_supply smb349_vbus_supply[] = {
 };
 
 static struct regulator_consumer_supply smb349_otg_vbus_supply[] = {
-	REGULATOR_SUPPLY("usb_vbus_otg", NULL),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
 };
 
 static struct smb349_charger_platform_data smb349_charger_pdata = {
@@ -778,7 +778,6 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.op_mode = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
 		.vbus_gpio = -1,
-		.vbus_reg = "usb_vbus_otg",
 		.hot_plug = true,
 		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
@@ -804,7 +803,6 @@ static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	.op_mode	= TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
 		.vbus_gpio = -1,
-		.vbus_reg = NULL,
 		.hot_plug = false,
 		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
