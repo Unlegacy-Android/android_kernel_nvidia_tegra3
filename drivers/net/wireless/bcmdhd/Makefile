@@ -20,11 +20,11 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER                     \
 	-DWL_CFG80211_VSDB_PRIORITIZE_SCAN_REQUEST -DESCAN_RESULT_PATCH       \
 	-Idrivers/net/wireless/bcmdhd -Idrivers/net/wireless/bcmdhd/include
 
-#ifeq ($(CONFIG_BCMDHD_WIFI_CONTROL_FUNC),y)
-#DHDCFLAGS += -DCONFIG_WIFI_CONTROL_FUNC
-#else
-#DHDCFLAGS += -DCUSTOM_OOB_GPIO_NUM=2
-#endif
+ifeq ($(CONFIG_BCMDHD_WIFI_CONTROL_FUNC),y)
+DHDCFLAGS += -DCONFIG_WIFI_CONTROL_FUNC
+else
+DHDCFLAGS += -DCUSTOM_OOB_GPIO_NUM=2
+endif
 
 ifeq ($(CONFIG_BCMDHD_HW_OOB),y)
 DHDCFLAGS += -DHW_OOB -DOOB_INTR_ONLY
@@ -32,17 +32,9 @@ else
 DHDCFLAGS += -DSDIO_ISR_THREAD
 endif
 
-#ifeq ($(CONFIG_BCMDHD_CSCAN_ENABLE),y)
-#DHDCFLAGS += -DCSCAN -DPNO_SUPPORT
-#endif
-
 ifeq ($(CONFIG_BCMDHD_INSMOD_NO_FW_LOAD),y)
 DHDCFLAGS += -DENABLE_INSMOD_NO_FW_LOAD
 endif
-
-#ifeq ($(CONFIG_BCMDHD_CUSTOM_REGULATORY_DOMAIN),y)
-#DHDCFLAGS += -DENABLE_CUSTOM_REGULATORY_DOMAIN
-#endif
 
 DHDOFILES = aiutils.o bcmsdh_sdmmc_linux.o dhd_linux.o siutils.o bcmutils.o   \
 	dhd_linux_sched.o dhd_sdio.o bcmwifi_channels.o bcmevent.o hndpmu.o   \

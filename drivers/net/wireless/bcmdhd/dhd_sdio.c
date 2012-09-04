@@ -6416,6 +6416,9 @@ dhdsdio_probe(uint16 venid, uint16 devid, uint16 bus_no, uint16 slot,
 		case 0x4329:
 			DHD_INFO(("%s: found 4329 Dongle\n", __FUNCTION__));
 			break;
+		case 0x4324:
+			DHD_INFO(("%s: found 43241(4324) Dongle\n", __func__));
+			break;
 		case BCM4315_D11DUAL_ID:		/* 4315 802.11a/g id */
 		case BCM4315_D11G_ID:			/* 4315 802.11g id */
 		case BCM4315_D11A_ID:			/* 4315 802.11a id */
@@ -7287,19 +7290,6 @@ _dhdsdio_download_firmware(struct dhd_bus *bus)
 
 	/* External image takes precedence if specified */
 	if ((bus->fw_path != NULL) && (bus->fw_path[0] != '\0')) {
-
-		/* replace bcm43xx with bcm4330 or bcm4329 */
-		if ((p = strstr(bus->fw_path, "bcm43xx"))) {
-			if (bus->cl_devid == 0x4329) {
-				*(p + 5)='2';
-				*(p + 6)='9';
-			}
-			if (bus->cl_devid == 0x4330) {
-				*(p + 5)='3';
-				*(p + 6)='0';
-			}
-		}
-
 		if (dhdsdio_download_code_file(bus, bus->fw_path)) {
 			DHD_ERROR(("%s: dongle image file download failed\n", __FUNCTION__));
 #ifdef BCMEMBEDIMAGE
