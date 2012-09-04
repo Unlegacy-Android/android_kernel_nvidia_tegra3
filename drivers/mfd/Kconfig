@@ -374,6 +374,13 @@ config PMIC_DA903X
 	  individual components like LCD backlight, voltage regulators,
 	  LEDs and battery-charger under the corresponding menus.
 
+config MFD_MAX8831
+	bool "Support Maxim LED MAX8831 with I2C"
+	depends on I2C=y
+	select REGMAP_I2C
+	help
+	  Say yes here to support for Maxim LED MAX8831 with I2C.
+
 config PMIC_DA9052
 	bool
 	select MFD_CORE
