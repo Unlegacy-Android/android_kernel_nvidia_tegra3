@@ -34,7 +34,6 @@
 #include <mach/iomap.h>
 #include <mach/dc.h>
 #include <mach/fb.h>
-#include <mach/smmu.h>
 #include <mach/gpio-tegra.h>
 
 #include "board.h"
