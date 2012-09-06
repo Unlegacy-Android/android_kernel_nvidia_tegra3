@@ -57,11 +57,41 @@
 
 static struct board_info board_info;
 
+static struct balanced_throttle tj_throttle = {
+	.throt_tab_size = 10,
+	.throt_tab = {
+		{      0, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 760000, 1000 },
+		{ 760000, 1050 },
+		{1000000, 1050 },
+		{1000000, 1100 },
+	},
+};
+
 static struct nct1008_platform_data enterprise_nct1008_pdata = {
 	.supported_hwrev = true,
 	.ext_range = true,
 	.conv_rate = 0x08,
 	.offset = 8, /* 4 * 2C. Bug 844025 - 1C for device accuracies */
+
+	.shutdown_ext_limit = 90, /* C */
+	.shutdown_local_limit = 100, /* C */
+
+	/* Thermal Throttling */
+	.passive = {
+		.create_cdev = (struct thermal_cooling_device *(*)(void *))
+				balanced_throttle_register,
+		.cdev_data = &tj_throttle,
+		.trip_temp = 85000,
+		.tc1 = 0,
+		.tc1 = 1,
+		.passive_delay = 2000,
+	}
 };
 
 static struct i2c_board_info enterprise_i2c4_nct1008_board_info[] = {
@@ -70,6 +100,35 @@ static struct i2c_board_info enterprise_i2c4_nct1008_board_info[] = {
 		.platform_data = &enterprise_nct1008_pdata,
 	}
 };
+
+#ifdef CONFIG_TEGRA_EDP_LIMITS
+static void enterprise_init_edp_cdev(void)
+{
+	const struct tegra_edp_limits *cpu_edp_limits;
+	int cpu_edp_limits_size;
+	int i;
+
+	/* edp capping */
+	tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
+
+	if (cpu_edp_limits_size > MAX_THROT_TABLE_SIZE)
+		BUG();
+
+	for (i = 0; i < cpu_edp_limits_size-1; i++) {
+		enterprise_nct1008_pdata.active[i].create_cdev =
+			(struct thermal_cooling_device *(*)(void *))
+				edp_cooling_device_create;
+		enterprise_nct1008_pdata.active[i].cdev_data = (void *)i;
+		enterprise_nct1008_pdata.active[i].trip_temp =
+			cpu_edp_limits[i].temperature * 1000;
+	}
+	enterprise_nct1008_pdata.active[i].create_cdev = NULL;
+}
+#else
+static void enterprise_init_edp_cdev(void)
+{
+}
+#endif
 
 static void enterprise_nct1008_init(void)
 {
@@ -87,6 +146,8 @@ static void enterprise_nct1008_init(void)
 		gpio_free(TEGRA_GPIO_PH7);
 		return;
 	}
+
+	enterprise_init_edp_cdev();
 
 	enterprise_i2c4_nct1008_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PH7);
 	i2c_register_board_info(4, enterprise_i2c4_nct1008_board_info,
