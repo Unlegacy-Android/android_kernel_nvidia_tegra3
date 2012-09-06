@@ -734,7 +734,7 @@ static int __init enterprise_regulators_fixed_gpio_init(void)
 {
 	int ret;
 
-	if (!machine_is_tegra_enterprise())
+	if ((!machine_is_tegra_enterprise()) && (!machine_is_tai()))
 		return 0;
 
 	ret = enterprise_fixed_regulator_init();

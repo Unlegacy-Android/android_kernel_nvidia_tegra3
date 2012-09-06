@@ -259,7 +259,7 @@ static int enterprise_wifi_reset(int on)
 #ifdef CONFIG_TEGRA_PREPOWER_WIFI
 static int __init enterprise_wifi_prepower(void)
 {
-	if (!machine_is_tegra_enterprise())
+	if ((!machine_is_tegra_enterprise()) && (!machine_is_tai()))
 		return 0;
 
 	enterprise_wifi_power(1);

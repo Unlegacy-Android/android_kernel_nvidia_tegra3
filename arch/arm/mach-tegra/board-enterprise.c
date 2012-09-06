@@ -1155,6 +1155,11 @@ static const char *enterprise_dt_board_compat[] = {
 	NULL
 };
 
+static const char *tai_dt_board_compat[] = {
+	"nvidia,tai",
+	NULL
+};
+
 MACHINE_START(TEGRA_ENTERPRISE, "tegra_enterprise")
 	.atag_offset	= 0x100,
 	.soc		= &tegra_soc_desc,
@@ -1167,4 +1172,15 @@ MACHINE_START(TEGRA_ENTERPRISE, "tegra_enterprise")
 	.init_machine   = tegra_enterprise_dt_init,
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= enterprise_dt_board_compat,
+MACHINE_END
+
+MACHINE_START(TAI, "tai")
+	.boot_params    = 0x80000100,
+	.map_io         = tegra_map_common_io,
+	.reserve        = tegra_enterprise_reserve,
+	.init_early	= tegra_init_early,
+	.init_irq       = tegra_init_irq,
+	.timer          = &tegra_timer,
+	.init_machine   = tegra_enterprise_init,
+	.dt_compat	= tai_dt_board_compat,
 MACHINE_END
