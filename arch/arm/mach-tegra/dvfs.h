@@ -69,6 +69,7 @@ struct dvfs_rail {
 	struct regulator *reg;
 	int millivolts;
 	int new_millivolts;
+	int offs_millivolts;
 	bool suspended;
 	bool auto_control;
 	struct rail_stats stats;
@@ -119,6 +120,7 @@ struct cpu_cvb_dvfs {
 };
 
 extern struct dvfs_rail *tegra_cpu_rail;
+extern struct dvfs_rail *tegra_core_rail;
 
 void tegra2_init_dvfs(void);
 void tegra3_init_dvfs(void);

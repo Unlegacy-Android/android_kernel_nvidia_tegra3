@@ -188,8 +188,6 @@ struct suspend_context tegra_sctx;
 #define AWAKE_CPU_FREQ_MIN	51000
 static struct pm_qos_request awake_cpu_freq_req;
 
-struct dvfs_rail *tegra_cpu_rail;
-static struct dvfs_rail *tegra_core_rail;
 static struct clk *tegra_pclk;
 static const struct tegra_suspend_platform_data *pdata;
 static enum tegra_suspend_mode current_suspend_mode = TEGRA_SUSPEND_NONE;
@@ -1071,8 +1069,6 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 	u32 reg;
 	u32 mode;
 
-	tegra_cpu_rail = tegra_dvfs_get_rail_by_name("vdd_cpu");
-	tegra_core_rail = tegra_dvfs_get_rail_by_name("vdd_core");
 	pm_qos_add_request(&awake_cpu_freq_req, PM_QOS_CPU_FREQ_MIN,
 			   AWAKE_CPU_FREQ_MIN);
 
