@@ -436,7 +436,7 @@ static int palmas_enable_ldo(struct regulator_dev *dev)
 
 	reg |= SMPS_CTRL_MODE_ON;
 
-	palmas_smps_write(pmic->palmas, palmas_regs_info[id].ctrl_addr, reg);
+	palmas_ldo_write(pmic->palmas, palmas_regs_info[id].ctrl_addr, reg);
 
 	return 0;
 }
@@ -451,7 +451,7 @@ static int palmas_disable_ldo(struct regulator_dev *dev)
 
 	reg &= ~SMPS_CTRL_MODE_ON;
 
-	palmas_smps_write(pmic->palmas, palmas_regs_info[id].ctrl_addr, reg);
+	palmas_ldo_write(pmic->palmas, palmas_regs_info[id].ctrl_addr, reg);
 
 	return 0;
 }
@@ -606,7 +606,7 @@ static int palmas_ldo_init(struct palmas *palmas, int id,
 
 	addr = palmas_regs_info[id].ctrl_addr;
 
-	ret = palmas_smps_read(palmas, addr, &reg);
+	ret = palmas_ldo_read(palmas, addr, &reg);
 	if (ret)
 		return ret;
 
@@ -616,7 +616,7 @@ static int palmas_ldo_init(struct palmas *palmas, int id,
 	if (reg_init->mode_sleep)
 		reg |= PALMAS_LDO1_CTRL_MODE_SLEEP;
 
-	ret = palmas_smps_write(palmas, addr, reg);
+	ret = palmas_ldo_write(palmas, addr, reg);
 	if (ret)
 		return ret;
 
