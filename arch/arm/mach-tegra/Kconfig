@@ -86,6 +86,7 @@ config ARCH_TEGRA_3x_SOC
 	select NVMAP_CACHE_MAINT_BY_SET_WAYS
 	select PL310_ERRATA_727915
 	select TEGRA_LATENCY_ALLOWANCE if !TEGRA_FPGA_PLATFORM
+	select TEGRA_LATENCY_ALLOWANCE_SCALING if !TEGRA_FPGA_PLATFORM
 	help
 	  Support for NVIDIA Tegra T30 processor family, based on the
 	  ARM CortexA9MP CPU and the ARM PL310 L2 cache controller
@@ -689,6 +690,7 @@ config TEGRA_LP1_950
 	depends on ARCH_TEGRA_3x_SOC
 	help
 		Enable support for LP1 Core voltage to set to lowest
+
 config TEGRA_LATENCY_ALLOWANCE
 	bool "Allow memory clients to configure latency allowance"
 	help
@@ -698,6 +700,15 @@ config TEGRA_LATENCY_ALLOWANCE
 	  memory client can wait before it is served.
 	  Enabling this option allows memory clients configure the
 	  latency allowance as per their bandwidth requirement.
+
+config TEGRA_LATENCY_ALLOWANCE_SCALING
+	bool "Enable latency allowance scaling"
+	depends on TEGRA_LATENCY_ALLOWANCE
+	help
+	  Enables latency allowance scaling, which enables scaling
+	  programmed latency allowance values based on fifo threshold levels
+	  set for for display and vi hardware.
+
 endif
 
 config TEGRA_DC_USE_HW_BPP
