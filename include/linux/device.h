@@ -35,6 +35,7 @@ struct subsys_private;
 struct bus_type;
 struct device_node;
 struct iommu_ops;
+struct dma_iommu_mapping;
 
 struct bus_attribute {
 	struct attribute	attr;
@@ -106,7 +107,9 @@ struct bus_type {
 	const struct dev_pm_ops *pm;
 
 	struct iommu_ops *iommu_ops;
-
+#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
+	struct dma_iommu_mapping *map;
+#endif
 	struct subsys_private *p;
 };
 
@@ -661,6 +664,10 @@ struct device {
 
 	struct dma_coherent_mem	*dma_mem; /* internal for coherent mem
 					     override */
+#ifdef CONFIG_CMA
+	struct cma *cma_area;		/* contiguous memory area for dma
+					   allocations */
+#endif
 	/* arch specific additions */
 	struct dev_archdata	archdata;
 

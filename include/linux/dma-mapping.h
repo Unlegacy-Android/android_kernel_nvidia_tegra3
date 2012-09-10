@@ -18,10 +18,20 @@ struct dma_map_ops {
 	int (*mmap)(struct device *, struct vm_area_struct *,
 			  void *, dma_addr_t, size_t, struct dma_attrs *attrs);
 
+	int (*get_sgtable)(struct device *dev, struct sg_table *sgt, void *,
+			   dma_addr_t, size_t, struct dma_attrs *attrs);
+
 	dma_addr_t (*map_page)(struct device *dev, struct page *page,
 			       unsigned long offset, size_t size,
 			       enum dma_data_direction dir,
 			       struct dma_attrs *attrs);
+
+	dma_addr_t (*map_page_at)(struct device *dev, struct page *page,
+				  dma_addr_t dma_handle,
+				  unsigned long offset, size_t size,
+				  enum dma_data_direction dir,
+				  struct dma_attrs *attrs);
+
 	void (*unmap_page)(struct device *dev, dma_addr_t dma_handle,
 			   size_t size, enum dma_data_direction dir,
 			   struct dma_attrs *attrs);
@@ -50,6 +60,13 @@ struct dma_map_ops {
 #ifdef ARCH_HAS_DMA_GET_REQUIRED_MASK
 	u64 (*get_required_mask)(struct device *dev);
 #endif
+	dma_addr_t (*iova_alloc)(struct device *dev, size_t size);
+	dma_addr_t (*iova_alloc_at)(struct device *dev, dma_addr_t dma_addr,
+				    size_t size);
+	void (*iova_free)(struct device *dev, dma_addr_t addr, size_t size);
+	size_t (*iova_get_free_total)(struct device *dev);
+	size_t (*iova_get_free_max)(struct device *dev);
+
 	int is_phys;
 };
 
