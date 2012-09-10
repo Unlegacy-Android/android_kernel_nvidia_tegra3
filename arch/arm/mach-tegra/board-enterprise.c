@@ -431,6 +431,7 @@ static struct pn544_i2c_platform_data nfc_pdata = {
 static struct i2c_board_info __initdata max98088_board_info = {
 	I2C_BOARD_INFO("max98088", 0x10),
 	.platform_data = &enterprise_max98088_pdata,
+	.irq = TEGRA_GPIO_HP_DET,
 };
 
 static struct i2c_board_info __initdata enterprise_codec_aic326x_info = {
