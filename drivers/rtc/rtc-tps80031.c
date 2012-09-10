@@ -222,60 +222,6 @@ static int tps80031_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	return err;
 }
 
-static int tps80031_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
-{
-	struct tps80031_rtc *rtc = dev_get_drvdata(dev);
-	unsigned long seconds;
-	u8 buff[6];
-	int err;
-	struct rtc_time tm;
-
-	if (rtc->irq == -1)
-		return -EIO;
-
-	rtc_tm_to_time(&alrm->time, &seconds);
-	tps80031_rtc_read_time(dev, &tm);
-	rtc_tm_to_time(&tm, &rtc->epoch_start);
-
-	if (WARN_ON(alrm->enabled && (seconds < rtc->epoch_start))) {
-		dev_err(dev->parent, "can't set alarm to requested time\n");
-		return -EINVAL;
-	}
-
-	buff[0] = alrm->time.tm_sec;
-	buff[1] = alrm->time.tm_min;
-	buff[2] = alrm->time.tm_hour;
-	buff[3] = alrm->time.tm_mday;
-	buff[4] = alrm->time.tm_mon + 1;
-	buff[5] = alrm->time.tm_year % RTC_YEAR_OFFSET;
-	convert_decimal_to_bcd(buff, sizeof(buff));
-	err = tps80031_write_regs(dev, RTC_ALARM, sizeof(buff), buff);
-	if (err)
-		dev_err(dev->parent, "unable to program alarm\n");
-
-	return err;
-}
-
-static int tps80031_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
-{
-	u8 buff[6];
-	int err;
-
-	err = tps80031_read_regs(dev, RTC_ALARM, sizeof(buff), buff);
-	if (err)
-		return err;
-	convert_bcd_to_decimal(buff, sizeof(buff));
-
-	alrm->time.tm_sec = buff[0];
-	alrm->time.tm_min = buff[1];
-	alrm->time.tm_hour = buff[2];
-	alrm->time.tm_mday = buff[3];
-	alrm->time.tm_mon = buff[4] - 1;
-	alrm->time.tm_year = buff[5] + RTC_YEAR_OFFSET;
-
-	return 0;
-}
-
 static int tps80031_rtc_alarm_irq_enable(struct device *dev,
 					 unsigned int enable)
 {
@@ -310,6 +256,62 @@ static int tps80031_rtc_alarm_irq_enable(struct device *dev,
 		} else
 			rtc->alarm_irq_enabled = 0;
 	}
+	return 0;
+}
+
+static int tps80031_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
+{
+	struct tps80031_rtc *rtc = dev_get_drvdata(dev);
+	unsigned long seconds;
+	u8 buff[6];
+	int err;
+	struct rtc_time tm;
+
+	if (rtc->irq == -1)
+		return -EIO;
+
+	rtc_tm_to_time(&alrm->time, &seconds);
+	tps80031_rtc_read_time(dev, &tm);
+	rtc_tm_to_time(&tm, &rtc->epoch_start);
+
+	if (WARN_ON(alrm->enabled && (seconds < rtc->epoch_start))) {
+		dev_err(dev->parent, "can't set alarm to requested time\n");
+		return -EINVAL;
+	}
+
+	buff[0] = alrm->time.tm_sec;
+	buff[1] = alrm->time.tm_min;
+	buff[2] = alrm->time.tm_hour;
+	buff[3] = alrm->time.tm_mday;
+	buff[4] = alrm->time.tm_mon + 1;
+	buff[5] = alrm->time.tm_year % RTC_YEAR_OFFSET;
+	convert_decimal_to_bcd(buff, sizeof(buff));
+	err = tps80031_write_regs(dev, RTC_ALARM, sizeof(buff), buff);
+	if (err)
+		dev_err(dev->parent, "unable to program alarm\n");
+	else
+		err = tps80031_rtc_alarm_irq_enable(dev, alrm->enabled);
+
+	return err;
+}
+
+static int tps80031_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
+{
+	u8 buff[6];
+	int err;
+
+	err = tps80031_read_regs(dev, RTC_ALARM, sizeof(buff), buff);
+	if (err)
+		return err;
+	convert_bcd_to_decimal(buff, sizeof(buff));
+
+	alrm->time.tm_sec = buff[0];
+	alrm->time.tm_min = buff[1];
+	alrm->time.tm_hour = buff[2];
+	alrm->time.tm_mday = buff[3];
+	alrm->time.tm_mon = buff[4] - 1;
+	alrm->time.tm_year = buff[5] + RTC_YEAR_OFFSET;
+
 	return 0;
 }
 
@@ -387,6 +389,7 @@ static int __devinit tps80031_rtc_probe(struct platform_device *pdev)
 			dev_warn(&pdev->dev, "could not get msecure GPIO\n");
 	}
 
+	device_init_wakeup(&pdev->dev, 1);
 	rtc->rtc = rtc_device_register(pdev->name, &pdev->dev,
 				       &tps80031_rtc_ops, THIS_MODULE);
 	dev_set_drvdata(&pdev->dev, rtc);
@@ -452,7 +455,6 @@ static int __devinit tps80031_rtc_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "request IRQ:%d fail\n", rtc->irq);
 			rtc->irq = -1;
 		} else {
-			device_init_wakeup(&pdev->dev, 1);
 			enable_irq_wake(rtc->irq);
 		}
 	}
