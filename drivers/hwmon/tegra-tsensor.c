@@ -1994,6 +1994,7 @@ static int __devinit tegra_tsensor_probe(struct platform_device *pdev)
 
 	data->thz = thermal_zone_device_register("tsensor",
 					num_trips,
+					0x0,
 					data,
 					&tsensor_ops,
 					tsensor_data->passive.tc1,
