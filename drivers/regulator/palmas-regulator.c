@@ -813,6 +813,46 @@ static int palmas_extreg_init(struct palmas *palmas, int id,
 	return 0;
 }
 
+static void palmas_enable_ldo8_track(struct palmas *palmas)
+{
+	unsigned int reg;
+	unsigned int addr;
+	int ret;
+
+	addr = palmas_regs_info[PALMAS_REG_LDO8].ctrl_addr;
+
+	ret = palmas_ldo_read(palmas, addr, &reg);
+	if (ret) {
+		dev_err(palmas->dev, "Error in reading ldo8 control reg\n");
+		return;
+	}
+
+	reg |= PALMAS_LDO8_CTRL_LDO_TRACKING_EN;
+	ret = palmas_ldo_write(palmas, addr, reg);
+	if (ret < 0) {
+		dev_err(palmas->dev, "Error in enabling tracking mode\n");
+		return;
+	}
+	/*
+	 * When SMPS4&5 is set to off and LDO8 tracking is enabled, the LDO8
+	 * output is defined by the LDO8_VOLTAGE.VSEL register divided by two,
+	 * and can be set from 0.45 to 1.65 V.
+	 */
+	addr = palmas_regs_info[PALMAS_REG_LDO8].vsel_addr;
+	ret = palmas_ldo_read(palmas, addr, &reg);
+	if (ret) {
+		dev_err(palmas->dev, "Error in reading ldo8 voltage reg\n");
+		return;
+	}
+
+	reg = (reg << 1) & PALMAS_LDO8_VOLTAGE_VSEL_MASK;
+	ret = palmas_ldo_write(palmas, addr, reg);
+	if (ret < 0)
+		dev_err(palmas->dev, "Error in setting ldo8 voltage reg\n");
+
+	return;
+}
+
 static __devinit int palmas_probe(struct platform_device *pdev)
 {
 	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
@@ -989,6 +1029,10 @@ static __devinit int palmas_probe(struct platform_device *pdev)
 			}
 		}
 	}
+
+	/* Check if LDO8 is in tracking mode or not */
+	if (pdata->enable_ldo8_tracking)
+		palmas_enable_ldo8_track(palmas);
 
 	return 0;
 
