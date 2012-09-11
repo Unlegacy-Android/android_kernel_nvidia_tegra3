@@ -8348,9 +8348,6 @@ static s32 __wl_cfg80211_down(struct wl_priv *wl)
 		p2p_net->flags &= ~IFF_UP;
 	}
 #endif /* WL_ENABLE_P2P_IF */
-
-	spin_unlock_irqrestore(&wl->cfgdrv_lock, flags);
-
 	DNGL_FUNC(dhd_cfg80211_down, (wl));
 	wl_flush_eq(wl);
 	wl_link_down(wl);
