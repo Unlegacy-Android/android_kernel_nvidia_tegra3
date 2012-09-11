@@ -15,6 +15,13 @@
 
 #include <linux/types.h>
 
+#define MXT224_I2C_ADDR1        0x4A
+#define MXT224_I2C_ADDR2        0x4B
+#define MXT1386_I2C_ADDR1       0x4C
+#define MXT1386_I2C_ADDR2       0x4D
+#define MXT1386_I2C_ADDR3       0x5A
+#define MXT1386_I2C_ADDR4       0x5B
+
 /* Orient */
 #define MXT_NORMAL		0x0
 #define MXT_DIAGONAL		0x1

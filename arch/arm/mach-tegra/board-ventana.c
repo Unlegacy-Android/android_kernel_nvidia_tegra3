@@ -408,21 +408,21 @@ static struct platform_device *ventana_devices[] __initdata = {
 };
 
 
+#define MXT_CFG_NAME            "Android_Ventana_2012-01-31.cfg"
+static u8 read_chg(void)
+{
+	return gpio_get_value(TEGRA_GPIO_PH4);
+}
+
 static struct mxt_platform_data atmel_mxt_info = {
-	.x_line		= 27,
-	.y_line		= 42,
-	.x_size		= 768,
-	.y_size		= 1366,
-	.blen		= 0x20,
-	.threshold	= 0x3C,
-	.voltage	= 3300000,
-	.orient		= MXT_ROTATED_90,
-	.irqflags	= IRQF_TRIGGER_FALLING,
+	.irqflags       = IRQF_TRIGGER_FALLING,
+	.read_chg       = &read_chg,
+	.mxt_cfg_name	= MXT_CFG_NAME,
 };
 
 static struct i2c_board_info __initdata i2c_info[] = {
 	{
-	 I2C_BOARD_INFO("atmel_mxt_ts", 0x5A),
+	 I2C_BOARD_INFO("atmel_mxt_ts", MXT1386_I2C_ADDR3),
 	 .platform_data = &atmel_mxt_info,
 	 },
 };
