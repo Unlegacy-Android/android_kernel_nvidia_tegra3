@@ -64,9 +64,6 @@ const struct cpumask *const tegra_cpu_init_mask = to_cpumask(tegra_cpu_init_bits
 #define CPU_CLOCK(cpu)	(0x1<<(8+cpu))
 #define CPU_RESET(cpu)	(0x1111ul<<(cpu))
 
-#define CPU_CLOCK(cpu)	(0x1<<(8+cpu))
-#define CPU_RESET(cpu)	(0x1111ul<<(cpu))
-
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 #define CLK_RST_CONTROLLER_CLK_CPU_CMPLX_CLR \
 	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x34c)
