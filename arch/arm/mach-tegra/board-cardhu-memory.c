@@ -18,6 +18,7 @@
 
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/platform_data/tegra_emc.h>
 
 #include <mach/hardware.h>
 
@@ -25,8 +26,9 @@
 #include "board-cardhu.h"
 #include "tegra3_emc.h"
 #include "fuse.h"
+#include "devices.h"
 
-static const struct tegra_emc_table cardhu_emc_tables_h5tc2g[] = {
+static const struct tegra30_emc_table cardhu_emc_tables_h5tc2g[] = {
 	{
 		0x30,		/* Rev 3.0 */
 		27000,		/* SDRAM frquency */
@@ -614,7 +616,7 @@ static const struct tegra_emc_table cardhu_emc_tables_h5tc2g[] = {
 	},
 };
 
-static const struct tegra_emc_table cardhu_emc_tables_h5tc2g_a2[] = {
+static const struct tegra30_emc_table cardhu_emc_tables_h5tc2g_a2[] = {
 	{
 		0x32,       /* Rev 3.2 */
 		25500,      /* SDRAM frequency */
@@ -2057,7 +2059,7 @@ static const struct tegra_emc_table cardhu_emc_tables_h5tc2g_a2[] = {
 	},
 };
 
-static const struct tegra_emc_table cardhu_emc_tables_h5tc2g_a2_2GB1R[] = {
+static const struct tegra30_emc_table cardhu_emc_tables_h5tc2g_a2_2GB1R[] = {
 	{
 		0x32,       /* Rev 3.2 */
 		51000,      /* SDRAM frequency */
@@ -3020,7 +3022,7 @@ static const struct tegra_emc_table cardhu_emc_tables_h5tc2g_a2_2GB1R[] = {
 	},
 };
 
-static const struct tegra_emc_table cardhu_emc_tables_k4b4g0846b_hyk0[] = {
+static const struct tegra30_emc_table cardhu_emc_tables_k4b4g0846b_hyk0[] = {
 	{
 		0x32,       /* Rev 3.2 */
 		25500,      /* SDRAM frequency */
@@ -3983,7 +3985,7 @@ static const struct tegra_emc_table cardhu_emc_tables_k4b4g0846b_hyk0[] = {
 	},
 };
 
-static const struct tegra_emc_table cardhu_emc_tables_k4p8g304eb[] = {
+static const struct tegra30_emc_table cardhu_emc_tables_k4p8g304eb[] = {
 	{
 		0x32,       /* Rev 3.2 */
 		12750,      /* SDRAM frequency */
@@ -4946,7 +4948,7 @@ static const struct tegra_emc_table cardhu_emc_tables_k4p8g304eb[] = {
 	},
 };
 
-static const struct tegra_emc_table cardhu_emc_tables_edb8132b2ma[] = {
+static const struct tegra30_emc_table cardhu_emc_tables_edb8132b2ma[] = {
 	{
 		0x32,       /* Rev 3.2 */
 		25500,      /* SDRAM frequency */
@@ -5549,7 +5551,7 @@ static const struct tegra_emc_table cardhu_emc_tables_edb8132b2ma[] = {
 	},
 };
 
-static const struct tegra_emc_table cardhu_emc_tables_h5tc2g_pm311[] = {
+static const struct tegra30_emc_table cardhu_emc_tables_h5tc2g_pm311[] = {
 	{
 		0x32,       /* Rev 3.2 */
 		51000,      /* SDRAM frequency */
@@ -6152,7 +6154,7 @@ static const struct tegra_emc_table cardhu_emc_tables_h5tc2g_pm311[] = {
 	},
 };
 
-static const struct tegra_emc_table cardhu_emc_tables_h5tc2g_a2_2g2r[] = {
+static const struct tegra30_emc_table cardhu_emc_tables_h5tc2g_a2_2g2r[] = {
 	{
 		0x32,       /* Rev 3.2 */
 		25500,      /* SDRAM frequency */
@@ -6794,9 +6796,58 @@ static const u32 pm269_bit_swap_map[32] = {
 	[31] = 0x1 << 29,
 };
 
+static struct tegra30_emc_pdata cardhu_emc_chip_edb8132b2ma = {
+	.description = "edb8132b2ma",
+	.tables = (struct tegra30_emc_table *)cardhu_emc_tables_edb8132b2ma,
+	.num_tables = ARRAY_SIZE(cardhu_emc_tables_edb8132b2ma)
+};
+
+static struct tegra30_emc_pdata cardhu_emc_chip_k4p8g304eb = {
+	.description = "k4p8g304eb",
+	.tables = (struct tegra30_emc_table *)cardhu_emc_tables_k4p8g304eb,
+	.num_tables = ARRAY_SIZE(cardhu_emc_tables_k4p8g304eb)
+};
+
+static struct tegra30_emc_pdata cardhu_emc_chip_h5tc2g_pm311 = {
+	.description = "h5tc2g_pm311",
+	.tables = (struct tegra30_emc_table *)cardhu_emc_tables_h5tc2g_pm311,
+	.num_tables = ARRAY_SIZE(cardhu_emc_tables_h5tc2g_pm311)
+};
+
+static struct tegra30_emc_pdata cardhu_emc_chip_h5tc2g = {
+	.description = "h5tc2g",
+	.tables = (struct tegra30_emc_table *)cardhu_emc_tables_h5tc2g,
+	.num_tables = ARRAY_SIZE(cardhu_emc_tables_h5tc2g)
+};
+
+static struct tegra30_emc_pdata cardhu_emc_chip_h5tc2g_a2 = {
+	.description = "h5tc2g_a2",
+	.tables = (struct tegra30_emc_table *)cardhu_emc_tables_h5tc2g_a2,
+	.num_tables = ARRAY_SIZE(cardhu_emc_tables_h5tc2g_a2)
+};
+
+static struct tegra30_emc_pdata cardhu_emc_chip_k4b4g0846b_hyk0 = {
+	.description = "k4b4g0846b_hyk0",
+	.tables = (struct tegra30_emc_table *)cardhu_emc_tables_k4b4g0846b_hyk0,
+	.num_tables = ARRAY_SIZE(cardhu_emc_tables_k4b4g0846b_hyk0)
+};
+
+static struct tegra30_emc_pdata cardhu_emc_chip_h5tc2g_a2_2GB1R = {
+	.description = "h5tc2g_a2_2GB1R",
+	.tables = (struct tegra30_emc_table *)cardhu_emc_tables_h5tc2g_a2_2GB1R,
+	.num_tables = ARRAY_SIZE(cardhu_emc_tables_h5tc2g_a2_2GB1R)
+};
+
+static struct tegra30_emc_pdata cardhu_emc_chip_h5tc2g_a2_2g2r = {
+	.description = "h5tc2g_a2_2g2r",
+	.tables = (struct tegra30_emc_table *)cardhu_emc_tables_h5tc2g_a2_2g2r,
+	.num_tables = ARRAY_SIZE(cardhu_emc_tables_h5tc2g_a2_2g2r)
+};
+
 int cardhu_emc_init(void)
 {
 	struct board_info board;
+	struct tegra30_emc_pdata *emc_platdata = NULL;
 
 	tegra_get_board_info(&board);
 
@@ -6807,39 +6858,36 @@ int cardhu_emc_init(void)
 		/* fall through */
 	case BOARD_E1257:
 		if (MEMORY_TYPE(board.sku) == SKU_MEMORY_ELPIDA)
-			tegra_init_emc(cardhu_emc_tables_edb8132b2ma,
-				ARRAY_SIZE(cardhu_emc_tables_edb8132b2ma));
+			emc_platdata = &cardhu_emc_chip_edb8132b2ma;
 		else
-			tegra_init_emc(cardhu_emc_tables_k4p8g304eb,
-				ARRAY_SIZE(cardhu_emc_tables_k4p8g304eb));
+			emc_platdata = &cardhu_emc_chip_k4p8g304eb;
 		break;
 
 	case BOARD_PM305:
 		break;
 	case BOARD_PM311:
-		tegra_init_emc(cardhu_emc_tables_h5tc2g_pm311,
-			ARRAY_SIZE(cardhu_emc_tables_h5tc2g_pm311));
+		emc_platdata = &cardhu_emc_chip_h5tc2g_pm311;
 		break;
 	default:
 		if (tegra_revision == TEGRA_REVISION_A01)
-			tegra_init_emc(cardhu_emc_tables_h5tc2g,
-				ARRAY_SIZE(cardhu_emc_tables_h5tc2g));
+			emc_platdata = &cardhu_emc_chip_h5tc2g;
 		else if (MEMORY_TYPE(board.sku) == SKU_MEMORY_CARDHU_1GB_1R)
-			tegra_init_emc(cardhu_emc_tables_h5tc2g_a2,
-				ARRAY_SIZE(cardhu_emc_tables_h5tc2g_a2));
+			emc_platdata = &cardhu_emc_chip_h5tc2g_a2;
 		else if (MEMORY_TYPE(board.sku) ==
 				SKU_MEMORY_CARDHU_2GB_1R_HYK0)
-			tegra_init_emc(cardhu_emc_tables_k4b4g0846b_hyk0,
-				ARRAY_SIZE(cardhu_emc_tables_k4b4g0846b_hyk0));
+			emc_platdata = &cardhu_emc_chip_k4b4g0846b_hyk0;
 		else if (MEMORY_TYPE(board.sku) ==
 				SKU_MEMORY_CARDHU_2GB_1R_HYNIX)
-			tegra_init_emc(cardhu_emc_tables_h5tc2g_a2_2GB1R,
-				ARRAY_SIZE(cardhu_emc_tables_h5tc2g_a2_2GB1R));
+			emc_platdata = &cardhu_emc_chip_h5tc2g_a2_2GB1R;
 		else if (MEMORY_TYPE(board.sku) == SKU_MEMORY_CARDHU_2GB_2R)
-			tegra_init_emc(cardhu_emc_tables_h5tc2g_a2_2g2r,
-				ARRAY_SIZE(cardhu_emc_tables_h5tc2g_a2_2g2r));
+			emc_platdata = &cardhu_emc_chip_h5tc2g_a2_2g2r;
 		break;
 	}
+
+	tegra_emc_device.dev.platform_data = emc_platdata;
+	platform_device_register(&tegra_emc_device);
+
+	tegra30_init_emc();
 
 	return 0;
 }

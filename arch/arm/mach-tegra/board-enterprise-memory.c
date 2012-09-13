@@ -18,13 +18,14 @@
 
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/platform_data/tegra_emc.h>
 
 #include "board-enterprise.h"
 #include "tegra3_emc.h"
 #include "board.h"
+#include "devices.h"
 
-
-static const struct tegra_emc_table enterprise_emc_tables_kmmll0_a02[] = {
+static const struct tegra30_emc_table enterprise_emc_tables_kmmll0_a02[] = {
 	{
 		0x32,       /* Rev 3.2 */
 		12750,      /* SDRAM frequency */
@@ -747,7 +748,7 @@ static const struct tegra_emc_table enterprise_emc_tables_kmmll0_a02[] = {
 	},
 };
 
-static const struct tegra_emc_table enterprise_emc_tables_kmkts0_a03[] = {
+static const struct tegra30_emc_table enterprise_emc_tables_kmkts0_a03[] = {
 	{
 		0x32,       /* Rev 3.2 */
 		12750,      /* SDRAM frequency */
@@ -1470,19 +1471,34 @@ static const struct tegra_emc_table enterprise_emc_tables_kmkts0_a03[] = {
 	},
 };
 
+static struct tegra30_emc_pdata enterprise_emc_chip_kmmll0_a02 = {
+	.description = "kmmll0_a02",
+	.tables = (struct tegra30_emc_table *)enterprise_emc_tables_kmmll0_a02,
+	.num_tables = ARRAY_SIZE(enterprise_emc_tables_kmmll0_a02)
+};
+
+static struct tegra30_emc_pdata enterprise_emc_chip_kmkts0_a03 = {
+	.description = "kmkts0_a03",
+	.tables = (struct tegra30_emc_table *)enterprise_emc_tables_kmkts0_a03,
+	.num_tables = ARRAY_SIZE(enterprise_emc_tables_kmkts0_a03)
+};
+
 int enterprise_emc_init(void)
 {
 	struct board_info board_info;
+	struct tegra30_emc_pdata *emc_platdata;
 
 	tegra_get_board_info(&board_info);
 
 	if (board_info.fab <= BOARD_FAB_A02)
-		tegra_init_emc(enterprise_emc_tables_kmmll0_a02,
-			       ARRAY_SIZE(enterprise_emc_tables_kmmll0_a02));
+		emc_platdata = &enterprise_emc_chip_kmmll0_a02;
 	else
-		tegra_init_emc(enterprise_emc_tables_kmkts0_a03,
-			       ARRAY_SIZE(enterprise_emc_tables_kmkts0_a03));
+		emc_platdata = &enterprise_emc_chip_kmkts0_a03;
 
+	tegra_emc_device.dev.platform_data = emc_platdata;
+	platform_device_register(&tegra_emc_device);
+
+	tegra30_init_emc();
 
 	return 0;
 }
