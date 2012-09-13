@@ -1095,34 +1095,22 @@ static int __init cam_tca6416_init(void)
 #endif
 
 /* MPU board file definition	*/
-#if (MPU_GYRO_TYPE == MPU_TYPE_MPU3050)
-#define MPU_GYRO_NAME		"mpu3050"
-#endif
-#if (MPU_GYRO_TYPE == MPU_TYPE_MPU6050)
-#define MPU_GYRO_NAME		"mpu6050"
-#endif
 static struct mpu_platform_data mpu_gyro_data = {
 	.int_config	= 0x10,
 	.level_shifter	= 0,
 	.orientation	= MPU_GYRO_ORIENTATION,	/* Located in board_[platformname].h	*/
+	.sec_slave_type	= SECONDARY_SLAVE_TYPE_ACCEL,
+	.sec_slave_id	= ACCEL_ID_KXTF9,
+	.secondary_i2c_addr	= MPU_ACCEL_ADDR,
+	.secondary_read_reg	= 0x06,
+	.secondary_orientation	= MPU_ACCEL_ORIENTATION,
+	.key		= {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
+			   0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
 };
 
-#if (MPU_GYRO_TYPE == MPU_TYPE_MPU3050)
-static struct ext_slave_platform_data mpu_accel_data = {
-	.address	= MPU_ACCEL_ADDR,
-	.irq		= 0,
-	.adapt_num	= MPU_ACCEL_BUS_NUM,
-	.bus		= EXT_SLAVE_BUS_SECONDARY,
-	.orientation	= MPU_ACCEL_ORIENTATION,	/* Located in board_[platformname].h	*/
-};
-#endif
-
-static struct ext_slave_platform_data mpu_compass_data = {
-	.address	= MPU_COMPASS_ADDR,
-	.irq		= 0,
-	.adapt_num	= MPU_COMPASS_BUS_NUM,
-	.bus		= EXT_SLAVE_BUS_PRIMARY,
-	.orientation	= MPU_COMPASS_ORIENTATION,	/* Located in board_[platformname].h	*/
+static struct mpu_platform_data mpu_compass_data = {
+	.orientation    = MPU_COMPASS_ORIENTATION,
+	.sec_slave_type = SECONDARY_SLAVE_TYPE_NONE,
 };
 
 static struct i2c_board_info __initdata inv_mpu_i2c2_board_info[] = {
@@ -1130,12 +1118,9 @@ static struct i2c_board_info __initdata inv_mpu_i2c2_board_info[] = {
 		I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
 		.platform_data = &mpu_gyro_data,
 	},
-#if (MPU_GYRO_TYPE == MPU_TYPE_MPU3050)
 	{
 		I2C_BOARD_INFO(MPU_ACCEL_NAME, MPU_ACCEL_ADDR),
-		.platform_data = &mpu_accel_data,
 	},
-#endif
 	{
 		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
 		.platform_data = &mpu_compass_data,
@@ -1149,7 +1134,6 @@ static void mpuirq_init(void)
 
 	pr_info("*** MPU START *** mpuirq_init...\n");
 
-#if (MPU_GYRO_TYPE == MPU_TYPE_MPU3050)
 #if	MPU_ACCEL_IRQ_GPIO
 	/* ACCEL-IRQ assignment */
 	ret = gpio_request(MPU_ACCEL_IRQ_GPIO, MPU_ACCEL_NAME);
@@ -1164,7 +1148,6 @@ static void mpuirq_init(void)
 		gpio_free(MPU_ACCEL_IRQ_GPIO);
 		return;
 	}
-#endif
 #endif
 
 	/* MPU-IRQ assignment */
@@ -1183,12 +1166,10 @@ static void mpuirq_init(void)
 	pr_info("*** MPU END *** mpuirq_init...\n");
 
 	inv_mpu_i2c2_board_info[i++].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
-#if (MPU_GYRO_TYPE == MPU_TYPE_MPU3050)
 #if MPU_ACCEL_IRQ_GPIO
 	inv_mpu_i2c2_board_info[i].irq = gpio_to_irq(MPU_ACCEL_IRQ_GPIO);
 #endif
 	i++;
-#endif
 #if MPU_COMPASS_IRQ_GPIO
 	inv_mpu_i2c2_board_info[i++].irq = gpio_to_irq(MPU_COMPAS_IRQ_GPIO);
 #endif
