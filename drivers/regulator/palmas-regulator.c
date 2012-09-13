@@ -23,6 +23,11 @@
 #include <linux/regmap.h>
 #include <linux/mfd/palmas.h>
 
+#define PALMA_SMPS10_VSEL	BIT(3)
+#define PALMA_SMPS10_BOOST_EN	BIT(2)
+#define PALMA_SMPS10_BYPASS_EN	BIT(1)
+#define PALMA_SMPS10_SWITCH_EN	BIT(0)
+
 struct regs_info {
 	char	*name;
 	u8	vsel_addr;
@@ -466,6 +471,127 @@ static struct regulator_ops palmas_ops_smps = {
 	.list_voltage		= palmas_list_voltage_smps,
 };
 
+static int palmas_is_enabled_smps10(struct regulator_dev *dev)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int id = rdev_get_id(dev);
+	unsigned int reg;
+	int ret;
+
+	ret = palmas_smps_read(pmic->palmas, PALMAS_SMPS10_STATUS, &reg);
+	if (ret < 0) {
+		dev_err(pmic->palmas->dev,
+			"Error in reading smps10 status reg\n");
+		return ret;
+	}
+
+	if (reg & PALMA_SMPS10_SWITCH_EN)
+		return 1;
+
+	return 0;
+}
+
+static int palmas_enable_smps10(struct regulator_dev *dev)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int id = rdev_get_id(dev);
+	unsigned int reg;
+	int ret;
+
+	ret = palmas_smps_read(pmic->palmas,
+				palmas_regs_info[id].ctrl_addr, &reg);
+	if (ret < 0) {
+		dev_err(pmic->palmas->dev,
+			"Error in reading smps10 control reg\n");
+		return ret;
+	}
+
+	reg |= PALMA_SMPS10_SWITCH_EN;
+	ret = palmas_smps_write(pmic->palmas,
+				palmas_regs_info[id].ctrl_addr, reg);
+	if (ret < 0)
+		dev_err(pmic->palmas->dev,
+			"Error in writing smps10 control reg\n");
+	return ret;
+}
+
+static int palmas_disable_smps10(struct regulator_dev *dev)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int id = rdev_get_id(dev);
+	unsigned int reg;
+	int ret;
+
+	ret = palmas_smps_read(pmic->palmas,
+				palmas_regs_info[id].ctrl_addr, &reg);
+	if (ret < 0) {
+		dev_err(pmic->palmas->dev,
+			"Error in reading smps10 control reg\n");
+		return ret;
+	}
+
+	reg &= ~PALMA_SMPS10_SWITCH_EN;
+	ret = palmas_smps_write(pmic->palmas,
+				palmas_regs_info[id].ctrl_addr, reg);
+	if (ret < 0)
+		dev_err(pmic->palmas->dev,
+			"Error in writing smps10 control reg\n");
+	return ret;
+}
+
+static int palmas_get_voltage_smps10_sel(struct regulator_dev *dev)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int id = rdev_get_id(dev);
+	unsigned int reg;
+	int ret;
+
+	ret = palmas_smps_read(pmic->palmas,
+				palmas_regs_info[id].ctrl_addr, &reg);
+	if (ret < 0) {
+		dev_err(pmic->palmas->dev,
+			"Error in reading smps10 control reg\n");
+		return ret;
+	}
+
+	if (reg & PALMA_SMPS10_VSEL)
+		return 1;
+
+	return 0;
+}
+
+static int palmas_set_voltage_smps10_sel(struct regulator_dev *dev,
+		unsigned selector)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int id = rdev_get_id(dev);
+	unsigned int reg;
+	int ret;
+
+	ret = palmas_smps_read(pmic->palmas,
+				palmas_regs_info[id].ctrl_addr, &reg);
+	if (ret < 0) {
+		dev_err(pmic->palmas->dev,
+			"Error in reading smps10 control reg\n");
+		return ret;
+	}
+
+	if (selector)
+		reg |= PALMA_SMPS10_VSEL;
+	else
+		reg &= ~PALMA_SMPS10_VSEL;
+
+	/* Enable boost mode */
+	reg |= PALMA_SMPS10_BOOST_EN;
+
+	ret = palmas_smps_write(pmic->palmas,
+				palmas_regs_info[id].ctrl_addr, reg);
+	if (ret < 0)
+		dev_err(pmic->palmas->dev,
+			"Error in writing smps10 control reg\n");
+	return ret;
+}
+
 static int palmas_list_voltage_smps10(struct regulator_dev *dev,
 					unsigned selector)
 {
@@ -473,9 +599,11 @@ static int palmas_list_voltage_smps10(struct regulator_dev *dev,
 }
 
 static struct regulator_ops palmas_ops_smps10 = {
-	.is_enabled		= palmas_is_enabled_smps,
-	.enable			= palmas_enable_smps,
-	.disable		= palmas_disable_smps,
+	.is_enabled		= palmas_is_enabled_smps10,
+	.enable			= palmas_enable_smps10,
+	.disable		= palmas_disable_smps10,
+	.get_voltage_sel	= palmas_get_voltage_smps10_sel,
+	.set_voltage_sel	= palmas_set_voltage_smps10_sel,
 	.list_voltage		= palmas_list_voltage_smps10,
 };
 
