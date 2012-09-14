@@ -18,7 +18,18 @@
 
 #define to_devfreq(DEV)	container_of((DEV), struct devfreq, dev)
 
+#if defined(CONFIG_PM_DEVFREQ)
+
 /* Caution: devfreq->lock must be locked before calling update_devfreq */
 extern int update_devfreq(struct devfreq *devfreq);
+
+#else /* !CONFIG_PM_DEVFREQ */
+
+static inline int update_devfreq(struct devfreq *devfreq)
+{
+	return -EINVAL;
+}
+
+#endif /* !CONFIG_PM_DEVFREQ */
 
 #endif /* _GOVERNOR_H */
