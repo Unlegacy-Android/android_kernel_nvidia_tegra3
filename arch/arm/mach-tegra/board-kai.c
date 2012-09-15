@@ -43,6 +43,7 @@
 #include <linux/max17048_battery.h>
 #include <linux/leds.h>
 #include <linux/i2c/at24.h>
+#include <linux/of_platform.h>
 
 #include <asm/hardware/gic.h>
 
@@ -905,6 +906,14 @@ static void __init kai_ramconsole_reserve(unsigned long size)
 	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
+static void __init tegra_kai_dt_init(void)
+{
+	tegra_kai_init();
+
+	of_platform_populate(NULL,
+		of_default_bus_match_table, NULL, NULL);
+}
+
 static void __init tegra_kai_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
@@ -916,6 +925,11 @@ static void __init tegra_kai_reserve(void)
 	kai_ramconsole_reserve(SZ_1M);
 }
 
+static const char * const kai_dt_board_compat[] = {
+	"nvidia,kai",
+	NULL
+};
+
 MACHINE_START(KAI, "kai")
 	.atag_offset	= 0x100,
 	.soc		= &tegra_soc_desc,
@@ -925,6 +939,7 @@ MACHINE_START(KAI, "kai")
 	.init_irq	= tegra_init_irq,
 	.handle_irq	= gic_handle_irq,
 	.timer		= &tegra_timer,
-	.init_machine	= tegra_kai_init,
+	.init_machine	= tegra_kai_dt_init,
 	.restart	= tegra_assert_system_reset,
+	.dt_compat	= kai_dt_board_compat,
 MACHINE_END
