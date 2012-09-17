@@ -66,3 +66,4 @@ obj-$(CONFIG_APANIC)		+= apanic.o
 obj-$(CONFIG_THERM_EST)		+= therm_est.o
 obj-$(CONFIG_TEGRA_THROUGHPUT)	+= tegra-throughput.o
 obj-$(CONFIG_SND_SOC_TEGRA_CS42L73)	+= a2220.o
+obj-$(CONFIG_ARCH_TEGRA_11x_SOC) += tegra-pmu-userspace.o
