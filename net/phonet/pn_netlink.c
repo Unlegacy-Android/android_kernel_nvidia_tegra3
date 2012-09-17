@@ -70,9 +70,6 @@ static int addr_doit(struct sk_buff *skb, struct nlmsghdr *nlh, void *attr)
 	int err;
 	u8 pnaddr;
 
-	if (!capable(CAP_SYS_ADMIN))
-		return -EPERM;
-
 	ASSERT_RTNL();
 
 	err = nlmsg_parse(nlh, sizeof(*ifm), tb, IFA_MAX, ifa_phonet_policy);
@@ -227,9 +224,6 @@ static int route_doit(struct sk_buff *skb, struct nlmsghdr *nlh, void *attr)
 	struct rtmsg *rtm;
 	int err;
 	u8 dst;
-
-	if (!capable(CAP_SYS_ADMIN))
-		return -EPERM;
 
 	ASSERT_RTNL();
 
