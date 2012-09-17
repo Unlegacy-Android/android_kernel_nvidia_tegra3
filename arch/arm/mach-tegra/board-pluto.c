@@ -480,6 +480,7 @@ static struct platform_device *pluto_devices[] __initdata = {
 #endif
 };
 
+#ifdef CONFIG_USB_SUPPORT
 static struct tegra_usb_platform_data tegra_ehci3_hsic_smsc_hub_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
@@ -548,7 +549,6 @@ static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
 };
 
-#if CONFIG_USB_SUPPORT
 static void pluto_usb_init(void)
 {
 	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
