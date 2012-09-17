@@ -468,13 +468,10 @@ static void smmu_flush_regs(struct smmu_device *smmu, int enable)
 			MC_SMMU_TLB_FLUSH_0_TLB_FLUSH_ASID_MATCH_disable,
 			smmu->regs_mc + MC_SMMU_TLB_FLUSH_0);
 
-	if (enable) {
+	if (enable)
 		writel(MC_SMMU_CONFIG_0_SMMU_ENABLE_ENABLE,
-			smmu->regs_mc + MC_SMMU_CONFIG_0);
-		WARN_ONCE(readl(smmu->regs_mc + MC_SMMU_CONFIG_0) !=
-			MC_SMMU_CONFIG_0_SMMU_ENABLE_ENABLE,
-			"Writing to secure register (SMMU_CONFIG) failed\n");
-	}
+				smmu->regs_mc + MC_SMMU_CONFIG_0);
+
 	flush_smmu_regs(smmu);
 }
 
