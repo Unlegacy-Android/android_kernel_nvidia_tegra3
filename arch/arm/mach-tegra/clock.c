@@ -1505,7 +1505,7 @@ static int __init clk_debugfs_init(void)
 	d = debugfs_create_file("syncevents", S_IRUGO|S_IWUSR, clk_debugfs_root, NULL,
 		&syncevent_fops);
 
-	if (dvfs_debugfs_init(clk_debugfs_root))
+	if (!d || dvfs_debugfs_init(clk_debugfs_root))
 		goto err_out;
 
 	list_for_each_entry(c, &clocks, node) {
