@@ -744,11 +744,14 @@ void free_initmem(void)
 				    "TCM link");
 #endif
 
+#if 0
 	poison_init_mem(__init_begin, __init_end - __init_begin);
 	if (!machine_is_integrator() && !machine_is_cintegrator())
 		totalram_pages += free_area(__phys_to_pfn(__pa(__init_begin)),
 					    __phys_to_pfn(__pa(__init_end)),
 					    "init");
+#endif
+
 #endif
 }
 
@@ -759,12 +762,14 @@ static int keep_initrd;
 void free_initrd_mem(unsigned long start, unsigned long end)
 {
 #ifndef CONFIG_CPA
+#if 0
 	if (!keep_initrd) {
 		poison_init_mem((void *)start, PAGE_ALIGN(end) - start);
 		totalram_pages += free_area(__phys_to_pfn(__pa(start)),
 					    __phys_to_pfn(__pa(end)),
 					    "initrd");
 	}
+#endif
 #endif
 }
 
