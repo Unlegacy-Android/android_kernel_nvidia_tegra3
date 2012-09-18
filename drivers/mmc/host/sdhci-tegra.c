@@ -1355,7 +1355,6 @@ err_cd_req:
 	if (gpio_is_valid(plat->power_gpio))
 		gpio_free(plat->power_gpio);
 err_power_req:
-	kfree(tegra_host);
 err_no_plat:
 	sdhci_pltfm_free(pdev);
 	return rc;
@@ -1401,7 +1400,6 @@ static int __devexit sdhci_tegra_remove(struct platform_device *pdev)
 	clk_put(pltfm_host->clk);
 
 	sdhci_pltfm_free(pdev);
-	kfree(tegra_host);
 
 	return 0;
 }
