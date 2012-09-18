@@ -31,6 +31,7 @@
 static void sync_fence_signal_pt(struct sync_pt *pt);
 static int _sync_pt_has_signaled(struct sync_pt *pt);
 static void sync_fence_free(struct kref *kref);
+static void sync_dump(void);
 
 static LIST_HEAD(sync_timeline_list_head);
 static DEFINE_SPINLOCK(sync_timeline_list_lock);
@@ -87,9 +88,6 @@ static void sync_timeline_free(struct kref *kref)
 
 void sync_timeline_destroy(struct sync_timeline *obj)
 {
-	unsigned long flags;
-	bool needs_freeing;
-
 	obj->destroyed = true;
 
 	/*
@@ -117,7 +115,6 @@ static void sync_timeline_remove_pt(struct sync_pt *pt)
 {
 	struct sync_timeline *obj = pt->parent;
 	unsigned long flags;
-	bool needs_freeing = false;
 
 	spin_lock_irqsave(&obj->active_list_lock, flags);
 	if (!list_empty(&pt->active_list))
@@ -560,14 +557,14 @@ EXPORT_SYMBOL(sync_fence_cancel_async);
 
 int sync_fence_wait(struct sync_fence *fence, long timeout)
 {
-	int err;
+	int err = 0;
 
-	if (timeout) {
+	if (timeout > 0) {
 		timeout = msecs_to_jiffies(timeout);
 		err = wait_event_interruptible_timeout(fence->wq,
 						       fence->status != 0,
 						       timeout);
-	} else {
+	} else if (timeout < 0) {
 		err = wait_event_interruptible(fence->wq, fence->status != 0);
 	}
 
@@ -577,8 +574,12 @@ int sync_fence_wait(struct sync_fence *fence, long timeout)
 	if (fence->status < 0)
 		return fence->status;
 
-	if (fence->status == 0)
+	if (fence->status == 0) {
+		pr_info("fence timeout on [%p] after %dms\n", fence,
+			jiffies_to_msecs(timeout));
+		sync_dump();
 		return -ETIME;
+	}
 
 	return 0;
 }
@@ -635,7 +636,7 @@ static unsigned int sync_fence_poll(struct file *file, poll_table *wait)
 
 static long sync_fence_ioctl_wait(struct sync_fence *fence, unsigned long arg)
 {
-	__u32 value;
+	__s32 value;
 
 	if (copy_from_user(&value, (void __user *)arg, sizeof(value)))
 		return -EFAULT;
@@ -849,7 +850,8 @@ static void sync_print_fence(struct seq_file *s, struct sync_fence *fence)
 	struct list_head *pos;
 	unsigned long flags;
 
-	seq_printf(s, "%s: %s\n", fence->name, sync_status_str(fence->status));
+	seq_printf(s, "[%p] %s: %s\n", fence, fence->name,
+		   sync_status_str(fence->status));
 
 	list_for_each(pos, &fence->pt_list_head) {
 		struct sync_pt *pt =
@@ -917,7 +919,34 @@ static __init int sync_debugfs_init(void)
 	debugfs_create_file("sync", S_IRUGO, NULL, NULL, &sync_debugfs_fops);
 	return 0;
 }
-
 late_initcall(sync_debugfs_init);
 
+#define DUMP_CHUNK 256
+static char sync_dump_buf[64 * 1024];
+void sync_dump(void)
+{
+       struct seq_file s = {
+               .buf = sync_dump_buf,
+               .size = sizeof(sync_dump_buf) - 1,
+       };
+       int i;
+
+       sync_debugfs_show(&s, NULL);
+
+       for (i = 0; i < s.count; i += DUMP_CHUNK) {
+               if ((s.count - i) > DUMP_CHUNK) {
+                       char c = s.buf[i + DUMP_CHUNK];
+                       s.buf[i + DUMP_CHUNK] = 0;
+                       pr_cont("%s", s.buf + i);
+                       s.buf[i + DUMP_CHUNK] = c;
+               } else {
+                       s.buf[s.count] = 0;
+                       pr_cont("%s", s.buf + i);
+               }
+       }
+}
+#else
+static void sync_dump(void)
+{
+}
 #endif

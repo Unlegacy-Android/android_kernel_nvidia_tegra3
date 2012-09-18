@@ -166,24 +166,20 @@ static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 		return ERR_PTR(PTR_ERR(table));
 	}
 	buffer->sg_table = table;
-	if (buffer->flags & ION_FLAG_CACHED)
+	if (buffer->flags & ION_FLAG_CACHED) {
 		for_each_sg(buffer->sg_table->sgl, sg, buffer->sg_table->nents,
 			    i) {
 			if (sg_dma_len(sg) == PAGE_SIZE)
 				continue;
 			pr_err("%s: cached mappings must have pagewise "
 			       "sg_lists\n", __func__);
-			heap->ops->unmap_dma(heap, buffer);
-			kfree(buffer);
-			return ERR_PTR(-EINVAL);
+			ret = -EINVAL;
+			goto err;
 		}
 
-	ret = ion_buffer_alloc_dirty(buffer);
-	if (ret) {
-		heap->ops->unmap_dma(heap, buffer);
-		heap->ops->free(buffer);
-		kfree(buffer);
-		return ERR_PTR(ret);
+		ret = ion_buffer_alloc_dirty(buffer);
+		if (ret)
+			goto err;
 	}
 
 	buffer->dev = dev;
@@ -202,6 +198,12 @@ static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 		sg_dma_address(sg) = sg_phys(sg);
 	ion_buffer_add(dev, buffer);
 	return buffer;
+
+err:
+	heap->ops->unmap_dma(heap, buffer);
+	heap->ops->free(buffer);
+	kfree(buffer);
+	return ERR_PTR(ret);
 }
 
 static void ion_buffer_destroy(struct kref *kref)
@@ -211,12 +213,13 @@ static void ion_buffer_destroy(struct kref *kref)
 
 	if (WARN_ON(buffer->kmap_cnt > 0))
 		buffer->heap->ops->unmap_kernel(buffer->heap, buffer);
-
 	buffer->heap->ops->unmap_dma(buffer->heap, buffer);
 	buffer->heap->ops->free(buffer);
 	mutex_lock(&dev->lock);
 	rb_erase(&buffer->node, &dev->buffers);
 	mutex_unlock(&dev->lock);
+	if (buffer->flags & ION_FLAG_CACHED)
+		kfree(buffer->dirty);
 	kfree(buffer);
 }
 
@@ -230,7 +233,38 @@ static int ion_buffer_put(struct ion_buffer *buffer)
 	return kref_put(&buffer->ref, ion_buffer_destroy);
 }
 
-struct ion_handle *ion_handle_create(struct ion_client *client,
+static void ion_buffer_add_to_handle(struct ion_buffer *buffer)
+{
+	mutex_lock(&buffer->dev->lock);
+	buffer->handle_count++;
+	mutex_unlock(&buffer->dev->lock);
+}
+
+static void ion_buffer_remove_from_handle(struct ion_buffer *buffer)
+{
+	/*
+	 * when a buffer is removed from a handle, if it is not in
+	 * any other handles, copy the taskcomm and the pid of the
+	 * process it's being removed from into the buffer.  At this
+	 * point there will be no way to track what processes this buffer is
+	 * being used by, it only exists as a dma_buf file descriptor.
+	 * The taskcomm and pid can provide a debug hint as to where this fd
+	 * is in the system
+	 */
+	mutex_lock(&buffer->dev->lock);
+	buffer->handle_count--;
+	BUG_ON(buffer->handle_count < 0);
+	if (!buffer->handle_count) {
+		struct task_struct *task;
+
+		task = current->group_leader;
+		get_task_comm(buffer->task_comm, task);
+		buffer->pid = task_pid_nr(task);
+	}
+	mutex_unlock(&buffer->dev->lock);
+}
+
+static struct ion_handle *ion_handle_create(struct ion_client *client,
 				     struct ion_buffer *buffer)
 {
 	struct ion_handle *handle;
@@ -242,6 +276,7 @@ struct ion_handle *ion_handle_create(struct ion_client *client,
 	rb_init_node(&handle->node);
 	handle->client = client;
 	ion_buffer_get(buffer);
+	ion_buffer_add_to_handle(buffer);
 	handle->buffer = buffer;
 
 	return handle;
@@ -255,8 +290,6 @@ static void ion_handle_destroy(struct kref *kref)
 	struct ion_client *client = handle->client;
 	struct ion_buffer *buffer = handle->buffer;
 
-	mutex_lock(&client->lock);
-
 	mutex_lock(&buffer->lock);
 	while (handle->kmap_cnt)
 		ion_handle_kmap_put(handle);
@@ -264,9 +297,10 @@ static void ion_handle_destroy(struct kref *kref)
 
 	if (!RB_EMPTY_NODE(&handle->node))
 		rb_erase(&handle->node, &client->handles);
-	mutex_unlock(&client->lock);
 
+	ion_buffer_remove_from_handle(buffer);
 	ion_buffer_put(buffer);
+
 	kfree(handle);
 }
 
@@ -410,13 +444,14 @@ void ion_free(struct ion_client *client, struct ion_handle *handle)
 
 	mutex_lock(&client->lock);
 	valid_handle = ion_handle_validate(client, handle);
-	mutex_unlock(&client->lock);
 
 	if (!valid_handle) {
 		WARN(1, "%s: invalid handle passed to free.\n", __func__);
+		mutex_unlock(&client->lock);
 		return;
 	}
 	ion_handle_put(handle);
+	mutex_unlock(&client->lock);
 }
 EXPORT_SYMBOL(ion_free);
 
@@ -874,7 +909,7 @@ static void ion_dma_buf_release(struct dma_buf *dmabuf)
 static void *ion_dma_buf_kmap(struct dma_buf *dmabuf, unsigned long offset)
 {
 	struct ion_buffer *buffer = dmabuf->priv;
-	return buffer->vaddr + offset;
+	return buffer->vaddr + offset * PAGE_SIZE;
 }
 
 static void ion_dma_buf_kunmap(struct dma_buf *dmabuf, unsigned long offset,
@@ -1171,8 +1206,11 @@ static int ion_debug_heap_show(struct seq_file *s, void *unused)
 	struct ion_heap *heap = s->private;
 	struct ion_device *dev = heap->dev;
 	struct rb_node *n;
+	size_t total_size = 0;
+	size_t total_orphaned_size = 0;
 
 	seq_printf(s, "%16.s %16.s %16.s\n", "client", "pid", "size");
+	seq_printf(s, "----------------------------------------------------\n");
 
 	for (n = rb_first(&dev->clients); n; n = rb_next(n)) {
 		struct ion_client *client = rb_entry(n, struct ion_client,
@@ -1191,6 +1229,27 @@ static int ion_debug_heap_show(struct seq_file *s, void *unused)
 				   client->pid, size);
 		}
 	}
+	seq_printf(s, "----------------------------------------------------\n");
+	seq_printf(s, "orphaned allocations (info is from last known client):"
+		   "\n");
+	mutex_lock(&dev->lock);
+	for (n = rb_first(&dev->buffers); n; n = rb_next(n)) {
+		struct ion_buffer *buffer = rb_entry(n, struct ion_buffer,
+						     node);
+		if (buffer->heap->type == heap->type)
+			total_size += buffer->size;
+		if (!buffer->handle_count) {
+			seq_printf(s, "%16.s %16u %16u\n", buffer->task_comm,
+				   buffer->pid, buffer->size);
+			total_orphaned_size += buffer->size;
+		}
+	}
+	mutex_unlock(&dev->lock);
+	seq_printf(s, "----------------------------------------------------\n");
+	seq_printf(s, "%16.s %16u\n", "total orphaned",
+		   total_orphaned_size);
+	seq_printf(s, "%16.s %16u\n", "total ", total_size);
+
 	return 0;
 }
 
