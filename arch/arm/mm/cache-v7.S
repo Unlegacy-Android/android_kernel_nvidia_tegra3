@@ -33,24 +33,6 @@ ENTRY(v7_flush_icache_all)
 	mov	pc, lr
 ENDPROC(v7_flush_icache_all)
 
- /*
- *     v7_flush_dcache_louis()
- *
- *     Flush the D-cache up to the Level of Unification Inner Shareable
- *
- *     Corrupted registers: r0-r7, r9-r11 (r6 only in Thumb mode)
- */
-
-ENTRY(v7_flush_dcache_louis)
-	dmb					@ ensure ordering with previous memory accesses
-	mrc	p15, 1, r0, c0, c0, 1		@ read clidr, r0 = clidr
-	ands	r3, r0, #0xe00000		@ extract LoUIS from clidr
-	mov	r3, r3, lsr #20			@ r3 = LoUIS * 2
-	moveq	pc, lr				@ return if level == 0
-	mov	r10, #0				@ r10 (starting level) = 0
-	b	loop1				@ start flushing cache levels
-ENDPROC(v7_flush_dcache_louis)
-
 /*
  *	v7_op_dcache_all op
  *
@@ -123,6 +105,25 @@ ENDPROC(v7_flush_dcache_all)
 ENTRY(v7_clean_dcache_all)
 	v7_op_dcache_all c10
 ENDPROC(v7_clean_dcache_all)
+
+ /*
+ *     v7_flush_dcache_louis()
+ *
+ *     Flush the D-cache up to the Level of Unification Inner Shareable
+ *
+ *     Corrupted registers: r0-r7, r9-r11 (r6 only in Thumb mode)
+ */
+
+ENTRY(v7_flush_dcache_louis)
+	dmb					@ ensure ordering with previous memory accesses
+	mrc	p15, 1, r0, c0, c0, 1		@ read clidr, r0 = clidr
+	ands	r3, r0, #0xe00000		@ extract LoUIS from clidr
+	mov	r3, r3, lsr #20			@ r3 = LoUIS * 2
+	moveq	pc, lr				@ return if level == 0
+	mov	r10, #0				@ r10 (starting level) = 0
+	b	1001f				@ start flushing cache levels
+	v7_op_dcache_all c14
+ENDPROC(v7_flush_dcache_louis)
 
 /*
  *	v7_flush_cache_all()
