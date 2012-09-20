@@ -42,6 +42,7 @@
 #include <linux/slab.h>
 #include <linux/gpio.h>
 #include <linux/clk.h>
+#include <asm/mach-types.h>
 #include <media/ar0832_main.h>
 #include <media/tps61050.h>
 #include <media/ov9726.h>
@@ -696,7 +697,6 @@ fail_free_gpio:
 
 #define ENTERPRISE_INA230_ENABLED 0
 
-#if ENTERPRISE_INA230_ENABLED
 static struct ina230_platform_data ina230_platform = {
 	.rail_name = "VDD_AC_BAT",
 	.current_threshold = TEGRA_CUR_MON_THRESHOLD,
@@ -704,6 +704,7 @@ static struct ina230_platform_data ina230_platform = {
 	.min_cores_online = TEGRA_CUR_MON_MIN_CORES,
 };
 
+#if ENTERPRISE_INA230_ENABLED
 static struct i2c_board_info enterprise_i2c0_ina230_info[] = {
 	{
 		I2C_BOARD_INFO("ina230", 0x42),
@@ -715,9 +716,23 @@ static struct i2c_board_info enterprise_i2c0_ina230_info[] = {
 static int __init enterprise_ina230_init(void)
 {
 	return i2c_register_board_info(0, enterprise_i2c0_ina230_info,
-				       ARRAY_SIZE(enterprise_i2c0_ina230_info));
+			ARRAY_SIZE(enterprise_i2c0_ina230_info));
 }
 #endif
+
+static struct i2c_board_info tai_i2c4_ina230_info[] = {
+	{
+		I2C_BOARD_INFO("ina230", 0x40),
+		.platform_data = &ina230_platform,
+		.irq = -1, /* connected to SPI2_CS1_N(PX3) */
+	},
+};
+
+static int __init tai_ina230_init(void)
+{
+	return i2c_register_board_info(4, tai_i2c4_ina230_info,
+			ARRAY_SIZE(tai_i2c4_ina230_info));
+}
 
 int __init enterprise_sensors_init(void)
 {
@@ -730,8 +745,11 @@ int __init enterprise_sensors_init(void)
 	if (board_info.board_id != BOARD_E1239)
 		mpuirq_init();
 #if ENTERPRISE_INA230_ENABLED
-	enterprise_ina230_init();
+	if (machine_is_tegra_enterprise())
+		enterprise_ina230_init();
 #endif
+	if (machine_is_tai())
+		tai_ina230_init();
 	ret = enterprise_cam_init();
 
 	return ret;
