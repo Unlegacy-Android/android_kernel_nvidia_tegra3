@@ -22,6 +22,7 @@
 /*#define VERBOSE_DEBUG   1*/
 
 #include <linux/kernel.h>
+#include <linux/jiffies.h>
 #include <linux/init.h>
 #include <linux/err.h>
 #include <linux/platform_device.h>
@@ -144,7 +145,6 @@
 #define DATA_DIR_RX		(1 << 1)
 
 #define SPI_FIFO_DEPTH		32
-#define SLINK_DMA_TIMEOUT (msecs_to_jiffies(1000))
 
 /* Slave controller clock should be 4 times of the interface clock.
  * However, it is recommended to keep controller clock 8 times of interface
@@ -248,6 +248,8 @@ struct spi_tegra_data {
 	unsigned long		max_rate;
 	unsigned long		max_parent_rate;
 	int			min_div;
+
+	struct timer_list	transmit_timer;
 };
 
 static inline unsigned long spi_tegra_readl(struct spi_tegra_data *tspi,
@@ -822,6 +824,56 @@ static int spi_tegra_setup(struct spi_device *spi)
 	return 0;
 }
 
+void spi_tegra_complete_with_error(unsigned long data)
+{
+	/* slave transfer timed out */
+	struct spi_tegra_data *tspi = (struct spi_tegra_data *)data;
+	struct spi_message *m;
+	unsigned long val;
+	unsigned long flags;
+
+	spin_lock_irqsave(&tspi->lock, flags);
+
+	dev_dbg(&tspi->pdev->dev, "ioctl timeout, resetting controller\n");
+	/* disable interrupts, dma and reset the controller */
+	val = tspi->def_command2_reg;
+	val &= ~(SLINK_SS_EN_CS(~0) | SLINK_RXEN | SLINK_TXEN | SLINK_SPIE);
+	spi_tegra_writel(tspi, val, SLINK_COMMAND2);
+
+	val = 0;
+	val &= ~(SLINK_IE_TXC | SLINK_IE_RXC | SLINK_DMA_EN);
+	spi_tegra_writel(tspi, val, SLINK_DMA_CTL);
+
+
+	if (tspi->is_curr_dma_xfer) {
+		if (tspi->cur_direction & DATA_DIR_TX)
+			cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
+		if (tspi->cur_direction & DATA_DIR_RX)
+			cancel_dma(tspi->rx_dma, &tspi->rx_dma_req);
+	}
+
+	tegra_periph_reset_assert(tspi->clk);
+	udelay(2);
+	tegra_periph_reset_deassert(tspi->clk);
+
+	/* clear all registers */
+	val = spi_tegra_readl(tspi, SLINK_STATUS);
+	val |= (SLINK_RDY | SLINK_ERR | SLINK_RX_FLUSH | SLINK_TX_FLUSH);
+	spi_tegra_writel(tspi, val, SLINK_STATUS);
+	spi_tegra_writel(tspi, tspi->def_command2_reg, SLINK_COMMAND2);
+	spi_tegra_writel(tspi, tspi->def_command_reg, SLINK_COMMAND);
+
+	/* complete the spidev core wait */
+	if (!list_empty_careful(&tspi->queue)) {
+		/* mark the message with I/O error */
+		m = list_first_entry(&tspi->queue, struct spi_message, queue);
+		m->status = -EIO;
+		list_del(&m->queue);
+		m->complete(m->context);
+	}
+	spin_unlock_irqrestore(&tspi->lock, flags);
+}
+
 static int spi_tegra_transfer(struct spi_device *spi, struct spi_message *m)
 {
 	struct spi_tegra_data *tspi = spi_master_get_devdata(spi->master);
@@ -876,8 +928,16 @@ static int spi_tegra_transfer(struct spi_device *spi, struct spi_message *m)
 	was_empty = list_empty(&tspi->queue);
 	list_add_tail(&m->queue, &tspi->queue);
 
-	if (was_empty)
+	if (was_empty) {
 		spi_tegra_start_message(spi, m);
+		/* setup the timer for transmit timeout */
+		if (t->delay_usecs) {
+			long wait_jiffies = usecs_to_jiffies(t->delay_usecs) ?
+						: 1;
+			mod_timer(&tspi->transmit_timer, jiffies +
+					wait_jiffies);
+		}
+	}
 
 	spin_unlock_irqrestore(&tspi->lock, flags);
 
@@ -890,6 +950,9 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 	struct spi_message *m;
 	struct spi_device *spi;
 
+	if (list_empty_careful(&tspi->queue))
+		return;
+
 	m = list_first_entry(&tspi->queue, struct spi_message, queue);
 	if (err)
 		m->status = -EIO;
@@ -897,6 +960,7 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 
 	m->actual_length += cur_xfer_size;
 	list_del(&m->queue);
+	del_timer(&tspi->transmit_timer);
 	m->complete(m->context);
 	if (!list_empty(&tspi->queue)) {
 		m = list_first_entry(&tspi->queue, struct spi_message, queue);
@@ -984,6 +1048,15 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 	int err = 0;
 	unsigned long flags;
 
+	if (t->delay_usecs) {
+		int pending;
+		pending = del_timer_sync(&tspi->transmit_timer);
+		/* the timer proc already ran ? */
+		if (!pending) {
+			return IRQ_HANDLED;
+		}
+	}
+
 	if (!tspi->is_curr_dma_xfer) {
 		handle_cpu_based_xfer(context_data);
 		return IRQ_HANDLED;
@@ -992,15 +1065,19 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 	/* Abort dmas if any error */
 	if (tspi->cur_direction & DATA_DIR_TX) {
 		if (tspi->tx_status) {
+			dev_dbg(&tspi->pdev->dev, "%s tx error, status register: 0x%x\n",
+					 __func__, tspi->status_reg);
 			cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
 			err += 1;
 		} else {
-			wait_status = wait_for_completion_interruptible_timeout(
-				&tspi->tx_dma_complete, SLINK_DMA_TIMEOUT);
-			if (wait_status <= 0) {
+			int try = 100;
+			while (!(wait_status =
+				try_wait_for_completion(&tspi->tx_dma_complete))
+				&& try--)
+				udelay(5);
+			if (wait_status == 0) {
 				cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
-				dev_err(&tspi->pdev->dev, "Error in Dma Tx "
-							"transfer\n");
+				dev_dbg(&tspi->pdev->dev, "timeout error in tx dma\n");
 				err += 1;
 			}
 		}
@@ -1008,15 +1085,19 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 
 	if (tspi->cur_direction & DATA_DIR_RX) {
 		if (tspi->rx_status) {
+			dev_dbg(&tspi->pdev->dev, "%s rx error, status register: 0x%x\n",
+					 __func__, tspi->status_reg);
 			cancel_dma(tspi->rx_dma, &tspi->rx_dma_req);
 			err += 2;
 		} else {
-			wait_status = wait_for_completion_interruptible_timeout(
-				&tspi->rx_dma_complete, SLINK_DMA_TIMEOUT);
-			if (wait_status <= 0) {
+			int try = 100;
+			while (!(wait_status =
+				try_wait_for_completion(&tspi->rx_dma_complete))
+				&& try--)
+				udelay(5);
+			if (wait_status == 0) {
+				dev_dbg(&tspi->pdev->dev, "timeout error in rx dma transfer\n");
 				cancel_dma(tspi->rx_dma, &tspi->rx_dma_req);
-				dev_err(&tspi->pdev->dev, "Error in Dma Rx "
-							"transfer\n");
 				err += 2;
 			}
 		}
@@ -1024,12 +1105,11 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 
 	spin_lock_irqsave(&tspi->lock, flags);
 	if (err) {
-		dev_err(&tspi->pdev->dev, "%s ERROR bit set 0x%x\n",
+		dev_dbg(&tspi->pdev->dev, "%s resetting the controller, status 0x%x\n",
 					 __func__, tspi->status_reg);
 		tegra_periph_reset_assert(tspi->clk);
 		udelay(2);
 		tegra_periph_reset_deassert(tspi->clk);
-		WARN_ON(1);
 		spi_tegra_curr_transfer_complete(tspi, err, t->len);
 		spin_unlock_irqrestore(&tspi->lock, flags);
 		return IRQ_HANDLED;
@@ -1190,6 +1270,9 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 	}
 	tspi->max_buf_size = SLINK_FIFO_DEPTH << 2;
 
+	setup_timer(&tspi->transmit_timer, spi_tegra_complete_with_error,
+			(unsigned long) tspi);
+
 	if (!tspi->is_dma_allowed)
 		goto skip_dma_alloc;
 
@@ -1326,6 +1409,7 @@ static int __devexit spi_tegra_remove(struct platform_device *pdev)
 		tspi->clk_state = 0;
 	}
 
+	del_timer_sync(&tspi->transmit_timer);
 	clk_put(tspi->clk);
 	iounmap(tspi->base);
 
