@@ -597,7 +597,9 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 {
 	u32 reg;
 	unsigned int remain;
+#ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	pgd_t *pgd;
+#endif
 
 	/* Only the last cpu down does the final suspend steps */
 	reg = readl(pmc + PMC_CTRL);
@@ -661,6 +663,7 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 	cpu_cluster_pm_enter();
 	suspend_cpu_complex(flags);
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_prolog);
+#ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	flush_cache_all();
 	/*
 	 * No need to flush complete L2. Cleaning kernel and IO mappings
@@ -671,7 +674,7 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 	outer_clean_range(__pa(pgd + USER_PTRS_PER_PGD),
 			  __pa(pgd + PTRS_PER_PGD));
 	outer_disable();
-
+#endif
 	tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
 
 	tegra_init_cache(false);
