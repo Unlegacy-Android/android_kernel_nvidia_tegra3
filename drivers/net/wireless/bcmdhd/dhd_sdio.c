@@ -2975,8 +2975,8 @@ dhd_serialconsole(dhd_bus_t *bus, bool set, bool enable, int *bcmerror)
 	}
 	if (bus->sih->chip == BCM4330_CHIP_ID) {
 		uart_enab = CC_PLL_CHIPCTRL_SERIAL_ENAB;
-	}
-	else if (bus->sih->chip == BCM4334_CHIP_ID) {
+	} else if (bus->sih->chip == BCM4334_CHIP_ID ||
+		bus->sih->chip == BCM43341_CHIP_ID) {
 		if (enable) {
 			/* Moved to PMU chipcontrol 1 from 4330 */
 			int_val &= ~gpio_sel;
@@ -6325,6 +6325,8 @@ dhdsdio_chipmatch(uint16 chipid)
 		return TRUE;
 	if (chipid == BCM4334_CHIP_ID)
 		return TRUE;
+	if (chipid == BCM43341_CHIP_ID)
+		return TRUE;
 	if (chipid == BCM43239_CHIP_ID)
 		return TRUE;
 	if (chipid == BCM4324_CHIP_ID)
@@ -6409,6 +6411,9 @@ dhdsdio_probe(uint16 venid, uint16 devid, uint16 bus_no, uint16 slot,
 			break;
 		case 0x4324:
 			DHD_INFO(("%s: found 43241(4324) Dongle\n", __func__));
+			break;
+		case 0xa94d:
+			DHD_INFO(("%s: found 43341 Dongle\n", __func__));
 			break;
 		case BCM4315_D11DUAL_ID:		/* 4315 802.11a/g id */
 		case BCM4315_D11G_ID:			/* 4315 802.11g id */
