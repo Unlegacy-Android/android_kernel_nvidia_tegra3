@@ -250,6 +250,7 @@ struct spi_tegra_data {
 	int			min_div;
 
 	struct timer_list	transmit_timer;
+	atomic_t		cnt;
 };
 
 static inline unsigned long spi_tegra_readl(struct spi_tegra_data *tspi,
@@ -824,6 +825,7 @@ static int spi_tegra_setup(struct spi_device *spi)
 	return 0;
 }
 
+/* timer proc */
 void spi_tegra_complete_with_error(unsigned long data)
 {
 	/* slave transfer timed out */
@@ -831,6 +833,13 @@ void spi_tegra_complete_with_error(unsigned long data)
 	struct spi_message *m;
 	unsigned long val;
 	unsigned long flags;
+
+	/* see if we are the first one to handle the completion */
+	if (!atomic_sub_and_test(1, &tspi->cnt))
+		return;
+
+	/* any pending interrupts for *this* transfer will be skipped from now
+	   on */
 
 	spin_lock_irqsave(&tspi->lock, flags);
 
@@ -843,7 +852,6 @@ void spi_tegra_complete_with_error(unsigned long data)
 	val = 0;
 	val &= ~(SLINK_IE_TXC | SLINK_IE_RXC | SLINK_DMA_EN);
 	spi_tegra_writel(tspi, val, SLINK_DMA_CTL);
-
 
 	if (tspi->is_curr_dma_xfer) {
 		if (tspi->cur_direction & DATA_DIR_TX)
@@ -929,6 +937,7 @@ static int spi_tegra_transfer(struct spi_device *spi, struct spi_message *m)
 	list_add_tail(&m->queue, &tspi->queue);
 
 	if (was_empty) {
+		atomic_set(&tspi->cnt, 1);
 		spi_tegra_start_message(spi, m);
 		/* setup the timer for transmit timeout */
 		if (t->delay_usecs) {
@@ -937,6 +946,9 @@ static int spi_tegra_transfer(struct spi_device *spi, struct spi_message *m)
 			mod_timer(&tspi->transmit_timer, jiffies +
 					wait_jiffies);
 		}
+	} else {
+		printk(KERN_WARNING "%s: was not empty\n", __func__);
+		WARN_ON(1);
 	}
 
 	spin_unlock_irqrestore(&tspi->lock, flags);
@@ -1048,15 +1060,6 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 	int err = 0;
 	unsigned long flags;
 
-	if (t->delay_usecs) {
-		int pending;
-		pending = del_timer_sync(&tspi->transmit_timer);
-		/* the timer proc already ran ? */
-		if (!pending) {
-			return IRQ_HANDLED;
-		}
-	}
-
 	if (!tspi->is_curr_dma_xfer) {
 		handle_cpu_based_xfer(context_data);
 		return IRQ_HANDLED;
@@ -1130,29 +1133,43 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 			tspi->tx_status || tspi->rx_status, t->len);
 		spin_unlock_irqrestore(&tspi->lock, flags);
 		return IRQ_HANDLED;
+	} else {
+		printk(KERN_INFO "%s: remaining transfer: pos:%d len:%d\n",
+					__func__, tspi->cur_pos, t->len);
 	}
 
 	spin_unlock_irqrestore(&tspi->lock, flags);
 
 	/* There should not be remaining transfer */
-	BUG();
+	WARN_ON(1);
 	return IRQ_HANDLED;
 }
 
 static irqreturn_t spi_tegra_isr(int irq, void *context_data)
 {
 	struct spi_tegra_data *tspi = context_data;
+	unsigned long flags;
+
+	spin_lock_irqsave(&tspi->lock, flags);
 
 	tspi->status_reg = spi_tegra_readl(tspi, SLINK_STATUS);
 	if (tspi->cur_direction & DATA_DIR_TX)
 		tspi->tx_status = tspi->status_reg &
 					(SLINK_TX_OVF | SLINK_TX_UNF);
-
 	if (tspi->cur_direction & DATA_DIR_RX)
 		tspi->rx_status = tspi->status_reg &
 					(SLINK_RX_OVF | SLINK_RX_UNF);
 	spi_tegra_clear_status(tspi);
 
+	spin_unlock_irqrestore(&tspi->lock, flags);
+
+	/*  handle only if we are the first event for the transfer */
+	if (!atomic_sub_and_test(1, &tspi->cnt))
+		return IRQ_HANDLED;
+
+	/* we got in first for the tranfer, delete timer (delete on deleted
+	   timer is ok) */
+	del_timer(&tspi->transmit_timer);
 
 	return IRQ_WAKE_THREAD;
 }
@@ -1228,7 +1245,7 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 	tegra_periph_reset_deassert(tspi->clk);
 	tspi->clk_state = 1;
 	ret = request_threaded_irq(tspi->irq, spi_tegra_isr,
-			spi_tegra_isr_thread, IRQF_DISABLED,
+			spi_tegra_isr_thread, IRQF_ONESHOT,
 			tspi->port_name, tspi);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Failed to register ISR for IRQ %d\n",
