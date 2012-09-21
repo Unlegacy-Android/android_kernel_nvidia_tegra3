@@ -247,6 +247,7 @@ static __initdata struct tegra_clk_init_table enterprise_clk_init_table[] = {
 	{ "audio1",	"i2s1_sync",	0,		false},
 	{ "audio2",	"i2s2_sync",	0,		false},
 	{ "audio3",	"i2s3_sync",	0,		false},
+	{ "audio4",	"i2s4_sync",	0,		false},
 	{ "vi",		"pll_p",	0,		false},
 	{ "vi_sensor",	"pll_p",	0,		false},
 	{ "i2c5",	"pll_p",	3200000,	false},
