@@ -35,6 +35,7 @@
 #define CPU_PROCESS_CORNERS_NUM	7
 
 #define FUSE_SPEEDO_CALIB_0	0x114
+#define FUSE_IDDQ_CALIB_0	0x118
 #define FUSE_PACKAGE_INFO	0X1FC
 #define FUSE_TEST_PROG_VER	0X128
 #define FUSE_SPARE_BIT_58	0x32c
@@ -133,6 +134,8 @@ static int core_process_id;
 static int cpu_speedo_id;
 static int soc_speedo_id;
 static int package_id;
+static int cpu_iddq_value;
+
 /*
  * Only AP37 supports App Profile
  * This informs user space of support without exposing cpu id's
@@ -367,6 +370,9 @@ void tegra_init_speedo_data(void)
 	BUG_ON(ARRAY_SIZE(cpu_process_speedos) !=
 	       ARRAY_SIZE(core_process_speedos));
 
+	cpu_iddq_value = tegra_fuse_readl(FUSE_IDDQ_CALIB_0);
+	cpu_iddq_value = ((iddq_value >> 5) & 0x3ff) * 8;
+
 	/* SKU Overrides
 	* T33	=> T30, T30L
 	* T33S	=> T30S, T30SL
@@ -569,6 +575,11 @@ int tegra_core_speedo_mv(void)
 	default:
 		BUG();
 	}
+}
+
+int tegra_get_cpu_iddq_value()
+{
+	return cpu_iddq_value;
 }
 
 static int get_enable_app_profiles(char *val, const struct kernel_param *kp)
