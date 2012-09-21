@@ -196,6 +196,7 @@ struct palmas_platform_data {
 
 	struct palmas_clk32k_init_data  *clk32k_init_data;
 	int clk32k_init_data_size;
+	bool use_power_off;
 };
 
 /* Define the palmas IRQ numbers */

@@ -525,6 +525,15 @@ static void palmas_clk32k_init(struct palmas *palmas,
 	}
 }
 
+static struct palmas *palmas_dev;
+static void palmas_power_off(void)
+{
+	if (!palmas_dev)
+		return;
+
+	palmas_control_update(palmas_dev, PALMAS_DEV_CTRL, 1, 0);
+}
+
 static int __devinit palmas_i2c_probe(struct i2c_client *i2c,
 			    const struct i2c_device_id *id)
 {
@@ -681,6 +690,10 @@ static int __devinit palmas_i2c_probe(struct i2c_client *i2c,
 	if (ret < 0)
 		goto err;
 
+	if (pdata->use_power_off && !pm_power_off)
+		pm_power_off = palmas_power_off;
+
+	palmas_dev = palmas;
 	return ret;
 
 err:
