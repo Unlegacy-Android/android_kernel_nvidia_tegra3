@@ -1101,6 +1101,7 @@ static void __init tegra_enterprise_init(void)
 	tegra_clk_init_from_table(enterprise_clk_init_table);
 	tegra_enable_pinmux();
 	tegra_smmu_init();
+	tegra_soc_device_init("tegra_enterprise");
 	enterprise_pinmux_init();
 	enterprise_i2c_init();
 	enterprise_uart_init();

@@ -161,7 +161,7 @@ static __initdata struct tegra_clk_init_table trimslice_clk_init_table[] = {
 static void __init tegra_trimslice_init(void)
 {
 	tegra_clk_init_from_table(trimslice_clk_init_table);
-
+	tegra_soc_device_init("trimslice");
 	trimslice_pinmux_init();
 
 	tegra_sdhci_device1.dev.platform_data = &sdhci_pdata1;

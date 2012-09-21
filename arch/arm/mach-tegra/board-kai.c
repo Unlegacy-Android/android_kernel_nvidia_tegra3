@@ -870,6 +870,7 @@ static void __init tegra_kai_init(void)
 	tegra_clk_init_from_table(kai_clk_init_table);
 	tegra_enable_pinmux();
 	tegra_smmu_init();
+	tegra_soc_device_init("kai");
 	kai_pinmux_init();
 	kai_i2c_init();
 	kai_spi_init();

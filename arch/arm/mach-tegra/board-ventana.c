@@ -605,6 +605,7 @@ static void __init tegra_ventana_init(void)
 
 	tegra_clk_init_from_table(ventana_clk_init_table);
 	ventana_emc_init();
+	tegra_soc_device_init("ventana");
 	tegra_enable_pinmux();
 	ventana_pinmux_init();
 	ventana_i2c_init();

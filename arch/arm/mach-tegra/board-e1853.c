@@ -424,6 +424,7 @@ static void __init tegra_e1853_init(void)
 	tegra_clk_init_from_table(e1853_clk_init_table);
 	tegra_enable_pinmux();
 	tegra_smmu_init();
+	tegra_soc_device_init("e1853");
 	e1853_pinmux_init();
 	e1853_i2c_init();
 	e1853_gpio_init();

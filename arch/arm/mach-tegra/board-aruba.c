@@ -508,6 +508,7 @@ static void __init tegra_aruba_init(void)
 	tegra_clk_init_from_table(aruba_clk_init_table);
 	tegra_enable_pinmux();
 	aruba_pinmux_init();
+	tegra_soc_device_init("aruba");
 
 	platform_add_devices(aruba_devices, ARRAY_SIZE(aruba_devices));
 

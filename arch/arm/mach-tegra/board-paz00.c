@@ -201,7 +201,7 @@ static struct tegra_sdhci_platform_data sdhci_pdata4 = {
 static void __init tegra_paz00_init(void)
 {
 	tegra_clk_init_from_table(paz00_clk_init_table);
-
+	tegra_soc_device_init("Toshiba AC100 / Dynabook AZ");
 	paz00_pinmux_init();
 
 	tegra_sdhci_device1.dev.platform_data = &sdhci_pdata1;

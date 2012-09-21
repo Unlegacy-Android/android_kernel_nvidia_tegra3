@@ -520,7 +520,7 @@ subsys_initcall_sync(harmony_wifi_prepower);
 static void __init tegra_harmony_init(void)
 {
 	tegra_clk_init_from_table(harmony_clk_init_table);
-
+	tegra_soc_device_init("harmony");
 	harmony_pinmux_init();
 
 	harmony_uart_init();
