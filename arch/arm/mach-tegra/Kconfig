@@ -87,6 +87,7 @@ config ARCH_TEGRA_3x_SOC
 	select PL310_ERRATA_727915
 	select TEGRA_LATENCY_ALLOWANCE if !TEGRA_FPGA_PLATFORM
 	select TEGRA_LATENCY_ALLOWANCE_SCALING if !TEGRA_FPGA_PLATFORM
+	select SOC_BUS
 	help
 	  Support for NVIDIA Tegra T30 processor family, based on the
 	  ARM CortexA9MP CPU and the ARM PL310 L2 cache controller
