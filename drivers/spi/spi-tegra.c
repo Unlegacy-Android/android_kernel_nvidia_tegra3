@@ -6,7 +6,7 @@
  * Author:
  *     Erik Gilling <konkers@android.com>
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation
+ * Copyright (c) 2010-2012, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1008,7 +1008,8 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 
 	m->actual_length += cur_xfer_size;
 
-	if (!list_is_last(&tspi->cur->transfer_list, &m->transfers)) {
+	if (tspi->cur &&
+		!list_is_last(&tspi->cur->transfer_list, &m->transfers)) {
 		tspi->cur = list_first_entry(&tspi->cur->transfer_list,
 			struct spi_transfer, transfer_list);
 		spin_unlock_irqrestore(&tspi->lock, *irq_flags);
