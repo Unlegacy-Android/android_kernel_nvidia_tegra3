@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_sdio.c 355144 2012-09-05 14:04:28Z $
+ * $Id: dhd_sdio.c 357859 2012-09-20 06:34:26Z $
  */
 
 #include <typedefs.h>
@@ -402,9 +402,6 @@ static const uint retry_limit = 2;
 
 /* Force even SD lengths (some host controllers mess up on odd bytes) */
 static bool forcealign;
-
-/* Flag to indicate if we should download firmware on driver load */
-uint dhd_download_fw_on_driverload = TRUE;
 
 #define ALIGNMENT  4
 
@@ -1007,7 +1004,7 @@ dhdsdio_clk_devsleep_iovar(dhd_bus_t *bus, bool on)
 static int
 dhdsdio_htclk(dhd_bus_t *bus, bool on, bool pendok)
 {
-#define HT_AVAIL_ERROR_MAX	10
+#define HT_AVAIL_ERROR_MAX 10
 	static int ht_avail_error = 0;
 	int err;
 	uint8 clkctl, clkreq, devctl;
@@ -1041,10 +1038,13 @@ dhdsdio_htclk(dhd_bus_t *bus, bool on, bool pendok)
 			ht_avail_error++;
 			if (ht_avail_error < HT_AVAIL_ERROR_MAX) {
 				DHD_ERROR(("%s: HT Avail request error: %d\n", __FUNCTION__, err));
-			} else {
-				if (ht_avail_error == HT_AVAIL_ERROR_MAX)
-					dhd_os_send_hang_message(bus->dhd);
 			}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
+			else if (ht_avail_error == HT_AVAIL_ERROR_MAX) {
+				dhd_os_send_hang_message(bus->dhd);
+			}
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27) */
 			return BCME_ERROR;
 		} else {
 			ht_avail_error = 0;
@@ -5654,6 +5654,22 @@ clkwait:
 		bcmsdh_intr_enable(sdh);
 	}
 
+#if defined(OOB_INTR_ONLY) && !defined(HW_OOB)
+	/* In case of SW-OOB(using edge trigger),
+	 * Check interrupt status in the dongle again after enable irq on the host.
+	 * and rechedule dpc if interrupt is pended in the dongle.
+	 * There is a chance to miss OOB interrupt while irq is disabled on the host.
+	 * No need to do this with HW-OOB(level trigger)
+	 */
+	R_SDREG(newstatus, &regs->intstatus, retries);
+	if (bcmsdh_regfail(bus->sdh))
+		newstatus = 0;
+	if (newstatus & bus->hostintmask) {
+		bus->ipend = TRUE;
+		resched = TRUE;
+	}
+#endif /* defined(OOB_INTR_ONLY) && !defined(HW_OOB) */
+
 	if (TXCTLOK(bus) && bus->ctrl_frame_stat && (bus->clkstate == CLK_AVAIL))  {
 		int ret, i;
 
@@ -6509,11 +6525,13 @@ dhdsdio_probe(uint16 venid, uint16 devid, uint16 bus_no, uint16 slot,
 #endif /* GET_CUSTOM_MAC_ENABLE */
 
 	/* if firmware path present try to download and bring up bus */
-	if (dhd_download_fw_on_driverload && (ret = dhd_bus_start(bus->dhd)) != 0) {
-		DHD_ERROR(("%s: dhd_bus_start failed\n", __FUNCTION__));
-		if (ret == BCME_NOTUP)
-			goto fail;
+	if (dhd_download_fw_on_driverload) {
+		if ((ret = dhd_bus_start(bus->dhd)) != 0) {
+			DHD_ERROR(("%s: dhd_bus_start failed\n", __FUNCTION__));
+			if (ret == BCME_NOTUP)
+				goto fail;
 		}
+	}
 	/* Ok, have the per-port tell the stack we're open for business */
 	if (dhd_net_attach(bus->dhd, 0) != 0) {
 		DHD_ERROR(("%s: Net attach failed!!\n", __FUNCTION__));
@@ -7129,7 +7147,7 @@ dhdsdio_download_code_file(struct dhd_bus *bus, char *pfw_path)
 {
 	int bcmerror = -1;
 	int offset = 0;
-	uint len;
+	int len;
 	void *image = NULL;
 	uint8 *memblock = NULL, *memptr;
 
@@ -7149,6 +7167,11 @@ dhdsdio_download_code_file(struct dhd_bus *bus, char *pfw_path)
 
 	/* Download image */
 	while ((len = dhd_os_get_image_block((char*)memptr, MEMBLOCK, image))) {
+		if (len < 0) {
+			DHD_ERROR(("%s: dhd_os_get_image_block failed (%d)\n", __FUNCTION__, len));
+			bcmerror = BCME_ERROR;
+			goto err;
+		}
 		bcmerror = dhdsdio_membytes(bus, TRUE, offset, memptr, len);
 		if (bcmerror) {
 			DHD_ERROR(("%s: error %d on writing %d membytes at 0x%08x\n",
