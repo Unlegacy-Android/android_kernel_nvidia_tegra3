@@ -31,7 +31,6 @@
 
 #include <asm/cputime.h>
 
-static atomic_t active_count = ATOMIC_INIT(0);
 
 struct cpufreq_interactive_cpuinfo {
 	struct timer_list cpu_timer;
@@ -113,6 +112,14 @@ static unsigned long max_normal_freq;
 static unsigned long midrange_freq;
 static unsigned long midrange_go_maxspeed_load;
 static unsigned long midrange_max_boost;
+
+/*
+ * gov_state_lock protects interactive node creation in governor start/stop.
+ */
+static DEFINE_MUTEX(gov_state_lock);
+
+static struct mutex gov_state_lock;
+static unsigned int active_count;
 
 static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		unsigned int event);
@@ -612,19 +619,25 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 				mod_timer(&pcpu->cpu_timer, jiffies + 2);
 		}
 
+		mutex_lock(&gov_state_lock);
+		active_count++;
+
 		/*
 		 * Do not register the idle hook and create sysfs
 		 * entries if we have already done so.
 		 */
-		if (atomic_inc_return(&active_count) > 1)
-			return 0;
+		if (active_count == 1) {
+			rc = sysfs_create_group(cpufreq_global_kobject,
+					&interactive_attr_group);
 
-		rc = sysfs_create_group(cpufreq_global_kobject,
-				&interactive_attr_group);
-		if (rc)
-			return rc;
+			if (rc) {
+				mutex_unlock(&gov_state_lock);
+				return rc;
+			}
+			idle_notifier_register(&cpufreq_interactive_idle_nb);
+		}
+		mutex_unlock(&gov_state_lock);
 
-		idle_notifier_register(&cpufreq_interactive_idle_nb);
 		break;
 
 	case CPUFREQ_GOV_STOP:
@@ -643,12 +656,16 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			pcpu->idle_exit_time = 0;
 		}
 
-		if (atomic_dec_return(&active_count) > 0)
-			return 0;
+		mutex_lock(&gov_state_lock);
+		active_count--;
 
-		idle_notifier_unregister(&cpufreq_interactive_idle_nb);
-		sysfs_remove_group(cpufreq_global_kobject,
-				&interactive_attr_group);
+		if (active_count == 0) {
+			idle_notifier_unregister(&cpufreq_interactive_idle_nb);
+
+			sysfs_remove_group(cpufreq_global_kobject,
+					&interactive_attr_group);
+		}
+		mutex_unlock(&gov_state_lock);
 
 		break;
 
