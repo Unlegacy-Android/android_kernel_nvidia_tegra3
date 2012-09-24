@@ -325,12 +325,30 @@ static struct tps6591x_sleep_keepon_data tps_slp_keepon = {
 	.clkout32k_keepon = 1,
 };
 
+#define TPS_PUP_INIT_DATA(_pup_num, _pin_id, _pup_val)		\
+	[_pup_num]	=	{				\
+					.pin_id = _pin_id,	\
+					.pup_val = _pup_val,	\
+				}
+
+struct tps6591x_pup_init_data tps_pup_vals[] = {
+	TPS_PUP_INIT_DATA(0, TPS6591X_PUP_NRESPWRON2P, TPS6591X_PUP_DEFAULT),
+	TPS_PUP_INIT_DATA(1, TPS6591X_PUP_HDRSTP, TPS6591X_PUP_DEFAULT),
+	TPS_PUP_INIT_DATA(2, TPS6591X_PUP_PWRHOLDP, TPS6591X_PUP_DEFAULT),
+	TPS_PUP_INIT_DATA(3, TPS6591X_PUP_SLEEPP, TPS6591X_PUP_DIS),
+	TPS_PUP_INIT_DATA(4, TPS6591X_PUP_PWRONP, TPS6591X_PUP_DEFAULT),
+	TPS_PUP_INIT_DATA(5, TPS6591X_PUP_I2CSRP, TPS6591X_PUP_DEFAULT),
+	TPS_PUP_INIT_DATA(6, TPS6591X_PUP_I2CCTLP, TPS6591X_PUP_DEFAULT),
+};
+
 static struct tps6591x_platform_data tps_platform = {
 	.irq_base	= TPS6591X_IRQ_BASE,
 	.gpio_base	= TPS6591X_GPIO_BASE,
 	.dev_slp_en	= true,
 	.slp_keepon	= &tps_slp_keepon,
 	.use_power_off	= true,
+	.pup_data	= tps_pup_vals,
+	.num_pins	= ARRAY_SIZE(tps_pup_vals),
 };
 
 static struct i2c_board_info __initdata cardhu_regulators[] = {
