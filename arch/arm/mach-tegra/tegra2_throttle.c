@@ -118,7 +118,7 @@ unsigned int tegra_throttle_governor_speed(unsigned int requested_speed)
 		requested_speed;
 }
 
-bool tegra_is_throttling(void)
+bool tegra_is_throttling(int *count)
 {
 	return is_throttling;
 }

@@ -218,14 +218,14 @@ static int throttle_get_max_state(struct thermal_cooling_device *cdev,
 static int throttle_get_cur_state(struct thermal_cooling_device *cdev,
 				unsigned long *cur_state)
 {
-	*cur_state = tegra_is_throttling();
+	*cur_state = tegra_is_throttling(NULL);
 	return 0;
 }
 
 static int throttle_set_cur_state(struct thermal_cooling_device *cdev,
 				unsigned long cur_state)
 {
-	if (tegra_is_throttling() != cur_state)
+	if (tegra_is_throttling(NULL) != cur_state)
 		tegra_throttling_enable(cur_state);
 	return 0;
 }
