@@ -320,6 +320,10 @@ void machine_halt(void)
 void machine_power_off(void)
 {
 	machine_shutdown();
+
+#ifdef CONFIG_SMP
+	preempt_enable();
+#endif
 	if (pm_power_off)
 		pm_power_off();
 }
