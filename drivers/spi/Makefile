@@ -59,6 +59,7 @@ obj-$(CONFIG_SPI_SIRF)		+= spi-sirf.o
 obj-$(CONFIG_SPI_STMP3XXX)		+= spi-stmp.o
 CFLAGS_spi-tegra.o			= -Werror
 obj-$(CONFIG_SPI_TEGRA)			+= spi-tegra.o
+CFLAGS_spi-tegra11.o			= -Werror
 obj-$(CONFIG_SPI_TEGRA)			+= spi-tegra11.o
 CFLAGS_spi_slave_tegra.o		= -Werror
 obj-$(CONFIG_SPI_SLAVE_TEGRA)		+= spi_slave_tegra.o
