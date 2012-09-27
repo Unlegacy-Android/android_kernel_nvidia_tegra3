@@ -190,7 +190,7 @@ struct palmas_platform_data {
 	 * then the two value to load into the registers if true
 	 */
 	int mux_from_pdata;
-	u8 pad1, pad2;
+	u8 pad1, pad2, pad3;
 
 	struct palmas_pmic_platform_data *pmic_pdata;
 
