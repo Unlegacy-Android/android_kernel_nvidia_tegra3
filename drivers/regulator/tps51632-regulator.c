@@ -164,7 +164,7 @@ static int __devinit tps51632_init_dcdc(struct tps51632_chip *tps,
 	unsigned int vmax;
 
 	if (pdata->enable_pwm) {
-		control = TPS51632_DVFS_PWMEN;
+		control |= TPS51632_DVFS_PWMEN;
 		tps->pwm_enabled = pdata->enable_pwm;
 		vsel = DIV_ROUND_UP(pdata->base_voltage_uV -
 			TPS51632_MIN_VOLATGE, TPS51632_VOLATGE_STEP) + 0x19;
@@ -177,11 +177,11 @@ static int __devinit tps51632_init_dcdc(struct tps51632_chip *tps,
 		}
 	}
 	if (pdata->dvfs_step_20mV)
-		control = TPS51632_DVFS_STEP_20;
+		control |= TPS51632_DVFS_STEP_20;
 	if (pdata->enable_vmax_alarm)
-		control = TPS51632_DVFS_VMAX_PG;
+		control |= TPS51632_DVFS_VMAX_PG;
 	if (pdata->enable_overcurrent_alram)
-		control = TPS51632_DVFS_OCA_EN;
+		control |= TPS51632_DVFS_OCA_EN;
 	if (pdata->max_voltage_uV) {
 		/**
 		 * TPS51632 hw behavior: VMAX register can be write only
