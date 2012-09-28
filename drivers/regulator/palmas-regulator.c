@@ -958,6 +958,46 @@ static void palmas_enable_ldo8_track(struct palmas *palmas)
 	return;
 }
 
+static void palmas_disable_ldo8_track(struct palmas *palmas)
+{
+	unsigned int reg;
+	unsigned int addr;
+	int ret;
+
+	addr = palmas_regs_info[PALMAS_REG_LDO8].ctrl_addr;
+
+	ret = palmas_ldo_read(palmas, addr, &reg);
+	if (ret) {
+		dev_err(palmas->dev, "Error in reading ldo8 control reg\n");
+		return;
+	}
+
+	reg &= ~PALMAS_LDO8_CTRL_LDO_TRACKING_EN;
+	ret = palmas_ldo_write(palmas, addr, reg);
+	if (ret < 0) {
+		dev_err(palmas->dev, "Error in enabling tracking mode\n");
+		return;
+	}
+	/*
+	 * When SMPS4&5 is set to off and LDO8 tracking is enabled, the LDO8
+	 * output is defined by the LDO8_VOLTAGE.VSEL register divided by two,
+	 * and can be set from 0.45 to 1.65 V.
+	 */
+	addr = palmas_regs_info[PALMAS_REG_LDO8].vsel_addr;
+	ret = palmas_ldo_read(palmas, addr, &reg);
+	if (ret) {
+		dev_err(palmas->dev, "Error in reading ldo8 voltage reg\n");
+		return;
+	}
+
+	reg = (reg >> 1) & PALMAS_LDO8_VOLTAGE_VSEL_MASK;
+	ret = palmas_ldo_write(palmas, addr, reg);
+	if (ret < 0)
+		dev_err(palmas->dev, "Error in setting ldo8 voltage reg\n");
+
+	return;
+}
+
 static __devinit int palmas_probe(struct platform_device *pdev)
 {
 	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
@@ -1164,10 +1204,41 @@ static int __devexit palmas_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int palmas_suspend(struct device *dev)
+{
+	struct palmas *palmas = dev_get_drvdata(dev->parent);
+	struct palmas_pmic_platform_data *pdata = dev_get_platdata(dev);
+
+	/* Check if LDO8 is in tracking mode disable in suspend or not */
+	if (pdata->enable_ldo8_tracking && pdata->disabe_ldo8_tracking_suspend)
+		palmas_disable_ldo8_track(palmas);
+
+	return 0;
+}
+
+static int palmas_resume(struct device *dev)
+{
+	struct palmas *palmas = dev_get_drvdata(dev->parent);
+	struct palmas_pmic_platform_data *pdata = dev_get_platdata(dev);
+
+	/* Check if LDO8 is in tracking mode disable in suspend or not */
+	if (pdata->enable_ldo8_tracking && pdata->disabe_ldo8_tracking_suspend)
+		palmas_enable_ldo8_track(palmas);
+
+	return 0;
+}
+#endif
+static const struct dev_pm_ops palmas_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(palmas_suspend, palmas_resume)
+};
+
+
 static struct platform_driver palmas_driver = {
 	.driver = {
 		.name = "palmas-pmic",
 		.owner = THIS_MODULE,
+		.pm     = &palmas_pm_ops,
 	},
 	.probe = palmas_probe,
 	.remove = __devexit_p(palmas_remove),

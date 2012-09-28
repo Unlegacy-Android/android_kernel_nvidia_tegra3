@@ -174,6 +174,7 @@ struct palmas_pmic_platform_data {
 	int ldo6_vibrator;
 
 	bool enable_ldo8_tracking;
+	bool disabe_ldo8_tracking_suspend;
 
 
 };
