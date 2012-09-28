@@ -1426,7 +1426,8 @@ static int mmc_suspend(struct mmc_host *host)
 	BUG_ON(!host->card);
 
 	mmc_claim_host(host);
-	if (mmc_card_can_sleep(host)) {
+	if (mmc_card_can_sleep(host) &&
+		!(host->caps2 & MMC_CAP2_NO_SLEEP_CMD)) {
 		err = mmc_card_sleep(host);
 		if (!err)
 			mmc_card_set_sleep(host->card);
@@ -1452,7 +1453,8 @@ static int mmc_resume(struct mmc_host *host)
 	BUG_ON(!host->card);
 
 	mmc_claim_host(host);
-	if (mmc_card_is_sleep(host->card)) {
+	if (mmc_card_is_sleep(host->card) &&
+		!(host->caps2 & MMC_CAP2_NO_SLEEP_CMD)) {
 		err = mmc_card_awake(host);
 		mmc_card_clr_sleep(host->card);
 	} else
