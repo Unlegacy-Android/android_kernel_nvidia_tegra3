@@ -584,6 +584,16 @@ static int __devinit palmas_i2c_probe(struct i2c_client *i2c,
 		}
 	}
 
+	/* Change interrupt line output polarity */
+	slave = PALMAS_BASE_TO_SLAVE(PALMAS_PU_PD_OD_BASE);
+	addr = PALMAS_BASE_TO_REG(PALMAS_PU_PD_OD_BASE, PALMAS_POLARITY_CTRL);
+	regmap_read(palmas->regmap[slave], addr, &reg);
+	if (pdata->irq_type & IRQ_TYPE_LEVEL_HIGH)
+		reg |= PALMAS_POLARITY_CTRL_INT_POLARITY;
+	else
+		reg &= ~PALMAS_POLARITY_CTRL_INT_POLARITY;
+	regmap_write(palmas->regmap[slave], addr, reg);
+
 	/* Change IRQ into clear on read mode for efficiency */
 	slave = PALMAS_BASE_TO_SLAVE(PALMAS_INTERRUPT_BASE);
 	addr = PALMAS_BASE_TO_REG(PALMAS_INTERRUPT_BASE, PALMAS_INT_CTRL);
