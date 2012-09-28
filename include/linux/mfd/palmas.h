@@ -181,6 +181,7 @@ struct palmas_pmic_platform_data {
 struct palmas_platform_data {
 	int gpio_base;
 	int irq_base;
+	int irq_type;
 
 	/* bit value to be loaded to the POWER_CTRL register */
 	u8 power_ctrl;

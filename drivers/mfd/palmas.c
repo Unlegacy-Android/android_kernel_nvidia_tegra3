@@ -543,6 +543,7 @@ static int __devinit palmas_i2c_probe(struct i2c_client *i2c,
 	int ret = 0, i;
 	unsigned int reg, addr;
 	int slave;
+	int irq_flag;
 	struct mfd_cell *children;
 
 	pdata = dev_get_platdata(&i2c->dev);
@@ -590,8 +591,10 @@ static int __devinit palmas_i2c_probe(struct i2c_client *i2c,
 
 	regmap_write(palmas->regmap[slave], addr, reg);
 
+	irq_flag = pdata->irq_type;
+	irq_flag |= IRQF_ONESHOT;
 	ret = regmap_add_irq_chip(palmas->regmap[slave], palmas->irq,
-			IRQF_ONESHOT, pdata->irq_base, &palmas_irq_chip,
+			irq_flag, pdata->irq_base, &palmas_irq_chip,
 			&palmas->irq_data);
 	if (ret < 0)
 		goto err;
