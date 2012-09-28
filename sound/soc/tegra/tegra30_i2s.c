@@ -137,11 +137,11 @@ static const struct file_operations tegra30_i2s_debug_fops = {
 	.release = single_release,
 };
 
-static void tegra30_i2s_debug_add(struct tegra30_i2s *i2s)
+static void tegra30_i2s_debug_add(struct tegra30_i2s *i2s, int id)
 {
 	char name[] = DRV_NAME ".0";
 
-	snprintf(name, sizeof(name), DRV_NAME);
+	snprintf(name, sizeof(name), DRV_NAME".%1d", id);
 	i2s->debug = debugfs_create_file(name, S_IRUGO, snd_soc_debugfs_root,
 						i2s, &tegra30_i2s_debug_fops);
 }
@@ -152,7 +152,7 @@ static void tegra30_i2s_debug_remove(struct tegra30_i2s *i2s)
 		debugfs_remove(i2s->debug);
 }
 #else
-static inline void tegra30_i2s_debug_add(struct tegra30_i2s *i2s)
+static inline void tegra30_i2s_debug_add(struct tegra30_i2s *i2s, int id)
 {
 }
 
@@ -1192,6 +1192,7 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 	codec_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_RX;
 	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL,
 		codec_i2s->reg_ctrl);
+
 	bb_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_TX;
 	bb_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_RX;
 	tegra30_i2s_write(bb_i2s, TEGRA30_I2S_CTRL,
@@ -1364,7 +1365,7 @@ static __devinit int tegra30_i2s_platform_probe(struct platform_device *pdev)
 		goto err_unmap;
 	}
 
-	tegra30_i2s_debug_add(i2s);
+	tegra30_i2s_debug_add(i2s, pdev->id);
 
 	return 0;
 
