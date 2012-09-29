@@ -191,6 +191,9 @@ static inline void tegra_dvfs_age_cpu(int cur_linear_age)
 { return; }
 #endif
 
-
+static inline bool tegra_dvfs_rail_is_dfll_mode(struct dvfs_rail *rail)
+{
+	return rail->dfll_mode;
+}
 
 #endif

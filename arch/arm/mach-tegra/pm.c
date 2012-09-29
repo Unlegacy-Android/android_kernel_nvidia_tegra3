@@ -189,6 +189,7 @@ struct suspend_context tegra_sctx;
 #define AWAKE_CPU_FREQ_MIN	51000
 static struct pm_qos_request awake_cpu_freq_req;
 
+static struct clk *tegra_dfll;
 static struct clk *tegra_pclk;
 static const struct tegra_suspend_platform_data *pdata;
 static enum tegra_suspend_mode current_suspend_mode = TEGRA_SUSPEND_NONE;
@@ -251,6 +252,22 @@ unsigned long tegra_cpu_lp2_min_residency(void)
 		return 2000;
 
 	return pdata->cpu_lp2_min_residency;
+}
+
+static void suspend_cpu_dfll_mode(void)
+{
+	/* If DFLL is used as CPU clock source go to open loop mode */
+	if (!is_lp_cluster() && tegra_dfll &&
+	    tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
+		tegra_clk_cfg_ex(tegra_dfll, TEGRA_CLK_DFLL_LOCK, 0);
+}
+
+static void resume_cpu_dfll_mode(void)
+{
+	/* If DFLL is used as CPU clock source restore closed loop mode */
+	if (!is_lp_cluster() && tegra_dfll &&
+	    tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
+		tegra_clk_cfg_ex(tegra_dfll, TEGRA_CLK_DFLL_LOCK, 1);
 }
 
 /*
@@ -592,6 +609,7 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 		}
 		tegra_cluster_switch_prolog(flags);
 	} else {
+		suspend_cpu_dfll_mode();
 		set_power_timers(pdata->cpu_timer, pdata->cpu_off_timer,
 			clk_get_rate_all_locked(tegra_pclk));
 #if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
@@ -650,6 +668,8 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 			trace_cpu_cluster_rcuidle(POWER_CPU_CLUSTER_DONE);
 		else
 			trace_cpu_cluster(POWER_CPU_CLUSTER_DONE);
+	} else {
+		resume_cpu_dfll_mode();
 	}
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_epilog);
 
@@ -1076,6 +1096,7 @@ static struct kobject *suspend_kobj;
 static int tegra_pm_enter_suspend(void)
 {
 	pr_info("Entering suspend state %s\n", lp_state[current_suspend_mode]);
+	suspend_cpu_dfll_mode();
 	if (current_suspend_mode == TEGRA_SUSPEND_LP0)
 		tegra_lp0_cpu_mode(true);
 	return 0;
@@ -1085,6 +1106,7 @@ static void tegra_pm_enter_resume(void)
 {
 	if (current_suspend_mode == TEGRA_SUSPEND_LP0)
 		tegra_lp0_cpu_mode(false);
+	resume_cpu_dfll_mode();
 	pr_info("Exited suspend state %s\n", lp_state[current_suspend_mode]);
 }
 
@@ -1109,6 +1131,10 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 	pm_qos_add_request(&awake_cpu_freq_req, PM_QOS_CPU_FREQ_MIN,
 			   AWAKE_CPU_FREQ_MIN);
 
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+	tegra_dfll = clk_get_sys(NULL, "dfll_cpu");
+	BUG_ON(IS_ERR(tegra_dfll));
+#endif
 	tegra_pclk = clk_get_sys(NULL, "pclk");
 	BUG_ON(IS_ERR(tegra_pclk));
 	pdata = plat;
