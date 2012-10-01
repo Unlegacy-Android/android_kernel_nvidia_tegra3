@@ -443,23 +443,6 @@ static int palmas_set_voltage_smps_sel(struct regulator_dev *dev,
 	return 0;
 }
 
-static int palmas_map_voltage_smps(struct regulator_dev *rdev,
-		int min_uV, int max_uV)
-{
-	int ret, voltage;
-
-	ret = ((min_uV - 500000) / 10000) + 1;
-	if (ret < 0)
-		return ret;
-
-	/* Map back into a voltage to verify we're still in bounds */
-	voltage = palmas_list_voltage_smps(rdev, ret);
-	if (voltage < min_uV || voltage > max_uV)
-		return -EINVAL;
-
-	return ret;
-}
-
 static struct regulator_ops palmas_ops_smps = {
 	.is_enabled		= palmas_is_enabled_smps,
 	.enable			= palmas_enable_smps,
@@ -474,7 +457,6 @@ static struct regulator_ops palmas_ops_smps = {
 static int palmas_is_enabled_smps10(struct regulator_dev *dev)
 {
 	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
-	int id = rdev_get_id(dev);
 	unsigned int reg;
 	int ret;
 
@@ -696,23 +678,6 @@ static int palmas_set_voltage_ldo_sel(struct regulator_dev *dev,
 	palmas_ldo_write(pmic->palmas, addr, reg);
 
 	return 0;
-}
-
-static int palmas_map_voltage_ldo(struct regulator_dev *rdev,
-		int min_uV, int max_uV)
-{
-	int ret, voltage;
-
-	ret = ((min_uV - 900000) / 50000) + 1;
-	if (ret < 0)
-		return ret;
-
-	/* Map back into a voltage to verify we're still in bounds */
-	voltage = palmas_list_voltage_ldo(rdev, ret);
-	if (voltage < min_uV || voltage > max_uV)
-		return -EINVAL;
-
-	return ret;
 }
 
 static struct regulator_ops palmas_ops_ldo = {
