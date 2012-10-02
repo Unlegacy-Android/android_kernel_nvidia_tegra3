@@ -313,7 +313,7 @@ static struct tegra_fb_data p1852_fb_data = {
 static struct tegra_dc_mode p1852_panel_modes[] = {
 	{
 		/* 800x480@60 */
-		.pclk = 32460000,
+		.pclk = 33260000,
 		.h_ref_to_sync = 1,
 		.v_ref_to_sync = 1,
 		.h_sync_width = 64,

@@ -78,19 +78,19 @@ static struct resource p852_disp_resources[] = {
 static struct tegra_dc_mode p852_panel_modes[] = {
 /* Timings for the LG LB070WV4 panel */
 	{
-	 .pclk = 33230769,
+	 .pclk = 33260000,
 
 	 .h_ref_to_sync = 1,
 	 .v_ref_to_sync = 1,
 
-	 .h_sync_width = 128,
-	 .v_sync_width = 2,
+	 .h_sync_width = 64,
+	 .v_sync_width = 3,
 
-	 .h_back_porch = 88,
-	 .v_back_porch = 30,
+	 .h_back_porch = 128,
+	 .v_back_porch = 22,
 
-	 .h_front_porch = 40,
-	 .v_front_porch = 13,
+	 .h_front_porch = 64,
+	 .v_front_porch = 20,
 
 	 .h_active = 800,
 	 .v_active = 480,
