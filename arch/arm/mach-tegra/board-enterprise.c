@@ -57,6 +57,7 @@
 #include <mach/io_dpd.h>
 #include <mach/usb_phy.h>
 #include <mach/i2s.h>
+#include <mach/tegra_aic326x_pdata.h>
 #include <mach/tegra_asoc_pdata.h>
 #include <mach/thermal.h>
 #include <mach/tegra-bb-power.h>
@@ -614,6 +615,14 @@ static struct tegra_asoc_platform_data enterprise_audio_aic326x_pdata = {
 		.audio_port_id	= 3,
 		.is_i2s_master	= 1,
 		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
+	},
+	.i2s_param[VOICE_CODEC]	= {
+		.audio_port_id	= 1,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_I2S,
+		.sample_size	= 16,
+		.rate		= 8000,
+		.channels	= 2,
 	},
 };
 
