@@ -1161,6 +1161,7 @@ static int cs42l73_set_bias_level(struct snd_soc_codec *codec,
 
 	case SND_SOC_BIAS_OFF:
 		snd_soc_update_bits(codec, CS42L73_PWRCTL1, PDN, 1);
+		msleep(100);
 		snd_soc_update_bits(codec, CS42L73_DMMCC, MCLKDIS, 1);
 		break;
 	}
