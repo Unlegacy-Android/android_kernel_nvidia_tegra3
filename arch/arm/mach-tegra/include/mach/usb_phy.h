@@ -30,20 +30,10 @@ struct tegra_usb_phy;
 struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev);
 
 /**
- * Closes the phy controller and its resources
- */
-void tegra_usb_phy_close(struct tegra_usb_phy *phy);
-
-/**
  * Handles interrupts specific to the phy interface
  * Note: udc or ehci driver will handle the controller interrupts
  */
-int tegra_usb_phy_irq(struct tegra_usb_phy *phy);
-
-/**
- * Initializes the phy specific functions after phy is power on
- */
-int tegra_usb_phy_init(struct tegra_usb_phy *phy);
+irqreturn_t tegra_usb_phy_irq(struct tegra_usb_phy *phy);
 
 /**
  * Handles phy interface specific functionality after driver reset
@@ -57,11 +47,6 @@ int tegra_usb_phy_reset(struct tegra_usb_phy *phy);
 int tegra_usb_phy_pre_suspend(struct tegra_usb_phy *phy);
 
 /**
- * Handles phy interface specific suspend functionality
- */
-int tegra_usb_phy_suspend(struct tegra_usb_phy *phy);
-
-/**
  * Handles phy interface specific functionality after driver suspend
  */
 int tegra_usb_phy_post_suspend(struct tegra_usb_phy *phy);
@@ -71,11 +56,6 @@ int tegra_usb_phy_post_suspend(struct tegra_usb_phy *phy);
  * Also, handles platform specific pre resume functions
  */
 int tegra_usb_phy_pre_resume(struct tegra_usb_phy *phy, bool remote_wakeup);
-
-/**
- * Handles phy interface specific resume functionality
- */
-int tegra_usb_phy_resume(struct tegra_usb_phy *phy);
 
 /**
  * Handles phy interface specific functionality after driver resume
