@@ -438,6 +438,7 @@ int snd_hdmi_get_eld(struct hdmi_eld *eld,
 	buf = eld->eld_buffer;
 
 	codec->recv_dec_cap = 0;
+	codec->max_pcm_channels = 0;
 	for (i = 0; i < eld->sad_count; i++) {
 		if (eld->sad[i].format == AUDIO_CODING_TYPE_AC3) {
 			codec->recv_dec_cap |= (1 << AUDIO_CODING_TYPE_AC3);
