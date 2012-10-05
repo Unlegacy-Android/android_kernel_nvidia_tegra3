@@ -31,6 +31,7 @@
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
 #include <linux/platform_data/tegra_usb.h>
+#include <linux/usb/otg.h>
 
 #include <mach/iomap.h>
 #include <mach/gpio-tegra.h>
@@ -89,6 +90,11 @@ static void print_usb_plat_data_info(struct tegra_usb_phy *phy)
 		pr_info("remote_wakeup: %s\n", pdata->u_data.host.remote_wakeup_supported
 				? "enabled" : "disabled");
 	}
+}
+
+struct tegra_usb_phy *get_tegra_phy(struct usb_phy *x)
+{
+	return (struct tegra_usb_phy *)x;
 }
 
 static void usb_host_vbus_enable(struct tegra_usb_phy *phy, bool enable)
@@ -247,171 +253,10 @@ fail_pllu_reg:
 	return err;
 }
 
-struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
+void tegra_usb_phy_close(struct usb_phy *x)
 {
-	struct tegra_usb_phy *phy;
-	struct tegra_usb_platform_data *pdata;
-	struct resource *res;
-	int err;
-	int plat_data_size = sizeof(struct tegra_usb_platform_data);
+	struct tegra_usb_phy *phy = get_tegra_phy(x);
 
-	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, pdev->id);
-	pdata = dev_get_platdata(&pdev->dev);
-	if (!pdata) {
-		dev_err(&pdev->dev, "inst:[%d] Platform data missing\n",
-								pdev->id);
-		err = -EINVAL;
-		goto fail_inval;
-	}
-
-	phy = devm_kzalloc(&pdev->dev, sizeof(struct tegra_usb_phy), GFP_KERNEL);
-	if (!phy) {
-		ERR("inst:[%d] malloc usb phy failed\n", pdev->id);
-		err = -ENOMEM;
-		goto fail_nomem;
-	}
-
-	phy->pdata = devm_kzalloc(&pdev->dev, plat_data_size, GFP_KERNEL);
-	if (!phy->pdata) {
-		ERR("inst:[%d] malloc usb phy pdata failed\n", pdev->id);
-		devm_kfree(&pdev->dev, phy);
-		err = -ENOMEM;
-		goto fail_nomem;
-	}
-
-	memcpy(phy->pdata, pdata, plat_data_size);
-
-	phy->pdev = pdev;
-	phy->inst = pdev->id;
-
-	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST)
-		phy->hot_plug = phy->pdata->u_data.host.hot_plug;
-
-	print_usb_plat_data_info(phy);
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		ERR("inst:[%d] failed to get I/O memory\n", phy->inst);
-		err = -ENXIO;
-		goto fail_io;
-	}
-
-	phy->regs = ioremap(res->start, resource_size(res));
-	if (!phy->regs) {
-		ERR("inst:[%d] Failed to remap I/O memory\n", phy->inst);
-		err = -ENOMEM;
-		goto fail_io;
-	}
-
-	phy->vdd_reg = regulator_get(&pdev->dev, "avdd_usb");
-	if (IS_ERR_OR_NULL(phy->vdd_reg)) {
-		ERR("inst:[%d] couldn't get regulator avdd_usb: %ld\n",
-			phy->inst, PTR_ERR(phy->vdd_reg));
-		phy->vdd_reg = NULL;
-	}
-
-	err = tegra_usb_phy_get_clocks(phy);
-	if (err) {
-		ERR("inst:[%d] Failed to init clocks\n", phy->inst);
-		goto fail_clk;
-	}
-
-	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE) {
-		if (phy->pdata->u_data.dev.vbus_pmu_irq) {
-			err = request_threaded_irq(
-					phy->pdata->u_data.dev.vbus_pmu_irq,
-					NULL, usb_phy_dev_vbus_pmu_irq_thr,
-					IRQF_SHARED, "usb_pmu_vbus_irq", phy);
-			if (err) {
-				ERR("inst:[%d] Failed to register IRQ\n",
-								phy->inst);
-				goto fail_init;
-			}
-		} else {
-			clk_enable(phy->ctrlr_clk);
-		}
-	} else {
-		int gpio = phy->pdata->u_data.host.vbus_gpio;
-		if (gpio != -1) {
-			if (gpio_request(gpio, "usb_host_vbus") < 0) {
-				ERR("inst:[%d] host vbus gpio req failed\n",
-								phy->inst);
-				goto fail_init;
-			}
-			if (gpio_direction_output(gpio, 1) < 0) {
-				ERR("inst:[%d] host vbus gpio dir failed\n",
-								phy->inst);
-				goto fail_init;
-			}
-		} else {
-			phy->vbus_reg = regulator_get(&pdev->dev, "usb_vbus");
-			if (IS_ERR_OR_NULL(phy->vbus_reg)) {
-				ERR("failed to get regulator vdd_vbus_usb:" \
-				"%ld,instance : %d\n", PTR_ERR(phy->vbus_reg),
-				phy->inst);
-				phy->vbus_reg = NULL;
-			}
-		}
-		usb_host_vbus_enable(phy, true);
-		/* Fixme: Need delay to stablize the vbus on USB1
-		   this must be fixed properly */
-		if (phy->inst == 0)
-			msleep(1000);
-	}
-	err = tegra_usb_phy_init_ops(phy);
-	if (err) {
-		ERR("inst:[%d] Failed to init ops\n", phy->inst);
-		goto fail_init;
-	}
-
-	if (phy->pdata->ops && phy->pdata->ops->open)
-		phy->pdata->ops->open();
-
-	if (phy->ops && phy->ops->open) {
-		err = phy->ops->open(phy);
-		if (err) {
-			ERR("inst:[%d] Failed to open hw ops\n", phy->inst);
-			goto fail_init;
-		}
-	}
-
-	return phy;
-
-fail_init:
-	tegra_usb_phy_release_clocks(phy);
-
-	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE) {
-		if (phy->pdata->u_data.dev.vbus_pmu_irq)
-			free_irq(phy->pdata->u_data.dev.vbus_pmu_irq, phy);
-	} else {
-		usb_host_vbus_enable(phy, false);
-
-		if (phy->vbus_reg)
-			regulator_put(phy->vbus_reg);
-		else {
-			int gpio = phy->pdata->u_data.host.vbus_gpio;
-			if (gpio != -1) {
-				gpio_set_value_cansleep(gpio, 0);
-				gpio_free(gpio);
-			}
-		}
-	}
-
-fail_clk:
-	regulator_put(phy->vdd_reg);
-	iounmap(phy->regs);
-fail_io:
-	devm_kfree(&pdev->dev, phy->pdata);
-	devm_kfree(&pdev->dev, phy);
-
-fail_nomem:
-fail_inval:
-	return ERR_PTR(err);
-}
-EXPORT_SYMBOL_GPL(tegra_usb_phy_open);
-
-void tegra_usb_phy_close(struct tegra_usb_phy *phy)
-{
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
 	if (phy->ops && phy->ops->close)
@@ -455,7 +300,6 @@ void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 	devm_kfree(&phy->pdev->dev, phy->pdata);
 	devm_kfree(&phy->pdev->dev, phy);
 }
-EXPORT_SYMBOL_GPL(tegra_usb_phy_close);
 
 irqreturn_t tegra_usb_phy_irq(struct tegra_usb_phy *phy)
 {
@@ -468,9 +312,10 @@ irqreturn_t tegra_usb_phy_irq(struct tegra_usb_phy *phy)
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_irq);
 
-int tegra_usb_phy_init(struct tegra_usb_phy *phy)
+int tegra_usb_phy_init(struct usb_phy *x)
 {
 	int status = 0;
+	struct tegra_usb_phy *phy = get_tegra_phy(x);
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
@@ -482,7 +327,6 @@ int tegra_usb_phy_init(struct tegra_usb_phy *phy)
 
 	return status;
 }
-EXPORT_SYMBOL_GPL(tegra_usb_phy_init);
 
 int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 {
@@ -618,13 +462,11 @@ int tegra_usb_phy_suspend(struct tegra_usb_phy *phy)
 	if (phy->ops && phy->ops->suspend)
 		err = phy->ops->suspend(phy);
 
-	if (!err && phy->pdata->u_data.host.power_off_on_suspend) {
+	if (!err && phy->pdata->u_data.host.power_off_on_suspend)
 		tegra_usb_phy_power_off(phy);
-	}
 
 	return err;
 }
-EXPORT_SYMBOL_GPL(tegra_usb_phy_suspend);
 
 int tegra_usb_phy_post_suspend(struct tegra_usb_phy *phy)
 {
@@ -674,7 +516,6 @@ int tegra_usb_phy_resume(struct tegra_usb_phy *phy)
 	return err;
 
 }
-EXPORT_SYMBOL_GPL(tegra_usb_phy_resume);
 
 int tegra_usb_phy_post_resume(struct tegra_usb_phy *phy)
 {
@@ -787,3 +628,181 @@ void tegra_usb_phy_memory_prefetch_off(struct tegra_usb_phy *phy)
 	}
 }
 
+
+int tegra_usb_phy_set_suspend(struct usb_phy *x, int suspend)
+{
+	struct tegra_usb_phy *phy = get_tegra_phy(x);
+
+	if (suspend)
+		return tegra_usb_phy_suspend(phy);
+	else
+		return tegra_usb_phy_resume(phy);
+}
+
+struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
+{
+	struct tegra_usb_phy *phy;
+	struct tegra_usb_platform_data *pdata;
+	struct resource *res;
+	int err;
+	int plat_data_size = sizeof(struct tegra_usb_platform_data);
+
+	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, pdev->id);
+	pdata = dev_get_platdata(&pdev->dev);
+	if (!pdata) {
+		dev_err(&pdev->dev, "inst:[%d] Platform data missing\n",
+								pdev->id);
+		err = -EINVAL;
+		goto fail_inval;
+	}
+
+	phy = devm_kzalloc(&pdev->dev, sizeof(struct tegra_usb_phy), GFP_KERNEL);
+	if (!phy) {
+		ERR("inst:[%d] malloc usb phy failed\n", pdev->id);
+		err = -ENOMEM;
+		goto fail_nomem;
+	}
+
+	phy->pdata = devm_kzalloc(&pdev->dev, plat_data_size, GFP_KERNEL);
+	if (!phy->pdata) {
+		ERR("inst:[%d] malloc usb phy pdata failed\n", pdev->id);
+		devm_kfree(&pdev->dev, phy);
+		err = -ENOMEM;
+		goto fail_nomem;
+	}
+
+	memcpy(phy->pdata, pdata, plat_data_size);
+
+	phy->pdev = pdev;
+	phy->inst = pdev->id;
+
+	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST)
+		phy->hot_plug = phy->pdata->u_data.host.hot_plug;
+
+	print_usb_plat_data_info(phy);
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		ERR("inst:[%d] failed to get I/O memory\n", phy->inst);
+		err = -ENXIO;
+		goto fail_io;
+	}
+
+	phy->regs = ioremap(res->start, resource_size(res));
+	if (!phy->regs) {
+		ERR("inst:[%d] Failed to remap I/O memory\n", phy->inst);
+		err = -ENOMEM;
+		goto fail_io;
+	}
+
+	phy->vdd_reg = regulator_get(&pdev->dev, "avdd_usb");
+	if (IS_ERR_OR_NULL(phy->vdd_reg)) {
+		ERR("inst:[%d] couldn't get regulator avdd_usb: %ld\n",
+			phy->inst, PTR_ERR(phy->vdd_reg));
+		phy->vdd_reg = NULL;
+	}
+
+	err = tegra_usb_phy_get_clocks(phy);
+	if (err) {
+		ERR("inst:[%d] Failed to init clocks\n", phy->inst);
+		goto fail_clk;
+	}
+
+	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE) {
+		if (phy->pdata->u_data.dev.vbus_pmu_irq) {
+			err = request_threaded_irq(
+					phy->pdata->u_data.dev.vbus_pmu_irq,
+					NULL, usb_phy_dev_vbus_pmu_irq_thr,
+					IRQF_SHARED, "usb_pmu_vbus_irq", phy);
+			if (err) {
+				ERR("inst:[%d] Failed to register IRQ\n",
+								phy->inst);
+				goto fail_init;
+			}
+		} else {
+			clk_enable(phy->ctrlr_clk);
+		}
+	} else {
+		int gpio = phy->pdata->u_data.host.vbus_gpio;
+		if (gpio != -1) {
+			if (gpio_request(gpio, "usb_host_vbus") < 0) {
+				ERR("inst:[%d] host vbus gpio req failed\n",
+								phy->inst);
+				goto fail_init;
+			}
+			if (gpio_direction_output(gpio, 1) < 0) {
+				ERR("inst:[%d] host vbus gpio dir failed\n",
+								phy->inst);
+				goto fail_init;
+			}
+		} else {
+			phy->vbus_reg = regulator_get(&pdev->dev, "usb_vbus");
+			if (IS_ERR_OR_NULL(phy->vbus_reg)) {
+				ERR("failed to get regulator vdd_vbus_usb:" \
+				"%ld,instance : %d\n", PTR_ERR(phy->vbus_reg),
+				phy->inst);
+				phy->vbus_reg = NULL;
+			}
+		}
+		usb_host_vbus_enable(phy, true);
+		/* Fixme: Need delay to stablize the vbus on USB1
+		   this must be fixed properly */
+		if (phy->inst == 0)
+			msleep(1000);
+	}
+	err = tegra_usb_phy_init_ops(phy);
+	if (err) {
+		ERR("inst:[%d] Failed to init ops\n", phy->inst);
+		goto fail_init;
+	}
+
+	if (phy->pdata->ops && phy->pdata->ops->open)
+		phy->pdata->ops->open();
+
+	if (phy->ops && phy->ops->open) {
+		err = phy->ops->open(phy);
+		if (err) {
+			ERR("inst:[%d] Failed to open hw ops\n", phy->inst);
+			goto fail_init;
+		}
+	}
+
+	/* Set usb_phy func pointers */
+	phy->phy.init = tegra_usb_phy_init;
+	phy->phy.shutdown = tegra_usb_phy_close;
+	phy->phy.set_suspend = tegra_usb_phy_set_suspend;
+
+	return phy;
+
+fail_init:
+	tegra_usb_phy_release_clocks(phy);
+
+	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE) {
+		if (phy->pdata->u_data.dev.vbus_pmu_irq)
+			free_irq(phy->pdata->u_data.dev.vbus_pmu_irq, phy);
+	} else {
+		usb_host_vbus_enable(phy, false);
+
+		if (phy->vbus_reg)
+			regulator_put(phy->vbus_reg);
+		else {
+			int gpio = phy->pdata->u_data.host.vbus_gpio;
+			if (gpio != -1) {
+				gpio_set_value_cansleep(gpio, 0);
+				gpio_free(gpio);
+			}
+		}
+	}
+
+fail_clk:
+	regulator_put(phy->vdd_reg);
+	iounmap(phy->regs);
+fail_io:
+	devm_kfree(&pdev->dev, phy->pdata);
+	devm_kfree(&pdev->dev, phy);
+
+fail_nomem:
+fail_inval:
+	return ERR_PTR(err);
+}
+EXPORT_SYMBOL_GPL(tegra_usb_phy_open);
