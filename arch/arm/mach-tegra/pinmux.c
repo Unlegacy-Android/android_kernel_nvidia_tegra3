@@ -27,7 +27,7 @@
 #include <mach/iomap.h>
 #include <mach/pinmux.h>
 
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 #define TEGRA_PINMUX_HAS_IO_DIRECTION 1
 #endif
 
