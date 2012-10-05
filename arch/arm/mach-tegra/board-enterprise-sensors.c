@@ -121,6 +121,7 @@ static void enterprise_init_edp_cdev(void)
 		enterprise_nct1008_pdata.active[i].cdev_data = (void *)i;
 		enterprise_nct1008_pdata.active[i].trip_temp =
 			cpu_edp_limits[i].temperature * 1000;
+		enterprise_nct1008_pdata.active[i].hysteresis = 1000;
 	}
 	enterprise_nct1008_pdata.active[i].create_cdev = NULL;
 }

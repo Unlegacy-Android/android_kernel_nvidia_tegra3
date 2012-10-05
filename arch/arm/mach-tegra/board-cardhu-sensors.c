@@ -828,6 +828,7 @@ static int cardhu_nct1008_init(void)
 			cardhu_nct1008_pdata.active[i].cdev_data = (void *)i;
 			cardhu_nct1008_pdata.active[i].trip_temp =
 				cpu_edp_limits[i].temperature * 1000;
+			cardhu_nct1008_pdata.active[i].hysteresis = 1000;
 		}
 		cardhu_nct1008_pdata.active[i].create_cdev = NULL;
 #endif
