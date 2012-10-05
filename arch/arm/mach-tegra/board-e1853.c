@@ -47,6 +47,7 @@
 #include <asm/mach/flash.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
+#include <asm/hardware/gic.h>
 #include <mach/usb_phy.h>
 #include <sound/wm8903.h>
 #include <mach/tsensor.h>
@@ -56,6 +57,9 @@
 #include "devices.h"
 #include "gpio-names.h"
 #include "fuse.h"
+#include "common.h"
+
+#define __MINIMAL_1853
 
 static __initdata struct tegra_clk_init_table e1853_clk_init_table[] = {
 	/* name		parent		rate		enabled */
@@ -265,6 +269,32 @@ static struct platform_device *e1853_devices[] __initdata = {
 	&tegra_wdt0_device
 };
 
+#if defined(CONFIG_USB_G_ANDROID)
+static struct tegra_usb_platform_data tegra_udc_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_DEVICE,
+	.u_data.dev = {
+		.vbus_pmu_irq = 0,
+		.vbus_gpio = -1,
+		.charging_supported = false,
+		.remote_wakeup_supported = false,
+	},
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.idle_wait_delay = 17,
+		.elastic_limit = 16,
+		.term_range_adj = 6,
+		.xcvr_setup = 63,
+		.xcvr_setup_offset = 6,
+		.xcvr_use_fuses = 1,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_use_lsb = 1,
+	},
+};
+#else
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
@@ -289,7 +319,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 		.xcvr_use_lsb = 1,
 	},
 };
-
+#endif
 static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
@@ -342,9 +372,16 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 
 static void e1853_usb_init(void)
 {
+	/* Need to parse sku info to decide host/device mode */
+
+	/* G_ANDROID require device mode */
+#if defined(CONFIG_USB_G_ANDROID)
+	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+	platform_device_register(&tegra_udc_device);
+#else
 	tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
 	platform_device_register(&tegra_ehci1_device);
-
+#endif
 	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
 	platform_device_register(&tegra_ehci2_device);
 
@@ -385,6 +422,8 @@ static void __init tegra_e1853_init(void)
 {
 	tegra_init_board_info();
 	tegra_clk_init_from_table(e1853_clk_init_table);
+	tegra_enable_pinmux();
+	tegra_smmu_init();
 	e1853_pinmux_init();
 	e1853_i2c_init();
 	e1853_gpio_init();
@@ -408,9 +447,10 @@ static void __init tegra_e1853_reserve(void)
 }
 
 MACHINE_START(E1853, "e1853")
-	.boot_params    = 0x80000100,
+	.atag_offset    = 0x100,
+	.soc		= &tegra_soc_desc,
 	.init_irq       = tegra_init_irq,
-	.init_early     = tegra_init_early,
+	.init_early     = tegra30_init_early,
 	.init_machine   = tegra_e1853_init,
 	.map_io         = tegra_map_common_io,
 	.reserve        = tegra_e1853_reserve,
