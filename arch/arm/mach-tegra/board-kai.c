@@ -737,7 +737,8 @@ static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	.op_mode	= TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
 		.vbus_gpio = -1,
-		.hot_plug = false,
+		.vbus_reg = NULL,
+		.hot_plug = true,
 		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
 
@@ -768,14 +769,18 @@ static void kai_usb_init(void)
 
 	/* Setup the udc platform data */
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
-
-	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
-	platform_device_register(&tegra_ehci2_device);
 }
 
 static void kai_modem_init(void)
 {
 	int ret;
+	int modem_id = tegra_get_modem_id();
+
+	if (modem_id == TEGRA_BB_TANGO) {
+		tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
+		platform_device_register(&tegra_ehci2_device);
+	}
+
 
 	ret = gpio_request(TEGRA_GPIO_W_DISABLE, "w_disable_gpio");
 	if (ret < 0)
