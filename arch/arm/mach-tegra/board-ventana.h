@@ -87,6 +87,9 @@ int ventana_cam_fixed_voltage_regulator_init(void);
 #define TEGRA_GPIO_INT_MIC_EN	TEGRA_GPIO_PX0
 #define TEGRA_GPIO_EXT_MIC_EN	TEGRA_GPIO_PX1
 
+/* Usb1 vbus GPIO */
+#define TEGRA_GPIO_USB1_VBUS	TEGRA_GPIO_PD0
+
 /* AC detect GPIO */
 #define AC_PRESENT_GPIO		TEGRA_GPIO_PV3
 

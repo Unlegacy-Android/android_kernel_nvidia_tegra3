@@ -183,6 +183,7 @@ static struct tegra_gpio_table gpio_table[] = {
 	{ .gpio = TEGRA_GPIO_HP_DET,		.enable = true	},
 	{ .gpio = TEGRA_GPIO_INT_MIC_EN,	.enable = true	},
 	{ .gpio = TEGRA_GPIO_EXT_MIC_EN,	.enable = true	},
+	{ .gpio = TEGRA_GPIO_USB1_VBUS,	.enable = false },
 };
 
 int __init ventana_pinmux_init(void)
