@@ -263,7 +263,7 @@ static struct nct1008_platform_data ventana_nct1008_pdata = {
 		.cdev_data = NULL,
 		.trip_temp = 90000,
 		.tc1 = 0,
-		.tc1 = 1,
+		.tc2 = 1,
 		.passive_delay = 2000,
 	},
 };

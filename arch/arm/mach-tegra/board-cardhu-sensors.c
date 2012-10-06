@@ -771,7 +771,7 @@ static struct nct1008_platform_data cardhu_nct1008_pdata = {
 		.cdev_data = &tj_throttle,
 		.trip_temp = 85000,
 		.tc1 = 0,
-		.tc1 = 1,
+		.tc2 = 1,
 		.passive_delay = 2000,
 	}
 };
