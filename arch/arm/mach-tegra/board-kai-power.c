@@ -81,6 +81,7 @@ static struct regulator_consumer_supply max77663_sd2_supply[] = {
 	REGULATOR_SUPPLY("pwrdet_vi", NULL),
 	REGULATOR_SUPPLY("vcore_nand", NULL),
 	REGULATOR_SUPPLY("pwrdet_nand", NULL),
+	REGULATOR_SUPPLY("vlogic", "0-0068"),
 };
 
 static struct regulator_consumer_supply max77663_sd3_supply[] = {
@@ -107,6 +108,7 @@ static struct regulator_consumer_supply max77663_ldo4_supply[] = {
 
 static struct regulator_consumer_supply max77663_ldo5_supply[] = {
 	REGULATOR_SUPPLY("vdd_sensor_2v8", NULL),
+	REGULATOR_SUPPLY("vdd", "0-0068"),
 };
 
 static struct regulator_consumer_supply max77663_ldo6_supply[] = {
