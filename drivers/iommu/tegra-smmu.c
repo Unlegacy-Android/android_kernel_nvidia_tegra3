@@ -1211,8 +1211,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 fail:
 	if (smmu->avp_vector_page)
 		__free_page(smmu->avp_vector_page);
-	if (smmu->regs)
-		devm_iounmap(dev, smmu->regs);
+	devm_iounmap(dev, smmu->regs);
 	if (smmu->regs_ahbarb)
 		devm_iounmap(dev, smmu->regs_ahbarb);
 	if (smmu && smmu->as) {
