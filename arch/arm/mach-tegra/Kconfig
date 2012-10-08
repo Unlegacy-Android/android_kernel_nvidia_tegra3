@@ -48,6 +48,7 @@ config ARCH_TEGRA_2x_SOC
 	select ARM_ERRATA_716044
 	select NVMAP_CACHE_MAINT_BY_SET_WAYS
 	select NVMAP_OUTER_CACHE_MAINT_BY_SET_WAYS
+	select SOC_BUS
 	help
 	  Support for NVIDIA Tegra AP20 and T20 processors, based on the
 	  ARM CortexA9MP CPU and the ARM PL310 L2 cache controller
@@ -117,6 +118,7 @@ config ARCH_TEGRA_11x_SOC
 	select ARCH_TEGRA_4GB_MEMORY
 	select EDP_FRAMEWORK
 	select TEGRA_LATENCY_ALLOWANCE if !TEGRA_FPGA_PLATFORM
+	select SOC_BUS
 	help
 	  Support for NVIDIA Tegra 11x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
