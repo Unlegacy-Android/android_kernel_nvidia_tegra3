@@ -86,6 +86,7 @@ static struct regulator_consumer_supply tps80031_vio_supply_a02[] = {
 	REGULATOR_SUPPLY("vdd_bat", NULL),
 	REGULATOR_SUPPLY("vdd_io", NULL),
 	REGULATOR_SUPPLY("pwrdet_pex_ctl", NULL),
+	REGULATOR_SUPPLY("vlogic", "0-0068"),
 };
 
 static struct regulator_consumer_supply tps80031_vio_supply_a03[] = {
@@ -115,6 +116,7 @@ static struct regulator_consumer_supply tps80031_vio_supply_a03[] = {
 	REGULATOR_SUPPLY("vdd_bat", NULL),
 	REGULATOR_SUPPLY("vdd_io", NULL),
 	REGULATOR_SUPPLY("pwrdet_pex_ctl", NULL),
+	REGULATOR_SUPPLY("vlogic", "0-0068"),
 };
 
 static struct regulator_consumer_supply tps80031_smps1_supply_common[] = {
@@ -191,6 +193,7 @@ static struct regulator_consumer_supply tps80031_ldo5_supply_common[] = {
 	REGULATOR_SUPPLY("vdd_gyro", NULL),
 	REGULATOR_SUPPLY("vdd_touch", NULL),
 	REGULATOR_SUPPLY("vdd_proxim_diode", NULL),
+	REGULATOR_SUPPLY("vdd", "0-0068"),
 };
 
 static struct regulator_consumer_supply tps80031_ldo6_supply_a02[] = {
