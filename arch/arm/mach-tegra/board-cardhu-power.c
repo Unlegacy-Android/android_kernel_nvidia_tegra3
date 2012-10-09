@@ -109,6 +109,7 @@ static struct regulator_consumer_supply tps6591x_vio_supply_0[] = {
 	REGULATOR_SUPPLY("vcom_1v8", NULL),
 	REGULATOR_SUPPLY("pmuio_1v8", NULL),
 	REGULATOR_SUPPLY("avdd_ic_usb", NULL),
+	REGULATOR_SUPPLY("vlogic", "2-0068"),
 };
 
 static struct regulator_consumer_supply tps6591x_ldo1_supply_0[] = {
@@ -596,6 +597,7 @@ static struct regulator_consumer_supply fixed_reg_en_3v3_sys_supply[] = {
 	REGULATOR_SUPPLY("vdd_3v3_als", NULL),
 	REGULATOR_SUPPLY("debug_cons", NULL),
 	REGULATOR_SUPPLY("vdd", "4-004c"),
+	REGULATOR_SUPPLY("vdd", "2-0068"),
 };
 
 /* DIS_5V_SWITCH from AP SPI2_SCK X02 */
