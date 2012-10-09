@@ -49,8 +49,10 @@ int tegra_cpu_kill(unsigned int cpu)
 		cpu_relax();
 	} while (!(reg & (1<<cpu)));
 
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	reg = readl(CLK_RST_CONTROLLER_CLK_CPU_CMPLX);
 	writel(reg | CPU_CLOCK(cpu), CLK_RST_CONTROLLER_CLK_CPU_CMPLX);
+#endif
 
 	return 1;
 }
