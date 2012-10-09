@@ -80,8 +80,6 @@ struct clk;
 #define PERIPH_ON_APB		(1 << 29)
 #define PERIPH_ON_CBUS		(1 << 30)
 
-struct tegra_cl_dvfs;
-
 struct clk_mux_sel {
 	struct clk	*input;
 	u32		value;
@@ -193,7 +191,7 @@ struct clk {
 			u32	(*round_p_to_pdiv)(u32 p, u32 *pdiv);
 		} pll;
 		struct {
-			struct tegra_cl_dvfs		*cl_dvfs;
+			void				*cl_dvfs;
 		} dfll;
 		struct {
 			unsigned long			default_rate;
