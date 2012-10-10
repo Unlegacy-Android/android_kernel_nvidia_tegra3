@@ -828,6 +828,14 @@ static void tegra_dma_update_hw(struct tegra_dma_channel *ch,
 	case TEGRA_DMA_REQ_SEL_APBIF_CH1:
 	case TEGRA_DMA_REQ_SEL_APBIF_CH2:
 	case TEGRA_DMA_REQ_SEL_APBIF_CH3:
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	case TEGRA_DMA_REQ_SEL_APBIF_CH4:
+	case TEGRA_DMA_REQ_SEL_APBIF_CH5:
+	case TEGRA_DMA_REQ_SEL_APBIF_CH6:
+	case TEGRA_DMA_REQ_SEL_APBIF_CH7:
+	case TEGRA_DMA_REQ_SEL_APBIF_CH8:
+	case TEGRA_DMA_REQ_SEL_APBIF_CH9:
+#endif
 #endif
 	case TEGRA_DMA_REQ_SEL_SPI:
 		/* dtv interface has fixed burst size of 4 */
