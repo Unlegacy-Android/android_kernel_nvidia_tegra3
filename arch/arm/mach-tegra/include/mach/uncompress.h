@@ -197,8 +197,12 @@ static inline void arch_decomp_setup(void)
 
 		break;
 	}
+#if defined(CONFIG_TEGRA_DEBUG_UART_NONE)
+	uart = NULL;
+#else
 	if (i == ARRAY_SIZE(uarts))
 		uart = (volatile u8 *)TEGRA_DEBUG_UART_BASE;
+#endif
 	save_uart_address();
 	if (uart == NULL)
 		return;
