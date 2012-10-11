@@ -137,6 +137,17 @@ obj-$(CONFIG_ARCH_TEGRA_HAS_CL_DVFS)    += tegra_cl_dvfs.o
 
 obj-y					+= board-common.o
 obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
+
+# MC error reporting.
+ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),)
+obj-y                                   += mcerr.o
+ifeq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
+obj-y                                   += mcerr-t3.o
+else
+obj-y                                   += mcerr-t11.o
+endif
+endif
+
 obj-$(CONFIG_MACH_HARMONY)              += board-harmony.o
 obj-$(CONFIG_MACH_HARMONY)              += board-harmony-kbc.o
 obj-$(CONFIG_MACH_HARMONY)              += board-harmony-panel.o
