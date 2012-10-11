@@ -233,7 +233,7 @@ static struct platform_device external_pwm_disp1_backlight_device = {
 	},
 };
 #ifdef CONFIG_TEGRA_DC
-static int enterprise_hdmi_vddio_enable(void)
+static int enterprise_hdmi_vddio_enable(struct device *dev)
 {
 	int ret;
 	struct board_info board_info;
@@ -241,7 +241,7 @@ static int enterprise_hdmi_vddio_enable(void)
 	tegra_get_board_info(&board_info);
 
 	if (!enterprise_hdmi_vddio) {
-		enterprise_hdmi_vddio = regulator_get(NULL, "hdmi_5v0");
+		enterprise_hdmi_vddio = regulator_get(dev, "hdmi_5v0");
 		if (IS_ERR_OR_NULL(enterprise_hdmi_vddio)) {
 			ret = PTR_ERR(enterprise_hdmi_vddio);
 			pr_err("hdmi: couldn't get regulator hdmi_5v0\n");
@@ -293,11 +293,11 @@ static int enterprise_hdmi_vddio_disable(void)
 	return 0;
 }
 
-static int enterprise_hdmi_enable(void)
+static int enterprise_hdmi_enable(struct device *dev)
 {
 	int ret;
 	if (!enterprise_hdmi_reg) {
-		enterprise_hdmi_reg = regulator_get(NULL, "avdd_hdmi");
+		enterprise_hdmi_reg = regulator_get(dev, "avdd_hdmi");
 		if (IS_ERR_OR_NULL(enterprise_hdmi_reg)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
 			enterprise_hdmi_reg = NULL;
@@ -310,7 +310,7 @@ static int enterprise_hdmi_enable(void)
 		return ret;
 	}
 	if (!enterprise_hdmi_pll) {
-		enterprise_hdmi_pll = regulator_get(NULL, "avdd_hdmi_pll");
+		enterprise_hdmi_pll = regulator_get(dev, "avdd_hdmi_pll");
 		if (IS_ERR_OR_NULL(enterprise_hdmi_pll)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
 			enterprise_hdmi_pll = NULL;
@@ -565,7 +565,7 @@ static int avdd_dsi_csi_rail_disable(void)
 	return 0;
 }
 
-static int enterprise_dsi_panel_enable(void)
+static int enterprise_dsi_panel_enable(struct device *dev)
 {
 	int ret;
 	struct board_info board_info;
@@ -581,7 +581,7 @@ static int enterprise_dsi_panel_enable(void)
 	if ((board_info.fab >= BOARD_FAB_A03) ||
 		(board_info.board_id == BOARD_E1239)) {
 		if (enterprise_lcd_reg == NULL) {
-			enterprise_lcd_reg = regulator_get(NULL, "lcd_vddio_en");
+			enterprise_lcd_reg = regulator_get(dev, "lcd_vddio_en");
 			if (IS_ERR_OR_NULL(enterprise_lcd_reg)) {
 				pr_err("Could not get regulator lcd_vddio_en\n");
 				ret = PTR_ERR(enterprise_lcd_reg);

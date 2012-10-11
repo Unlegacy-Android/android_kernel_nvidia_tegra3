@@ -98,7 +98,7 @@ static struct platform_device harmony_backlight_device = {
 	},
 };
 
-static int harmony_panel_enable(void)
+static int harmony_panel_enable(struct device *dev)
 {
 	gpio_set_value(harmony_en_vdd_pnl, 1);
 	mdelay(harmony_pnl_to_lvds_ms);
@@ -145,7 +145,7 @@ static int harmony_set_hdmi_power(bool enable)
 	return 0;
 }
 
-static int harmony_hdmi_enable(void)
+static int harmony_hdmi_enable(struct device *dev)
 {
 	return harmony_set_hdmi_power(true);
 }

@@ -73,10 +73,10 @@ static struct platform_device whistler_disp1_backlight_device = {
 };
 
 #ifdef CONFIG_TEGRA_DC
-static int whistler_hdmi_enable(void)
+static int whistler_hdmi_enable(struct device *dev)
 {
 	if (!whistler_hdmi_reg) {
-		whistler_hdmi_reg = regulator_get(NULL, "avdd_hdmi"); /* LD011 */
+		whistler_hdmi_reg = regulator_get(dev, "avdd_hdmi"); /* LD011 */
 		if (IS_ERR_OR_NULL(whistler_hdmi_reg)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
 			whistler_hdmi_reg = NULL;
@@ -86,7 +86,8 @@ static int whistler_hdmi_enable(void)
 	regulator_enable(whistler_hdmi_reg);
 
 	if (!whistler_hdmi_pll) {
-		whistler_hdmi_pll = regulator_get(NULL, "avdd_hdmi_pll"); /* LD06 */
+		whistler_hdmi_pll =
+			regulator_get(dev, "avdd_hdmi_pll"); /* LD06 */
 		if (IS_ERR_OR_NULL(whistler_hdmi_pll)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
 			whistler_hdmi_pll = NULL;

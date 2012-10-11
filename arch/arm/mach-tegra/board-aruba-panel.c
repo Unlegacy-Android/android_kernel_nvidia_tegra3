@@ -84,12 +84,12 @@ static struct platform_device aruba_backlight_device = {
 };
 
 #ifdef CONFIG_TEGRA_DC
-static int aruba_panel_enable(void)
+static int aruba_panel_enable(struct device *dev)
 {
 	static struct regulator *reg = NULL;
 
 	if (reg == NULL) {
-		reg = regulator_get(NULL, "avdd_lvds");
+		reg = regulator_get(dev, "avdd_lvds");
 		if (WARN_ON(IS_ERR(reg)))
 			pr_err("%s: couldn't get regulator avdd_lvds: %ld\n",
 			       __func__, PTR_ERR(reg));

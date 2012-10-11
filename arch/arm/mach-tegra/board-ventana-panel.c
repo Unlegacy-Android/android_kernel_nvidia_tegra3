@@ -102,9 +102,9 @@ static struct platform_device ventana_backlight_device = {
 };
 
 #ifdef CONFIG_TEGRA_DC
-static int ventana_panel_enable(void)
+static int ventana_panel_enable(struct device *dev)
 {
-	struct regulator *reg = regulator_get(NULL, "vdd_ldo4");
+	struct regulator *reg = regulator_get(dev, "vdd_ldo4");
 
 	if (!reg) {
 		regulator_enable(reg);
@@ -112,7 +112,7 @@ static int ventana_panel_enable(void)
 	}
 
 	if (pnl_pwr == NULL) {
-		pnl_pwr = regulator_get(NULL, "pnl_pwr");
+		pnl_pwr = regulator_get(dev, "pnl_pwr");
 		if (WARN_ON(IS_ERR(pnl_pwr)))
 			pr_err("%s: couldn't get regulator pnl_pwr: %ld\n",
 				__func__, PTR_ERR(pnl_pwr));
@@ -135,10 +135,10 @@ static int ventana_panel_disable(void)
 	return 0;
 }
 
-static int ventana_hdmi_enable(void)
+static int ventana_hdmi_enable(struct device *dev)
 {
 	if (!ventana_hdmi_reg) {
-		ventana_hdmi_reg = regulator_get(NULL, "avdd_hdmi"); /* LD07 */
+		ventana_hdmi_reg = regulator_get(dev, "avdd_hdmi"); /* LD07 */
 		if (IS_ERR_OR_NULL(ventana_hdmi_reg)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
 			ventana_hdmi_reg = NULL;
@@ -148,7 +148,8 @@ static int ventana_hdmi_enable(void)
 	regulator_enable(ventana_hdmi_reg);
 
 	if (!ventana_hdmi_pll) {
-		ventana_hdmi_pll = regulator_get(NULL, "avdd_hdmi_pll"); /* LD08 */
+		ventana_hdmi_pll =
+			regulator_get(dev, "avdd_hdmi_pll"); /* LD08 */
 		if (IS_ERR_OR_NULL(ventana_hdmi_pll)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
 			ventana_hdmi_pll = NULL;

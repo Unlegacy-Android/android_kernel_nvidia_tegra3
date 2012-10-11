@@ -50,7 +50,7 @@
 #define LVDS_SER_REG_CONFIG_0_TRFB              0
 
 /* RGB panel requires no special enable/disable */
-static int p1852_panel_enable(void)
+static int p1852_panel_enable(struct device *dev)
 {
 	return 0;
 }
@@ -146,7 +146,7 @@ static int lvds_ser_init(struct i2c_client *client,
 }
 
 /* enable primary LVDS */
-static int p1852_lvds_enable(void)
+static int p1852_lvds_enable(struct device *dev)
 {
 	struct i2c_adapter *adapter;
 	struct i2c_board_info info = {{0}};
@@ -187,7 +187,7 @@ static int p1852_lvds_disable(void)
 }
 
 /* Enable secondary LVDS */
-static int p1852_lvds2_enable(void)
+static int p1852_lvds2_enable(struct device *dev)
 {
 	struct i2c_adapter *adapter;
 	struct i2c_board_info info = {{0}};
@@ -240,7 +240,7 @@ static int p1852_lvds2_disable(void)
 }
 
 /* Enable secondary HDMI */
-static int p1852_hdmi_enable(void)
+static int p1852_hdmi_enable(struct device *dev)
 {
 	/* need nothing here */
 	return 0;

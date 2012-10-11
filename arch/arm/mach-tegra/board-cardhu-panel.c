@@ -280,10 +280,10 @@ static struct platform_device cardhu_backlight_device = {
 	},
 };
 
-static int cardhu_panel_enable(void)
+static int cardhu_panel_enable(struct device *dev)
 {
 	if (cardhu_lvds_reg == NULL) {
-		cardhu_lvds_reg = regulator_get(NULL, "vdd_lvds");
+		cardhu_lvds_reg = regulator_get(dev, "vdd_lvds");
 		if (WARN_ON(IS_ERR(cardhu_lvds_reg)))
 			pr_err("%s: couldn't get regulator vdd_lvds: %ld\n",
 				__func__, PTR_ERR(cardhu_lvds_reg));
@@ -292,7 +292,7 @@ static int cardhu_panel_enable(void)
 	}
 
 	if (cardhu_lvds_vdd_bl == NULL) {
-		cardhu_lvds_vdd_bl = regulator_get(NULL, "vdd_backlight");
+		cardhu_lvds_vdd_bl = regulator_get(dev, "vdd_backlight");
 		if (WARN_ON(IS_ERR(cardhu_lvds_vdd_bl)))
 			pr_err("%s: couldn't get regulator vdd_backlight: %ld\n",
 				__func__, PTR_ERR(cardhu_lvds_vdd_bl));
@@ -301,7 +301,7 @@ static int cardhu_panel_enable(void)
 	}
 
 	if (cardhu_lvds_vdd_panel == NULL) {
-		cardhu_lvds_vdd_panel = regulator_get(NULL, "vdd_lcd_panel");
+		cardhu_lvds_vdd_panel = regulator_get(dev, "vdd_lcd_panel");
 		if (WARN_ON(IS_ERR(cardhu_lvds_vdd_panel)))
 			pr_err("%s: couldn't get regulator vdd_lcd_panel: %ld\n",
 				__func__, PTR_ERR(cardhu_lvds_vdd_panel));
@@ -363,11 +363,11 @@ static int cardhu_panel_disable(void)
 }
 
 #ifdef CONFIG_TEGRA_DC
-static int cardhu_hdmi_vddio_enable(void)
+static int cardhu_hdmi_vddio_enable(struct device *dev)
 {
 	int ret;
 	if (!cardhu_hdmi_vddio) {
-		cardhu_hdmi_vddio = regulator_get(NULL, "vdd_hdmi_con");
+		cardhu_hdmi_vddio = regulator_get(dev, "vdd_hdmi_con");
 		if (IS_ERR_OR_NULL(cardhu_hdmi_vddio)) {
 			ret = PTR_ERR(cardhu_hdmi_vddio);
 			pr_err("hdmi: couldn't get regulator vdd_hdmi_con\n");
@@ -395,11 +395,11 @@ static int cardhu_hdmi_vddio_disable(void)
 	return 0;
 }
 
-static int cardhu_hdmi_enable(void)
+static int cardhu_hdmi_enable(struct device *dev)
 {
 	int ret;
 	if (!cardhu_hdmi_reg) {
-		cardhu_hdmi_reg = regulator_get(NULL, "avdd_hdmi");
+		cardhu_hdmi_reg = regulator_get(dev, "avdd_hdmi");
 		if (IS_ERR_OR_NULL(cardhu_hdmi_reg)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
 			cardhu_hdmi_reg = NULL;
@@ -412,7 +412,7 @@ static int cardhu_hdmi_enable(void)
 		return ret;
 	}
 	if (!cardhu_hdmi_pll) {
-		cardhu_hdmi_pll = regulator_get(NULL, "avdd_hdmi_pll");
+		cardhu_hdmi_pll = regulator_get(dev, "avdd_hdmi_pll");
 		if (IS_ERR_OR_NULL(cardhu_hdmi_pll)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
 			cardhu_hdmi_pll = NULL;
@@ -728,12 +728,12 @@ static struct tegra_dc_platform_data cardhu_disp2_pdata = {
 };
 #endif
 
-static int cardhu_dsi_panel_enable(void)
+static int cardhu_dsi_panel_enable(struct device *dev)
 {
 	int ret;
 
 	if (cardhu_dsi_reg == NULL) {
-		cardhu_dsi_reg = regulator_get(NULL, "avdd_dsi_csi");
+		cardhu_dsi_reg = regulator_get(dev, "avdd_dsi_csi");
 		if (IS_ERR_OR_NULL(cardhu_dsi_reg)) {
 			pr_err("dsi: Could not get regulator avdd_dsi_csi\n");
 			cardhu_dsi_reg = NULL;

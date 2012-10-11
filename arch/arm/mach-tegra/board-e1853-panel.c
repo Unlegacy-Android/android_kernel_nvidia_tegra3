@@ -34,7 +34,7 @@
 
 #define E1853_HDMI_HPD TEGRA_GPIO_PB2
 
-static int e1853_panel_enable(void)
+static int e1853_panel_enable(struct device *dev)
 {
 	return 0;
 }
@@ -85,7 +85,7 @@ static struct tegra_dc_platform_data e1853_disp1_pdata = {
 	.fb		= &e1853_fb_data,
 };
 
-static int e1853_hdmi_enable(void)
+static int e1853_hdmi_enable(struct device *dev)
 {
 	return 0;
 }

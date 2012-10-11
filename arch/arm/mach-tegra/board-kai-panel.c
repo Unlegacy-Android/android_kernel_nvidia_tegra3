@@ -199,10 +199,10 @@ static int kai_panel_postpoweron(void)
 	return 0;
 }
 
-static int kai_panel_enable(void)
+static int kai_panel_enable(struct device *dev)
 {
 	if (kai_lvds_vdd_panel == NULL) {
-		kai_lvds_vdd_panel = regulator_get(NULL, "vdd_lcd_panel");
+		kai_lvds_vdd_panel = regulator_get(dev, "vdd_lcd_panel");
 		if (WARN_ON(IS_ERR(kai_lvds_vdd_panel)))
 			pr_err("%s: couldn't get regulator vdd_lcd_panel: %ld\n",
 			       __func__, PTR_ERR(kai_lvds_vdd_panel));
@@ -241,11 +241,11 @@ static int kai_panel_prepoweroff(void)
 }
 
 #ifdef CONFIG_TEGRA_DC
-static int kai_hdmi_vddio_enable(void)
+static int kai_hdmi_vddio_enable(struct device *dev)
 {
 	int ret;
 	if (!kai_hdmi_vddio) {
-		kai_hdmi_vddio = regulator_get(NULL, "vdd_hdmi_con");
+		kai_hdmi_vddio = regulator_get(dev, "vdd_hdmi_con");
 		if (IS_ERR_OR_NULL(kai_hdmi_vddio)) {
 			ret = PTR_ERR(kai_hdmi_vddio);
 			pr_err("hdmi: couldn't get regulator vdd_hdmi_con\n");
@@ -273,11 +273,11 @@ static int kai_hdmi_vddio_disable(void)
 	return 0;
 }
 
-static int kai_hdmi_enable(void)
+static int kai_hdmi_enable(struct device *dev)
 {
 	int ret;
 	if (!kai_hdmi_reg) {
-		kai_hdmi_reg = regulator_get(NULL, "avdd_hdmi");
+		kai_hdmi_reg = regulator_get(dev, "avdd_hdmi");
 		if (IS_ERR_OR_NULL(kai_hdmi_reg)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
 			kai_hdmi_reg = NULL;
@@ -290,7 +290,7 @@ static int kai_hdmi_enable(void)
 		return ret;
 	}
 	if (!kai_hdmi_pll) {
-		kai_hdmi_pll = regulator_get(NULL, "avdd_hdmi_pll");
+		kai_hdmi_pll = regulator_get(dev, "avdd_hdmi_pll");
 		if (IS_ERR_OR_NULL(kai_hdmi_pll)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
 			kai_hdmi_pll = NULL;
