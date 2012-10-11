@@ -56,7 +56,7 @@ static inline bool is_dcdc(int id)
 {
 	if ((id == TPS65090_REGULATOR_DCDC1) ||
 			(id == TPS65090_REGULATOR_DCDC2) ||
-			(id == TPS65090_REGULATOR_DCDC2))
+			(id == TPS65090_REGULATOR_DCDC3))
 		return true;
 	return false;
 }
@@ -206,6 +206,7 @@ static int __devinit tps65090_regulator_preinit(int id,
 				ri->rinfo->reg_en_reg);
 			return ret;
 		}
+		return ret;
 	}
 
 	if (gpio_is_valid(tps_pdata->gpio)) {
