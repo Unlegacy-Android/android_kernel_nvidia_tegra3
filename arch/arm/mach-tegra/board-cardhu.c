@@ -1333,7 +1333,13 @@ static void __init tegra_cardhu_init(void)
 	cardhu_pmon_init();
 	cardhu_sensors_init();
 	cardhu_setup_bluesleep();
-	cardhu_sata_init();
+	/*
+	 * if you want to add support for SATA in your board
+	 * then add your board check here like
+	 * board_info.board_id == BOARD_E1186
+	 */
+	if (board_info.board_id == BOARD_PM315)
+		cardhu_sata_init();
 	cardhu_pins_state_init();
 	cardhu_emc_init();
 	tegra_release_bootloader_fb();
