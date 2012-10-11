@@ -1172,7 +1172,7 @@ static int hdmi_parse_codec(struct hda_codec *codec)
 	 */
 #ifdef CONFIG_SND_HDA_POWER_SAVE
 	if ((!(snd_hda_param_read(codec, codec->afg, AC_PAR_POWER_STATE) &
-		AC_PWRST_EPSS)) && ((codec->preset->id != 0x10de0020) ||
+		AC_PWRST_EPSS)) && ((codec->preset->id != 0x10de0020) &&
 		(codec->preset->id != 0x10de0022)))
 		codec->bus->power_keep_link_on = 1;
 #endif
