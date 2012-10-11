@@ -998,7 +998,11 @@ static int tegra3_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	int ret;
 	unsigned int flags, delay;
 	const struct clk_mux_sel *sel;
-	unsigned long rate = clk_get_rate(c->parent);
+	unsigned long rate;
+	if (!c->parent)
+		return -EINVAL;
+
+	rate = clk_get_rate(c->parent);
 
 	pr_debug("%s: %s %s\n", __func__, c->name, p->name);
 	BUG_ON(c->parent->u.cpu.mode != (is_lp_cluster() ? MODE_LP : MODE_G));
