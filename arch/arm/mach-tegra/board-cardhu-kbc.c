@@ -88,7 +88,8 @@ int __init cardhu_kbc_init(void)
 
 	tegra_get_board_info(&board_info);
 	if ((board_info.board_id == BOARD_E1198) ||
-			(board_info.board_id == BOARD_E1291))
+			(board_info.board_id == BOARD_E1291) ||
+			(board_info.board_id == BOARD_PM315))
 		return 0;
 
 	pr_info("Registering tegra-kbc\n");
