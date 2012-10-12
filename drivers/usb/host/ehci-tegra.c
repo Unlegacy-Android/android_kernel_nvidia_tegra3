@@ -636,9 +636,14 @@ static int tegra_ehci_suspend(struct platform_device *pdev, pm_message_t state)
 static int tegra_ehci_remove(struct platform_device *pdev)
 {
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
-	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
+	struct usb_hcd *hcd = NULL;
 
-	if (tegra == NULL || hcd == NULL)
+	if (tegra == NULL)
+		return -EINVAL;
+
+	hcd = ehci_to_hcd(tegra->ehci);
+
+	if (hcd == NULL)
 		return -EINVAL;
 
 #ifdef CONFIG_USB_OTG_UTILS
