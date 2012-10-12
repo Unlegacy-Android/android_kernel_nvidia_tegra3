@@ -118,6 +118,7 @@ config ARCH_TEGRA_11x_SOC
 	select ARCH_TEGRA_4GB_MEMORY
 	select EDP_FRAMEWORK
 	select TEGRA_LATENCY_ALLOWANCE if !TEGRA_FPGA_PLATFORM
+	select TEGRA_MC_PTSA if !TEGRA_FPGA_PLATFORM
 	select SOC_BUS
 	help
 	  Support for NVIDIA Tegra 11x family of SoCs, based upon the
@@ -715,6 +716,14 @@ config TEGRA_LATENCY_ALLOWANCE_SCALING
 	  Enables latency allowance scaling, which enables scaling
 	  programmed latency allowance values based on fifo threshold levels
 	  set for for display and vi hardware.
+
+config TEGRA_MC_PTSA
+	bool "Enable MC PTSA programming"
+	depends on TEGRA_LATENCY_ALLOWANCE
+	help
+	  Enables Priority Tier Snap Arbiter programming in
+	  Memory Controller. PTSA is a Memory Controller feature that
+	  allows specifying the bandwidth necessary for ISO clients.
 
 config TEGRA_DC_USE_HW_BPP
 	bool "Default Bits Per Pixel value from tegra DC hardware"
