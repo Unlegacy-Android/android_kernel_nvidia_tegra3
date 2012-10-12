@@ -58,7 +58,7 @@
 static struct regulator *cam1_2v8, *cam2_2v8;
 
 /* left ov5650 is CAM2 which is on csi_a */
-static int ventana_left_ov5650_power_on(void)
+static int ventana_left_ov5650_power_on(struct device *dev)
 {
 	gpio_direction_output(CAMERA_CSI_MUX_SEL_GPIO, 0);
 	gpio_direction_output(AVDD_DSI_CSI_ENB_GPIO, 1);
@@ -73,7 +73,7 @@ static int ventana_left_ov5650_power_on(void)
 	return 0;
 }
 
-static int ventana_left_ov5650_power_off(void)
+static int ventana_left_ov5650_power_off(struct device *dev)
 {
 	gpio_direction_output(AVDD_DSI_CSI_ENB_GPIO, 0);
 	gpio_direction_output(CAM2_RST_L_GPIO, 0);
@@ -88,7 +88,7 @@ struct ov5650_platform_data ventana_left_ov5650_data = {
 };
 
 /* right ov5650 is CAM1 which is on csi_b */
-static int ventana_right_ov5650_power_on(void)
+static int ventana_right_ov5650_power_on(struct device *dev)
 {
 	gpio_direction_output(AVDD_DSI_CSI_ENB_GPIO, 1);
 	regulator_enable(cam1_2v8);
@@ -102,7 +102,7 @@ static int ventana_right_ov5650_power_on(void)
 	return 0;
 }
 
-static int ventana_right_ov5650_power_off(void)
+static int ventana_right_ov5650_power_off(struct device *dev)
 {
 	gpio_direction_output(AVDD_DSI_CSI_ENB_GPIO, 0);
 	gpio_direction_output(CAM1_RST_L_GPIO, 0);
@@ -116,7 +116,7 @@ struct ov5650_platform_data ventana_right_ov5650_data = {
 	.power_off = ventana_right_ov5650_power_off,
 };
 
-static int ventana_ov2710_power_on(void)
+static int ventana_ov2710_power_on(struct device *dev)
 {
 	gpio_direction_output(CAMERA_CSI_MUX_SEL_GPIO, 1);
 	gpio_direction_output(AVDD_DSI_CSI_ENB_GPIO, 1);
@@ -130,7 +130,7 @@ static int ventana_ov2710_power_on(void)
 	return 0;
 }
 
-static int ventana_ov2710_power_off(void)
+static int ventana_ov2710_power_off(struct device *dev)
 {
 	gpio_direction_output(CAM3_RST_L_GPIO, 0);
 	gpio_direction_output(CAM3_PWR_DN_GPIO, 1);
@@ -659,9 +659,9 @@ int __init ventana_camera_late_init(void)
 
 	i2c_new_device(i2c_get_adapter(3), ventana_i2c3_board_info_pca9546);
 
-	ventana_ov2710_power_off();
-	ventana_left_ov5650_power_off();
-	ventana_right_ov5650_power_off();
+	ventana_ov2710_power_off(NULL);
+	ventana_left_ov5650_power_off(NULL);
+	ventana_right_ov5650_power_off(NULL);
 
 	ret = regulator_disable(cam_ldo6);
 	if (ret){

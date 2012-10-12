@@ -104,12 +104,12 @@ static int whistler_camera_init(void)
 	return 0;
 }
 
-static int whistler_ov5650_power_on(void)
+static int whistler_ov5650_power_on(struct device *dev)
 {
 	gpio_set_value(CAMERA1_PWDN_GPIO, 0);
 
 	if (!reg_avdd_cam1) {
-		reg_avdd_cam1 = regulator_get(NULL, "vdd_cam1");
+		reg_avdd_cam1 = regulator_get(dev, "vdd_cam1");
 		if (IS_ERR_OR_NULL(reg_avdd_cam1)) {
 			pr_err("whistler_ov5650_power_on: vdd_cam1 failed\n");
 			reg_avdd_cam1 = NULL;
@@ -120,7 +120,7 @@ static int whistler_ov5650_power_on(void)
 	mdelay(5);
 
 	if (!reg_vdd_mipi) {
-		reg_vdd_mipi = regulator_get(NULL, "vddio_mipi");
+		reg_vdd_mipi = regulator_get(dev, "vddio_mipi");
 		if (IS_ERR_OR_NULL(reg_vdd_mipi)) {
 			pr_err("whistler_ov5650_power_on: vddio_mipi failed\n");
 			reg_vdd_mipi = NULL;
@@ -131,7 +131,7 @@ static int whistler_ov5650_power_on(void)
 	mdelay(5);
 
 	if (!reg_vdd_af) {
-		reg_vdd_af = regulator_get(NULL, "vdd_vcore_af");
+		reg_vdd_af = regulator_get(dev, "vdd_vcore_af");
 		if (IS_ERR_OR_NULL(reg_vdd_af)) {
 			pr_err("whistler_ov5650_power_on: vdd_vcore_af failed\n");
 			reg_vdd_af = NULL;
@@ -152,7 +152,7 @@ static int whistler_ov5650_power_on(void)
 	return 0;
 }
 
-static int whistler_ov5650_power_off(void)
+static int whistler_ov5650_power_off(struct device *dev)
 {
 	gpio_set_value(CAMERA_AF_PD_GPIO, 0);
 	gpio_set_value(CAMERA1_PWDN_GPIO, 1);
@@ -179,12 +179,12 @@ static int whistler_ov5650_power_off(void)
 	return 0;
 }
 
-static int whistler_soc380_power_on(void)
+static int whistler_soc380_power_on(struct device *dev)
 {
 	gpio_set_value(CAMERA2_PWDN_GPIO, 0);
 
 	if (!reg_vddio_vi) {
-		reg_vddio_vi = regulator_get(NULL, "vddio_vi");
+		reg_vddio_vi = regulator_get(dev, "vddio_vi");
 		if (IS_ERR_OR_NULL(reg_vddio_vi)) {
 			pr_err("whistler_soc380_power_on: vddio_vi failed\n");
 			reg_vddio_vi = NULL;
@@ -196,7 +196,7 @@ static int whistler_soc380_power_on(void)
 	}
 
 	if (!reg_avdd_cam1) {
-		reg_avdd_cam1 = regulator_get(NULL, "vdd_cam1");
+		reg_avdd_cam1 = regulator_get(dev, "vdd_cam1");
 		if (IS_ERR_OR_NULL(reg_avdd_cam1)) {
 			pr_err("whistler_soc380_power_on: vdd_cam1 failed\n");
 			reg_avdd_cam1 = NULL;
@@ -217,7 +217,7 @@ static int whistler_soc380_power_on(void)
 
 }
 
-static int whistler_soc380_power_off(void)
+static int whistler_soc380_power_off(struct device *dev)
 {
 	gpio_set_value(CAMERA2_PWDN_GPIO, 1);
 	gpio_set_value(CAMERA2_RESET_GPIO, 0);

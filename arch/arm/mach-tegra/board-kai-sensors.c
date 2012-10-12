@@ -165,10 +165,10 @@ static int kai_camera_init(void)
 	return 0;
 }
 
-static int kai_ov2710_power_on(void)
+static int kai_ov2710_power_on(struct device *dev)
 {
 	if (kai_1v8_cam3 == NULL) {
-		kai_1v8_cam3 = regulator_get(NULL, "vdd_1v8_cam3");
+		kai_1v8_cam3 = regulator_get(dev, "vdd_1v8_cam3");
 		if (WARN_ON(IS_ERR(kai_1v8_cam3))) {
 			pr_err("%s: couldn't get regulator vdd_1v8_cam3: %d\n",
 				__func__, (int)PTR_ERR(kai_1v8_cam3));
@@ -178,7 +178,7 @@ static int kai_ov2710_power_on(void)
 	regulator_enable(kai_1v8_cam3);
 
 	if (kai_vdd_cam3 == NULL) {
-		kai_vdd_cam3 = regulator_get(NULL, "vdd_cam3");
+		kai_vdd_cam3 = regulator_get(dev, "vdd_cam3");
 		if (WARN_ON(IS_ERR(kai_vdd_cam3))) {
 			pr_err("%s: couldn't get regulator vdd_cam3: %d\n",
 				__func__, (int)PTR_ERR(kai_vdd_cam3));
@@ -206,7 +206,7 @@ reg_get_vdd_1v8_cam3_fail:
 	return -ENODEV;
 }
 
-static int kai_ov2710_power_off(void)
+static int kai_ov2710_power_off(struct device *dev)
 {
 	gpio_direction_output(CAM2_RST_GPIO, 0);
 

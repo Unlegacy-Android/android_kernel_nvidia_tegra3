@@ -304,7 +304,7 @@ static __initdata struct tegra_clk_init_table tai_front_cam_clk_init_table[] = {
 };
 
 
-static int enterprise_cam_pwr(enum CAMERA_INDEX cam, bool pwr_on)
+static int enterprise_cam_pwr(struct device *dev, enum CAMERA_INDEX cam, bool pwr_on)
 {
 	struct enterprise_power_rail *reg_cam = &ent_vicsi_pwr[cam];
 	int ret = 0;
@@ -315,7 +315,7 @@ static int enterprise_cam_pwr(enum CAMERA_INDEX cam, bool pwr_on)
 	*/
 	if (pwr_on) {
 		if (reg_cam->csi_reg == NULL) {
-			reg_cam->csi_reg = regulator_get(NULL,
+			reg_cam->csi_reg = regulator_get(dev,
 						"avdd_dsi_csi");
 			if (IS_ERR_OR_NULL(reg_cam->csi_reg)) {
 				pr_err("%s: csi pwr err\n", __func__);
@@ -331,7 +331,7 @@ static int enterprise_cam_pwr(enum CAMERA_INDEX cam, bool pwr_on)
 		}
 
 		if (reg_cam->cam_reg == NULL) {
-			reg_cam->cam_reg = regulator_get(NULL,
+			reg_cam->cam_reg = regulator_get(dev,
 						"vddio_cam");
 			if (IS_ERR_OR_NULL(reg_cam->cam_reg)) {
 				pr_err("%s: vddio pwr err\n", __func__);
@@ -368,12 +368,12 @@ enterprise_cam_pwr_fail:
 	return ret;
 }
 
-static int enterprise_ar0832_ri_power_on(int is_stereo)
+static int enterprise_ar0832_ri_power_on(struct device *dev, int is_stereo)
 {
 	int ret = 0;
 
 	pr_info("%s: ++\n", __func__);
-	ret = enterprise_cam_pwr(CAM_REAR_RIGHT, true);
+	ret = enterprise_cam_pwr(dev, CAM_REAR_RIGHT, true);
 
 	/* Release Reset */
 	if (is_stereo) {
@@ -392,14 +392,14 @@ static int enterprise_ar0832_ri_power_on(int is_stereo)
 	return ret;
 }
 
-static int enterprise_ar0832_le_power_on(int is_stereo)
+static int enterprise_ar0832_le_power_on(struct device *dev, int is_stereo)
 {
 	int ret = 0;
 
 	pr_info("%s: ++\n", __func__);
 
 	if (board_info.board_id != BOARD_E1239) {
-		ret = enterprise_cam_pwr(CAM_REAR_LEFT, true);
+		ret = enterprise_cam_pwr(dev, CAM_REAR_LEFT, true);
 		/* Release Reset */
 		gpio_set_value(CAM2_RST_L_GPIO, 1);
 	}
@@ -418,12 +418,12 @@ static int enterprise_ar0832_le_power_on(int is_stereo)
 	return ret;
 }
 
-static int enterprise_ar0832_ri_power_off(int is_stereo)
+static int enterprise_ar0832_ri_power_off(struct device *dev, int is_stereo)
 {
 	int ret;
 
 	pr_info("%s: ++\n", __func__);
-	ret = enterprise_cam_pwr(CAM_REAR_RIGHT, false);
+	ret = enterprise_cam_pwr(dev, CAM_REAR_RIGHT, false);
 
 	/* Assert Reset */
 	if (is_stereo) {
@@ -436,13 +436,13 @@ static int enterprise_ar0832_ri_power_off(int is_stereo)
 	return ret;
 }
 
-static int enterprise_ar0832_le_power_off(int is_stereo)
+static int enterprise_ar0832_le_power_off(struct device *dev, int is_stereo)
 {
 	int ret = 0;
 
 	if (board_info.board_id != BOARD_E1239) {
 		pr_info("%s: ++\n", __func__);
-		ret = enterprise_cam_pwr(CAM_REAR_LEFT, false);
+		ret = enterprise_cam_pwr(dev, CAM_REAR_LEFT, false);
 
 		/* Assert Reset */
 		gpio_set_value(CAM2_RST_L_GPIO, 0);
@@ -450,7 +450,7 @@ static int enterprise_ar0832_le_power_off(int is_stereo)
 	return ret;
 }
 
-static int enterprise_ov9726_power_on(void)
+static int enterprise_ov9726_power_on(struct device *dev)
 {
 	pr_info("ov9726 power on\n");
 
@@ -458,7 +458,7 @@ static int enterprise_ov9726_power_on(void)
 		/* switch mipi mux to front camera */
 		gpio_set_value(CAM_CSI_MUX_SEL_GPIO, CAM_CSI_MUX_SEL_FRONT);
 	}
-	enterprise_cam_pwr(CAM_FRONT, true);
+	enterprise_cam_pwr(dev, CAM_FRONT, true);
 
 	if (board_info.board_id == BOARD_E1239)
 		clk_enable(tegra_get_clock_by_name("clk_out_3"));
@@ -466,11 +466,11 @@ static int enterprise_ov9726_power_on(void)
 	return 0;
 }
 
-static int enterprise_ov9726_power_off(void)
+static int enterprise_ov9726_power_off(struct device *dev)
 {
 	pr_info("ov9726 power off\n");
 
-	enterprise_cam_pwr(CAM_FRONT, false);
+	enterprise_cam_pwr(dev, CAM_FRONT, false);
 
 	if (board_info.board_id == BOARD_E1239)
 		clk_disable(tegra_get_clock_by_name("clk_out_3"));

@@ -134,7 +134,7 @@ static int cardhu_camera_init(void)
 	return 0;
 }
 
-static int cardhu_left_ov5650_power_on(void)
+static int cardhu_left_ov5650_power_on(struct device *dev)
 {
 	/* Boards E1198 and E1291 are of Cardhu personality
 	 * and donot have TCA6416 exp for camera */
@@ -142,7 +142,8 @@ static int cardhu_left_ov5650_power_on(void)
 		(board_info.board_id == BOARD_E1291)) {
 
 		if (cardhu_vdd_2v8_cam1 == NULL) {
-			cardhu_vdd_2v8_cam1 = regulator_get(NULL, "vdd_2v8_cam1");
+			cardhu_vdd_2v8_cam1 =
+				regulator_get(dev, "vdd_2v8_cam1");
 			if (WARN_ON(IS_ERR(cardhu_vdd_2v8_cam1))) {
 				pr_err("%s: couldn't get regulator vdd_2v8_cam1: %ld\n",
 					__func__, PTR_ERR(cardhu_vdd_2v8_cam1));
@@ -155,7 +156,7 @@ static int cardhu_left_ov5650_power_on(void)
 
 	/* Enable VDD_1V8_Cam1 */
 	if (cardhu_1v8_cam1 == NULL) {
-		cardhu_1v8_cam1 = regulator_get(NULL, "vdd_1v8_cam1");
+		cardhu_1v8_cam1 = regulator_get(dev, "vdd_1v8_cam1");
 		if (WARN_ON(IS_ERR(cardhu_1v8_cam1))) {
 			pr_err("%s: couldn't get regulator vdd_1v8_cam1: %ld\n",
 				__func__, PTR_ERR(cardhu_1v8_cam1));
@@ -196,7 +197,7 @@ reg_alloc_fail:
 
 }
 
-static int cardhu_left_ov5650_power_off(void)
+static int cardhu_left_ov5650_power_off(struct device *dev)
 {
 	/* Boards E1198 and E1291 are of Cardhu personality
 	 * and donot have TCA6416 exp for camera */
@@ -276,7 +277,7 @@ static struct i2c_board_info cardhu_i2c_board_info_e1214[] = {
 #endif
 
 #ifdef CONFIG_VIDEO_IMX091
-static int cardhu_imx091_power_on(void)
+static int cardhu_imx091_power_on(struct device *dev)
 {
 	/* Boards E1198 and E1291 are of Cardhu personality
 	* and donot have TCA6416 exp for camera */
@@ -284,7 +285,8 @@ static int cardhu_imx091_power_on(void)
 		(board_info.board_id == BOARD_E1291)) {
 
 			if (cardhu_vdd_2v8_cam1 == NULL) {
-				cardhu_vdd_2v8_cam1 = regulator_get(NULL, "vdd_2v8_cam1");
+				cardhu_vdd_2v8_cam1 =
+					regulator_get(dev, "vdd_2v8_cam1");
 				if (WARN_ON(IS_ERR(cardhu_vdd_2v8_cam1))) {
 					pr_err("%s: couldn't get regulator vdd_2v8_cam1: %ld\n",
 							__func__, PTR_ERR(cardhu_vdd_2v8_cam1));
@@ -297,7 +299,7 @@ static int cardhu_imx091_power_on(void)
 
 	/* Enable VDD_1V8_Cam1 */
 	if (cardhu_1v8_cam1 == NULL) {
-			cardhu_1v8_cam1 = regulator_get(NULL, "vdd_1v8_cam1");
+			cardhu_1v8_cam1 = regulator_get(dev, "vdd_1v8_cam1");
 			if (WARN_ON(IS_ERR(cardhu_1v8_cam1))) {
 					pr_err("%s: couldn't get regulator vdd_1v8_cam1: %ld\n",
 							__func__, PTR_ERR(cardhu_1v8_cam1));
@@ -360,7 +362,7 @@ static struct i2c_board_info cardhu_i2c_board_info_e1244[] = {
 
 
 
-static int cardhu_right_ov5650_power_on(void)
+static int cardhu_right_ov5650_power_on(struct device *dev)
 {
 	/* CSI-B and front sensor are muxed on cardhu */
 	gpio_direction_output(CAMERA_CSI_MUX_SEL_GPIO, 0);
@@ -375,7 +377,8 @@ static int cardhu_right_ov5650_power_on(void)
 		mdelay(10);
 
 		if (cardhu_vdd_2v8_cam2 == NULL) {
-			cardhu_vdd_2v8_cam2 = regulator_get(NULL, "vdd_2v8_cam2");
+			cardhu_vdd_2v8_cam2 =
+				regulator_get(dev, "vdd_2v8_cam2");
 			if (WARN_ON(IS_ERR(cardhu_vdd_2v8_cam2))) {
 				pr_err("%s: couldn't get regulator vdd_2v8_cam2: %ld\n",
 					__func__, PTR_ERR(cardhu_vdd_2v8_cam2));
@@ -388,7 +391,7 @@ static int cardhu_right_ov5650_power_on(void)
 
 	/* Enable VDD_1V8_Cam2 */
 	if (cardhu_1v8_cam2 == NULL) {
-		cardhu_1v8_cam2 = regulator_get(NULL, "vdd_1v8_cam2");
+		cardhu_1v8_cam2 = regulator_get(dev, "vdd_1v8_cam2");
 		if (WARN_ON(IS_ERR(cardhu_1v8_cam2))) {
 			pr_err("%s: couldn't get regulator vdd_1v8_cam2: %ld\n",
 				__func__, PTR_ERR(cardhu_1v8_cam2));
@@ -421,7 +424,7 @@ reg_alloc_fail:
 
 }
 
-static int cardhu_right_ov5650_power_off(void)
+static int cardhu_right_ov5650_power_off(struct device *dev)
 {
 	/* CSI-B and front sensor are muxed on cardhu */
 	gpio_direction_output(CAMERA_CSI_MUX_SEL_GPIO, 0);
@@ -469,14 +472,14 @@ struct ov5650_platform_data cardhu_right_ov5650_data = {
 	.synchronize_sensors = cardhu_ov5650_synchronize_sensors,
 };
 
-static int cardhu_ov2710_power_on(void)
+static int cardhu_ov2710_power_on(struct device *dev)
 {
 	/* CSI-B and front sensor are muxed on cardhu */
 	gpio_direction_output(CAMERA_CSI_MUX_SEL_GPIO, 1);
 
 	/* Enable VDD_1V8_Cam3 */
 	if (cardhu_1v8_cam3 == NULL) {
-		cardhu_1v8_cam3 = regulator_get(NULL, "vdd_1v8_cam3");
+		cardhu_1v8_cam3 = regulator_get(dev, "vdd_1v8_cam3");
 		if (WARN_ON(IS_ERR(cardhu_1v8_cam3))) {
 			pr_err("%s: couldn't get regulator vdd_1v8_cam3: %ld\n",
 				__func__, PTR_ERR(cardhu_1v8_cam3));
@@ -490,7 +493,7 @@ static int cardhu_ov2710_power_on(void)
 	if ((board_info.board_id == BOARD_E1198) ||
 		(board_info.board_id == BOARD_E1291)) {
 		if (cardhu_vdd_cam3 == NULL) {
-			cardhu_vdd_cam3 = regulator_get(NULL, "vdd_cam3");
+			cardhu_vdd_cam3 = regulator_get(dev, "vdd_cam3");
 			if (WARN_ON(IS_ERR(cardhu_vdd_cam3))) {
 				pr_err("%s: couldn't get regulator vdd_cam3: %ld\n",
 					__func__, PTR_ERR(cardhu_vdd_cam3));
@@ -525,7 +528,7 @@ reg_alloc_fail:
 	return -ENODEV;
 }
 
-static int cardhu_ov2710_power_off(void)
+static int cardhu_ov2710_power_off(struct device *dev)
 {
 	/* CSI-B and front sensor are muxed on cardhu */
 	gpio_direction_output(CAMERA_CSI_MUX_SEL_GPIO, 1);
@@ -552,7 +555,7 @@ struct ov2710_platform_data cardhu_ov2710_data = {
 	.power_off = cardhu_ov2710_power_off,
 };
 
-static int cardhu_ov5640_power_on(void)
+static int cardhu_ov5640_power_on(struct device *dev)
 {
 	/* CSI-B and front sensor are muxed on cardhu */
 	gpio_direction_output(CAMERA_CSI_MUX_SEL_GPIO, 1);
@@ -568,7 +571,7 @@ static int cardhu_ov5640_power_on(void)
 		mdelay(10);
 
 		if (cardhu_vdd_cam3 == NULL) {
-			cardhu_vdd_cam3 = regulator_get(NULL, "vdd_cam3");
+			cardhu_vdd_cam3 = regulator_get(dev, "vdd_cam3");
 			if (WARN_ON(IS_ERR(cardhu_vdd_cam3))) {
 				pr_err("%s: couldn't get regulator vdd_cam3: %ld\n",
 					__func__, PTR_ERR(cardhu_vdd_cam3));
@@ -580,7 +583,7 @@ static int cardhu_ov5640_power_on(void)
 
 	/* Enable VDD_1V8_Cam3 */
 	if (cardhu_1v8_cam3 == NULL) {
-		cardhu_1v8_cam3 = regulator_get(NULL, "vdd_1v8_cam3");
+		cardhu_1v8_cam3 = regulator_get(dev, "vdd_1v8_cam3");
 		if (WARN_ON(IS_ERR(cardhu_1v8_cam3))) {
 			pr_err("%s: couldn't get regulator vdd_1v8_cam3: %ld\n",
 				__func__, PTR_ERR(cardhu_1v8_cam3));
@@ -605,7 +608,7 @@ reg_alloc_fail:
 	return -ENODEV;
 }
 
-static int cardhu_ov5640_power_off(void)
+static int cardhu_ov5640_power_off(struct device *dev)
 {
 	/* CSI-B and front sensor are muxed on cardhu */
 	gpio_direction_output(CAMERA_CSI_MUX_SEL_GPIO, 1);
