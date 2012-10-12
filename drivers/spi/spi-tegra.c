@@ -382,7 +382,7 @@ static unsigned spi_tegra_calculate_curr_xfer_param(
 	if (tspi->is_packed) {
 		max_len = min(remain_len, tspi->max_buf_size);
 		tspi->curr_dma_words = max_len/tspi->bytes_per_word;
-		total_fifo_words = max_len/4;
+		total_fifo_words = (max_len + 3)/4;
 	} else {
 		max_word = (remain_len - 1) / tspi->bytes_per_word + 1;
 		max_word = min(max_word, tspi->max_buf_size/4);
@@ -831,7 +831,8 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 	dev_dbg(&tspi->pdev->dev, "The def 0x%x and written 0x%lx\n",
 				tspi->def_command_reg, command);
 
-	command2 &= ~(SLINK_SS_EN_CS(~0) | SLINK_RXEN | SLINK_TXEN);
+	command2 &= ~(SLINK_SS_EN_CS(~0) | SLINK_RXEN | SLINK_TXEN
+		| SLINK_LSBFE);
 	tspi->cur_direction = 0;
 	if (t->rx_buf) {
 		command2 |= SLINK_RXEN;
@@ -842,6 +843,10 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 		tspi->cur_direction |= DATA_DIR_TX;
 	}
 	command2 |= SLINK_SS_EN_CS(spi->chip_select);
+
+	if (spi->mode & SPI_LSB_FIRST)
+		command2 |= SLINK_LSBFE;
+
 	spi_tegra_writel(tspi, command2, SLINK_COMMAND2);
 	tspi->command2_reg = command2;
 
@@ -1332,7 +1337,7 @@ static int __devinit spi_tegra_probe(struct platform_device *pdev)
 	}
 
 	/* the spi->mode bits understood by this driver: */
-	master->mode_bits = SPI_CPOL | SPI_CPHA | SPI_CS_HIGH;
+	master->mode_bits = SPI_CPOL | SPI_CPHA | SPI_CS_HIGH | SPI_LSB_FIRST;
 
 	if (pdev->id != -1)
 		master->bus_num = pdev->id;

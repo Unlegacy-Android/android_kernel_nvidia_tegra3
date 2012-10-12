@@ -1,7 +1,7 @@
 /*
  * Driver for Nvidia TEGRA spi controller in slave mode.
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -146,6 +146,11 @@
 #define SPI_FIFO_DEPTH		32
 #define SLINK_DMA_TIMEOUT (msecs_to_jiffies(1000))
 
+/* Slave controller clock should be 4 times of the interface clock.
+ * However, it is recommended to keep controller clock 8 times of interface
+ * clock to avoid some timing issue.
+ */
+#define CONTROLLER_SPEED_MULTIPLIER	8
 
 static const unsigned long spi_tegra_req_sels[] = {
 	TEGRA_DMA_REQ_SEL_SL2B1,
@@ -352,7 +357,7 @@ static unsigned spi_tegra_calculate_curr_xfer_param(
 	if (tspi->is_packed) {
 		max_len = min(remain_len, tspi->max_buf_size);
 		tspi->curr_dma_words = max_len/tspi->bytes_per_word;
-		total_fifo_words = remain_len/4;
+		total_fifo_words = (remain_len + 3)/4;
 	} else {
 		max_word = (remain_len - 1) / tspi->bytes_per_word + 1;
 		max_word = min(max_word, tspi->max_buf_size/4);
@@ -608,8 +613,8 @@ static void set_best_clk_source(struct spi_tegra_data *tspi,
 {
 	long new_rate;
 	unsigned long err_rate;
-	int rate = speed * 4;
-	unsigned int fin_err = speed * 4;
+	int rate = speed * CONTROLLER_SPEED_MULTIPLIER;
+	unsigned int fin_err = speed * CONTROLLER_SPEED_MULTIPLIER;
 	int final_index = -1;
 	int count;
 	int ret;
@@ -678,7 +683,7 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 	speed = t->speed_hz ? t->speed_hz : spi->max_speed_hz;
 	if (speed != tspi->cur_speed) {
 		set_best_clk_source(tspi, speed);
-		clk_set_rate(tspi->clk, speed * 4);
+		clk_set_rate(tspi->clk, speed * CONTROLLER_SPEED_MULTIPLIER);
 		tspi->cur_speed = speed;
 	}
 
@@ -721,7 +726,8 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 	dev_dbg(&tspi->pdev->dev, "The def 0x%x and written 0x%lx\n",
 				tspi->def_command_reg, command);
 
-	command2 &= ~(SLINK_SS_EN_CS(~0) | SLINK_RXEN | SLINK_TXEN);
+	command2 &= ~(SLINK_SS_EN_CS(~0) | SLINK_RXEN | SLINK_TXEN
+		| SLINK_LSBFE);
 	tspi->cur_direction = 0;
 	if (t->rx_buf) {
 		command2 |= SLINK_RXEN;
@@ -732,6 +738,10 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 		tspi->cur_direction |= DATA_DIR_TX;
 	}
 	command2 |= SLINK_SS_EN_CS(spi->chip_select);
+
+	if (spi->mode & SPI_LSB_FIRST)
+		command2 |= SLINK_LSBFE;
+
 	spi_tegra_writel(tspi, command2, SLINK_COMMAND2);
 	tspi->command2_reg = command2;
 
@@ -1083,7 +1093,7 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 	}
 
 	/* the spi->mode bits understood by this driver: */
-	master->mode_bits = SPI_CPOL | SPI_CPHA | SPI_CS_HIGH;
+	master->mode_bits = SPI_CPOL | SPI_CPHA | SPI_CS_HIGH | SPI_LSB_FIRST;
 
 	if (pdev->id != -1)
 		master->bus_num = pdev->id;
@@ -1126,6 +1136,17 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 	}
 
 	sprintf(tspi->port_name, "tegra_spi_%d", pdev->id);
+	tspi->clk = clk_get(&pdev->dev, NULL);
+	if (IS_ERR_OR_NULL(tspi->clk)) {
+		dev_err(&pdev->dev, "can not get clock\n");
+		ret = PTR_ERR(tspi->clk);
+		goto fail_clk_get;
+	}
+	tegra_periph_reset_assert(tspi->clk);
+	clk_enable(tspi->clk);
+	udelay(2);
+	tegra_periph_reset_deassert(tspi->clk);
+	tspi->clk_state = 1;
 	ret = request_threaded_irq(tspi->irq, spi_tegra_isr,
 			spi_tegra_isr_thread, IRQF_DISABLED,
 			tspi->port_name, tspi);
@@ -1133,13 +1154,6 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to register ISR for IRQ %d\n",
 					tspi->irq);
 		goto fail_irq_req;
-	}
-
-	tspi->clk = clk_get(&pdev->dev, NULL);
-	if (IS_ERR_OR_NULL(tspi->clk)) {
-		dev_err(&pdev->dev, "can not get clock\n");
-		ret = PTR_ERR(tspi->clk);
-		goto fail_clk_get;
 	}
 
 	INIT_LIST_HEAD(&tspi->queue);
@@ -1245,8 +1259,6 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 	tspi->def_command2_reg = SLINK_CS_ACTIVE_BETWEEN;
 
 skip_dma_alloc:
-	clk_enable(tspi->clk);
-	tspi->clk_state = 1;
 	spi_tegra_writel(tspi, tspi->def_command2_reg, SLINK_COMMAND2);
 	ret = spi_register_master(master);
 	if (!tspi->is_clkon_always) {
