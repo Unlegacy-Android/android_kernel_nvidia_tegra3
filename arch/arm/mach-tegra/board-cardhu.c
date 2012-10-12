@@ -1384,6 +1384,7 @@ static void __init tegra_cardhu_init(void)
 	tegra_smmu_init();
 	tegra_soc_device_init("cardhu");
 	cardhu_pinmux_init();
+	cardhu_gpio_init();
 	cardhu_i2c_init();
 	cardhu_spi_init();
 	cardhu_usb_init();

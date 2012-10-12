@@ -610,7 +610,7 @@ static __initdata struct tegra_pingroup_config gmi_pins_269[] = {
 	DEFAULT_PINMUX(GMI_WP_N,        NAND,           NORMAL,     NORMAL,       INPUT),
 };
 
-static void __init cardhu_pinmux_audio_init(void)
+static void __init cardhu_audio_gpio_init(void)
 {
 	int ret = gpio_request(TEGRA_GPIO_CDC_IRQ, "wm8903");
 	if (ret < 0) {
@@ -694,14 +694,20 @@ static void __init cardhu_gpio_init_configure(void)
 	}
 }
 
+int __init cardhu_gpio_init(void)
+{
+	cardhu_gpio_init_configure();
+	cardhu_audio_gpio_init();
+
+	return 0;
+}
+
 int __init cardhu_pinmux_init(void)
 {
 	struct board_info board_info;
 	struct board_info display_board_info;
 
 	tegra30_default_pinmux();
-
-	cardhu_gpio_init_configure();
 
 	tegra_pinmux_config_table(cardhu_pinmux_common, ARRAY_SIZE(cardhu_pinmux_common));
 	tegra_drive_pinmux_config_table(cardhu_drive_pinmux,
@@ -763,8 +769,6 @@ int __init cardhu_pinmux_init(void)
 					ARRAY_SIZE(cardhu_pinmux_e118x));
 		break;
 	}
-
-	cardhu_pinmux_audio_init();
 
 	return 0;
 }
