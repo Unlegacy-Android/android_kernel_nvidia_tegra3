@@ -4157,11 +4157,6 @@ dhd_module_init(void)
 {
 	int error = 0;
 
-#if defined(BCMLXSDMMC) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
-	int retry = POWERUP_MAX_RETRY;
-	int chip_up = 0;
-#endif
-
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
 	wl_android_init();
@@ -4182,44 +4177,11 @@ dhd_module_init(void)
 	} while (0);
 #endif
 
-#if defined(BCMLXSDMMC) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
-	do {
-		sema_init(&dhd_chipup_sem, 0);
-		dhd_bus_reg_sdio_notify(&dhd_chipup_sem);
-		dhd_customer_gpio_wlan_ctrl(WLAN_POWER_ON);
-#if defined(CONFIG_WIFI_CONTROL_FUNC)
-		if (wl_android_wifictrl_func_add() < 0) {
-			dhd_bus_unreg_sdio_notify();
-			goto fail_1;
-		}
-#endif /* defined(CONFIG_WIFI_CONTROL_FUNC) */
-		if (down_timeout(&dhd_chipup_sem,
-			msecs_to_jiffies(POWERUP_WAIT_MS)) == 0) {
-			dhd_bus_unreg_sdio_notify();
-			chip_up = 1;
-			break;
-		}
-		DHD_ERROR(("\nfailed to power up wifi chip, retry again (%d left) **\n\n",
-			retry+1));
-		dhd_bus_unreg_sdio_notify();
-#if defined(CONFIG_WIFI_CONTROL_FUNC)
-		wl_android_wifictrl_func_del();
-#endif /* defined(CONFIG_WIFI_CONTROL_FUNC) */
-		dhd_customer_gpio_wlan_ctrl(WLAN_POWER_OFF);
-	} while (retry-- > 0);
-
-	if (!chip_up) {
-		DHD_ERROR(("\nfailed to power up wifi chip, max retry reached, exits **\n\n"));
-		return -ENODEV;
-	}
-#else
 	dhd_customer_gpio_wlan_ctrl(WLAN_POWER_ON);
 #if defined(CONFIG_WIFI_CONTROL_FUNC)
 	if (wl_android_wifictrl_func_add() < 0)
 		goto fail_1;
 #endif /* defined(CONFIG_WIFI_CONTROL_FUNC) */
-
-#endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 	sema_init(&dhd_registration_sem, 0);
