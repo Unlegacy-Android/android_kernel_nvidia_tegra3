@@ -474,7 +474,7 @@ static struct tegra_dc_sd_settings kai_sd_settings = {
 			},
 		},
 	.sd_brightness = &sd_brightness,
-	.bl_device = &kai_backlight_device,
+	.bl_device_name = "pwm-backlight",
 };
 
 #ifdef CONFIG_TEGRA_DC

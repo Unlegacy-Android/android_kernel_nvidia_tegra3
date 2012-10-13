@@ -483,7 +483,11 @@ static struct tegra_dc_sd_settings enterprise_sd_settings = {
 			},
 		},
 	.sd_brightness = &sd_brightness,
-	.bl_device = &enterprise_disp1_backlight_device,
+#if IS_EXTERNAL_PWM
+	.bl_device_name = "pwm-backlight",
+#else
+	.bl_device_name = "tegra-pwm-bl",
+#endif
 };
 
 static struct tegra_fb_data enterprise_hdmi_fb_data = {
@@ -907,8 +911,6 @@ int __init enterprise_panel_init(void)
 		} else
 			bl_output = enterprise_bl_output_measured_a02;
 	} else {
-		enterprise_sd_settings.bl_device =
-					&external_pwm_disp1_backlight_device;
 		enterprise_bl_devices[0]         =
 					&external_pwm_disp1_backlight_device;
 		bl_output                        =
@@ -1042,5 +1044,6 @@ int __init enterprise_panel_init(void)
 	if (!err)
 		err = platform_add_devices(enterprise_bl_devices,
 				ARRAY_SIZE(enterprise_bl_devices));
+
 	return err;
 }
