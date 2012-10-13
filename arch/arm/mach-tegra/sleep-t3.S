@@ -70,6 +70,7 @@
 
 #define PMC_IO_DPD_REQ			0x1b8
 #define PMC_IO_DPD_STATUS		0x1bc
+#define PMC_SCRATCH1_ECO		0x264
 
 #define CLK_RESET_CCLK_BURST		0x20
 #define CLK_RESET_CCLK_DIVIDER		0x24
@@ -889,6 +890,12 @@ emcself:
 	str	r1, [r0, #EMC_XM2VTTGENPADCTRL2]
 
 	emc_timing_update r1, r0
+
+	/* SCRATCH1_ECO register*/
+	ldr r1, [r4, #PMC_SCRATCH1_ECO]
+	bic r1, r1, #0x3F
+	orr r1, r1, #0x3F
+	str r1, [r4, #PMC_SCRATCH1_ECO]
 
 	ldr	r1, [r4, #PMC_CTRL]
 	tst	r1, #PMC_CTRL_SIDE_EFFECT_LP0
