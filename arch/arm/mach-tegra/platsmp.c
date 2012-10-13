@@ -472,12 +472,23 @@ struct arm_soc_smp_init_ops tegra_soc_smp_init_ops __initdata = {
 	.smp_prepare_cpus	= tegra_smp_prepare_cpus,
 };
 
+#ifdef CONFIG_TEGRA_VIRTUAL_CPUID
+static int tegra_cpu_disable(unsigned int cpu)
+{
+	return 0;
+}
+#endif
+
 struct arm_soc_smp_ops tegra_soc_smp_ops __initdata = {
 	.smp_secondary_init	= tegra_secondary_init,
 	.smp_boot_secondary	= tegra_boot_secondary,
 #ifdef CONFIG_HOTPLUG_CPU
 	.cpu_kill		= tegra_cpu_kill,
 	.cpu_die		= tegra_cpu_die,
+#ifdef CONFIG_TEGRA_VIRTUAL_CPUID
+	.cpu_disable		= tegra_cpu_disable,
+#else
 	.cpu_disable		= dummy_cpu_disable,
+#endif
 #endif
 };
