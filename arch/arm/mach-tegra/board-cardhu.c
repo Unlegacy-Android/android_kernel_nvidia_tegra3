@@ -914,6 +914,7 @@ struct spi_board_info rm31080a_cardhu_spi_board[1] = {
 static int __init cardhu_touch_init(void)
 {
 	struct board_info BoardInfo, DisplayBoardInfo;
+	int ret;
 
 	tegra_get_board_info(&BoardInfo);
 	tegra_get_display_board_info(&DisplayBoardInfo);
@@ -930,11 +931,28 @@ static int __init cardhu_touch_init(void)
 					&rm31080a_cardhu_spi_board[0],
 					ARRAY_SIZE(rm31080a_cardhu_spi_board));
 	} else {
-		gpio_request(TEGRA_GPIO_PH4, "atmel-irq");
-		gpio_direction_input(TEGRA_GPIO_PH4);
-
-		gpio_request(TEGRA_GPIO_PH6, "atmel-reset");
-		gpio_direction_output(TEGRA_GPIO_PH6, 0);
+		ret = gpio_request(TEGRA_GPIO_PH4, "atmel-irq");
+		if (ret < 0) {
+			pr_err("%s() Error in gpio_request() for gpio %d\n",
+					__func__, ret);
+		}
+		ret = gpio_direction_input(TEGRA_GPIO_PH4);
+		if (ret < 0) {
+			pr_err("%s() Error in setting gpio %d to in/out\n",
+					 __func__, ret);
+			gpio_free(TEGRA_GPIO_PH4);
+		}
+		ret = gpio_request(TEGRA_GPIO_PH6, "atmel-reset");
+		if (ret < 0) {
+			pr_err("%s() Error in gpio_request() for gpio %d\n",
+					__func__, ret);
+		}
+		ret = gpio_direction_output(TEGRA_GPIO_PH6, 0);
+		if (ret < 0) {
+			pr_err("%s() Error in setting gpio %d to in/out\n",
+					 __func__, ret);
+			gpio_free(TEGRA_GPIO_PH6);
+		}
 		msleep(1);
 		gpio_set_value(TEGRA_GPIO_PH6, 1);
 		msleep(100);
