@@ -245,9 +245,9 @@ static ssize_t store_state_##_name(struct cpuidle_state *state, \
 	if (err) \
 		return err; \
 	if (value) \
-		state->disable = 1; \
+		state->disabled = true; \
 	else \
-		state->disable = 0; \
+		state->disabled = false; \
 	return size; \
 }
 
@@ -273,8 +273,8 @@ define_show_state_ull_function(usage)
 define_show_state_ull_function(time)
 define_show_state_str_function(name)
 define_show_state_str_function(desc)
-define_show_state_function(disable)
-define_store_state_function(disable)
+define_show_state_function(disabled)
+define_store_state_function(disabled)
 
 define_one_state_ro(name, show_state_name);
 define_one_state_ro(desc, show_state_desc);
@@ -282,7 +282,7 @@ define_one_state_ro(latency, show_state_exit_latency);
 define_one_state_ro(power, show_state_power_usage);
 define_one_state_ro(usage, show_state_usage);
 define_one_state_ro(time, show_state_time);
-define_one_state_rw(disable, show_state_disable, store_state_disable);
+define_one_state_rw(disabled, show_state_disabled, store_state_disabled);
 
 static struct attribute *cpuidle_state_default_attrs[] = {
 	&attr_name.attr,
@@ -291,7 +291,7 @@ static struct attribute *cpuidle_state_default_attrs[] = {
 	&attr_power.attr,
 	&attr_usage.attr,
 	&attr_time.attr,
-	&attr_disable.attr,
+	&attr_disabled.attr,
 	NULL
 };
 
