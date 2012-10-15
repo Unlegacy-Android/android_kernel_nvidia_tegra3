@@ -1317,7 +1317,16 @@ int __init cardhu_panel_init(void)
 	if (WARN_ON(board_info.board_id == BOARD_E1291 &&
 		((board_info.sku & SKU_TOUCHSCREEN_MECH_FIX) == 0))) {
 		/* use 55Hz panel timings to reduce noise on sensitive touch */
-		printk("Using cardhu_panel_modes_55hz\n");
+		printk(KERN_INFO
+			"##################################################\n");
+		printk(KERN_WARNING
+			"This Cardhu board has touch related issues.\n");
+		printk(KERN_WARNING
+		"Switching to 55Hz refresh - WAR for broken sensors.\n");
+		printk(KERN_WARNING
+			"Advised to avoid any display related tests.\n");
+		printk(KERN_INFO
+			"##################################################\n");
 		cardhu_disp1_out.parent_clk = "pll_p";
 		cardhu_disp1_out.modes = cardhu_panel_modes_55hz;
 		cardhu_disp1_out.n_modes = ARRAY_SIZE(cardhu_panel_modes_55hz);
