@@ -81,6 +81,17 @@ static int tps65910_gpio_input(struct gpio_chip *gc, unsigned offset)
 						GPIO_CFG_MASK);
 }
 
+static int tps65910_gpio_to_irq(struct gpio_chip *gc, unsigned off)
+{
+	struct tps65910_gpio *tps65910_gpio = to_tps65910_gpio(gc);
+	struct tps65910 *tps65910 =  tps65910_gpio->tps65910;
+
+	if ((off >= 0) && (off <= TPS65911_IRQ_GPIO0_R - TPS65911_IRQ_GPIO5_R))
+		return tps65910->irq_base + TPS65911_IRQ_GPIO0_R + off*2;
+
+	return -EIO;
+}
+
 static int __devinit tps65910_gpio_probe(struct platform_device *pdev)
 {
 	struct tps65910 *tps65910 = dev_get_drvdata(pdev->dev.parent);
@@ -116,6 +127,7 @@ static int __devinit tps65910_gpio_probe(struct platform_device *pdev)
 	tps65910_gpio->gpio_chip.direction_output = tps65910_gpio_output;
 	tps65910_gpio->gpio_chip.set	= tps65910_gpio_set;
 	tps65910_gpio->gpio_chip.get	= tps65910_gpio_get;
+	tps65910_gpio->gpio_chip.to_irq = tps65910_gpio_to_irq;
 	tps65910_gpio->gpio_chip.dev = &pdev->dev;
 	if (pdata && pdata->gpio_base)
 		tps65910_gpio->gpio_chip.base = pdata->gpio_base;
