@@ -201,7 +201,7 @@ int tps65910_irq_init(struct tps65910 *tps65910, int irq,
 	     cur_irq++) {
 		irq_set_chip_data(cur_irq, tps65910);
 		irq_set_chip_and_handler(cur_irq, &tps65910_irq_chip,
-					 handle_edge_irq);
+					handle_simple_irq);
 		irq_set_nested_thread(cur_irq, 1);
 
 		/* ARM needs us to explicitly flag the IRQ as valid
@@ -212,15 +212,14 @@ int tps65910_irq_init(struct tps65910 *tps65910, int irq,
 		irq_set_noprobe(cur_irq);
 #endif
 	}
-
 	ret = request_threaded_irq(irq, NULL, tps65910_irq, flags,
 				   "tps65910", tps65910);
-
-	irq_set_irq_type(irq, IRQ_TYPE_LEVEL_LOW);
-
-	if (ret != 0)
+	if (ret != 0) {
 		dev_err(tps65910->dev, "Failed to request IRQ: %d\n", ret);
-
+	} else {
+		device_init_wakeup(tps65910->dev, 1);
+		enable_irq_wake(irq);
+	}
 	return ret;
 }
 

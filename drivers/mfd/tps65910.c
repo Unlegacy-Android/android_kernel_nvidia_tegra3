@@ -24,6 +24,15 @@
 #include <linux/mfd/tps65910.h>
 #include <linux/of_device.h>
 
+static struct resource rtc_resources[] = {
+	{
+		.start = TPS65910_IRQ_RTC_ALARM,
+		.end = TPS65910_IRQ_RTC_ALARM,
+		.flags = IORESOURCE_IRQ,
+	}
+};
+
+
 static struct mfd_cell tps65910s[] = {
 	{
 		.name = "tps65910-gpio",
@@ -33,6 +42,8 @@ static struct mfd_cell tps65910s[] = {
 	},
 	{
 		.name = "tps65910-rtc",
+		.num_resources = ARRAY_SIZE(rtc_resources),
+		.resources = &rtc_resources[0],
 	},
 	{
 		.name = "tps65910-power",
@@ -242,6 +253,13 @@ static __devinit int tps65910_i2c_probe(struct i2c_client *i2c,
 		return ret;
 	}
 
+	init_data->irq = pmic_plat_data->irq;
+	init_data->irq_base = pmic_plat_data->irq_base;
+
+	tps65910_irq_init(tps65910, init_data->irq, init_data);
+
+	tps65910_sleepinit(tps65910, pmic_plat_data);
+
 	ret = mfd_add_devices(tps65910->dev, -1,
 			      tps65910s, ARRAY_SIZE(tps65910s),
 			      NULL, 0);
@@ -249,13 +267,6 @@ static __devinit int tps65910_i2c_probe(struct i2c_client *i2c,
 		dev_err(&i2c->dev, "mfd_add_devices failed: %d\n", ret);
 		return ret;
 	}
-
-	init_data->irq = pmic_plat_data->irq;
-	init_data->irq_base = pmic_plat_data->irq_base;
-
-	tps65910_irq_init(tps65910, init_data->irq, init_data);
-
-	tps65910_sleepinit(tps65910, pmic_plat_data);
 
 	return ret;
 }
