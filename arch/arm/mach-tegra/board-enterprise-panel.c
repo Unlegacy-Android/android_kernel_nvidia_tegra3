@@ -604,8 +604,13 @@ static int enterprise_dsi_panel_enable(struct device *dev)
 			return ret;
 		kernel_1st_panel_init = false;
 	} else {
-		gpio_direction_output(enterprise_dsi_panel_reset, 0);
-
+		ret = gpio_direction_output(enterprise_dsi_panel_reset, 0);
+		if (ret < 0) {
+			pr_err("%s: gpio_direction_ouput failed %d\n",
+				__func__, ret);
+			gpio_free(enterprise_dsi_panel_reset);
+			return ret;
+		}
 		gpio_set_value(enterprise_dsi_panel_reset, 0);
 		udelay(2000);
 		gpio_set_value(enterprise_dsi_panel_reset, 1);
@@ -618,11 +623,20 @@ static int enterprise_dsi_panel_enable(struct device *dev)
 
 static int enterprise_dsi_panel_disable(void)
 {
+#if DSI_PANEL_RESET
+	int ret;
+#endif
 	if (enterprise_lcd_reg != NULL)
 		regulator_disable(enterprise_lcd_reg);
 
 #if DSI_PANEL_RESET
-	gpio_direction_output(enterprise_dsi_panel_reset, 0);
+	ret = gpio_direction_output(enterprise_dsi_panel_reset, 0);
+	if (ret < 0) {
+		pr_err("%s: gpio_direction_ouput failed %d\n",
+			__func__, ret);
+		gpio_free(enterprise_dsi_panel_reset);
+		return ret;
+	}
 #endif
 	return 0;
 }
@@ -908,32 +922,80 @@ int __init enterprise_panel_init(void)
 	enterprise_carveouts[1].size = tegra_carveout_size;
 #endif
 
-	gpio_request(enterprise_hdmi_hpd, "hdmi_hpd");
-	gpio_direction_input(enterprise_hdmi_hpd);
+	err = gpio_request(enterprise_hdmi_hpd, "hdmi_hpd");
+	if (err < 0) {
+		pr_err("%s: gpio_request failed %d\n", __func__, err);
+		return err;
+	}
+	err = gpio_direction_input(enterprise_hdmi_hpd);
+	if (err < 0) {
+		pr_err("%s: gpio_direction_input failed %d\n",
+			__func__, err);
+		gpio_free(enterprise_hdmi_hpd);
+		return err;
+	}
 
 	if (board_info.board_id != BOARD_E1239) {
-		gpio_request(enterprise_lcd_2d_3d, "lcd_2d_3d");
-		gpio_direction_output(enterprise_lcd_2d_3d, 0);
+		err = gpio_request(enterprise_lcd_2d_3d, "lcd_2d_3d");
+		if (err < 0) {
+			pr_err("%s: gpio_request failed %d\n", __func__, err);
+			return err;
+		}
+		err = gpio_direction_output(enterprise_lcd_2d_3d, 0);
+		if (err < 0) {
+			pr_err("%s: gpio_direction_ouput failed %d\n",
+				__func__, err);
+			gpio_free(enterprise_lcd_2d_3d);
+			return err;
+		}
 		enterprise_stereo_set_mode(enterprise_stereo.mode_2d_3d);
 
-		gpio_request(enterprise_lcd_swp_pl, "lcd_swp_pl");
-		gpio_direction_output(enterprise_lcd_swp_pl, 0);
+		err = gpio_request(enterprise_lcd_swp_pl, "lcd_swp_pl");
+		if (err < 0) {
+			pr_err("%s: gpio_request failed %d\n", __func__, err);
+			return err;
+		}
+		err = gpio_direction_output(enterprise_lcd_swp_pl, 0);
+		if (err < 0) {
+			pr_err("%s: gpio_direction_ouput failed %d\n",
+				__func__, err);
+			gpio_free(enterprise_lcd_swp_pl);
+			return err;
+		}
 		enterprise_stereo_set_orientation(
 						enterprise_stereo.orientation);
 #if IS_EXTERNAL_PWM
-		gpio_request(enterprise_bl_pwm, "bl_pwm");
+		err = gpio_request(enterprise_bl_pwm, "bl_pwm");
+		if (err < 0) {
+			pr_err("%s: gpio_request failed %d\n", __func__, err);
+			return err;
+		}
 		gpio_free(enterprise_bl_pwm);
 #endif
 	} else {
 		/* External pwm is used but do not use IS_EXTERNAL_PWM
 		compiler switch for TAI */
-		gpio_request(enterprise_bl_pwm, "bl_pwm");
+		err = gpio_request(enterprise_bl_pwm, "bl_pwm");
+		if (err < 0) {
+			pr_err("%s: gpio_request failed %d\n", __func__, err);
+			return err;
+		}
 		gpio_free(enterprise_bl_pwm);
 	}
 
 #if !(DC_CTRL_MODE & TEGRA_DC_OUT_ONE_SHOT_MODE)
-	gpio_request(enterprise_lcd_swp_pl, "lcd_te");
-	gpio_direction_input(enterprise_lcd_te);
+	err = gpio_request(enterprise_lcd_swp_pl, "lcd_te");
+	if (err < 0) {
+		pr_err("%s: gpio_request failed %d\n", __func__, err);
+		return err;
+	}
+	err = gpio_direction_input(enterprise_lcd_te);
+	if (err < 0) {
+		pr_err("%s: gpio_direction_input failed %d\n",
+			__func__, err);
+		gpio_free(enterprise_lcd_te);
+		return err;
+	}
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST

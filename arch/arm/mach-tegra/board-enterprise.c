@@ -764,11 +764,31 @@ static struct i2c_board_info __initdata atmel_i2c_info[] = {
 
 static int __init enterprise_touch_init(void)
 {
-	gpio_request(TEGRA_GPIO_PH6, "atmel-irq");
-	gpio_direction_input(TEGRA_GPIO_PH6);
-
-	gpio_request(TEGRA_GPIO_PF5, "atmel-reset");
-	gpio_direction_output(TEGRA_GPIO_PF5, 0);
+	int ret;
+	ret = gpio_request(TEGRA_GPIO_PH6, "atmel-irq");
+	if (ret < 0) {
+		pr_err("%s: gpio_request failed %d\n", __func__, ret);
+		return ret;
+	}
+	ret = gpio_direction_input(TEGRA_GPIO_PH6);
+	if (ret < 0) {
+		pr_err("%s: gpio_direction_input failed %d\n",
+			__func__, ret);
+		gpio_free(TEGRA_GPIO_PH6);
+		return ret;
+	}
+	ret = gpio_request(TEGRA_GPIO_PF5, "atmel-reset");
+	if (ret < 0) {
+		pr_err("%s: gpio_request failed %d\n", __func__, ret);
+		return ret;
+	}
+	ret = gpio_direction_output(TEGRA_GPIO_PF5, 0);
+	if (ret < 0) {
+		pr_err("%s: gpio_direction_ouput failed %d\n",
+			__func__, ret);
+		gpio_free(TEGRA_GPIO_PF5);
+		return ret;
+	}
 	msleep(1);
 	gpio_set_value(TEGRA_GPIO_PF5, 1);
 	msleep(100);
