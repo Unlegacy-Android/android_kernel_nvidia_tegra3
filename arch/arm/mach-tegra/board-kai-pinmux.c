@@ -453,8 +453,18 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 
 static void __init kai_pinmux_audio_init(void)
 {
-	gpio_request(TEGRA_GPIO_CDC_IRQ, "rt5640");
-	gpio_direction_input(TEGRA_GPIO_CDC_IRQ);
+	int err = gpio_request(TEGRA_GPIO_CDC_IRQ, "rt5640");
+	if (err < 0) {
+		pr_err("%s: gpio_request failed %d\n",
+			__func__, err);
+		return;
+	}
+	err = gpio_direction_input(TEGRA_GPIO_CDC_IRQ);
+	if (err < 0) {
+		pr_err("%s: gpio_direction_output failed %d\n",
+			__func__, err);
+			gpio_free(TEGRA_GPIO_CDC_IRQ);
+	}
 
 }
 
