@@ -4681,6 +4681,9 @@ dhd_dev_reset(struct net_device *dev, uint8 flag)
 
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
 
+	if (dhd == NULL)
+		return -1;
+
 	if (flag == TRUE) {
 		/* Issue wl down command before resetting the chip */
 		if (dhd_wl_ioctl_cmd(&dhd->pub, WLC_DOWN, NULL, 0, TRUE, 0) < 0) {
