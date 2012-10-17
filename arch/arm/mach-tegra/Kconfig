@@ -124,6 +124,7 @@ config ARCH_TEGRA_11x_SOC
 	select TEGRA_ISOMGR
 	select TEGRA_ISOMGR_SYSFS
 	select TEGRA_ISOMGR_DEBUG
+	select TEGRA_ERRATA_1157520
 	help
 	  Support for NVIDIA Tegra 11x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
@@ -516,12 +517,21 @@ config TEGRA_AUTO_HOTPLUG
 
 config TEGRA_MC_EARLY_ACK
 	bool "Enable early acknowledgement from mermory controller"
-	depends on ARCH_TEGRA_3x_SOC
+	depends on ARCH_TEGRA_3x_SOC || ARCH_TEGRA_11x_SOC
 	default y
 	help
 	  This option enables early acknowledgement from memory
 	  controller. This feature is used to improve CPU memory
 	  write performance.
+
+config TEGRA_ERRATA_1157520
+	bool "Memory writes are not consistent/ordered from CPU"
+	depends on ARCH_TEGRA_11x_SOC
+	help
+	  On T11x With early ack scoreboard on, the read/writes to
+	  SO and Non-Cached meory are randomly not observed in the
+	  order they are performed. Enabling this errata disables
+	  early ack scoreboard for T11x.
 
 config TEGRA_MC_PROFILE
 	tristate "Enable profiling memory controller utilization"
