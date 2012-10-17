@@ -158,7 +158,7 @@ static struct regulator_consumer_supply tps80031_vana_supply_a02[] = {
 
 static struct regulator_consumer_supply tps80031_ldo1_supply_a02[] = {
 	REGULATOR_SUPPLY("avdd_dsi_csi", NULL),
-	REGULATOR_SUPPLY("avdd_hsic", NULL),
+	REGULATOR_SUPPLY("avdd_hsic", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("pwrdet_mipi", NULL),
 };
 
@@ -180,7 +180,7 @@ static struct regulator_consumer_supply tps80031_ldo4_supply_a02[] = {
 
 static struct regulator_consumer_supply tps80031_ldo4_supply_a03[] = {
 	REGULATOR_SUPPLY("avdd_dsi_csi", NULL),
-	REGULATOR_SUPPLY("avdd_hsic", NULL),
+	REGULATOR_SUPPLY("avdd_hsic", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("pwrdet_mipi", NULL),
 };
 
