@@ -244,15 +244,15 @@ static int cardhu_backlight_notify(struct device *unused, int brightness)
 		gpio_set_value(e1506_bl_enb, !!brightness);
 	}
 
-	/* SD brightness is a percentage, 8-bit value. */
-	brightness = (brightness * cur_sd_brightness) / 255;
-
 	/* Apply any backlight response curve */
 	if (brightness > 255) {
 		pr_info("Error: Brightness > 255!\n");
 	} else {
 		brightness = bl_output[brightness];
 	}
+
+	/* SD brightness is a percentage, 8-bit value. */
+	brightness = (brightness * cur_sd_brightness) / 255;
 
 	return brightness;
 }
