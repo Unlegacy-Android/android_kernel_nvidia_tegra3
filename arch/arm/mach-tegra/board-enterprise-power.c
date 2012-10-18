@@ -247,7 +247,7 @@ static struct regulator_consumer_supply tps80031_vbus_supply_common[] = {
 };
 
 static struct regulator_consumer_supply tps80031_battery_charge_supply[] = {
-	REGULATOR_SUPPLY("usb_bat_chg", NULL),
+	REGULATOR_SUPPLY("usb_bat_chg", "tegra-udc.0"),
 };
 
 #define TPS_PDATA_INIT(_reg_id, _id, _sname, _minmv, _maxmv, _supply_reg, _always_on,	\
