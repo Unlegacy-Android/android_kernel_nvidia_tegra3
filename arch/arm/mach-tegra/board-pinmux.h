@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -16,7 +16,7 @@
 #define __MACH_TEGRA_BOARD_PINMUX_H
 
 #define GPIO_DEV "tegra-gpio"
-#define PINMUX_DEV "tegra-pinmux"
+#define PINMUX_DEV "tegra-pinmux-ctl"
 
 struct tegra_pingroup_config;
 struct tegra_gpio_table;
