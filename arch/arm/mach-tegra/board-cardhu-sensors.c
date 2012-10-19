@@ -46,7 +46,6 @@
 #include <media/ov14810.h>
 #include <media/ov2710.h>
 #include <media/tps61050.h>
-#include <media/imx091.h>
 #include <generated/mach-types.h>
 #include "board.h"
 #include <linux/mpu.h>
@@ -275,92 +274,6 @@ static struct i2c_board_info cardhu_i2c_board_info_e1214[] = {
 	}
 };
 #endif
-
-#ifdef CONFIG_VIDEO_IMX091
-static int cardhu_imx091_power_on(struct device *dev)
-{
-	/* Boards E1198 and E1291 are of Cardhu personality
-	* and donot have TCA6416 exp for camera */
-	if ((board_info.board_id == BOARD_E1198) ||
-		(board_info.board_id == BOARD_E1291)) {
-
-			if (cardhu_vdd_2v8_cam1 == NULL) {
-				cardhu_vdd_2v8_cam1 =
-					regulator_get(dev, "vdd_2v8_cam1");
-				if (WARN_ON(IS_ERR(cardhu_vdd_2v8_cam1))) {
-					pr_err("%s: couldn't get regulator vdd_2v8_cam1: %ld\n",
-							__func__, PTR_ERR(cardhu_vdd_2v8_cam1));
-						goto reg_alloc_fail;
-					}
-			}
-		regulator_enable(cardhu_vdd_2v8_cam1);
-		mdelay(5);
-	}
-
-	/* Enable VDD_1V8_Cam1 */
-	if (cardhu_1v8_cam1 == NULL) {
-			cardhu_1v8_cam1 = regulator_get(dev, "vdd_1v8_cam1");
-			if (WARN_ON(IS_ERR(cardhu_1v8_cam1))) {
-					pr_err("%s: couldn't get regulator vdd_1v8_cam1: %ld\n",
-							__func__, PTR_ERR(cardhu_1v8_cam1));
-					goto reg_alloc_fail;
-			}
-	}
-	regulator_enable(cardhu_1v8_cam1);
-
-	mdelay(5);
-	if ((board_info.board_id == BOARD_E1198) ||
-			(board_info.board_id == BOARD_E1291)) {
-			gpio_direction_output(CAM1_POWER_DWN_GPIO, 1);
-			mdelay(20);
-	}
-	return 0;
-
-reg_alloc_fail:
-	if (cardhu_1v8_cam1) {
-			regulator_put(cardhu_1v8_cam1);
-			cardhu_1v8_cam1 = NULL;
-	}
-	if (cardhu_vdd_2v8_cam1) {
-			regulator_put(cardhu_vdd_2v8_cam1);
-			cardhu_vdd_2v8_cam1 = NULL;
-	}
-
-	return -ENODEV;
-
-}
-
-static int cardhu_imx091_power_off(void)
-{
-	/* Boards E1198 and E1291 are of Cardhu personality
-	 * and donot have TCA6416 exp for camera */
-	if ((board_info.board_id == BOARD_E1198) ||
-			(board_info.board_id == BOARD_E1291)) {
-			gpio_direction_output(CAM1_POWER_DWN_GPIO, 0);
-	}
-	if (cardhu_1v8_cam1)
-			regulator_disable(cardhu_1v8_cam1);
-	if (cardhu_vdd_2v8_cam1)
-			regulator_disable(cardhu_vdd_2v8_cam1);
-
-	return 0;
-}
-
-struct imx091_platform_data cardhu_imx091_data = {
-	.power_on = cardhu_imx091_power_on,
-	.power_off = cardhu_imx091_power_off,
-};
-
-
-static struct i2c_board_info cardhu_i2c_board_info_e1244[] = {
-	{
-		I2C_BOARD_INFO("imx091", 0x36),
-		.platform_data = &cardhu_imx091_data,
-	},
-};
-#endif /* CONFIG_VIDEO_IMX091 */
-
-
 
 static int cardhu_right_ov5650_power_on(struct device *dev)
 {
@@ -1200,11 +1113,6 @@ int __init cardhu_sensors_init(void)
 
 	cardhu_camera_init();
 	cam_tca6416_init();
-
-#ifdef CONFIG_VIDEO_IMX091
-	i2c_register_board_info(2, cardhu_i2c_board_info_e1244,
-		ARRAY_SIZE(cardhu_i2c_board_info_e1244));
-#endif
 
 	i2c_register_board_info(2, cardhu_i2c3_board_info,
 		ARRAY_SIZE(cardhu_i2c3_board_info));
