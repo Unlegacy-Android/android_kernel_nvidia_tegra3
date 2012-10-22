@@ -121,6 +121,9 @@ config ARCH_TEGRA_11x_SOC
 	select TEGRA_MC_PTSA if !TEGRA_FPGA_PLATFORM
 	select SOC_BUS
 	select TEGRA_USE_DFLL if TEGRA_SILICON_PLATFORM
+	select TEGRA_ISOMGR
+	select TEGRA_ISOMGR_SYSFS
+	select TEGRA_ISOMGR_DEBUG
 	help
 	  Support for NVIDIA Tegra 11x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
