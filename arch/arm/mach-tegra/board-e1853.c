@@ -34,12 +34,14 @@
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/platform_data/tegra_nor.h>
 #include <linux/spi/spi.h>
+#include <linux/tegra_uart.h>
 #include <linux/mtd/partitions.h>
 #if defined(CONFIG_TOUCHSCREEN_ATMEL_MXT)
 #include <linux/i2c/atmel_mxt_ts.h>
 #endif
 #include <mach/clk.h>
 #include <mach/iomap.h>
+#include <mach/io_dpd.h>
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
 #include <mach/iomap.h>
@@ -47,6 +49,7 @@
 #include <mach/pci.h>
 #include <mach/audio.h>
 #include <mach/tegra_asoc_vcm_pdata.h>
+#include <mach/ioexpander.h>
 #include <asm/mach/flash.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -61,8 +64,12 @@
 #include "gpio-names.h"
 #include "fuse.h"
 #include "common.h"
+#include "pm.h"
 
-#define __MINIMAL_1853
+#define IO_EXPANDER_ADDR	(0x75)
+#define BT_RESET_BIT_POS	(IO_EXP_PIN_0)
+#define BT_ENABLE_BIT_POS	(IO_EXP_PIN_5)
+#define BT_WAKEUP_BIT_POS	(IO_EXP_PIN_7)
 
 static __initdata struct tegra_clk_init_table e1853_clk_init_table[] = {
 	/* name		parent		rate		enabled */
@@ -175,7 +182,6 @@ static struct platform_device *e1853_uart_devices[] __initdata = {
 	&tegra_uartc_device,
 	&tegra_uartd_device,
 };
-static struct clk *debug_uart_clk;
 
 static void __init uart_debug_init(void)
 {
@@ -183,6 +189,8 @@ static void __init uart_debug_init(void)
 	pr_info("Selecting UARTA as the debug console\n");
 	e1853_uart_devices[0] = &debug_uarta_device;
 	debug_uart_clk = clk_get_sys("serial8250.0", "uarta");
+	debug_uart_port_base = ((struct plat_serial8250_port *)(
+				debug_uarta_device.dev.platform_data))->mapbase;
 }
 
 static void __init e1853_uart_init(void)
@@ -205,6 +213,28 @@ static void __init e1853_uart_init(void)
 	platform_add_devices(e1853_uart_devices,
 				ARRAY_SIZE(e1853_uart_devices));
 }
+
+#if defined(CONFIG_RTC_DRV_TEGRA)
+static struct resource tegra_rtc_resources[] = {
+	[0] = {
+		.start = TEGRA_RTC_BASE,
+		.end = TEGRA_RTC_BASE + TEGRA_RTC_SIZE - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = INT_RTC,
+		.end = INT_RTC,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device tegra_rtc_device = {
+	.name = "tegra_rtc",
+	.id   = -1,
+	.resource = tegra_rtc_resources,
+	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
+};
+#endif
 
 #if defined(CONFIG_TEGRA_TDM)
 static struct tegra_asoc_vcm_platform_data e1853_audio_tdm_pdata = {
@@ -253,7 +283,7 @@ static struct tegra_asoc_vcm_platform_data e1853_audio_i2s_pdata = {
 		.name = "tegra-i2s-2",
 		.pcm_driver = "tegra-pcm-audio",
 		.i2s_format = format_i2s,
-		.master = 0,
+		.master = 1,
 	},
 };
 #endif
@@ -353,6 +383,9 @@ static struct platform_device *e1853_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
+#if defined(CONFIG_RTC_DRV_TEGRA)
+	&tegra_rtc_device,
+#endif
 	&tegra_camera,
 	&tegra_wdt0_device
 };
@@ -439,6 +472,9 @@ static __initdata struct tegra_clk_init_table spi_clk_init_table[] = {
 
 static int __init e1853_touch_init(void)
 {
+	tegra_gpio_enable(TOUCH_GPIO_IRQ_ATMEL_T9);
+	tegra_gpio_enable(TOUCH_GPIO_RST_ATMEL_T9);
+
 	gpio_request(TOUCH_GPIO_IRQ_ATMEL_T9, "atmel-irq");
 	gpio_direction_input(TOUCH_GPIO_IRQ_ATMEL_T9);
 
@@ -491,7 +527,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.op_mode = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
 		.vbus_gpio = -1,
-		.hot_plug = false,
+		.hot_plug = true,
 		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
 	},
@@ -517,7 +553,7 @@ static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	.op_mode = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
 		.vbus_gpio = -1,
-		.hot_plug = false,
+		.hot_plug = true,
 		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
 	},
@@ -542,7 +578,7 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 	.op_mode = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
 		.vbus_gpio = -1,
-		.hot_plug = false,
+		.hot_plug = true,
 		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
 	},
@@ -617,10 +653,13 @@ static void __init tegra_e1853_init(void)
 	tegra_soc_device_init("e1853");
 	e1853_pinmux_init();
 	e1853_i2c_init();
-	e1853_i2s_audio_init();
 	e1853_gpio_init();
+/*	e1853_regulator_init();
+	e1853_suspend_init(); */
+	e1853_i2s_audio_init();
 	e1853_uart_init();
 	e1853_usb_init();
+	tegra_io_dpd_init();
 	e1853_sdhci_init();
 	e1853_spi_init();
 	platform_add_devices(e1853_devices, ARRAY_SIZE(e1853_devices));
@@ -641,6 +680,108 @@ static void __init tegra_e1853_reserve(void)
 #endif
 }
 
+static int __init e1853_bt_init(void)
+{
+	struct i2c_adapter *adapter;
+	struct i2c_board_info info = { {0} };
+	struct i2c_client *client = NULL;
+	struct i2c_msg msg;
+	u8 cmd_buf[2];
+	int ret = 0;
+
+	/* Program the IO Expander */
+	adapter = i2c_get_adapter(1);
+	if (!adapter) {
+		printk(KERN_WARNING "%s: adapter is null\n", __func__);
+		ret = -ENXIO;
+		goto i2c_done;
+	}
+
+	info.addr = IO_EXPANDER_ADDR;
+	client = i2c_new_device(adapter, &info);
+	i2c_put_adapter(adapter);
+	if (!client) {
+		printk(KERN_WARNING "%s: client is null\n", __func__);
+		ret = -ENXIO;
+		goto i2c_done;
+	}
+
+	/* Set output state for BT_RST, BT_EN and BT_WAKEUP */
+	/* Read register contents of OUTPUT_PORT_REG */
+	cmd_buf[0] = IO_EXP_OUTPUT_PORT_REG_0;
+	msg.addr = IO_EXPANDER_ADDR;
+	msg.flags = 0;
+	msg.len = 1;
+	msg.buf = &cmd_buf[0];
+	ret = i2c_transfer(client->adapter, &msg, 1);
+	if (ret < 0)
+		goto i2c_done;
+
+	msg.addr = IO_EXPANDER_ADDR;
+	msg.flags = I2C_M_RD;
+	msg.len = 1;
+	msg.buf = &cmd_buf[1];
+	ret = i2c_transfer(client->adapter, &msg, 1);
+	if (ret < 0)
+		goto i2c_done;
+
+	/* Set required output values and write  */
+	cmd_buf[0] = IO_EXP_OUTPUT_PORT_REG_0;
+	cmd_buf[1] |= ((1 << BT_ENABLE_BIT_POS) |
+			(1 << BT_WAKEUP_BIT_POS) |
+			(1 << BT_RESET_BIT_POS));
+	msg.addr = IO_EXPANDER_ADDR;
+	msg.flags = 0;
+	msg.len = 2;
+	msg.buf = &cmd_buf[0];
+	ret = i2c_transfer(client->adapter, &msg, 1);
+	if (ret < 0)
+		goto i2c_done;
+
+	/* Set BT_RST, BT_EN and BT_WAKEUP as output pins */
+	/* Read register contents of CONFIG_REG */
+	cmd_buf[0] = IO_EXP_CONFIG_REG_0;
+	msg.addr = IO_EXPANDER_ADDR;
+	msg.flags = 0;
+	msg.len = 1;
+	msg.buf = &cmd_buf[0];
+	ret = i2c_transfer(client->adapter, &msg, 1);
+	if (ret < 0)
+		goto i2c_done;
+
+	msg.addr = IO_EXPANDER_ADDR;
+	msg.flags = I2C_M_RD;
+	msg.len = 1;
+	msg.buf = &cmd_buf[1];
+	ret = i2c_transfer(client->adapter, &msg, 1);
+	if (ret < 0)
+		goto i2c_done;
+
+	/* Set required direction bits */
+	cmd_buf[0] = IO_EXP_CONFIG_REG_0;
+	cmd_buf[1] &=  (~((1 << BT_ENABLE_BIT_POS) |
+			(1 << BT_WAKEUP_BIT_POS) |
+			(1 << BT_RESET_BIT_POS)));
+	msg.addr = IO_EXPANDER_ADDR;
+	msg.flags = 0;
+	msg.len = 2;
+	msg.buf = &cmd_buf[0];
+	ret = i2c_transfer(client->adapter, &msg, 1);
+	if (ret < 0)
+		goto i2c_done;
+
+	ret = 0;
+
+i2c_done:
+	if (ret < 0)
+		printk(KERN_ERR "%s: I2C transaction failed\n", __func__);
+	if (client)
+		i2c_unregister_device(client);
+	return ret;
+}
+
+late_initcall(e1853_bt_init);
+
 MACHINE_START(E1853, "e1853")
 	.atag_offset    = 0x100,
 	.soc		= &tegra_soc_desc,
@@ -650,4 +791,5 @@ MACHINE_START(E1853, "e1853")
 	.map_io         = tegra_map_common_io,
 	.reserve        = tegra_e1853_reserve,
 	.timer          = &tegra_timer,
+	.handle_irq	= gic_handle_irq,
 MACHINE_END

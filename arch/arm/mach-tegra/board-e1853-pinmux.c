@@ -97,7 +97,7 @@ static __initdata struct tegra_drive_pingroup_config e1853_drive_pinmux[] = {
 	SET_DRIVE(GMH,	DISABLE, ENABLE, DIV_1, 12,  6, SLOWEST, SLOWEST),
 
 	/* LCD */
-	SET_DRIVE(LCD1,	DISABLE, ENABLE, DIV_1, 4,  1, SLOWEST, SLOWEST),
+	SET_DRIVE(LCD1,	DISABLE, ENABLE, DIV_1, 31,  15, SLOWEST, SLOWEST),
 	SET_DRIVE(LCD2,	DISABLE, ENABLE, DIV_1, 2,  2, FASTEST, FASTEST),
 
 	/* DAP2 */
@@ -113,7 +113,7 @@ static __initdata struct tegra_drive_pingroup_config e1853_drive_pinmux[] = {
 	/* SPI */
 	SET_DRIVE(SPI,	ENABLE, ENABLE, DIV_1, 0,  0, SLOWEST, SLOWEST),
 	/* UAA */
-	SET_DRIVE(UAA,	DISABLE, ENABLE, DIV_1, 4,  1, SLOWEST, SLOWEST),
+	SET_DRIVE(UAA,	DISABLE, ENABLE, DIV_1, 31,  15, SLOWEST, SLOWEST),
 	/* UART2 */
 	SET_DRIVE(UART2,	ENABLE, ENABLE, DIV_1, 0,  0, SLOWEST, SLOWEST),
 	/* UART3 */
@@ -138,7 +138,7 @@ static __initdata struct tegra_drive_pingroup_config e1853_drive_pinmux[] = {
 
 	/* SPI */
 	SET_DRIVE(UAD,		DISABLE, ENABLE, DIV_1, 4, 1, SLOWEST, SLOWEST),
-	SET_DRIVE(UAB,		DISABLE, ENABLE, DIV_1, 4, 1, SLOWEST, SLOWEST),
+	SET_DRIVE(UAB,		DISABLE, ENABLE, DIV_1, 31, 15, SLOWEST, SLOWEST),
 
 	/* SDMMC 3 */
 	SET_DRIVE(SDIO3,	DISABLE, DISABLE, DIV_1, 46, 42, FAST, FAST),

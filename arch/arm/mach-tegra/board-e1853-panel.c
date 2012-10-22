@@ -308,7 +308,9 @@ static struct platform_device *e1853_gfx_devices[] __initdata = {
 int __init e1853_panel_init(void)
 {
 	int err;
+#if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
 	struct resource *res;
+#endif
 
 	e1853_carveouts[1].base = tegra_carveout_start;
 	e1853_carveouts[1].size = tegra_carveout_size;
