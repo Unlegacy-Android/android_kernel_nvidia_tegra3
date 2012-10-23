@@ -35,6 +35,7 @@
 #include <mach/clk.h>
 
 #include "apbio.h"
+#include "clock.h"
 
 #define APB_DMA_GEN				0x000
 #define GEN_ENABLE				(1<<31)
@@ -1152,7 +1153,7 @@ int __init tegra_dma_init(void)
 		ret = PTR_ERR(dma_clk);
 		goto fail;
 	}
-	ret = clk_enable(dma_clk);
+	ret = tegra_clk_prepare_enable(dma_clk);
 	if (ret != 0) {
 		pr_err("Unable to enable clock for APB DMA\n");
 		goto fail;
@@ -1246,7 +1247,7 @@ static int tegra_dma_suspend(void)
 	}
 
 	/* Disabling clock of dma. */
-	clk_disable(dma_clk);
+	tegra_clk_disable_unprepare(dma_clk);
 	return 0;
 }
 
@@ -1256,7 +1257,7 @@ static void tegra_dma_resume(void)
 	int i;
 
 	/* Enabling clock of dma. */
-	clk_enable(dma_clk);
+	tegra_clk_prepare_enable(dma_clk);
 
 	writel(*ctx++, general_dma_addr + APB_DMA_GEN);
 	writel(*ctx++, general_dma_addr + APB_DMA_CNTRL);
