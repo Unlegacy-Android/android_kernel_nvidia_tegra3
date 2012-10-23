@@ -837,7 +837,7 @@ static int __init cardhu_touch_init(void)
 						|| CARDHU_DT_PLATFORM) {
 		tegra_clk_init_from_table(spi_clk_init_table);
 		tegra_clk_init_from_table(touch_clk_init_table);
-		clk_enable(tegra_get_clock_by_name("clk_out_3"));
+		tegra_clk_prepare_enable(tegra_get_clock_by_name("clk_out_3"));
 		rm31080a_cardhu_spi_board[0].irq = gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
 		touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
 					TOUCH_GPIO_RST_RAYDIUM_SPI,
