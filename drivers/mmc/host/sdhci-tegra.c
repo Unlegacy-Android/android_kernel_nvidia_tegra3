@@ -618,7 +618,7 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 
 		if (!tegra_host->clk_enabled) {
 			pm_runtime_get_sync(&pdev->dev);
-			clk_enable(pltfm_host->clk);
+			clk_prepare_enable(pltfm_host->clk);
 			ctrl = sdhci_readb(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
 			ctrl |= SDHCI_VENDOR_CLOCK_CNTRL_SDMMC_CLK;
 			sdhci_writeb(sdhci, ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
@@ -633,7 +633,7 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 		ctrl = sdhci_readb(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
 		ctrl &= ~SDHCI_VENDOR_CLOCK_CNTRL_SDMMC_CLK;
 		sdhci_writeb(sdhci, ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
-		clk_disable(pltfm_host->clk);
+		clk_disable_unprepare(pltfm_host->clk);
 		pm_runtime_put_sync(&pdev->dev);
 		tegra_host->clk_enabled = false;
 		/* io dpd enable call for sd instance */
@@ -1321,7 +1321,7 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 		goto err_clk_get;
 	}
 	pm_runtime_get_sync(&pdev->dev);
-	rc = clk_enable(pltfm_host->clk);
+	rc = clk_prepare_enable(pltfm_host->clk);
 	if (rc != 0)
 		goto err_clk_put;
 
@@ -1387,7 +1387,7 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 
 err_add_host:
 	clk_put(tegra_host->emc_clk);
-	clk_disable(pltfm_host->clk);
+	clk_disable_unprepare(pltfm_host->clk);
 	pm_runtime_put_sync(&pdev->dev);
 err_clk_put:
 	clk_put(pltfm_host->clk);
@@ -1443,7 +1443,7 @@ static int __devexit sdhci_tegra_remove(struct platform_device *pdev)
 		gpio_free(plat->power_gpio);
 
 	if (tegra_host->clk_enabled) {
-		clk_disable(pltfm_host->clk);
+		clk_disable_unprepare(pltfm_host->clk);
 		pm_runtime_put_sync(&pdev->dev);
 	}
 	clk_put(pltfm_host->clk);
