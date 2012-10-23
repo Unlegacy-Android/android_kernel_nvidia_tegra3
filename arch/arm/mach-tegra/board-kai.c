@@ -63,6 +63,7 @@
 #include <mach/usb_phy.h>
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_fiq_debugger.h>
+#include <mach/tegra_wakeup_monitor.h>
 
 #include "board.h"
 #include "board-common.h"
@@ -456,6 +457,19 @@ static struct platform_device tegra_rtc_device = {
 	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
 };
 
+static struct tegra_wakeup_monitor_platform_data
+					kai_tegra_wakeup_monitor_pdata = {
+	.wifi_wakeup_source	= 1,  /* kai's wifi wakeup source */
+};
+
+static struct platform_device kai_tegra_wakeup_monitor_device = {
+	.name = "tegra_wakeup_monitor",
+	.id   = -1,
+	.dev  = {
+		.platform_data = &kai_tegra_wakeup_monitor_pdata,
+	},
+};
+
 static struct tegra_asoc_platform_data kai_audio_pdata = {
 	.gpio_spkr_en		= TEGRA_GPIO_SPKR_EN,
 	.gpio_hp_det		= TEGRA_GPIO_HP_DET,
@@ -535,6 +549,9 @@ static struct platform_device *kai_devices[] __initdata = {
 	&spdif_dit_device,
 	&bluetooth_dit_device,
 	&tegra_pcm_device,
+#if defined(CONFIG_TEGRA_WAKEUP_MONITOR)
+	&kai_tegra_wakeup_monitor_device,
+#endif
 	&kai_audio_device,
 	&kai_leds_gpio_device,
 	&tegra_hda_device,
