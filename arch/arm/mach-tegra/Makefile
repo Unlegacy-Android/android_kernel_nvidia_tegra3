@@ -55,7 +55,7 @@ obj-y                                   += sleep.o
 plus_sec := $(call as-instr,.arch_extension sec,+sec)
 AFLAGS_sleep.o :=-Wa,-march=armv7-a$(plus_sec)
 
-obj-y                                   += fuse.o
+obj-y                                   += tegra_fuse.o
 obj-y                                   += kfuse.o
 obj-y                                   += csi.o
 obj-y                                   += tegra_odm_fuses.o
