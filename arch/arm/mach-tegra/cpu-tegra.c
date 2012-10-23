@@ -810,7 +810,7 @@ static int tegra_cpufreq_policy_notifier(
 
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
 		if (once &&
-		    sysfs_merge_group(&policy->kobj, &stats_attr_grp) == 0)
+		    sysfs_merge_group(policy->kobj, &stats_attr_grp) == 0)
 			once = 0;
 #endif
 	}
