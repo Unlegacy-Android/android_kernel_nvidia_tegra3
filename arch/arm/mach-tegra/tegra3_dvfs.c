@@ -987,7 +987,7 @@ int tegra_dvfs_rail_disable_prepare(struct dvfs_rail *rail)
 		struct clk *bridge = tegra_get_clock_by_name("bridge.emc");
 		BUG_ON(!bridge);
 
-		ret = clk_enable(bridge);
+		ret = tegra_clk_prepare_enable(bridge);
 		pr_info("%s: %s: %s bridge.emc\n", __func__,
 			rail->reg_id, ret ? "failed to enable" : "enabled");
 	}
@@ -1007,7 +1007,7 @@ int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 		struct clk *bridge = tegra_get_clock_by_name("bridge.emc");
 		BUG_ON(!bridge);
 
-		clk_disable(bridge);
+		tegra_clk_disable_unprepare(bridge);
 		pr_info("%s: %s: disabled bridge.emc\n",
 			__func__, rail->reg_id);
 	}
