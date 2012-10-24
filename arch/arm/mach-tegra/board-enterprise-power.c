@@ -243,7 +243,7 @@ static struct regulator_consumer_supply tps80031_ldousb_supply_a03[] = {
 };
 
 static struct regulator_consumer_supply tps80031_vbus_supply_common[] = {
-	REGULATOR_SUPPLY("usb_vbus", NULL),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
 };
 
 static struct regulator_consumer_supply tps80031_battery_charge_supply[] = {
