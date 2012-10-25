@@ -1050,18 +1050,6 @@ static void enterprise_nfc_init(void)
 	}
 }
 
-/* This needs to be inialized later hand */
-static int __init enterprise_throttle_list_init(void)
-{
-	int i;
-	for (i = 0; i < ARRAY_SIZE(throttle_list); i++)
-		if (balanced_throttle_register(&throttle_list[i]))
-			return -ENODEV;
-
-	return 0;
-}
-late_initcall(enterprise_throttle_list_init);
-
 static void __init tegra_enterprise_init(void)
 {
 	struct board_info board_info;

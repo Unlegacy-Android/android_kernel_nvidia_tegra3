@@ -1226,18 +1226,6 @@ static void cardhu_sata_init(void)
 static void cardhu_sata_init(void) { }
 #endif
 
-/* This needs to be inialized later hand */
-static int __init cardhu_throttle_list_init(void)
-{
-	int i;
-	for (i = 0; i < ARRAY_SIZE(throttle_list); i++)
-		if (balanced_throttle_register(&throttle_list[i]))
-			return -ENODEV;
-
-	return 0;
-}
-late_initcall(cardhu_throttle_list_init);
-
 static void __init tegra_cardhu_init(void)
 {
 	tegra_clk_init_from_table(cardhu_clk_init_table);
