@@ -371,7 +371,7 @@ void tegra_init_speedo_data(void)
 	       ARRAY_SIZE(core_process_speedos));
 
 	cpu_iddq_value = tegra_fuse_readl(FUSE_IDDQ_CALIB_0);
-	cpu_iddq_value = ((iddq_value >> 5) & 0x3ff) * 8;
+	cpu_iddq_value = ((cpu_iddq_value >> 5) & 0x3ff) * 8;
 
 	/* SKU Overrides
 	* T33	=> T30, T30L
