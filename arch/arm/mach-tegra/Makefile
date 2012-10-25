@@ -224,6 +224,7 @@ obj-${CONFIG_MACH_KAI}                  += board-touch-kai-synaptics-spi.o
 obj-y                                   += board-touch-raydium_spi.o
 
 obj-${CONFIG_MACH_P1852}               += board-p1852.o
+obj-${CONFIG_MACH_P1852}               += board-p1852-power.o
 obj-${CONFIG_MACH_P1852}               += board-p1852-panel.o
 obj-${CONFIG_MACH_P1852}               += board-p1852-pinmux.o
 obj-${CONFIG_MACH_P1852}               += board-p1852-sdhci.o

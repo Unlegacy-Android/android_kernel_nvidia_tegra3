@@ -844,7 +844,8 @@ static int tegra3_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 	if (c->dvfs) {
 		if (!c->dvfs->dvfs_rail)
 			return -ENOSYS;
-		else if ((!c->dvfs->dvfs_rail->reg) &&
+		else if ((!c->dvfs->dvfs_rail->disabled) &&
+			  (!c->dvfs->dvfs_rail->reg) &&
 			  (clk_get_rate_locked(c) < rate)) {
 			WARN(1, "Increasing CPU rate while regulator is not"
 				" ready may overclock CPU\n");

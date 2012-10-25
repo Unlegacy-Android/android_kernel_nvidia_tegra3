@@ -104,6 +104,7 @@ int p1852_pinmux_set_i2s4_master(void);
 int p1852_panel_init(void);
 int p1852_gpio_init(void);
 int p1852_pins_state_init(void);
+int p1852_suspend_init(void);
 
 int p1852_get_skuid(void);
 
