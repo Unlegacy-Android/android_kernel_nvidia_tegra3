@@ -467,6 +467,7 @@
 
 #define ROUND_DIVIDER_UP	0
 #define ROUND_DIVIDER_DOWN	1
+#define DIVIDER_1_5_ALLOWED	0
 
 /* PLLP default fixed rate in h/w controlled mode */
 #define PLLP_DEFAULT_FIXED_RATE		216000000
@@ -592,6 +593,10 @@ static int clk_div_x1_get_divider(unsigned long parent_rate, unsigned long rate,
 	if (divider_ux1 - 2 > max_x)
 		return -EINVAL;
 
+#if !DIVIDER_1_5_ALLOWED
+	if (divider_ux1 == 3)
+		divider_ux1 = (round_mode == ROUND_DIVIDER_UP) ? 4 : 2;
+#endif
 	return divider_ux1 - 2;
 }
 
