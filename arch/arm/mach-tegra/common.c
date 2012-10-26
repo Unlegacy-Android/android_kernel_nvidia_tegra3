@@ -35,6 +35,8 @@
 #include <linux/dma-mapping.h>
 #include <linux/sys_soc.h>
 
+#include <trace/events/nvsecurity.h>
+
 #include <asm/soc.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/hardware/gic.h>
@@ -459,7 +461,9 @@ void tegra_init_cache(bool init)
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 	/* issue the SMC to enable the L2 */
 	aux_ctrl = readl_relaxed(p + L2X0_AUX_CTRL);
+	trace_smc_init_cache(NVSEC_SMC_START);
 	tegra_cache_smc(true, aux_ctrl);
+	trace_smc_init_cache(NVSEC_SMC_DONE);
 
 	/* after init, reread aux_ctrl and register handlers */
 	aux_ctrl = readl_relaxed(p + L2X0_AUX_CTRL);
