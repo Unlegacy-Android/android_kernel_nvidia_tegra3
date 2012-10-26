@@ -21,6 +21,8 @@
 #ifndef __MACH_TEGRA_FUSE_H
 #define __MACH_TEGRA_FUSE_H
 
+#define FUSE_SKU_USB_CALIB_0    0x1f0
+
 #define SKU_ID_T20	8
 #define SKU_ID_T25SE	20
 #define SKU_ID_AP25	23
