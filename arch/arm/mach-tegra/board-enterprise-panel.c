@@ -22,13 +22,15 @@
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/resource.h>
-#include <asm/mach-types.h>
 #include <linux/platform_device.h>
 #include <linux/tegra_pwm_bl.h>
 #include <linux/pwm_backlight.h>
-#include <asm/atomic.h>
 #include <linux/nvhost.h>
 #include <linux/nvmap.h>
+
+#include <asm/mach-types.h>
+#include <asm/atomic.h>
+
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/dc.h>
@@ -817,7 +819,7 @@ static struct tegra_dc_platform_data enterprise_disp1_pdata = {
 	.fb		= &enterprise_dsi_fb_data,
 };
 
-static struct nvhost_device enterprise_disp1_device = {
+static struct platform_device enterprise_disp1_device = {
 	.name		= "tegradc",
 	.id		= 0,
 	.resource	= enterprise_disp1_resources,
@@ -832,7 +834,7 @@ static int enterprise_disp1_check_fb(struct device *dev, struct fb_info *info)
 	return info->device == &enterprise_disp1_device.dev;
 }
 
-static struct nvhost_device enterprise_disp2_device = {
+static struct platform_device enterprise_disp2_device = {
 	.name		= "tegradc",
 	.id		= 1,
 	.resource	= enterprise_disp2_resources,
@@ -896,6 +898,7 @@ int __init enterprise_panel_init(void)
 	int err;
 	struct resource __maybe_unused *res;
 	struct board_info board_info;
+	struct platform_device *phost1x;
 
 	tegra_get_board_info(&board_info);
 
@@ -1000,21 +1003,21 @@ int __init enterprise_panel_init(void)
 	}
 #endif
 
+	if (board_info.board_id != BOARD_E1239)
+		err = platform_add_devices(enterprise_gfx_devices,
+			ARRAY_SIZE(enterprise_gfx_devices));
+	else
+		err = platform_add_devices(external_pwm_gfx_devices,
+			ARRAY_SIZE(external_pwm_gfx_devices));
+
 #ifdef CONFIG_TEGRA_GRHOST
-	err = tegra3_register_host1x_devices();
-	if (err)
-		return err;
+	phost1x = tegra3_register_host1x_devices();
+	if (!phost1x)
+		return -EINVAL;
 #endif
 
-	if (board_info.board_id != BOARD_E1239) {
-		err = platform_add_devices(enterprise_gfx_devices,
-					ARRAY_SIZE(enterprise_gfx_devices));
-	} else {
-		err = platform_add_devices(external_pwm_gfx_devices,
-					ARRAY_SIZE(external_pwm_gfx_devices));
-	}
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	res = nvhost_get_resource_byname(&enterprise_disp1_device,
+	res = platform_get_resource_byname(&enterprise_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
@@ -1025,20 +1028,26 @@ int __init enterprise_panel_init(void)
 		min(tegra_fb_size, tegra_bootloader_fb_size));
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	if (!err)
-		err = nvhost_device_register(&enterprise_disp1_device);
+	if (!err) {
+		enterprise_disp1_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&enterprise_disp1_device);
+	}
 
-	res = nvhost_get_resource_byname(&enterprise_disp2_device,
+	res = platform_get_resource_byname(&enterprise_disp2_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb2_start;
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
-	if (!err)
-		err = nvhost_device_register(&enterprise_disp2_device);
+	if (!err) {
+		enterprise_disp2_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&enterprise_disp2_device);
+	}
 #endif
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_NVAVP)
-	if (!err)
-		err = nvhost_device_register(&nvavp_device);
+	if (!err) {
+		nvavp_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&nvavp_device);
+	}
 #endif
 
 	if (!err)

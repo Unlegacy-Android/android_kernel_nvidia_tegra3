@@ -288,7 +288,7 @@ static struct tegra_dc_platform_data ventana_disp2_pdata = {
 	.fb		= &ventana_hdmi_fb_data,
 };
 
-static struct nvhost_device ventana_disp1_device = {
+static struct platform_device ventana_disp1_device = {
 	.name		= "tegradc",
 	.id		= 0,
 	.resource	= ventana_disp1_resources,
@@ -303,7 +303,7 @@ static int ventana_disp1_check_fb(struct device *dev, struct fb_info *info)
 	return info->device == &ventana_disp1_device.dev;
 }
 
-static struct nvhost_device ventana_disp2_device = {
+static struct platform_device ventana_disp2_device = {
 	.name		= "tegradc",
 	.id		= 1,
 	.resource	= ventana_disp2_resources,
@@ -357,6 +357,7 @@ int __init ventana_panel_init(void)
 {
 	int err;
 	struct resource __maybe_unused *res;
+	struct platform_device *phost1x;
 
 	gpio_request(ventana_lvds_shutdown, "lvds_shdn");
 	gpio_direction_output(ventana_lvds_shutdown, 1);
@@ -372,22 +373,22 @@ int __init ventana_panel_init(void)
 	ventana_carveouts[1].size = tegra_carveout_size;
 #endif
 
+	err = platform_add_devices(ventana_gfx_devices,
+		ARRAY_SIZE(ventana_gfx_devices));
+
 #ifdef CONFIG_TEGRA_GRHOST
-	err = tegra2_register_host1x_devices();
-	if (err)
-		return err;
+	phost1x = tegra2_register_host1x_devices();
+	if (!phost1x)
+		return -EINVAL;
 #endif
 
-	err = platform_add_devices(ventana_gfx_devices,
-				   ARRAY_SIZE(ventana_gfx_devices));
-
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	res = nvhost_get_resource_byname(&ventana_disp1_device,
+	res = platform_get_resource_byname(&ventana_disp1_device,
 		IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
-	res = nvhost_get_resource_byname(&ventana_disp2_device,
+	res = platform_get_resource_byname(&ventana_disp2_device,
 		IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb2_start;
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
@@ -403,15 +404,19 @@ int __init ventana_panel_init(void)
 
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	if (!err)
-		err = nvhost_device_register(&ventana_disp1_device);
+	if (!err) {
+		ventana_disp1_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&ventana_disp1_device);
+	}
 
-	if (!err)
-		err = nvhost_device_register(&ventana_disp2_device);
+	if (!err) {
+		ventana_disp2_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&ventana_disp2_device);
+	}
 #endif
 
 	err = platform_add_devices(ventana_backlight_devices,
-				   ARRAY_SIZE(ventana_backlight_devices));
+		ARRAY_SIZE(ventana_backlight_devices));
 
 	return err;
 }

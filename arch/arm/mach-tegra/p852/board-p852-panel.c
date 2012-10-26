@@ -123,7 +123,7 @@ static struct tegra_dc_platform_data p852_disp_pdata = {
 	.fb = &p852_fb_data,
 };
 
-static struct nvhost_device p852_disp_device = {
+static struct platform_device p852_disp_device = {
 	.name = "tegradc",
 	.id = 0,
 	.resource = p852_disp_resources,
@@ -165,6 +165,7 @@ int __init p852_panel_init(void)
 {
 	int err;
 	struct resource *res;
+	struct platform_device *phost1x;
 
 	pr_info("%s\n", __func__);
 
@@ -176,22 +177,24 @@ int __init p852_panel_init(void)
 		return err;
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = tegra2_register_host1x_devices();
-	if (err)
-		return err;
+	phost1x = tegra2_register_host1x_devices();
+	if (!phost1x)
+		return -EINVAL;
 #endif
 
 	err = platform_add_devices(p852_gfx_devices,
 				   ARRAY_SIZE(p852_gfx_devices));
 
-	res = nvhost_get_resource_byname(&p852_disp_device,
+	res = platform_get_resource_byname(&p852_disp_device,
 					IORESOURCE_MEM, "fbmem");
 
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
-	if (!err)
-		err = nvhost_device_register(&p852_disp_device);
+	if (!err) {
+		p852_disp_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&p852_disp_device);
+	}
 
 	return err;
 }
