@@ -621,8 +621,8 @@
 
 	pinmux: pinmux@70000000 {
 		compatible = "nvidia,tegra30-pinmux";
-		reg = < 0x70000868 0xd0     /* Pad control registers */
-			0x70003000 0x3e0 >; /* Mux registers */
+		reg = < 0x70000868 0xd4     /* Pad control registers */
+			0x70003000 0x3e4 >; /* Mux registers */
 		status = "disable";
 	};
 };
