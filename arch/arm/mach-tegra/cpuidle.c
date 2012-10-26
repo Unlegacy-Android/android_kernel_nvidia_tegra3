@@ -78,7 +78,7 @@ static int tegra_idle_enter_clock_gating(struct cpuidle_device *dev,
 
 	enter = ktime_get();
 
-	tegra_cpu_wfi();
+	cpu_do_idle();
 
 	exit = ktime_sub(ktime_get(), enter);
 	us = ktime_to_us(exit);
