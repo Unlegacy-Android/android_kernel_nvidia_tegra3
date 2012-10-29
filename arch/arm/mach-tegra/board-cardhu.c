@@ -811,6 +811,8 @@ static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 struct rm_spi_ts_platform_data rm31080ts_cardhu_data = {
 	.gpio_reset = 0,
 	.config = 0,
+	.platform_id = RM_PLATFORM_C210,
+	.name_of_clock = "clk_out_3",
 };
 
 struct spi_board_info rm31080a_cardhu_spi_board[1] = {
@@ -836,7 +838,6 @@ static int __init cardhu_touch_init(void)
 		tegra_clk_init_from_table(spi_clk_init_table);
 		tegra_clk_init_from_table(touch_clk_init_table);
 		clk_enable(tegra_get_clock_by_name("clk_out_3"));
-		rm31080ts_cardhu_data.platform_id = CARDHU_DT_PLATFORM;
 		rm31080a_cardhu_spi_board[0].irq = gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
 		touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
 					TOUCH_GPIO_RST_RAYDIUM_SPI,

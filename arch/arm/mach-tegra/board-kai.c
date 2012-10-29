@@ -557,9 +557,18 @@ static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 };
 
 
-struct rm_spi_ts_platform_data rm31080ts_kai_data = {
+struct rm_spi_ts_platform_data rm31080ts_kai_007_data = {
 	.gpio_reset = 0,
 	.config = 0,
+	.platform_id = RM_PLATFORM_K007,
+	.name_of_clock = NULL,
+};
+
+struct rm_spi_ts_platform_data rm31080ts_kai_107_data = {
+	.gpio_reset = 0,
+	.config = 0,
+	.platform_id = RM_PLATFORM_K107,
+	.name_of_clock = "clk_out_3",
 };
 
 struct spi_board_info rm31080a_kai_spi_board[1] = {
@@ -569,7 +578,7 @@ struct spi_board_info rm31080a_kai_spi_board[1] = {
 	 .chip_select = 0,
 	 .max_speed_hz = 13 * 1000 * 1000,
 	 .mode = SPI_MODE_0,
-	 .platform_data = &rm31080ts_kai_data,
+	 .platform_data = &rm31080ts_kai_107_data,
 	 },
 };
 
@@ -620,11 +629,13 @@ static int __init kai_touch_init(void)
 	case 0:
 		pr_info("Raydium PCB based touch init\n");
 		tegra_clk_init_from_table(spi_clk_init_table);
-		rm31080ts_kai_data.platform_id = RM_PLATFORM_K007;
-		rm31080a_kai_spi_board[0].irq = gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
+		rm31080a_kai_spi_board[0].platform_data =
+			&rm31080ts_kai_007_data;
+		rm31080a_kai_spi_board[0].irq =
+			gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
 		touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
 					TOUCH_GPIO_RST_RAYDIUM_SPI,
-					&rm31080ts_kai_data,
+					&rm31080ts_kai_007_data,
 					&rm31080a_kai_spi_board[0],
 					ARRAY_SIZE(rm31080a_kai_spi_board));
 		break;
@@ -633,11 +644,13 @@ static int __init kai_touch_init(void)
 		tegra_clk_init_from_table(spi_clk_init_table);
 		tegra_clk_init_from_table(touch_clk_init_table);
 		clk_enable(tegra_get_clock_by_name("clk_out_3"));
-		rm31080ts_kai_data.platform_id = RM_PLATFORM_K107;
-		rm31080a_kai_spi_board[0].irq = gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
+		rm31080a_kai_spi_board[0].platform_data =
+			&rm31080ts_kai_107_data;
+		rm31080a_kai_spi_board[0].irq =
+			gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
 		touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
 					TOUCH_GPIO_RST_RAYDIUM_SPI,
-					&rm31080ts_kai_data,
+					&rm31080ts_kai_107_data,
 					&rm31080a_kai_spi_board[0],
 					ARRAY_SIZE(rm31080a_kai_spi_board));
 		break;

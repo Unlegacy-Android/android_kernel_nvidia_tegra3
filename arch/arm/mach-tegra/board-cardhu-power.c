@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu-power.c
  *
- * Copyright (C) 2011-2012, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2011-2012, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -111,6 +111,7 @@ static struct regulator_consumer_supply tps6591x_vio_supply_0[] = {
 	REGULATOR_SUPPLY("avdd_ic_usb", NULL),
 	REGULATOR_SUPPLY("vlogic", "2-0068"),
 	REGULATOR_SUPPLY("vdd", "1-005a"),
+	REGULATOR_SUPPLY("dvdd", "spi0.0"),
 };
 
 static struct regulator_consumer_supply tps6591x_ldo1_supply_0[] = {
@@ -603,6 +604,7 @@ static struct regulator_consumer_supply fixed_reg_en_3v3_sys_supply[] = {
 	REGULATOR_SUPPLY("vdd", "4-004c"),
 	REGULATOR_SUPPLY("vdd", "2-0068"),
 	REGULATOR_SUPPLY("avdd", "1-005a"),
+	REGULATOR_SUPPLY("avdd", "spi0.0"),
 };
 
 /* DIS_5V_SWITCH from AP SPI2_SCK X02 */
