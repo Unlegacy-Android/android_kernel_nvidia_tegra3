@@ -1573,7 +1573,7 @@ static int __init tegra_uart_probe(struct platform_device *pdev)
 	u->iotype = UPIO_MEM32;
 
 	u->irq = platform_get_irq(pdev, 0);
-	if (unlikely(u->irq < 0)) {
+	if (unlikely((int)(u->irq) < 0)) {
 		ret = -ENXIO;
 		goto fail;
 	}
