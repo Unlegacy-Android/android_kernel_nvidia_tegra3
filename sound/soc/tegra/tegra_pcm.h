@@ -36,9 +36,7 @@
 
 #define MAX_DMA_REQ_COUNT 2
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #define TEGRA30_USE_SMMU 0
-#endif
 
 struct tegra_pcm_dma_params {
 	unsigned long addr;
@@ -62,7 +60,7 @@ struct tegra_runtime_data {
 	unsigned int avp_dma_addr;
 };
 
-#ifdef TEGRA30_USE_SMMU
+#if TEGRA30_USE_SMMU
 struct tegra_smmu_data {
 	struct nvmap_client *pcm_nvmap_client;
 	struct nvmap_handle_ref *pcm_nvmap_handle;
