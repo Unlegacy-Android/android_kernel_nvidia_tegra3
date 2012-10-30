@@ -1621,7 +1621,7 @@ static int tegra2_clk_shared_bus_update(struct clk *bus)
 	return clk_set_rate_locked(bus, rate);
 };
 
-static void tegra_clk_shared_bus_init(struct clk *c)
+static void tegra_clk_shared_bus_user_init(struct clk *c)
 {
 	unsigned long flags;
 
@@ -1638,7 +1638,7 @@ static void tegra_clk_shared_bus_init(struct clk *c)
 	clk_unlock_restore(c->parent, &flags);
 }
 
-static int tegra_clk_shared_bus_set_rate(struct clk *c, unsigned long rate)
+static int tegra_clk_shared_bus_user_set_rate(struct clk *c, unsigned long rate)
 {
 	int ret;
 	long new_rate = rate;
@@ -1653,12 +1653,13 @@ static int tegra_clk_shared_bus_set_rate(struct clk *c, unsigned long rate)
 	return ret;
 }
 
-static long tegra_clk_shared_bus_round_rate(struct clk *c, unsigned long rate)
+static long tegra_clk_shared_bus_user_round_rate(
+	struct clk *c, unsigned long rate)
 {
 	return clk_round_rate(c->parent, rate);
 }
 
-static int tegra_clk_shared_bus_enable(struct clk *c)
+static int tegra_clk_shared_bus_user_enable(struct clk *c)
 {
 	int ret;
 
@@ -1670,7 +1671,7 @@ static int tegra_clk_shared_bus_enable(struct clk *c)
 	return ret;
 }
 
-static void tegra_clk_shared_bus_disable(struct clk *c)
+static void tegra_clk_shared_bus_user_disable(struct clk *c)
 {
 	int ret;
 
@@ -1681,12 +1682,12 @@ static void tegra_clk_shared_bus_disable(struct clk *c)
 	WARN_ON_ONCE(ret);
 }
 
-static struct clk_ops tegra_clk_shared_bus_ops = {
-	.init = tegra_clk_shared_bus_init,
-	.enable = tegra_clk_shared_bus_enable,
-	.disable = tegra_clk_shared_bus_disable,
-	.set_rate = tegra_clk_shared_bus_set_rate,
-	.round_rate = tegra_clk_shared_bus_round_rate,
+static struct clk_ops tegra_clk_shared_bus_user_ops = {
+	.init = tegra_clk_shared_bus_user_init,
+	.enable = tegra_clk_shared_bus_user_enable,
+	.disable = tegra_clk_shared_bus_user_disable,
+	.set_rate = tegra_clk_shared_bus_user_set_rate,
+	.round_rate = tegra_clk_shared_bus_user_round_rate,
 };
 
 
@@ -2447,7 +2448,7 @@ static struct clk tegra_clk_emc = {
 			.dev_id    = _dev,		\
 			.con_id    = _con,		\
 		},					\
-		.ops       = &tegra_clk_shared_bus_ops,	\
+		.ops = &tegra_clk_shared_bus_user_ops,	\
 		.parent = _parent,			\
 	}
 
