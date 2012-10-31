@@ -42,79 +42,112 @@ static struct ina219_platform_data power_mon_info[] = {
 	[VDD_AC_BAT] = {
 		.calibration_data  = 0xa000,
 		.power_lsb = 2,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DF,
 		.rail_name = "VDD_AC_BAT",
 		.divisor = 20,
+		.shunt_resistor = 10, /*mOhms*/
 	},
 
 	[VDD_DRAM_IN] = {
 		.calibration_data  = 0xa000,
 		.power_lsb = 2,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DF,
 		.rail_name = "VDD_DRAM_IN",
 		.divisor = 20,
+		.shunt_resistor = 10,
 	},
 
 	[VDD_BACKLIGHT_IN] = {
 		.calibration_data  = 0x6aaa,
 		.power_lsb = 1,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DF,
 		.rail_name = "VDD_BACKLIGHT_IN",
 		.divisor = 20,
+		.shunt_resistor = 30,
 	},
 
 	[VDD_CPU_IN] = {
 		.calibration_data  = 0xa000,
 		.power_lsb = 1,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DF,
 		.rail_name = "VDD_CPU_IN",
 		.divisor = 20,
+		.shunt_resistor = 20,
 	},
 
 	[VDD_CORE_IN] = {
 		.calibration_data  = 0x6aaa,
 		.power_lsb = 1,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DF,
 		.rail_name = "VDD_CORE_IN",
 		.divisor = 20,
+		.shunt_resistor = 30,
 	},
 
 	[VDD_DISPLAY_IN] = {
 		.calibration_data  = 0x4000,
 		.power_lsb = 1,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DF,
 		.rail_name = "VDD_DISPLAY_IN",
 		.divisor = 20,
+		.shunt_resistor = 50,
 	},
 
 	[VDD_3V3_TEGRA] = {
 		.calibration_data  = 0x6aaa,
 		.power_lsb = 1,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DF,
 		.rail_name = "VDD_3V3_TEGRA",
 		.divisor = 20,
+		.shunt_resistor = 30,
 	},
 
 	[VDD_OTHER_PMU_IN] = {
 		.calibration_data  = 0xa000,
 		.power_lsb = 1,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DF,
 		.rail_name = "VDD_OTHER_PMU_IN",
 		.divisor = 20,
+		.shunt_resistor = 20,
 	},
 
 	[VDD_1V8_TEGRA] = {
 		.calibration_data  = 0x4000,
 		.power_lsb = 1,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DF,
 		.rail_name = "VDD_1V8_TEGRA",
 		.divisor = 20,
+		.shunt_resistor = 50,
 	},
 
 	[VDD_1V8_OTHER] = {
 		.calibration_data  = 0xa000,
 		.power_lsb = 1,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DF,
 		.rail_name = "VDD_1V8_OTHER",
 		.divisor = 20,
+		.shunt_resistor = 10,
 	},
 
 	/* All unused INA219 devices use below data*/
 	[UNUSED_RAIL] = {
 		.calibration_data  = 0x4000,
 		.power_lsb = 1,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DF,
 		.rail_name = "unused_rail",
 		.divisor = 20,
+		.shunt_resistor = 10,
 	},
 };
 
