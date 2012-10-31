@@ -73,10 +73,13 @@ static struct balanced_throttle tj_throttle = {
 	},
 };
 
-static struct thermal_cooling_device *enterprise_create_cdev(void *data)
+static int __init enterprise_throttle_init(void)
 {
-	return balanced_throttle_register(&tj_throttle, "enterprise-nct");
+	if (machine_is_tegra_enterprise())
+		balanced_throttle_register(&tj_throttle, "enterprise-nct");
+	return 0;
 }
+module_init(enterprise_throttle_init);
 
 static struct nct1008_platform_data enterprise_nct1008_pdata = {
 	.supported_hwrev = true,
@@ -89,7 +92,8 @@ static struct nct1008_platform_data enterprise_nct1008_pdata = {
 
 	/* Thermal Throttling */
 	.passive = {
-		.create_cdev = enterprise_create_cdev,
+		.enable = true,
+		.type = "enterprise-nct",
 		.trip_temp = 85000,
 		.tc1 = 0,
 		.tc2 = 1,
@@ -120,7 +124,8 @@ static void enterprise_init_edp_cdev(void)
 		BUG();
 
 	active_cdev = &enterprise_nct1008_pdata.active;
-	active_cdev->create_cdev = edp_cooling_device_create;
+	active_cdev->enable = true;
+	active_cdev->type = "edp";
 	active_cdev->hysteresis = 1000;
 
 	for (i = 0; i < cpu_edp_limits_size-1; i++) {

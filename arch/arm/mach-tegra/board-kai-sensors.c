@@ -56,10 +56,13 @@ static struct balanced_throttle tj_throttle = {
 	},
 };
 
-static struct thermal_cooling_device *kai_create_cdev(void *data)
+static int __init kai_throttle_init(void)
 {
-	return balanced_throttle_register(&tj_throttle, "kai-nct");
+	if (machine_is_kai())
+		balanced_throttle_register(&tj_throttle, "kai-nct");
+	return 0;
 }
+module_init(kai_throttle_init);
 
 static struct nct1008_platform_data kai_nct1008_pdata = {
 	.supported_hwrev = true,
@@ -72,7 +75,8 @@ static struct nct1008_platform_data kai_nct1008_pdata = {
 
 	/* Thermal Throttling */
 	.passive = {
-		.create_cdev = kai_create_cdev,
+		.enable = true,
+		.type = "kai-nct",
 		.trip_temp = 85000,
 		.tc1 = 0,
 		.tc2 = 1,
@@ -104,7 +108,8 @@ static void kai_init_edp_cdev(void)
 		BUG();
 
 	active_cdev = &kai_nct1008_pdata.active;
-	active_cdev->create_cdev = edp_cooling_device_create;
+	active_cdev->enable = true;
+	active_cdev->type = "edp";
 	active_cdev->hysteresis = 1000;
 
 	for (i = 0; i < cpu_edp_limits_size-1; i++) {
