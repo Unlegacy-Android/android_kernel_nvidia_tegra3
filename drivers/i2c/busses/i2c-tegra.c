@@ -1187,6 +1187,20 @@ static int __devexit tegra_i2c_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void tegra_i2c_shutdown(struct platform_device *pdev)
+{
+	struct tegra_i2c_dev *i2c_dev = platform_get_drvdata(pdev);
+
+	rt_mutex_lock(&i2c_dev->dev_lock);
+
+	i2c_dev->is_suspended = true;
+	if (i2c_dev->is_clkon_always)
+		tegra_i2c_clock_disable(i2c_dev);
+
+	rt_mutex_unlock(&i2c_dev->dev_lock);
+
+}
+
 #ifdef CONFIG_PM_SLEEP
 static int tegra_i2c_suspend_noirq(struct device *dev)
 {
@@ -1241,6 +1255,7 @@ static const struct dev_pm_ops tegra_i2c_pm = {
 static struct platform_driver tegra_i2c_driver = {
 	.probe   = tegra_i2c_probe,
 	.remove  = __devexit_p(tegra_i2c_remove),
+	.shutdown  = tegra_i2c_shutdown,
 	.id_table = tegra_i2c_devtype,
 	.driver  = {
 		.name  = "tegra-i2c",
