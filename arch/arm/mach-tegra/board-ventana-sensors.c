@@ -236,18 +236,18 @@ static struct thermal_cooling_device_ops throttle_cooling_ops = {
 	.set_cur_state = throttle_set_cur_state,
 };
 
-static struct thermal_cooling_device *throttle_create(void *data)
+static struct thermal_cooling_device *ventana_create_cdev(void *data)
 {
-	return thermal_cooling_device_register("throttle",
+	return thermal_cooling_device_register("ventana-nct",
 						NULL,
 						&throttle_cooling_ops);
 }
 #else
-static struct thermal_cooling_device *throttle_create(void *data)
+static struct thermal_cooling_device *ventana_create_cdev(void *data)
 {
 	return NULL;
 }
-#endif
+#endif /* CONFIG_THERMAL */
 
 static struct nct1008_platform_data ventana_nct1008_pdata = {
 	.supported_hwrev = true,
@@ -259,8 +259,7 @@ static struct nct1008_platform_data ventana_nct1008_pdata = {
 
 	/* Thermal Throttling */
 	.passive = {
-		.create_cdev = throttle_create,
-		.cdev_data = NULL,
+		.create_cdev = ventana_create_cdev,
 		.trip_temp = 90000,
 		.tc1 = 0,
 		.tc2 = 1,
