@@ -659,7 +659,6 @@ static void max17042_init_worker(struct work_struct *work)
 {
 	struct max17042_chip *chip = container_of(work,
 				struct max17042_chip, work.work);
-	int ret;
 	power_supply_changed(&chip->battery);
 	schedule_delayed_work(&chip->work, MAX17047_DELAY);
 }
@@ -804,7 +803,7 @@ static int __devinit max17042_probe(struct i2c_client *client,
 	}
 
 	INIT_DELAYED_WORK_DEFERRABLE(&chip->work, max17042_init_worker);
-	schedule_work(&chip->work);
+	schedule_delayed_work(&chip->work, 0);
 
 	return 0;
 }
