@@ -464,7 +464,7 @@ static void adb_closed_callback(void)
 }
 
 
-#define MAX_ACM_INSTANCES 4
+#define MAX_ACM_INSTANCES 2
 struct acm_function_config {
 	int instances;
 };
