@@ -702,7 +702,7 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 	command2 = tspi->def_command2_reg;
 	if (!tspi->is_clkon_always) {
 		if (!tspi->clk_state) {
-			clk_enable(tspi->clk);
+			clk_prepare_enable(tspi->clk);
 			tspi->clk_state = 1;
 		}
 	}
@@ -812,12 +812,12 @@ static int spi_tegra_setup(struct spi_device *spi)
 	tspi->def_command_reg = val;
 
 	if (!tspi->is_clkon_always && !tspi->clk_state) {
-		clk_enable(tspi->clk);
+		clk_prepare_enable(tspi->clk);
 		tspi->clk_state = 1;
 	}
 	spi_tegra_writel(tspi, tspi->def_command_reg, SLINK_COMMAND);
 	if (!tspi->is_clkon_always && tspi->clk_state) {
-		clk_disable(tspi->clk);
+		clk_disable_unprepare(tspi->clk);
 		tspi->clk_state = 0;
 	}
 
@@ -986,7 +986,7 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 				/* Provide delay to stablize the signal
 				   state */
 				udelay(10);
-				clk_disable(tspi->clk);
+				clk_disable_unprepare(tspi->clk);
 				tspi->clk_state = 0;
 			}
 		}
@@ -1240,7 +1240,7 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 		goto fail_clk_get;
 	}
 	tegra_periph_reset_assert(tspi->clk);
-	clk_enable(tspi->clk);
+	clk_prepare_enable(tspi->clk);
 	udelay(2);
 	tegra_periph_reset_deassert(tspi->clk);
 	tspi->clk_state = 1;
@@ -1363,7 +1363,7 @@ skip_dma_alloc:
 	ret = spi_register_master(master);
 	if (!tspi->is_clkon_always) {
 		if (tspi->clk_state) {
-			clk_disable(tspi->clk);
+			clk_disable_unprepare(tspi->clk);
 			tspi->clk_state = 0;
 		}
 	}
@@ -1422,7 +1422,7 @@ static int __devexit spi_tegra_remove(struct platform_device *pdev)
 		tegra_dma_free_channel(tspi->rx_dma);
 
 	if (tspi->is_clkon_always) {
-		clk_disable(tspi->clk);
+		clk_disable_unprepare(tspi->clk);
 		tspi->clk_state = 0;
 	}
 
@@ -1460,7 +1460,7 @@ static int spi_tegra_suspend(struct platform_device *pdev, pm_message_t state)
 
 	spin_unlock_irqrestore(&tspi->lock, flags);
 	if (tspi->is_clkon_always) {
-		clk_disable(tspi->clk);
+		clk_disable_unprepare(tspi->clk);
 		tspi->clk_state = 0;
 	}
 	return 0;
@@ -1476,11 +1476,11 @@ static int spi_tegra_resume(struct platform_device *pdev)
 	tspi = spi_master_get_devdata(master);
 
 	spin_lock_irqsave(&tspi->lock, flags);
-	clk_enable(tspi->clk);
+	clk_prepare_enable(tspi->clk);
 	tspi->clk_state = 1;
 	spi_tegra_writel(tspi, tspi->command_reg, SLINK_COMMAND);
 	if (!tspi->is_clkon_always) {
-		clk_disable(tspi->clk);
+		clk_disable_unprepare(tspi->clk);
 		tspi->clk_state = 0;
 	}
 
