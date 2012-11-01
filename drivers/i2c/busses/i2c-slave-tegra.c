@@ -1070,14 +1070,14 @@ static int tegra_i2c_slave_runtime_idle(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_i2c_slave_dev *i2c_dev = platform_get_drvdata(pdev);
-	clk_disable(i2c_dev->clk);
+	clk_disable_unprepare(i2c_dev->clk);
 	return 0;
 }
 static int tegra_i2c_slave_runtime_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_i2c_slave_dev *i2c_dev = platform_get_drvdata(pdev);
-	clk_enable(i2c_dev->clk);
+	clk_prepare_enable(i2c_dev->clk);
 	return 0;
 }
 static const struct dev_pm_ops tegra_i2c_slave_dev_pm_ops = {

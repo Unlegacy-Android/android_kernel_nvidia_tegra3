@@ -470,27 +470,27 @@ static inline int tegra_i2c_clock_enable(struct tegra_i2c_dev *i2c_dev)
 {
 	int ret;
 	if (i2c_dev->chipdata->has_fast_clock) {
-		ret = clk_enable(i2c_dev->fast_clk);
+		ret = clk_prepare_enable(i2c_dev->fast_clk);
 		if (ret < 0) {
 			dev_err(i2c_dev->dev,
 				"Error in enabling fast clock err %d\n", ret);
 			return ret;
 		}
 	}
-	ret = clk_enable(i2c_dev->div_clk);
+	ret = clk_prepare_enable(i2c_dev->div_clk);
 	if (ret < 0) {
 		dev_err(i2c_dev->dev,
 			"Error in enabling div clock err %d\n", ret);
-		clk_disable(i2c_dev->fast_clk);
+		clk_disable_unprepare(i2c_dev->fast_clk);
 	}
 	return ret;
 }
 
 static inline void tegra_i2c_clock_disable(struct tegra_i2c_dev *i2c_dev)
 {
-	clk_disable(i2c_dev->div_clk);
+	clk_disable_unprepare(i2c_dev->div_clk);
 	if (i2c_dev->chipdata->has_fast_clock)
-		clk_disable(i2c_dev->fast_clk);
+		clk_disable_unprepare(i2c_dev->fast_clk);
 }
 
 static void tegra_i2c_set_clk_rate(struct tegra_i2c_dev *i2c_dev)
