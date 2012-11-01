@@ -758,7 +758,7 @@ static void tegra_uart_hw_deinit(struct tegra_uart_port *t)
 
 	spin_unlock_irqrestore(&t->uport.lock, flags);
 
-	clk_disable(t->clk);
+	clk_disable_unprepare(t->clk);
 	pm_runtime_put_sync((&t->uport)->dev);
 }
 
@@ -795,7 +795,7 @@ static int tegra_uart_hw_init(struct tegra_uart_port *t)
 	t->baud = 0;
 
 	pm_runtime_get_sync((&t->uport)->dev);
-	clk_enable(t->clk);
+	clk_prepare_enable(t->clk);
 
 	/* Reset the UART controller to clear all previous status.*/
 	tegra_periph_reset_assert(t->clk);
@@ -1667,7 +1667,7 @@ static int tegra_uart_suspend(struct platform_device *pdev, pm_message_t state)
 	   register can be accessible */
 	if (t->uart_state == TEGRA_UART_CLOCK_OFF) {
 		pm_runtime_get_sync(u->dev);
-		clk_enable(t->clk);
+		clk_prepare_enable(t->clk);
 		t->uart_state = TEGRA_UART_OPENED;
 	}
 
@@ -1714,9 +1714,10 @@ void tegra_uart_request_clock_off(struct uart_port *uport)
 	spin_unlock_irqrestore(&uport->lock, flags);
 
 	if (is_clk_disable) {
-		clk_disable(t->clk);
+		clk_disable_unprepare(t->clk);
 		pm_runtime_put_sync(uport->dev);
 	}
+
 	return;
 }
 
@@ -1740,8 +1741,9 @@ void tegra_uart_request_clock_on(struct uart_port *uport)
 
 	if (is_clk_enable) {
 		pm_runtime_get_sync(uport->dev);
-		clk_enable(t->clk);
+		clk_prepare_enable(t->clk);
 	}
+
 	return;
 }
 
