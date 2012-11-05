@@ -413,4 +413,6 @@ int set_pages_array_wc(struct page **pages, int addrinarray);
 int set_pages_array_wb(struct page **pages, int addrinarray);
 int set_pages_array_iwb(struct page **pages, int addrinarray);
 
+extern size_t cache_maint_inner_threshold;
+
 #endif
