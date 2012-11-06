@@ -38,6 +38,7 @@
 #include <mach/iomap.h>
 #include <mach/io.h>
 #include <mach/hardware.h>
+#include <mach/edp.h>
 
 #include "board.h"
 #include "clock.h"
@@ -871,6 +872,7 @@ static int __init tegra_clk_late_init(void)
 	if (!tegra_dvfs_late_init())
 		tegra_dfll_cpu_start();	/* after successful dvfs init only */
 	tegra_sync_cpu_clock();		/* after attempt to get dfll ready */
+	tegra_recalculate_cpu_edp_limits();
 	return 0;
 }
 late_initcall(tegra_clk_late_init);
