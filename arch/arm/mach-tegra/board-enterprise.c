@@ -59,7 +59,6 @@
 #include <mach/io_dpd.h>
 #include <mach/usb_phy.h>
 #include <mach/i2s.h>
-#include <mach/tegra_aic326x_pdata.h>
 #include <mach/tegra_asoc_pdata.h>
 #include <mach/tegra-bb-power.h>
 #include <mach/gpio-tegra.h>
