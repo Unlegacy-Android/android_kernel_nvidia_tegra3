@@ -525,6 +525,19 @@ void tegra_init_cache(bool init)
 #endif
 #endif
 
+static void __init tegra_perf_init(void)
+{
+	u32 reg;
+
+	asm volatile("mrc p15, 0, %0, c9, c12, 0" : "=r"(reg));
+	reg >>= 11;
+	reg &= 0x1f;
+	reg |= 0x80000000;
+	asm volatile("mcr p15, 0, %0, c9, c14, 2" : : "r"(reg));
+	reg = 1;
+	asm volatile("mcr p15, 0, %0, c9, c14, 0" : : "r"(reg));
+}
+
 static void __init tegra_init_power(void)
 {
 #ifdef CONFIG_ARCH_TEGRA_HAS_SATA
@@ -627,6 +640,7 @@ void __init tegra20_init_early(void)
 	   handler initializer is not called, so do it here for non-SMP. */
 	tegra_cpu_reset_handler_init();
 #endif
+	tegra_perf_init();
 	tegra_init_fuse();
 	tegra2_init_clocks();
 	tegra2_init_dvfs();
@@ -651,6 +665,7 @@ void __init tegra30_init_early(void)
 	   handler initializer is not called, so do it here for non-SMP. */
 	tegra_cpu_reset_handler_init();
 #endif
+	tegra_perf_init();
 	tegra_init_fuse();
 	tegra30_init_clocks();
 	tegra3_init_dvfs();
@@ -677,6 +692,7 @@ void __init tegra11x_init_early(void)
 	   handler initializer is not called, so do it here for non-SMP. */
 	tegra_cpu_reset_handler_init();
 #endif
+	tegra_perf_init();
 	tegra_init_fuse();
 	tegra11x_init_clocks();
 	tegra11x_init_dvfs();
