@@ -73,7 +73,6 @@ config ARCH_TEGRA_3x_SOC
 	select USB_ARCH_HAS_EHCI if USB_SUPPORT
 	select USB_ULPI if USB
 	select USB_ULPI_VIEWPORT if USB_SUPPORT
-	select USE_OF
 	select REPORT_PRESENT_CPUS if TEGRA_AUTO_HOTPLUG
 	select ARCH_SUPPORTS_MSI if TEGRA_PCI
 	select PCI_MSI if TEGRA_PCI
@@ -109,7 +108,6 @@ config ARCH_TEGRA_11x_SOC
 	select USB_EHCI_TEGRA if USB_SUPPORT
 	select USB_ULPI if USB_SUPPORT
 	select USB_ULPI_VIEWPORT if USB_SUPPORT
-	select USE_OF
 	select REPORT_PRESENT_CPUS if TEGRA_AUTO_HOTPLUG
 	select TEGRA_LP2_CPU_TIMER if !TEGRA_RAIL_OFF_MULTIPLE_CPUS
 	select CPA
@@ -229,7 +227,6 @@ config MACH_WARIO
 config MACH_VENTANA
        bool "Ventana board"
        depends on ARCH_TEGRA_2x_SOC
-       select MACH_TEGRA_DT
        help
          Support for the nVidia Ventana development platform
 

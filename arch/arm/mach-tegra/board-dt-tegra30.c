@@ -37,6 +37,8 @@
 #include "clock.h"
 #include "common.h"
 
+#ifdef CONFIG_USE_OF
+
 static struct of_device_id tegra_dt_match_table[] __initdata = {
 	{ .compatible = "simple-bus", },
 	{}
@@ -85,3 +87,5 @@ DT_MACHINE_START(TEGRA30_DT, "NVIDIA Tegra30 (Flattened Device Tree)")
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= tegra30_dt_board_compat,
 MACHINE_END
+
+#endif

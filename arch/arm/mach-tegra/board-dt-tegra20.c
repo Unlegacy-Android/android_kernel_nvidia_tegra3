@@ -48,6 +48,8 @@
 #include "devices.h"
 #include "common.h"
 
+#ifdef CONFIG_USE_OF
+
 void harmony_pinmux_init(void);
 void paz00_pinmux_init(void);
 void seaboard_pinmux_init(void);
@@ -144,3 +146,5 @@ DT_MACHINE_START(TEGRA_DT, "nVidia Tegra20 (Flattened Device Tree)")
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= tegra20_dt_board_compat,
 MACHINE_END
+
+#endif

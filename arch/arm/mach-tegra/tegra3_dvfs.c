@@ -816,7 +816,6 @@ static int __init of_read_dvfs_data(struct device_node *np,
 
 	return ret;
 }
-#endif /* CONFIG_OF */
 
 static int __init of_read_cpu_g_dvfs_data(struct device_node *np)
 {
@@ -863,6 +862,7 @@ static const __initconst struct of_device_id dvfs_match[] = {
 				.data = of_read_core_dvfs_data, },
 	{}
 };
+#endif /* CONFIG_OF */
 
 void __init tegra3_init_dvfs(void)
 {
@@ -882,16 +882,20 @@ void __init tegra3_init_dvfs(void)
 	tegra_dvfs_cpu_disabled = true;
 #endif
 
+#ifdef CONFIG_OF
 	if (!of_tegra_dvfs_init(dvfs_match) && of_cpu_data.num_tables > 0 &&
 				of_core_data.num_tables > 0) {
 		cpu_dvfs_data = &of_cpu_data;
 		cpu_0_dvfs_data = &of_cpu_0_data;
 		core_dvfs_data = &of_core_data;
 	} else {
+#endif
 		cpu_dvfs_data = &tegra30_cpu_data;
 		cpu_0_dvfs_data = &tegra30_cpu_0_data;
 		core_dvfs_data = &tegra30_core_data;
+#ifdef CONFIG_OF
 	}
+#endif
 
 	for (i = 0; i < cpu_dvfs_data->num_voltages; i++)
 		cpu_millivolts_aged[i] = cpu_dvfs_data->millivolts[i];

@@ -1168,7 +1168,7 @@ out:
 	return pdata;
 }
 #else
-static struct tegra_emc_pdata *tegra_emc_dt_parse_pdata(
+static struct tegra30_emc_pdata *tegra_emc_dt_parse_pdata(
 					struct platform_device *pdev)
 {
 	return NULL;

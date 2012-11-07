@@ -868,8 +868,10 @@ static void __init tegra_kai_dt_init(void)
 {
 	tegra_kai_init();
 
+#ifdef CONFIG_USE_OF
 	of_platform_populate(NULL,
 		of_default_bus_match_table, NULL, NULL);
+#endif
 }
 
 static void __init tegra_kai_reserve(void)
