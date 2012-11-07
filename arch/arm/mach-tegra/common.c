@@ -112,6 +112,9 @@ unsigned long tegra_tsec_start;
 unsigned long tegra_tsec_size;
 unsigned long tegra_lp0_vec_start;
 unsigned long tegra_lp0_vec_size;
+#ifdef CONFIG_TEGRA_NVDUMPER
+unsigned long nvdumper_reserved;
+#endif
 bool tegra_lp0_vec_relocate;
 unsigned long tegra_grhost_aperture = ~0ul;
 static   bool is_tegra_debug_uart_hsport;
@@ -700,6 +703,17 @@ static int __init tegra_lp0_vec_arg(char *options)
 }
 early_param("lp0_vec", tegra_lp0_vec_arg);
 
+#ifdef CONFIG_TEGRA_NVDUMPER
+static int __init tegra_nvdumper_arg(char *options)
+{
+	char *p = options;
+
+	nvdumper_reserved = memparse(p, &p);
+	return 0;
+}
+early_param("nvdumper_reserved", tegra_nvdumper_arg);
+#endif
+
 static int __init tegra_bootloader_fb_arg(char *options)
 {
 	char *p = options;
@@ -1178,6 +1192,16 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	} else
 		tegra_lp0_vec_relocate = true;
 
+#ifdef CONFIG_TEGRA_NVDUMPER
+	if (nvdumper_reserved) {
+		if (memblock_reserve(nvdumper_reserved, NVDUMPER_RESERVED_SIZE)) {
+			pr_err("Failed to reserve nvdumper page %08lx@%08lx\n",
+			       nvdumper_reserved, NVDUMPER_RESERVED_SIZE);
+			nvdumper_reserved = 0;
+		}
+	}
+#endif
+
 	/*
 	 * We copy the bootloader's framebuffer to the framebuffer allocated
 	 * above, and then free this one.
@@ -1236,6 +1260,14 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 			tegra_avp_kernel_start,
 			tegra_avp_kernel_start + tegra_avp_kernel_size - 1);
 	}
+
+#ifdef CONFIG_TEGRA_NVDUMPER
+	if (nvdumper_reserved) {
+		pr_info("Nvdumper:               %08lx - %08lx\n",
+			nvdumper_reserved,
+			nvdumper_reserved + NVDUMPER_RESERVED_SIZE - 1);
+	}
+#endif
 }
 
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
