@@ -33,6 +33,7 @@ struct regs_info {
 	u8	vsel_addr;
 	u8	ctrl_addr;
 	u8	tstep_addr;
+	u8	fvsel_addr;
 	int	sleep_id;
 };
 
@@ -42,6 +43,7 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_SMPS12_VOLTAGE,
 		.ctrl_addr	= PALMAS_SMPS12_CTRL,
 		.tstep_addr	= PALMAS_SMPS12_TSTEP,
+		.fvsel_addr	= PALMAS_SMPS12_FORCE,
 		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_SMPS12,
 	},
 	{
@@ -76,6 +78,7 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_SMPS6_VOLTAGE,
 		.ctrl_addr	= PALMAS_SMPS6_CTRL,
 		.tstep_addr	= PALMAS_SMPS6_TSTEP,
+		.fvsel_addr	= PALMAS_SMPS6_FORCE,
 		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_SMPS6,
 	},
 	{
@@ -1037,6 +1040,74 @@ static void palmas_disable_ldo8_track(struct palmas *palmas)
 	return;
 }
 
+static void palmas_dvfs_init(struct palmas *palmas,
+			struct palmas_pmic_platform_data *pdata)
+{
+	int slave;
+	struct palmas_dvfs_init_data *dvfs_idata = pdata->dvfs_init_data;
+	int data_size = pdata->dvfs_init_data_size;
+	unsigned int reg, addr;
+	int ret;
+	int sleep_id;
+	int i;
+
+	if (!dvfs_idata || !data_size)
+		return;
+
+	slave = PALMAS_BASE_TO_SLAVE(PALMAS_DVFS_BASE);
+	for (i = 0; i < data_size; i++) {
+		struct palmas_dvfs_init_data *dvfs_pd =  &dvfs_idata[i];
+
+		sleep_id = palmas_regs_info[dvfs_pd->reg_id].sleep_id;
+		if (!dvfs_pd->en_pwm)
+			continue;
+
+		ret = palmas_ext_power_req_config(palmas, sleep_id,
+				dvfs_pd->ext_ctrl, true);
+		if (ret < 0) {
+			dev_err(palmas->dev,
+					"Error in configuring external control\n");
+			goto err;
+		}
+
+		addr = PALMAS_BASE_TO_REG(PALMAS_DVFS_BASE,
+				(PALMAS_SMPS_DVFS1_CTRL) + i*3);
+		reg =  (1 << PALMAS_SMPS_DVFS1_ENABLE_SHIFT);
+		if (dvfs_pd->step_20mV)
+			reg |= (1 << PALMAS_SMPS_DVFS1_OFFSET_STEP_SHIFT);
+
+		ret = regmap_write(palmas->regmap[slave], addr, reg);
+		if (ret)
+			goto err;
+
+		addr = PALMAS_BASE_TO_REG(PALMAS_DVFS_BASE,
+				(PALMAS_SMPS_DVFS1_VOLTAGE_MAX) + i*3);
+		if (!(dvfs_pd->max_voltage_uV >= DVFS_BASE_VOLTAGE_UV &&
+			dvfs_pd->max_voltage_uV <= DVFS_MAX_VOLTAGE_UV))
+			goto err;
+
+		reg = DIV_ROUND_UP((dvfs_pd->max_voltage_uV -
+			DVFS_BASE_VOLTAGE_UV), DVFS_VOLTAGE_STEP_UV) + 6;
+		ret = regmap_write(palmas->regmap[slave], addr, reg);
+		if (ret)
+			goto err;
+
+		addr = palmas_regs_info[dvfs_pd->reg_id].fvsel_addr;
+		reg = (1 << PALMAS_SMPS12_FORCE_CMD_SHIFT);
+		reg |= DIV_ROUND_UP((dvfs_pd->base_voltage_uV -
+			DVFS_BASE_VOLTAGE_UV), DVFS_VOLTAGE_STEP_UV) + 6;
+		ret = palmas_smps_write(palmas, addr, reg);
+		if (ret)
+			goto  err;
+
+	}
+
+	return;
+err:
+	dev_err(palmas->dev, "Failed to initilize cl dvfs(%d)", i);
+	return;
+}
+
 static __devinit int palmas_probe(struct platform_device *pdev)
 {
 	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
@@ -1218,6 +1289,7 @@ static __devinit int palmas_probe(struct platform_device *pdev)
 	if (pdata->enable_ldo8_tracking)
 		palmas_enable_ldo8_track(palmas);
 
+	palmas_dvfs_init(palmas, pdata);
 	return 0;
 
 err_unregister_regulator:
