@@ -2,4 +2,10 @@
 
 / {
 	compatible = "nvidia,tegra114";
+
+	pinmux: pinmux {
+		compatible = "nvidia,tegra114-pinmux";
+		reg = <0x70000868 0xd4    /* Pad control registers */
+		       0x70003000 0x3e4>; /* Mux registers */
+	};
 };
