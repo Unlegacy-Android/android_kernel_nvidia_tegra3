@@ -990,6 +990,7 @@ static const struct snd_soc_dapm_route tegra_cs42l73_audio_map[] = {
 	/* DMIC -> DMIC Left/Right and VSPIN */
 	{"DMIC Left", NULL, "Int D-Mic"},
 	{"DMIC Right", NULL, "Int D-Mic"},
+	{"VSPIN", NULL, "Int D-Mic"},
 };
 
 static const struct snd_kcontrol_new tegra_cs42l73_controls[] = {
