@@ -756,7 +756,7 @@ static struct tegra30_emc_pdata kai_emc_chip_h5tc4g = {
 	.num_tables = ARRAY_SIZE(kai_emc_tables_h5tc4g)
 };
 
-int kai_emc_init(void)
+int __init kai_emc_init(void)
 {
 	struct tegra30_emc_pdata *emc_platdata = &kai_emc_chip_h5tc4g;
 
