@@ -759,12 +759,6 @@ static int __devinit max17042_probe(struct i2c_client *client,
 		max17042_write_reg(client, MAX17042_LearnCFG, 0x0007);
 	}
 
-	ret = power_supply_register(&client->dev, &chip->battery);
-	if (ret) {
-		dev_err(&client->dev, "failed: power supply register\n");
-		return ret;
-	}
-
 	if (client->irq) {
 		ret = request_threaded_irq(client->irq, NULL,
 						max17042_thread_handler,
@@ -791,6 +785,22 @@ static int __devinit max17042_probe(struct i2c_client *client,
 		}
 	} else {
 		chip->init_complete = 1;
+	}
+
+	/* Check for battery presence */
+	ret = maxim_get_temp();
+	if (ret == 0xff) {
+		dev_err(&client->dev, "failed in reading temperaure\n");
+		return -ENODEV;
+	} else if ((ret < MIN_TEMP) || (ret > MAX_TEMP)) {
+		dev_err(&client->dev, "Battery not detected exiting driver\n");
+		return -ENODEV;
+	}
+
+	ret = power_supply_register(&client->dev, &chip->battery);
+	if (ret) {
+		dev_err(&client->dev, "failed: power supply register\n");
+		return ret;
 	}
 
 	INIT_DELAYED_WORK_DEFERRABLE(&chip->work, max17042_init_worker);
