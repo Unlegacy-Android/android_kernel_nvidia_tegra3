@@ -79,7 +79,7 @@ static void tps65090_irq_lock(struct irq_data *data)
 	mutex_lock(&tps65090->irq_lock);
 }
 
-static void tps65090_irq_mask(struct irq_data *irq_data)
+static void tps65090_irq_unmask(struct irq_data *irq_data)
 {
 	struct tps65090 *tps65090 = irq_data_get_irq_chip_data(irq_data);
 	unsigned int __irq = irq_data->hwirq;
@@ -89,7 +89,7 @@ static void tps65090_irq_mask(struct irq_data *irq_data)
 		data->mask_pos);
 }
 
-static void tps65090_irq_unmask(struct irq_data *irq_data)
+static void tps65090_irq_mask(struct irq_data *irq_data)
 {
 	struct tps65090 *tps65090 = irq_data_get_irq_chip_data(irq_data);
 	unsigned int __irq = irq_data->irq - tps65090->irq_base;
@@ -131,10 +131,8 @@ static irqreturn_t tps65090_irq(int irq, void *data)
 			return IRQ_NONE;
 		}
 		if (status) {
-			/* Ack only those interrupts which are not masked */
-			status &= (~mask);
-			ret = tps65090_write(tps65090->dev,
-					TPS65090_INT_STS + i, status);
+			/* Ack only those interrupts which are enabled */
+			status &= mask;
 			if (ret < 0) {
 				dev_err(tps65090->dev,
 					"failed to write interrupt status\n");
@@ -146,11 +144,13 @@ static irqreturn_t tps65090_irq(int irq, void *data)
 
 	for_each_set_bit(i, &acks, ARRAY_SIZE(tps65090_irqs))
 		handle_nested_irq(tps65090->irq_base + i);
+	/* Clearing interrupts after handling */
+	ret = tps65090_write(tps65090->dev, TPS65090_INT_STS, 0x0);
 	return acks ? IRQ_HANDLED : IRQ_NONE;
 }
 
 static int __devinit tps65090_irq_init(struct tps65090 *tps65090, int irq,
-	int irq_base)
+	int irq_base, unsigned long irq_flag)
 {
 	int i, ret;
 
@@ -161,11 +161,11 @@ static int __devinit tps65090_irq_init(struct tps65090 *tps65090, int irq,
 
 	mutex_init(&tps65090->irq_lock);
 
-	for (i = 0; i < NUM_INT_REG; i++)
-		tps65090_write(tps65090->dev, TPS65090_INT_MSK + i, 0xFF);
+	/* Only enabling Baterry and Charger IRQs */
+	tps65090_write(tps65090->dev, TPS65090_INT_MSK, 0x3f);
 
-	for (i = 0; i < NUM_INT_REG; i++)
-		tps65090_write(tps65090->dev, TPS65090_INT_STS + i, 0xff);
+	/* Clearing interrupts before enabling IRQ*/
+	tps65090_write(tps65090->dev, TPS65090_INT_STS, 0x00);
 
 	tps65090->irq_base = irq_base;
 	tps65090->irq_chip.name = "tps65090";
@@ -185,8 +185,8 @@ static int __devinit tps65090_irq_init(struct tps65090 *tps65090, int irq,
 #endif
 	}
 
-	ret = request_threaded_irq(irq, NULL, tps65090_irq, IRQF_ONESHOT,
-				"tps65090", tps65090);
+	ret = request_threaded_irq(irq, NULL, tps65090_irq, irq_flag,
+					"tps65090", tps65090);
 	if (!ret) {
 		device_init_wakeup(tps65090->dev, 1);
 		enable_irq_wake(irq);
@@ -260,7 +260,8 @@ static int __devinit tps65090_i2c_probe(struct i2c_client *client,
 	}
 
 	if (client->irq) {
-		ret = tps65090_irq_init(tps65090, client->irq, pdata->irq_base);
+		ret = tps65090_irq_init(tps65090, client->irq, pdata->irq_base,
+				pdata->irq_flag);
 		if (ret) {
 			dev_err(&client->dev, "IRQ init failed with err: %d\n",
 				ret);
@@ -269,7 +270,7 @@ static int __devinit tps65090_i2c_probe(struct i2c_client *client,
 	}
 
 	ret = mfd_add_devices(tps65090->dev, -1, tps65090s,
-		ARRAY_SIZE(tps65090s), NULL, 0);
+		ARRAY_SIZE(tps65090s), NULL, pdata->irq_base);
 	if (ret) {
 		dev_err(&client->dev, "add mfd devices failed with err: %d\n",
 			ret);

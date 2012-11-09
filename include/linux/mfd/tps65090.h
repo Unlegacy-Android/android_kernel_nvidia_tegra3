@@ -35,8 +35,32 @@ struct tps65090 {
 
 struct tps65090_platform_data {
 	int irq_base;
+	unsigned long irq_flag;
 	struct tps65090_regulator_platform_data **reg_pdata;
 	int num_reg_pdata;
+};
+
+/* Define tps65090 IRQ numbers */
+enum tps65090_irqs {
+	/* IRQ1 registers */
+	TPS65090_IRQ,
+	TPS65090_VACG_IRQ,
+	TPS65090_VSYSG_IRQ,
+	TPS65090_VBATG_IRQ,
+	TPS65090_CGACT_IRQ,
+	TPS65090_CGCPL_IRQ,
+	TPS65090_OLDCDC1_IRQ,
+	TPS65090_OLDCDC2_IRQ,
+	/* IRQ2 registers */
+	TPS65090_OLDCDC3_IRQ,
+	TPS65090_OLFET1_IRQ,
+	TPS65090_OLFET2_IRQ,
+	TPS65090_OLFET3_IRQ,
+	TPS65090_OLFET4_IRQ,
+	TPS65090_OLFET5_IRQ,
+	TPS65090_OLFET6_IRQ,
+	TPS65090_OLFET7_IRQ,
+	TPS65090_NUM_IRQ,
 };
 
 /*
