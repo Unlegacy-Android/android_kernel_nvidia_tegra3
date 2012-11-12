@@ -506,15 +506,6 @@ static struct tegra_usb_otg_data tegra_otg_pdata = {
 static struct regulator *baseband_reg;
 static struct gpio modem_gpios[] = { /* i500 modem */
 	{MDM_RST, GPIOF_OUT_INIT_LOW, "MODEM RESET"},
-	{MDM_ACK, GPIOF_OUT_INIT_HIGH, "MODEM ACK1"},
-};
-
-static void baseband_post_phy_on(void);
-static void baseband_pre_phy_off(void);
-
-static struct tegra_usb_phy_platform_ops baseband_plat_ops = {
-	.pre_phy_off = baseband_pre_phy_off,
-	.post_phy_on = baseband_post_phy_on,
 };
 
 static struct gpio modem2_gpios[] = {
@@ -544,7 +535,6 @@ static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband_pdata = {
 		.remote_wakeup_supported = false,
 		.power_off_on_suspend = false,
 	},
-	.ops = &baseband_plat_ops,
 };
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
@@ -657,16 +647,6 @@ static struct platform_device tegra_bb_oem1 = {
 };
 #endif
 
-static void baseband_post_phy_on(void)
-{
-	gpio_set_value(MDM_ACK, 0);
-}
-
-static void baseband_pre_phy_off(void)
-{
-	gpio_set_value(MDM_ACK, 1);
-}
-
 static int baseband_init(void)
 {
 	int ret;
@@ -699,8 +679,7 @@ static const struct tegra_modem_operations baseband_operations = {
 
 static struct tegra_usb_modem_power_platform_data baseband_pdata = {
 	.ops = &baseband_operations,
-	.wake_gpio = MDM_REQ,
-	.wake_irq_flags = IRQF_TRIGGER_FALLING,
+	.wake_gpio = -1,
 	.boot_gpio = MDM_COLDBOOT,
 	.boot_irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 	.autosuspend_delay = 2000,
