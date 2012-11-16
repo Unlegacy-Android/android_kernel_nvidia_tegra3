@@ -453,6 +453,7 @@ int tegra_usb_phy_pre_suspend(struct tegra_usb_phy *phy)
 
 	return status;
 }
+EXPORT_SYMBOL_GPL(tegra_usb_phy_pre_suspend);
 
 int tegra_usb_phy_suspend(struct tegra_usb_phy *phy)
 {
