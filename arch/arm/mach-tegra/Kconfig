@@ -404,13 +404,6 @@ config TEGRA_P1852_TDM
 		Enables TDM mode driver for P1852 SKUs. If this
 		is not defined then I2S mode is selected by default.
 
-config TEGRA_TDM
-	bool "Enable TDM mode for Automotive SKUs"
-	depends on MACH_E1853
-	help
-		Enables TDM mode driver for Automotive SKUs. If this
-		is not defined then I2S mode is selected by default.
-
 config TEGRA_CARDHU_DSI
 	bool "Support DSI panel on Cardhu"
 	depends on MACH_CARDHU

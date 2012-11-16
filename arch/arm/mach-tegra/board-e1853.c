@@ -236,20 +236,16 @@ static struct platform_device tegra_rtc_device = {
 };
 #endif
 
-#if defined(CONFIG_TEGRA_TDM)
-static struct tegra_asoc_vcm_platform_data e1853_audio_tdm_pdata = {
+static struct tegra_asoc_vcm_platform_data jetson_audio_pdata = {
 	.codec_info[0] = {
 		.codec_dai_name = "dit-hifi",
 		.cpu_dai_name = "tegra30-i2s.0",
 		.codec_name = "spdif-dit.0",
 		.name = "tegra-i2s-1",
-		.pcm_driver = "tegra-tdm-pcm-audio",
-		.i2s_format = format_tdm,
+		.pcm_driver = "tegra-pcm-audio",
+		.i2s_format = format_i2s,
+		/* Audio Codec is Master */
 		.master = 1,
-		.num_slots = 4,
-		.slot_width = 32,
-		.tx_mask = 0x0f,
-		.rx_mask = 0x0f,
 	},
 	.codec_info[1] = {
 		.codec_dai_name = "dit-hifi",
@@ -258,6 +254,7 @@ static struct tegra_asoc_vcm_platform_data e1853_audio_tdm_pdata = {
 		.name = "tegra-i2s-2",
 		.pcm_driver = "tegra-tdm-pcm-audio",
 		.i2s_format = format_tdm,
+		/* Audio Codec is Master */
 		.master = 1,
 		.num_slots = 8,
 		.slot_width = 32,
@@ -265,28 +262,7 @@ static struct tegra_asoc_vcm_platform_data e1853_audio_tdm_pdata = {
 		.rx_mask = 0xff,
 	},
 };
-#else
-static struct tegra_asoc_vcm_platform_data e1853_audio_i2s_pdata = {
-	.codec_info[0] = {
-		.codec_dai_name = "dit-hifi",
-		.cpu_dai_name = "tegra30-i2s.0",
-		.codec_name = "spdif-dit.0",
-		.name = "tegra-i2s-1",
-		.pcm_driver = "tegra-pcm-audio",
-		.i2s_format = format_i2s,
-		.master = 1,
-	},
-	.codec_info[1] = {
-		.codec_dai_name = "dit-hifi",
-		.cpu_dai_name = "tegra30-i2s.3",
-		.codec_name = "spdif-dit.1",
-		.name = "tegra-i2s-2",
-		.pcm_driver = "tegra-pcm-audio",
-		.i2s_format = format_i2s,
-		.master = 1,
-	},
-};
-#endif
+
 static struct platform_device generic_codec_1 = {
 	.name		= "spdif-dit",
 	.id			= 0,
@@ -300,11 +276,7 @@ static struct platform_device tegra_snd_e1853 = {
 	.name       = "tegra-snd-e1853",
 	.id = 0,
 	.dev    = {
-#if defined(CONFIG_TEGRA_TDM)
-		.platform_data = &e1853_audio_tdm_pdata,
-#else
-		.platform_data = &e1853_audio_i2s_pdata,
-#endif
+		.platform_data = &jetson_audio_pdata,
 	},
 };
 
