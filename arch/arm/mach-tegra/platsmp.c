@@ -219,7 +219,7 @@ static int tegra30_power_up_cpu(unsigned int cpu)
 	 * On first boot entry do not wait - go to direct ungate.
 	 */
 	if (booted) {
-		timeout = jiffies + 5;
+		timeout = jiffies + msecs_to_jiffies(50);
 		do {
 			if (is_cpu_powered(cpu))
 				goto remove_clamps;
@@ -289,7 +289,7 @@ static int tegra11x_power_up_cpu(unsigned int cpu)
 	ret = -ETIMEDOUT;
 
 	/* Wait for the power to come up. */
-	timeout = jiffies + 10;
+	timeout = jiffies + msecs_to_jiffies(2000);
 	do {
 		if (is_cpu_powered(cpu) && is_clamp_removed(cpu)) {
 			cpumask_set_cpu(cpu, tegra_cpu_power_mask);
@@ -472,12 +472,23 @@ struct arm_soc_smp_init_ops tegra_soc_smp_init_ops __initdata = {
 	.smp_prepare_cpus	= tegra_smp_prepare_cpus,
 };
 
+#ifdef CONFIG_TEGRA_VIRTUAL_CPUID
+static int tegra_cpu_disable(unsigned int cpu)
+{
+	return 0;
+}
+#endif
+
 struct arm_soc_smp_ops tegra_soc_smp_ops __initdata = {
 	.smp_secondary_init	= tegra_secondary_init,
 	.smp_boot_secondary	= tegra_boot_secondary,
 #ifdef CONFIG_HOTPLUG_CPU
 	.cpu_kill		= tegra_cpu_kill,
 	.cpu_die		= tegra_cpu_die,
+#ifdef CONFIG_TEGRA_VIRTUAL_CPUID
+	.cpu_disable		= tegra_cpu_disable,
+#else
 	.cpu_disable		= dummy_cpu_disable,
+#endif
 #endif
 };

@@ -64,7 +64,7 @@ NVSD_ATTR(soft_clipping_enable);
 NVSD_ATTR(soft_clipping_threshold);
 NVSD_ATTR(smooth_k_enable);
 NVSD_ATTR(smooth_k_incr);
-NVSD_ATTR(sd_proc_control);
+NVSD_ATTR(use_vpulse2);
 #endif
 static struct kobj_attribute nvsd_attr_registers =
 	__ATTR(registers, S_IRUGO, nvsd_registers_show, NULL);
@@ -94,7 +94,7 @@ static struct attribute *nvsd_attrs[] = {
 	NVSD_ATTRS_ENTRY(soft_clipping_threshold),
 	NVSD_ATTRS_ENTRY(smooth_k_enable),
 	NVSD_ATTRS_ENTRY(smooth_k_incr),
-	NVSD_ATTRS_ENTRY(sd_proc_control),
+	NVSD_ATTRS_ENTRY(use_vpulse2),
 #endif
 	NULL,
 };
@@ -196,7 +196,9 @@ static bool nvsd_phase_in_adjustments(struct tegra_dc *dc,
 			/* Set manual k value */
 			man_k = SD_MAN_K_R(cur_k) |
 				SD_MAN_K_G(cur_k) | SD_MAN_K_B(cur_k);
+			tegra_dc_io_start(dc);
 			tegra_dc_writel(dc, man_k, DC_DISP_SD_MAN_K_VALUES);
+			tegra_dc_io_end(dc);
 			/* Set manual brightness value */
 			atomic_set(sd_brightness, cur_sd_brightness);
 		}
@@ -293,6 +295,7 @@ static void nvsd_cmd_handler(struct tegra_dc_sd_settings *settings,
 				val &= ~SD_BIN_WIDTH_MASK;
 				val |= bw;
 			}
+
 			tegra_dc_writel(dc, val, DC_DISP_SD_CONTROL);
 
 			nvsd_phase_in_luts(settings, dc);
@@ -374,6 +377,7 @@ void nvsd_init(struct tegra_dc *dc, struct tegra_dc_sd_settings *settings)
 	u32 bw_idx = 0;
 	/* TODO: check if HW says SD's available */
 
+	tegra_dc_io_start(dc);
 	/* If SD's not present or disabled, clear the register and return. */
 	if (!settings || settings->enable == 0) {
 		/* clear the brightness val, too. */
@@ -385,6 +389,7 @@ void nvsd_init(struct tegra_dc *dc, struct tegra_dc_sd_settings *settings)
 		if (settings)
 			settings->phase_settings_step = 0;
 		tegra_dc_writel(dc, 0, DC_DISP_SD_CONTROL);
+		tegra_dc_io_end(dc);
 		return;
 	}
 
@@ -567,11 +572,12 @@ void nvsd_init(struct tegra_dc *dc, struct tegra_dc_sd_settings *settings)
 	/* Smooth K enable */
 	val |= (settings->smooth_k_enable) ? SD_SMOOTH_K_ENABLE : 0;
 	/* SD proc control */
-	val |= (settings->sd_proc_control) ? SD_VPULSE2 : SD_VSYNC;
+	val |= (settings->use_vpulse2) ? SD_VPULSE2 : SD_VSYNC;
 #endif
 	/* Finally, Write SD Control */
 	tegra_dc_writel(dc, val, DC_DISP_SD_CONTROL);
 	dev_dbg(&dc->ndev->dev, "  SD_CONTROL: 0x%08x\n", val);
+	tegra_dc_io_end(dc);
 
 	/* set the brightness pointer */
 	sd_brightness = settings->sd_brightness;
@@ -798,8 +804,8 @@ static ssize_t nvsd_settings_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
 	struct device *dev = container_of((kobj->parent), struct device, kobj);
-	struct nvhost_device *ndev = to_nvhost_device(dev);
-	struct tegra_dc *dc = nvhost_get_drvdata(ndev);
+	struct platform_device *ndev = to_platform_device(dev);
+	struct tegra_dc *dc = platform_get_drvdata(ndev);
 	struct tegra_dc_sd_settings *sd_settings = dc->out->sd_settings;
 	ssize_t res = 0;
 
@@ -872,9 +878,9 @@ static ssize_t nvsd_settings_show(struct kobject *kobj,
 		else if (IS_NVSD_ATTR(smooth_k_incr))
 			res = snprintf(buf, PAGE_SIZE, "%d\n",
 				sd_settings->smooth_k_incr);
-		else if (IS_NVSD_ATTR(sd_proc_control))
+		else if (IS_NVSD_ATTR(use_vpulse2))
 			res = snprintf(buf, PAGE_SIZE, "%d\n",
-				sd_settings->sd_proc_control);
+				sd_settings->use_vpulse2);
 #endif
 		else if (IS_NVSD_ATTR(lut))
 			res = nvsd_lut_show(sd_settings, buf, res);
@@ -970,8 +976,8 @@ static ssize_t nvsd_settings_store(struct kobject *kobj,
 	struct kobj_attribute *attr, const char *buf, size_t count)
 {
 	struct device *dev = container_of((kobj->parent), struct device, kobj);
-	struct nvhost_device *ndev = to_nvhost_device(dev);
-	struct tegra_dc *dc = nvhost_get_drvdata(ndev);
+	struct platform_device *ndev = to_platform_device(dev);
+	struct tegra_dc *dc = platform_get_drvdata(ndev);
 	struct tegra_dc_sd_settings *sd_settings = dc->out->sd_settings;
 	ssize_t res = count;
 	bool settings_updated = false;
@@ -1058,8 +1064,8 @@ static ssize_t nvsd_settings_store(struct kobject *kobj,
 			nvsd_check_and_update(0, 1, smooth_k_enable);
 		} else if (IS_NVSD_ATTR(smooth_k_incr)) {
 			nvsd_check_and_update(0, 16320, smooth_k_incr);
-		} else if (IS_NVSD_ATTR(sd_proc_control)) {
-			nvsd_check_and_update(0, 1, sd_proc_control);
+		} else if (IS_NVSD_ATTR(use_vpulse2)) {
+			nvsd_check_and_update(0, 1, use_vpulse2);
 #endif
 		} else if (IS_NVSD_ATTR(lut)) {
 			if (nvsd_lut_store(sd_settings, buf))
@@ -1083,9 +1089,11 @@ static ssize_t nvsd_settings_store(struct kobject *kobj,
 				return -ENODEV;
 			}
 
+			tegra_dc_io_start(dc);
 			tegra_dc_hold_dc_out(dc);
 			nvsd_init(dc, sd_settings);
 			tegra_dc_release_dc_out(dc);
+			tegra_dc_io_end(dc);
 
 			mutex_unlock(&dc->lock);
 
@@ -1128,8 +1136,8 @@ static ssize_t nvsd_registers_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
 	struct device *dev = container_of((kobj->parent), struct device, kobj);
-	struct nvhost_device *ndev = to_nvhost_device(dev);
-	struct tegra_dc *dc = nvhost_get_drvdata(ndev);
+	struct platform_device *ndev = to_platform_device(dev);
+	struct tegra_dc *dc = platform_get_drvdata(ndev);
 	ssize_t res = 0;
 
 	mutex_lock(&dc->lock);

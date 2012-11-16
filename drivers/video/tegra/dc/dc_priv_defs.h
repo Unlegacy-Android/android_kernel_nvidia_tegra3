@@ -95,8 +95,13 @@ struct tegra_dc_out_ops {
 			struct fb_videomode *mode);
 };
 
+struct tegra_dc_shift_clk_div {
+	unsigned long mul; /* numerator */
+	unsigned long div; /* denominator */
+};
+
 struct tegra_dc {
-	struct nvhost_device		*ndev;
+	struct platform_device		*ndev;
 	struct tegra_dc_platform_data	*pdata;
 
 	struct resource			*base_res;
@@ -107,7 +112,7 @@ struct tegra_dc {
 	struct clk			*emc_clk;
 	int				emc_clk_rate;
 	int				new_emc_clk_rate;
-	u32				shift_clk_div;
+	struct tegra_dc_shift_clk_div	shift_clk_div;
 
 	bool				connected;
 	bool				enabled;
@@ -141,6 +146,7 @@ struct tegra_dc {
 		u32			max;
 	} syncpt[DC_N_WINDOWS];
 	u32				vblank_syncpt;
+	u32				win_syncpt[DC_N_WINDOWS];
 
 	unsigned long			underflow_mask;
 	struct work_struct		reset_work;
@@ -153,6 +159,7 @@ struct tegra_dc {
 
 	struct work_struct		vblank_work;
 	long				vblank_ref_count;
+	long				vpulse2_ref_count;
 
 	struct {
 		u64			underflows;

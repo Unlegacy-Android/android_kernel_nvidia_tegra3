@@ -128,6 +128,7 @@ enum shared_bus_users_mode {
 	SHARED_BW,
 	SHARED_CEILING,
 	SHARED_AUTO,
+	SHARED_OVERRIDE,
 };
 
 enum clk_state {

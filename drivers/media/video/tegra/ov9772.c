@@ -158,6 +158,10 @@
 #define OV9772_LENS_VIEW_ANGLE_V	60000 /* / _INT2FLOAT_DIVISOR */
 #define OV9772_I2C_TABLE_MAX_ENTRIES	400
 
+/* comment out definition to disable mode */
+#define OV9772_ENABLE_1284x724
+#define OV9772_ENABLE_960x720
+
 static u16 ov9772_ids[] = {
 	0x9772,
 };
@@ -181,9 +185,8 @@ struct ov9772_info {
 	int pwr_api;
 	int pwr_dev;
 	struct nvc_gpio gpio[ARRAY_SIZE(ov9772_gpio)];
-	struct nvc_regulator vreg_avdd;
-	struct nvc_regulator vreg_dvdd;
-	struct nvc_regulator vreg_dovdd;
+	struct ov9772_power_rail regulators;
+	bool power_on;
 	u8 s_mode;
 	struct ov9772_info *s_info;
 	u32 mode_index;
@@ -211,7 +214,7 @@ static struct nvc_imager_cap ov9772_dflt_cap = {
 	/* refer to NvOdmImagerSensorInterface enum in ODM nvodm_imager.h */
 	.sensor_nvc_interface	= NVC_IMAGER_SENSOR_INTERFACE_SERIAL_B,
 	/* refer to NvOdmImagerPixelType enum in ODM nvodm_imager.h */
-	.pixel_types[0]		= 0x103,
+	.pixel_types[0]		= 0x101,
 	/* refer to NvOdmImagerOrientation enum in ODM nvodm_imager.h */
 	.orientation		= 0,
 	/* refer to NvOdmImagerDirection enum in ODM nvodm_imager.h */
@@ -302,12 +305,10 @@ static struct ov9772_reg *test_patterns[] = {
 	tp_cbars_seq,
 	tp_checker_seq,
 };
-
+#ifdef OV9772_ENABLE_1284x724
 static struct ov9772_reg ov9772_1284x724_i2c[] = {
 	{0x0103, 0x01},
 	{OV9772_TABLE_WAIT_MS, 100},
-	{0x0200, 0x00},
-	{0x0201, 0x00},
 	{0x0300, 0x00},
 	{0x0301, 0x0a},
 	{0x0302, 0x00},
@@ -320,6 +321,14 @@ static struct ov9772_reg ov9772_1284x724_i2c[] = {
 	{0x0341, 0xf8},
 	{0x0342, 0x06},
 	{0x0343, 0x2a},
+	{0x0344, 0x00},
+	{0x0345, 0x00},
+	{0x0346, 0x00},
+	{0x0347, 0x00},
+	{0x0348, 0x05},
+	{0x0349, 0x04},
+	{0x034a, 0x02},
+	{0x034b, 0xd4},
 	{0x034c, 0x05},
 	{0x034d, 0x04},
 	{0x034e, 0x02},
@@ -387,7 +396,118 @@ static struct ov9772_reg ov9772_1284x724_i2c[] = {
 	{OV9772_TABLE_WAIT_MS, 100},
 	{OV9772_TABLE_END, 0x0000}
 };
-
+#endif
+#ifdef OV9772_ENABLE_960x720
+static struct ov9772_reg ov9772_960x720_i2c[] = {
+	{0x0103, 0x01},
+	{OV9772_TABLE_WAIT_MS, 100},
+	{0x3745, 0x00},
+	{0x3746, 0x18},
+	{0x3620, 0x36},
+	{0x3622, 0x24},
+	{0x3022, 0x20},
+	{0x3631, 0xc2},
+	{0x371b, 0x60},
+	{0x3634, 0x04},
+	{0x3613, 0x83},
+	{0x4837, 0x36},
+	{0x4805, 0x10},
+	{0x3724, 0x1c},
+	{0x0300, 0x00},
+	{0x0301, 0x0a},
+	{0x0302, 0x00},
+	{0x0303, 0x02},
+	{0x0304, 0x00},
+	{0x0305, 0x02},
+	{0x0306, 0x00},
+	{0x0307, 0x3c},
+	{0x303c, 0x23},
+	{0x4001, 0x02},
+	{0x0200, 0x00},
+	{0x0201, 0x00},
+	{0x372c, 0x00},
+	{0x372d, 0x00},
+	{0x5005, 0x08},
+	{0x3a0c, 0x20},
+	{0x5310, 0x01},
+	{0x5311, 0xff},
+	{0x53b9, 0x0f},
+	{0x53ba, 0x04},
+	{0x53bb, 0x4a},
+	{0x53bc, 0xd3},
+	{0x53bd, 0x41},
+	{0x53be, 0x00},
+	{0x53c4, 0x03},
+	{0x3602, 0xc0},
+	{0x3611, 0x10},
+	{0x3c00, 0x00},
+	{0x370e, 0x00},
+	{0x0344, 0x00},
+	{0x0345, 0xA1},
+	{0x0346, 0x00},
+	{0x0347, 0x00},
+	{0x0348, 0x04},
+	{0x0349, 0x61},
+	{0x034a, 0x02},
+	{0x034b, 0xd0},
+	{0x034c, 0x03},
+	{0x034d, 0xc0},
+	{0x034e, 0x02},
+	{0x034f, 0xd0},
+	{0x0340, 0x02},
+	{0x0341, 0xf8},
+	{0x0342, 0x06},
+	{0x0343, 0x2a},
+	{0x3a14, 0x15},
+	{0x3a15, 0x60},
+	{0x3a08, 0x00},
+	{0x3a09, 0xe4},
+	{0x3a0e, 0x03},
+	{0x3a02, 0x17},
+	{0x3a03, 0xc0},
+	{0x3a0a, 0x00},
+	{0x3a0b, 0xbe},
+	{0x3a0d, 0x04},
+	{0x0303, 0x02},
+	{0x0601, 0x00},
+	{0x3b01, 0x32},
+	{0x3b02, 0xa4},
+	{0x3f00, 0x2a},
+	{0x3f01, 0x8c},
+	{0x3f0f, 0xf5},
+	{0x4801, 0x0f},
+	{0x3012, 0x70},
+	{0x3014, 0x0d},
+	{0x3025, 0x03},
+	{0x4815, 0x00},
+	{0x0307, 0x3c},
+	{0x0301, 0x0a},
+	{0x0101, 0x01},
+	{0x3708, 0x24},
+	{0x3709, 0x10},
+	{0x5000, 0x06},
+	{0x5001, 0x31},
+	{0x5100, 0x00},
+	{0x3503, 0x17},
+	{0x5001, 0x31},
+	{0x4002, 0x45},
+	{0x0345, 0x01},
+	{0x4000, 0x07},
+	{0x3610, 0xc0},
+	{0x3613, 0x82},
+	{0x3631, 0xe2},
+	{0x3634, 0x03},
+	{0x373c, 0x08},
+	{0x3a18, 0x00},
+	{0x3a19, 0x7f},
+	{0x373b, 0x01},
+	{0x373c, 0x08},
+	{0x0345, 0xa1},
+	{0x0100, 0x01},
+	{OV9772_TABLE_WAIT_MS, 100},
+	{OV9772_TABLE_END, 0x0000}
+};
+#endif
 /* Each resolution requires the below data table setup and the corresponding
  * I2C data table.
  * If more NVC data is needed for the NVC driver, be sure and modify the
@@ -401,6 +521,7 @@ static struct ov9772_reg ov9772_1284x724_i2c[] = {
  * 2. Add ov9772_mode_data table
  * 3. Add entry to the ov9772_mode_table
  */
+#ifdef OV9772_ENABLE_1284x724
 static struct ov9772_mode_data ov9772_1284x724 = {
 	.sensor_mode = {
 		.res_x			= 1284,
@@ -440,12 +561,64 @@ static struct ov9772_mode_data ov9772_1284x724 = {
 		.support_fast_mode	= 0,
 		.pll_mult		= 60,
 		.pll_div		= 4,
+		.mode_sw_wait_frames	= 1500, /* / _INT2FLOAT_DIVISOR */
 	},
 	.p_mode_i2c			= ov9772_1284x724_i2c,
 };
-
+#endif
+#ifdef OV9772_ENABLE_960x720
+static struct ov9772_mode_data ov9772_960x720 = {
+	.sensor_mode = {
+		.res_x			= 960,
+		.res_y			= 720,
+		.active_start_x		= 0,
+		.active_stary_y		= 0,
+		.peak_frame_rate	= 30000, /* / _INT2FLOAT_DIVISOR */
+		.pixel_aspect_ratio	= 1000, /* / _INT2FLOAT_DIVISOR */
+		.pll_multiplier		= 18000, /* / _INT2FLOAT_DIVISOR */
+		.crop_mode		= NVC_IMAGER_CROPMODE_PARTIAL,
+	},
+	.sensor_dnvc = {
+		.api_version		= NVC_IMAGER_API_DYNAMIC_VER,
+		.region_start_x		= 0,
+		.region_start_y		= 0,
+		.x_scale		= 1,
+		.y_scale		= 1,
+		.bracket_caps		= 1,
+		.flush_count		= 2,
+		.init_intra_frame_skip	= 0,
+		.ss_intra_frame_skip	= 2,
+		.ss_frame_number	= 3,
+		.coarse_time		= 755,
+		.max_coarse_diff	= 5,
+		.min_exposure_course	= 3,
+		.max_exposure_course	= 0xFFF7,
+		.diff_integration_time	= 230, /* / _INT2FLOAT_DIVISOR */
+		.line_length		= 1578,
+		.frame_length		= 760,
+		.min_frame_length	= 760,
+		.max_frame_length	= 0xFFFC,
+		.min_gain		= 1000, /* / _INT2FLOAT_DIVISOR */
+		.max_gain		= 31000, /* / _INT2FLOAT_DIVISOR */
+		.inherent_gain		= 1000, /* / _INT2FLOAT_DIVISOR */
+		.inherent_gain_bin_en	= 1000, /* / _INT2FLOAT_DIVISOR */
+		.support_bin_control	= 0,
+		.support_fast_mode	= 0,
+		.pll_mult		= 60,
+		.pll_div		= 4,
+		.mode_sw_wait_frames	= 1500, /* / _INT2FLOAT_DIVISOR */
+	},
+	.p_mode_i2c			= ov9772_960x720_i2c,
+};
+#endif
 static struct ov9772_mode_data *ov9772_mode_table[] = {
-	[0] = &ov9772_1284x724,
+	[0] =
+#ifdef OV9772_ENABLE_1284x724
+	&ov9772_1284x724,
+#endif
+#ifdef OV9772_ENABLE_960x720
+	&ov9772_960x720,
+#endif
 };
 
 
@@ -853,68 +1026,88 @@ static void ov9772_gpio_init(struct ov9772_info *info)
 	}
 }
 
-static void ov9772_pm_regulator_put(struct nvc_regulator *sreg)
+static int ov9772_power_off(struct ov9772_info *info)
 {
-	regulator_put(sreg->vreg);
-	sreg->vreg = NULL;
-}
-
-static int ov9772_pm_regulator_get(struct ov9772_info *info,
-				struct nvc_regulator *sreg,
-				char vreg_name[])
-{
+	struct ov9772_power_rail *pw = &info->regulators;
 	int err = 0;
 
-	sreg->vreg_flag = 0;
-	sreg->vreg = regulator_get(&info->i2c_client->dev, vreg_name);
-	if (IS_ERR(sreg->vreg)) {
-		dev_err(&info->i2c_client->dev, "%s %s ERR: %d\n",
-			__func__, vreg_name, (int)sreg->vreg);
-		err = PTR_ERR(sreg->vreg);
-		sreg->vreg = NULL;
+	if (!info->power_on)
+		goto ov9772_poweroff_skip;
+
+	if (info->pdata && info->pdata->power_off)
+		err = info->pdata->power_off(pw);
+	/* if customized design handles the power off process specifically,
+	* return is bigger than 0 (normally 1), otherwise 0 or error num.
+	*/
+	if (err > 0) {
+		info->power_on = false;
+		return 0;
+	}
+
+	if (!err) {
+		ov9772_gpio_pwrdn(info, 1);
+		ov9772_gpio_shutdn(info, 1);
+		ov9772_gpio_able(info, 0);
+		if (pw->avdd)
+			WARN_ON(IS_ERR_VALUE(
+				err = regulator_disable(pw->avdd)));
+		if (pw->dvdd)
+			WARN_ON(IS_ERR_VALUE(
+				err |= regulator_disable(pw->dvdd)));
+		if (pw->dovdd)
+			WARN_ON(IS_ERR_VALUE(
+				err |= regulator_disable(pw->dovdd)));
+	}
+
+	if (!err)
+		info->power_on = false;
+
+ov9772_poweroff_skip:
+	return err;
+}
+
+static int ov9772_power_on(struct ov9772_info *info, bool standby)
+{
+	struct ov9772_power_rail *pw = &info->regulators;
+	int err = 0;
+
+	if (info->power_on)
+		goto ov9772_poweron_skip;
+
+	if (info->pdata && info->pdata->power_on)
+		err = info->pdata->power_on(pw);
+	/* if customized design handles the power on process specifically,
+	* return is bigger than 0 (normally 1), otherwise 0 or error num.
+	*/
+	if (!err) {
+		if (pw->dvdd)
+			WARN_ON(IS_ERR_VALUE(
+				err = regulator_enable(pw->dvdd)));
+		if (pw->dovdd)
+			WARN_ON(IS_ERR_VALUE(
+				err |= regulator_enable(pw->dovdd)));
+		if (pw->avdd)
+			WARN_ON(IS_ERR_VALUE(
+				err |= regulator_enable(pw->avdd)));
+		ov9772_gpio_able(info, 1);
+		ov9772_gpio_shutdn(info, 0);
+		ov9772_gpio_pwrdn(info, 0); /* PWRDN off to access I2C */
+	}
+	if (IS_ERR_VALUE(err))
+		return err;
+	info->power_on = true;
+	err = 0;
+
+ov9772_poweron_skip:
+	if (standby) {
+		err |= ov9772_i2c_wr8(info, 0x3002, 0x18); /*avoid GPIO leak */
+		ov9772_gpio_pwrdn(info, 1); /* PWRDN on for standby */
 	} else {
-		sreg->vreg_name = vreg_name;
-		dev_dbg(&info->i2c_client->dev, "%s: %s\n",
-			__func__, sreg->vreg_name);
+		err |= ov9772_i2c_wr8(info, 0x3002, 0x19);
+		err |= ov9772_i2c_wr8(info, 0x3025, 0x00); /* out of standby */
+		err |= ov9772_i2c_wr8(info, 0x4815, 0x20); /* out of standby */
 	}
-	return err;
-}
 
-static int ov9772_pm_regulator_en(struct ov9772_info *info,
-				struct nvc_regulator *sreg)
-{
-	int err = 0;
-
-	if (!sreg->vreg_flag && (sreg->vreg != NULL)) {
-		err = regulator_enable(sreg->vreg);
-		if (!err) {
-			dev_dbg(&info->i2c_client->dev, "%s: %s\n",
-				__func__, sreg->vreg_name);
-			sreg->vreg_flag = 1;
-			err = 1; /* flag regulator state change */
-		} else {
-			dev_err(&info->i2c_client->dev, "%s %s ERR\n",
-				__func__, sreg->vreg_name);
-		}
-	}
-	return err;
-}
-
-static int ov9772_pm_regulator_dis(struct ov9772_info *info,
-				struct nvc_regulator *sreg)
-{
-	int err = 0;
-
-	if (sreg->vreg_flag && (sreg->vreg != NULL)) {
-		err = regulator_disable(sreg->vreg);
-		if (!err)
-			dev_dbg(&info->i2c_client->dev, "%s: %s\n",
-				__func__, sreg->vreg_name);
-		else
-			dev_err(&info->i2c_client->dev, "%s %s ERR\n",
-				__func__, sreg->vreg_name);
-	}
-	sreg->vreg_flag = 0;
 	return err;
 }
 
@@ -933,38 +1126,18 @@ static int ov9772_pm_wr(struct ov9772_info *info, int pwr)
 	case NVC_PWR_OFF_FORCE:
 	case NVC_PWR_OFF:
 	case NVC_PWR_STDBY_OFF:
-		ov9772_gpio_pwrdn(info, 1);
-		ov9772_gpio_shutdn(info, 1);
-		ov9772_gpio_able(info, 0);
-		err = ov9772_pm_regulator_dis(info, &info->vreg_avdd);
-		err |= ov9772_pm_regulator_dis(info, &info->vreg_dvdd);
-		err |= ov9772_pm_regulator_dis(info, &info->vreg_dovdd);
+		err = ov9772_power_off(info);
 		info->mode_valid = false;
 		info->bin_en = 0;
 		break;
 
 	case NVC_PWR_STDBY:
-		err = ov9772_pm_regulator_en(info, &info->vreg_dvdd);
-		err |= ov9772_pm_regulator_en(info, &info->vreg_dovdd);
-		err |= ov9772_pm_regulator_en(info, &info->vreg_avdd);
-		ov9772_gpio_able(info, 1);
-		ov9772_gpio_shutdn(info, 0);
-		ov9772_gpio_pwrdn(info, 0); /* PWRDN off to access I2C */
-		err |= ov9772_i2c_wr8(info, 0x3002, 0x18); /* avoid GPIO leak */
-		ov9772_gpio_pwrdn(info, 1); /* PWRDN on for standby */
+		err = ov9772_power_on(info, true);
 		break;
 
 	case NVC_PWR_COMM:
 	case NVC_PWR_ON:
-		err = ov9772_pm_regulator_en(info, &info->vreg_dvdd);
-		err |= ov9772_pm_regulator_en(info, &info->vreg_dovdd);
-		err |= ov9772_pm_regulator_en(info, &info->vreg_avdd);
-		ov9772_gpio_able(info, 1);
-		ov9772_gpio_shutdn(info, 0);
-		ov9772_gpio_pwrdn(info, 0);
-		err |= ov9772_i2c_wr8(info, 0x3002, 0x19);
-		err |= ov9772_i2c_wr8(info, 0x3025, 0x00); /* out of standby */
-		err |= ov9772_i2c_wr8(info, 0x4815, 0x20); /* out of standby */
+		err = ov9772_power_on(info, false);
 		break;
 
 	default:
@@ -1030,19 +1203,53 @@ static int ov9772_pm_dev_wr(struct ov9772_info *info, int pwr)
 
 static void ov9772_pm_exit(struct ov9772_info *info)
 {
+	struct ov9772_power_rail *pw = &info->regulators;
+
 	ov9772_pm_wr(info, NVC_PWR_OFF_FORCE);
-	ov9772_pm_regulator_put(&info->vreg_avdd);
-	ov9772_pm_regulator_put(&info->vreg_dvdd);
-	ov9772_pm_regulator_put(&info->vreg_dovdd);
+
+	if (pw->avdd)
+		regulator_put(pw->avdd);
+	if (pw->dvdd)
+		regulator_put(pw->dvdd);
+	if (pw->dovdd)
+		regulator_put(pw->dovdd);
+	pw->avdd = NULL;
+	pw->dvdd = NULL;
+	pw->dovdd = NULL;
+
 	ov9772_gpio_exit(info);
+}
+
+static int ov9772_regulator_get(
+	struct ov9772_info *info, struct regulator **vreg, char vreg_name[])
+{
+	struct regulator *reg = NULL;
+	int err = 0;
+
+	reg = regulator_get(&info->i2c_client->dev, vreg_name);
+	if (IS_ERR(reg)) {
+		dev_err(&info->i2c_client->dev, "%s %s ERR: %d\n",
+			__func__, vreg_name, (int)reg);
+		err = PTR_ERR(reg);
+		reg = NULL;
+	} else
+		dev_dbg(&info->i2c_client->dev, "%s: %s\n",
+			__func__, vreg_name);
+
+	*vreg = reg;
+	return err;
 }
 
 static void ov9772_pm_init(struct ov9772_info *info)
 {
+	struct ov9772_power_rail *pw = &info->regulators;
+
 	ov9772_gpio_init(info);
-	ov9772_pm_regulator_get(info, &info->vreg_avdd, "avdd");
-	ov9772_pm_regulator_get(info, &info->vreg_dvdd, "dvdd");
-	ov9772_pm_regulator_get(info, &info->vreg_dovdd, "dovdd");
+
+	ov9772_regulator_get(info, &pw->avdd, "avdd");
+	ov9772_regulator_get(info, &pw->dvdd, "dvdd");
+	ov9772_regulator_get(info, &pw->dovdd, "dovdd");
+	info->power_on = false;
 }
 
 static int ov9772_reset(struct ov9772_info *info, int level)
@@ -1052,9 +1259,8 @@ static int ov9772_reset(struct ov9772_info *info, int level)
 	if (level == NVC_RESET_SOFT) {
 		err = ov9772_pm_wr(info, NVC_PWR_COMM);
 		err |= ov9772_i2c_wr8(info, 0x0103, 0x01); /* SW reset */
-	} else {
+	} else
 		err = ov9772_pm_wr(info, NVC_PWR_OFF_FORCE);
-	}
 	err |= ov9772_pm_wr(info, info->pwr_api);
 	return err;
 }
@@ -1271,7 +1477,7 @@ static int ov9772_param_rd(struct ov9772_info *info, unsigned long arg)
 		if (!info->sdata.sensor_id_minor)
 			ov9772_dev_id(info);
 		data_ptr = &info->sdata.sensor_id;
-		data_size = sizeof(info->sdata.sensor_id * 2);
+		data_size = sizeof(info->sdata.sensor_id) * 2;
 		dev_dbg(&info->i2c_client->dev, "%s DEV_ID: %x-%x\n",
 			__func__, info->sdata.sensor_id,
 			info->sdata.sensor_id_minor);
@@ -1890,13 +2096,6 @@ static int ov9772_open(struct inode *inode, struct file *file)
 			return -EBUSY;
 		info->sdata.stereo_cap = 1;
 	}
-	if (info->pdata && info->pdata->power_on)
-		info->pdata->power_on(&info->i2c_client->dev);
-	else{
-		pr_err("[ov9772]:%s:no valid power_on function.\n",
-		       __func__);
-		return -EEXIST;
-	}
 
 	file->private_data = info;
 	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
@@ -1907,8 +2106,6 @@ int ov9772_release(struct inode *inode, struct file *file)
 {
 	struct ov9772_info *info = file->private_data;
 
-	if (info->pdata && info->pdata->power_off)
-		info->pdata->power_off(&info->i2c_client->dev);
 	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
 	ov9772_pm_wr_s(info, NVC_PWR_OFF);
 	file->private_data = NULL;

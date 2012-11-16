@@ -353,16 +353,10 @@ static void set_power_timers(unsigned long us_on, unsigned long us_off,
  */
 static void restore_cpu_complex(u32 mode)
 {
-	int cpu = smp_processor_id();
+	int cpu = cpu_logical_map(smp_processor_id());
 	unsigned int reg;
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	unsigned int policy;
-#endif
-
-	BUG_ON(cpu != 0);
-
-#ifdef CONFIG_SMP
-	cpu = cpu_logical_map(cpu);
 #endif
 
 /*
@@ -458,15 +452,12 @@ static void restore_cpu_complex(u32 mode)
  */
 static void suspend_cpu_complex(u32 mode)
 {
-	int cpu = smp_processor_id();
+	int cpu = cpu_logical_map(smp_processor_id());
 	unsigned int reg;
 	int i;
 
 	BUG_ON(cpu != 0);
 
-#ifdef CONFIG_SMP
-	cpu = cpu_logical_map(cpu);
-#endif
 	/* switch coresite to clk_m, save off original source */
 	tegra_sctx.clk_csite_src = readl(clk_rst + CLK_RESET_SOURCE_CSITE);
 	writel(3<<30, clk_rst + CLK_RESET_SOURCE_CSITE);
@@ -512,7 +503,7 @@ static void suspend_cpu_complex(u32 mode)
 	tegra_gic_cpu_disable(true);
 }
 
-void tegra_clear_cpu_in_lp2(int cpu)
+void tegra_clear_cpu_in_pd(int cpu)
 {
 	spin_lock(&tegra_lp2_lock);
 	BUG_ON(!cpumask_test_cpu(cpu, &tegra_in_lp2));
@@ -528,7 +519,7 @@ void tegra_clear_cpu_in_lp2(int cpu)
 	spin_unlock(&tegra_lp2_lock);
 }
 
-bool tegra_set_cpu_in_lp2(int cpu)
+bool tegra_set_cpu_in_pd(int cpu)
 {
 	bool last_cpu = false;
 
@@ -584,7 +575,8 @@ static inline void tegra_sleep_cpu(unsigned long v2p)
 	cpu_suspend(v2p, tegra_sleep_cpu_finish);
 }
 
-unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
+unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
+					unsigned int flags)
 {
 	u32 reg;
 	unsigned int remain;
@@ -657,7 +649,7 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 	}
 
 	if (sleep_time)
-		tegra_lp2_set_trigger(sleep_time);
+		tegra_pd_set_trigger(sleep_time);
 
 	cpu_cluster_pm_enter();
 	suspend_cpu_complex(flags);
@@ -681,9 +673,9 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 	restore_cpu_complex(flags);
 	cpu_cluster_pm_exit();
 
-	remain = tegra_lp2_timer_remain();
+	remain = tegra_pd_timer_remain();
 	if (sleep_time)
-		tegra_lp2_set_trigger(0);
+		tegra_pd_set_trigger(0);
 
 	if (flags & TEGRA_POWER_CLUSTER_MASK) {
 		tegra_cluster_switch_epilog(flags);
@@ -939,7 +931,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 
 	local_fiq_disable();
 
-	trace_cpu_suspend(CPU_SUSPEND_START);
+	trace_cpu_suspend(CPU_SUSPEND_START, tegra_rtc_read_ms());
 
 	if (mode == TEGRA_SUSPEND_LP0) {
 #ifdef CONFIG_TEGRA_CLUSTER_CONTROL
@@ -1023,7 +1015,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	if (pdata && pdata->board_resume)
 		pdata->board_resume(mode, TEGRA_RESUME_AFTER_CPU);
 
-	trace_cpu_suspend(CPU_SUSPEND_DONE);
+	trace_cpu_suspend(CPU_SUSPEND_DONE, tegra_rtc_read_ms());
 
 	local_fiq_enable();
 
@@ -1316,7 +1308,7 @@ out:
 fail:
 #endif
 	if (plat->suspend_mode == TEGRA_SUSPEND_NONE)
-		tegra_lp2_in_idle(false);
+		tegra_pd_in_idle(false);
 
 	current_suspend_mode = plat->suspend_mode;
 }
@@ -1397,13 +1389,13 @@ EXPORT_SYMBOL(debug_uart_clk);
 void tegra_console_uart_suspend(void)
 {
 	if (console_suspend_enabled && debug_uart_clk)
-		clk_disable(debug_uart_clk);
+		tegra_clk_disable_unprepare(debug_uart_clk);
 }
 
 void tegra_console_uart_resume(void)
 {
 	if (console_suspend_enabled && debug_uart_clk)
-		clk_enable(debug_uart_clk);
+		tegra_clk_prepare_enable(debug_uart_clk);
 }
 
 static int tegra_debug_uart_syscore_init(void)

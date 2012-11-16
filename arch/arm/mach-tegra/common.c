@@ -63,6 +63,7 @@
 #define AHB_ARBITRATION_PRIORITY_CTRL		0x4
 #define   AHB_PRIORITY_WEIGHT(x)	(((x) & 0x7) << 29)
 #define   PRIORITY_SELECT_USB	BIT(6)
+#define PRIORITY_SELECT_SDMMC4	BIT(12)
 #define   PRIORITY_SELECT_USB2	BIT(18)
 #define   PRIORITY_SELECT_USB3	BIT(17)
 
@@ -75,10 +76,12 @@
 #define   FORCED_RECOVERY_MODE	BIT(1)
 
 #define AHB_GIZMO_USB		0x1c
+#define AHB_GIZMO_SDMMC4	0x44
 #define AHB_GIZMO_USB2		0x78
 #define AHB_GIZMO_USB3		0x7c
 #define   IMMEDIATE	BIT(18)
 
+#define AHB_MEM_PREFETCH_CFG5	0xc4
 #define AHB_MEM_PREFETCH_CFG3	0xe0
 #define AHB_MEM_PREFETCH_CFG4	0xe4
 #define AHB_MEM_PREFETCH_CFG1	0xec
@@ -87,6 +90,7 @@
 #define   MST_ID(x)	(((x) & 0x1f) << 26)
 #define   AHBDMA_MST_ID	MST_ID(5)
 #define   USB_MST_ID	MST_ID(6)
+#define SDMMC4_MST_ID	MST_ID(12)
 #define   USB2_MST_ID	MST_ID(18)
 #define   USB3_MST_ID	MST_ID(17)
 #define   ADDR_BNDRY(x)	(((x) & 0xf) << 21)
@@ -108,6 +112,9 @@ unsigned long tegra_tsec_start;
 unsigned long tegra_tsec_size;
 unsigned long tegra_lp0_vec_start;
 unsigned long tegra_lp0_vec_size;
+#ifdef CONFIG_TEGRA_NVDUMPER
+unsigned long nvdumper_reserved;
+#endif
 bool tegra_lp0_vec_relocate;
 unsigned long tegra_grhost_aperture = ~0ul;
 static   bool is_tegra_debug_uart_hsport;
@@ -118,7 +125,7 @@ static struct board_info camera_board_info;
 static int pmu_core_edp = 1200;	/* default 1.2V EDP limit */
 static int board_panel_type;
 static enum power_supply_type pow_supply_type = POWER_SUPPLY_TYPE_MAINS;
-
+static int pwr_i2c_clk = 400;
 /*
  * Storage for debug-macro.S's state.
  *
@@ -518,6 +525,19 @@ void tegra_init_cache(bool init)
 #endif
 #endif
 
+static void __init tegra_perf_init(void)
+{
+	u32 reg;
+
+	asm volatile("mrc p15, 0, %0, c9, c12, 0" : "=r"(reg));
+	reg >>= 11;
+	reg &= 0x1f;
+	reg |= 0x80000000;
+	asm volatile("mcr p15, 0, %0, c9, c14, 2" : : "r"(reg));
+	reg = 1;
+	asm volatile("mcr p15, 0, %0, c9, c14, 0" : : "r"(reg));
+}
+
 static void __init tegra_init_power(void)
 {
 #ifdef CONFIG_ARCH_TEGRA_HAS_SATA
@@ -525,6 +545,12 @@ static void __init tegra_init_power(void)
 #endif
 #ifdef CONFIG_ARCH_TEGRA_HAS_PCIE
 	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
+#endif
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	/* some partitions need to be powergated by default for t11x */
+	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_XUSBA);
+	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_XUSBB);
+	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_XUSBC);
 #endif
 }
 
@@ -558,9 +584,18 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	val |= IMMEDIATE;
 	gizmo_writel(val, AHB_GIZMO_USB3);
 
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	val = gizmo_readl(AHB_GIZMO_SDMMC4);
+	val |= IMMEDIATE;
+	gizmo_writel(val, AHB_GIZMO_SDMMC4);
+#endif
+
 	val = gizmo_readl(AHB_ARBITRATION_PRIORITY_CTRL);
 	val |= PRIORITY_SELECT_USB | PRIORITY_SELECT_USB2 | PRIORITY_SELECT_USB3
 				| AHB_PRIORITY_WEIGHT(7);
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	val |= PRIORITY_SELECT_SDMMC4;
+#endif
 	gizmo_writel(val, AHB_ARBITRATION_PRIORITY_CTRL);
 
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG1);
@@ -586,6 +621,14 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	val |= PREFETCH_ENB | USB2_MST_ID | ADDR_BNDRY(0xc) |
 		INACTIVITY_TIMEOUT(0x1000);
 	gizmo_writel(val, AHB_MEM_PREFETCH_CFG4);
+
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	val = gizmo_readl(AHB_MEM_PREFETCH_CFG5);
+	val &= ~MST_ID(~0);
+	val |= PREFETCH_ENB | SDMMC4_MST_ID | ADDR_BNDRY(0xc) |
+		INACTIVITY_TIMEOUT(0x1000);
+	gizmo_writel(val, AHB_MEM_PREFETCH_CFG5);
+#endif
 }
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -597,6 +640,7 @@ void __init tegra20_init_early(void)
 	   handler initializer is not called, so do it here for non-SMP. */
 	tegra_cpu_reset_handler_init();
 #endif
+	tegra_perf_init();
 	tegra_init_fuse();
 	tegra2_init_clocks();
 	tegra2_init_dvfs();
@@ -621,6 +665,7 @@ void __init tegra30_init_early(void)
 	   handler initializer is not called, so do it here for non-SMP. */
 	tegra_cpu_reset_handler_init();
 #endif
+	tegra_perf_init();
 	tegra_init_fuse();
 	tegra30_init_clocks();
 	tegra3_init_dvfs();
@@ -647,6 +692,7 @@ void __init tegra11x_init_early(void)
 	   handler initializer is not called, so do it here for non-SMP. */
 	tegra_cpu_reset_handler_init();
 #endif
+	tegra_perf_init();
 	tegra_init_fuse();
 	tegra11x_init_clocks();
 	tegra11x_init_dvfs();
@@ -678,6 +724,17 @@ static int __init tegra_lp0_vec_arg(char *options)
 	return 0;
 }
 early_param("lp0_vec", tegra_lp0_vec_arg);
+
+#ifdef CONFIG_TEGRA_NVDUMPER
+static int __init tegra_nvdumper_arg(char *options)
+{
+	char *p = options;
+
+	nvdumper_reserved = memparse(p, &p);
+	return 0;
+}
+early_param("nvdumper_reserved", tegra_nvdumper_arg);
+#endif
 
 static int __init tegra_bootloader_fb_arg(char *options)
 {
@@ -861,6 +918,19 @@ enum audio_codec_type get_audio_codec_type(void)
 }
 __setup("audio_codec=", tegra_audio_codec_type);
 
+static int tegra_get_pwr_i2c_clk_rate(char *options)
+{
+	int clk = simple_strtol(options, NULL, 16);
+	if (clk != 0)
+		pwr_i2c_clk = clk;
+	return 0;
+}
+
+int get_pwr_i2c_clk_rate(void)
+{
+	return pwr_i2c_clk;
+}
+__setup("pwr_i2c=", tegra_get_pwr_i2c_clk_rate);
 
 void tegra_get_board_info(struct board_info *bi)
 {
@@ -1144,6 +1214,16 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	} else
 		tegra_lp0_vec_relocate = true;
 
+#ifdef CONFIG_TEGRA_NVDUMPER
+	if (nvdumper_reserved) {
+		if (memblock_reserve(nvdumper_reserved, NVDUMPER_RESERVED_SIZE)) {
+			pr_err("Failed to reserve nvdumper page %08lx@%08lx\n",
+			       nvdumper_reserved, NVDUMPER_RESERVED_SIZE);
+			nvdumper_reserved = 0;
+		}
+	}
+#endif
+
 	/*
 	 * We copy the bootloader's framebuffer to the framebuffer allocated
 	 * above, and then free this one.
@@ -1202,6 +1282,14 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 			tegra_avp_kernel_start,
 			tegra_avp_kernel_start + tegra_avp_kernel_size - 1);
 	}
+
+#ifdef CONFIG_TEGRA_NVDUMPER
+	if (nvdumper_reserved) {
+		pr_info("Nvdumper:               %08lx - %08lx\n",
+			nvdumper_reserved,
+			nvdumper_reserved + NVDUMPER_RESERVED_SIZE - 1);
+	}
+#endif
 }
 
 #ifdef CONFIG_ANDROID_RAM_CONSOLE

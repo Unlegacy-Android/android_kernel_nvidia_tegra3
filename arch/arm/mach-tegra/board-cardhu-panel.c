@@ -244,15 +244,15 @@ static int cardhu_backlight_notify(struct device *unused, int brightness)
 		gpio_set_value(e1506_bl_enb, !!brightness);
 	}
 
-	/* SD brightness is a percentage, 8-bit value. */
-	brightness = (brightness * cur_sd_brightness) / 255;
-
 	/* Apply any backlight response curve */
 	if (brightness > 255) {
 		pr_info("Error: Brightness > 255!\n");
 	} else {
 		brightness = bl_output[brightness];
 	}
+
+	/* SD brightness is a percentage, 8-bit value. */
+	brightness = (brightness * cur_sd_brightness) / 255;
 
 	return brightness;
 }
@@ -1082,7 +1082,7 @@ static struct tegra_dc_platform_data cardhu_disp1_pdata = {
 	.emc_clk_rate	= 300000000,
 };
 
-static struct nvhost_device cardhu_disp1_device = {
+static struct platform_device cardhu_disp1_device = {
 	.name		= "tegradc",
 	.id		= 0,
 	.resource	= cardhu_disp1_resources,
@@ -1097,7 +1097,7 @@ static int cardhu_disp1_check_fb(struct device *dev, struct fb_info *info)
 	return info->device == &cardhu_disp1_device.dev;
 }
 
-static struct nvhost_device cardhu_disp2_device = {
+static struct platform_device cardhu_disp2_device = {
 	.name		= "tegradc",
 	.id		= 1,
 	.resource	= cardhu_disp2_resources,
@@ -1284,6 +1284,7 @@ int __init cardhu_panel_init(void)
 {
 	int err;
 	struct resource __maybe_unused *res;
+	struct platform_device *phost1x;
 
 	tegra_get_board_info(&board_info);
 	tegra_get_display_board_info(&display_board_info);
@@ -1316,7 +1317,16 @@ int __init cardhu_panel_init(void)
 	if (WARN_ON(board_info.board_id == BOARD_E1291 &&
 		((board_info.sku & SKU_TOUCHSCREEN_MECH_FIX) == 0))) {
 		/* use 55Hz panel timings to reduce noise on sensitive touch */
-		printk("Using cardhu_panel_modes_55hz\n");
+		printk(KERN_INFO
+			"##################################################\n");
+		printk(KERN_WARNING
+			"This Cardhu board has touch related issues.\n");
+		printk(KERN_WARNING
+		"Switching to 55Hz refresh - WAR for broken sensors.\n");
+		printk(KERN_WARNING
+			"Advised to avoid any display related tests.\n");
+		printk(KERN_INFO
+			"##################################################\n");
 		cardhu_disp1_out.parent_clk = "pll_p";
 		cardhu_disp1_out.modes = cardhu_panel_modes_55hz;
 		cardhu_disp1_out.n_modes = ARRAY_SIZE(cardhu_panel_modes_55hz);
@@ -1388,17 +1398,17 @@ skip_lvds:
 	gpio_direction_input(e1506_lcd_te);
 #endif
 
-#ifdef CONFIG_TEGRA_GRHOST
-	err = tegra3_register_host1x_devices();
-	if (err)
-		return err;
-#endif
-
 	err = platform_add_devices(cardhu_gfx_devices,
 				ARRAY_SIZE(cardhu_gfx_devices));
 
+#ifdef CONFIG_TEGRA_GRHOST
+	phost1x = tegra3_register_host1x_devices();
+	if (!phost1x)
+		return -EINVAL;
+#endif
+
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	res = nvhost_get_resource_byname(&cardhu_disp1_device,
+	res = platform_get_resource_byname(&cardhu_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
@@ -1409,10 +1419,12 @@ skip_lvds:
 				min(tegra_fb_size, tegra_bootloader_fb_size));
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	if (!err)
-		err = nvhost_device_register(&cardhu_disp1_device);
+	if (!err) {
+		cardhu_disp1_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&cardhu_disp1_device);
+	}
 
-	res = nvhost_get_resource_byname(&cardhu_disp2_device,
+	res = platform_get_resource_byname(&cardhu_disp2_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb2_start;
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
@@ -1421,13 +1433,17 @@ skip_lvds:
 	tegra_move_framebuffer(tegra_fb2_start, tegra_bootloader_fb_start,
 				min(tegra_fb2_size, tegra_bootloader_fb_size));
 
-	if (!err)
-		err = nvhost_device_register(&cardhu_disp2_device);
+	if (!err) {
+		cardhu_disp2_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&cardhu_disp2_device);
+	}
 #endif
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_NVAVP)
-	if (!err)
-		err = nvhost_device_register(&nvavp_device);
+	if (!err) {
+		nvavp_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&nvavp_device);
+	}
 #endif
 	return err;
 }

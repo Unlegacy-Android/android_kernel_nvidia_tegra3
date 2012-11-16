@@ -88,19 +88,30 @@ module_param(fast_cluster_power_down_mode, uint, 0644);
 
 static struct clk *cpu_clk_for_dvfs;
 
-static int lp2_exit_latencies[5];
+static int pd_exit_latencies[5];
 
 static struct {
 	unsigned int cpu_ready_count[5];
 	unsigned int tear_down_count[5];
-	unsigned long long cpu_wants_lp2_time[5];
-	unsigned long long in_lp2_time[5];
-	unsigned int lp2_count;
-	unsigned int lp2_completed_count;
-	unsigned int lp2_count_bin[32];
-	unsigned int lp2_completed_count_bin[32];
-	unsigned int lp2_int_count[NR_IRQS];
-	unsigned int last_lp2_int_count[NR_IRQS];
+	unsigned long long cpu_wants_pd_time[5];
+	unsigned long long cpu_pg_time[5];
+	unsigned long long rail_pd_time;
+	unsigned long long c0nc_pg_time;
+	unsigned long long c1nc_pg_time;
+	unsigned int rail_gating_count;
+	unsigned int rail_gating_bin[32];
+	unsigned int rail_gating_done_count;
+	unsigned int rail_gating_done_count_bin[32];
+	unsigned int c0nc_gating_count;
+	unsigned int c0nc_gating_bin[32];
+	unsigned int c0nc_gating_done_count;
+	unsigned int c0nc_gating_done_count_bin[32];
+	unsigned int c1nc_gating_count;
+	unsigned int c1nc_gating_bin[32];
+	unsigned int c1nc_gating_done_count;
+	unsigned int c1nc_gating_done_count_bin[32];
+	unsigned int pd_int_count[NR_IRQS];
+	unsigned int last_pd_int_count[NR_IRQS];
 } idle_stats;
 
 static inline unsigned int time_to_bin(unsigned int time)
@@ -119,14 +130,14 @@ static inline unsigned int cpu_number(unsigned int n)
 	return is_lp_cluster() ? 4 : n;
 }
 
-void tegra11x_cpu_idle_stats_lp2_ready(unsigned int cpu)
+void tegra11x_cpu_idle_stats_pd_ready(unsigned int cpu)
 {
 	idle_stats.cpu_ready_count[cpu_number(cpu)]++;
 }
 
-void tegra11x_cpu_idle_stats_lp2_time(unsigned int cpu, s64 us)
+void tegra11x_cpu_idle_stats_pd_time(unsigned int cpu, s64 us)
 {
-	idle_stats.cpu_wants_lp2_time[cpu_number(cpu)] += us;
+	idle_stats.cpu_wants_pd_time[cpu_number(cpu)] += us;
 }
 
 /* Allow rail off only if all secondary CPUs are power gated, and no
@@ -145,7 +156,7 @@ static bool tegra_rail_off_is_allowed(void)
 	return true;
 }
 
-bool tegra11x_lp2_is_allowed(struct cpuidle_device *dev,
+bool tegra11x_pd_is_allowed(struct cpuidle_device *dev,
 	struct cpuidle_state *state)
 {
 	s64 request;
@@ -155,10 +166,10 @@ bool tegra11x_lp2_is_allowed(struct cpuidle_device *dev,
 		return false;
 
 	request = ktime_to_us(tick_nohz_get_sleep_length());
-	if (state->exit_latency != lp2_exit_latencies[cpu_number(dev->cpu)]) {
+	if (state->exit_latency != pd_exit_latencies[cpu_number(dev->cpu)]) {
 		/* possible on the 1st entry after cluster switch*/
-		state->exit_latency = lp2_exit_latencies[cpu_number(dev->cpu)];
-		tegra_lp2_update_target_residency(state);
+		state->exit_latency = pd_exit_latencies[cpu_number(dev->cpu)];
+		tegra_pd_update_target_residency(state);
 	}
 	if (request < state->target_residency) {
 		/* Not enough time left to enter LP2 */
@@ -168,7 +179,7 @@ bool tegra11x_lp2_is_allowed(struct cpuidle_device *dev,
 	return true;
 }
 
-static inline void tegra11_lp2_restore_affinity(void)
+static inline void tegra11_irq_restore_affinity(void)
 {
 #ifdef CONFIG_SMP
 	/* Disable the distributor. */
@@ -198,7 +209,7 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 
 	if (request < state->target_residency) {
 		/* Not enough time left to enter LP2 */
-		tegra_cpu_wfi();
+		cpu_do_idle();
 		return false;
 	}
 
@@ -219,7 +230,7 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 		if (!tegra_rail_off_is_allowed()) {
 			/* Yes, re-enable the distributor and clock gating. */
 			tegra_gic_dist_enable();
-			tegra_cpu_wfi();
+			cpu_do_idle();
 			return false;
 		}
 
@@ -239,12 +250,12 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 		if (request < state->target_residency) {
 			/* Not enough time left to enter LP2 */
 			tegra_gic_dist_enable();
-			tegra_cpu_wfi();
+			cpu_do_idle();
 			return false;
 		}
 
-		/* Cancel LP2 wake timers for all secondary CPUs */
-		tegra_lp2_timer_cancel_secondary();
+		/* Cancel power gating wake timers for all secondary CPUs */
+		tegra_pd_timer_cancel_secondary();
 
 		/* Save and disable the affinity setting for the other
 		   CPUs and route all interrupts to CPU0. */
@@ -257,17 +268,17 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 	cpu_pm_enter();
 
 	sleep_time = request -
-		lp2_exit_latencies[cpu_number(dev->cpu)];
+		pd_exit_latencies[cpu_number(dev->cpu)];
 
 	bin = time_to_bin((u32)request / 1000);
 	idle_stats.tear_down_count[cpu_number(dev->cpu)]++;
-	idle_stats.lp2_count++;
-	idle_stats.lp2_count_bin[bin]++;
 
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
 	if (is_lp_cluster()) {
 		/* here we are not supporting emulation mode, for now */
 		flag = TEGRA_POWER_CLUSTER_PART_NONCPU;
+		idle_stats.c1nc_gating_count++;
+		idle_stats.c1nc_gating_bin[bin]++;
 	} else {
 		tegra_dvfs_rail_off(tegra_cpu_rail, entry_time);
 		flag = (fast_cluster_power_down_mode
@@ -276,13 +287,21 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 		if ((request < tegra_min_residency_crail()) &&
 			(flag != TEGRA_POWER_CLUSTER_PART_MASK))
 			flag = TEGRA_POWER_CLUSTER_PART_NONCPU;
+
+		if (flag == TEGRA_POWER_CLUSTER_PART_CRAIL) {
+			idle_stats.rail_gating_count++;
+			idle_stats.rail_gating_bin[bin]++;
+		} else if (flag == TEGRA_POWER_CLUSTER_PART_NONCPU) {
+			idle_stats.c0nc_gating_count++;
+			idle_stats.c0nc_gating_bin[bin]++;
+		}
 	}
 
-	if (tegra_idle_lp2_last(sleep_time, flag) == 0)
+	if (tegra_idle_power_down_last(sleep_time, flag) == 0)
 		sleep_completed = true;
 	else {
 		int irq = tegra_gic_pending_interrupt();
-		idle_stats.lp2_int_count[irq]++;
+		idle_stats.pd_int_count[irq]++;
 	}
 
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT, &dev->cpu);
@@ -290,11 +309,20 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 	if (!is_lp_cluster())
 		tegra_dvfs_rail_on(tegra_cpu_rail, exit_time);
 
-	idle_stats.in_lp2_time[cpu_number(dev->cpu)] +=
-		ktime_to_us(ktime_sub(exit_time, entry_time));
+	if (flag == TEGRA_POWER_CLUSTER_PART_CRAIL)
+		idle_stats.rail_pd_time +=
+			ktime_to_us(ktime_sub(exit_time, entry_time));
+	else if (flag == TEGRA_POWER_CLUSTER_PART_NONCPU) {
+		if (is_lp_cluster())
+			idle_stats.c1nc_pg_time +=
+				ktime_to_us(ktime_sub(exit_time, entry_time));
+		else
+			idle_stats.c0nc_pg_time +=
+				ktime_to_us(ktime_sub(exit_time, entry_time));
+	}
 
 	if (multi_cpu_entry)
-		tegra11_lp2_restore_affinity();
+		tegra11_irq_restore_affinity();
 
 	if (sleep_completed) {
 		/*
@@ -303,15 +331,25 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 		 */
 		int offset = ktime_to_us(ktime_sub(exit_time, entry_time))
 			- request;
-		int latency = lp2_exit_latencies[cpu_number(dev->cpu)] +
+		int latency = pd_exit_latencies[cpu_number(dev->cpu)] +
 			offset / 16;
 		latency = clamp(latency, 0, 10000);
-		lp2_exit_latencies[cpu_number(dev->cpu)] = latency;
+		pd_exit_latencies[cpu_number(dev->cpu)] = latency;
 		state->exit_latency = latency;		/* for idle governor */
 		smp_wmb();
 
-		idle_stats.lp2_completed_count++;
-		idle_stats.lp2_completed_count_bin[bin]++;
+		if (flag == TEGRA_POWER_CLUSTER_PART_CRAIL) {
+			idle_stats.rail_gating_done_count++;
+			idle_stats.rail_gating_done_count_bin[bin]++;
+		} else if (flag == TEGRA_POWER_CLUSTER_PART_NONCPU) {
+			if (is_lp_cluster()) {
+				idle_stats.c1nc_gating_done_count++;
+				idle_stats.c1nc_gating_done_count_bin[bin]++;
+			} else {
+				idle_stats.c0nc_gating_done_count++;
+				idle_stats.c0nc_gating_done_count_bin[bin]++;
+			}
+		}
 
 		pr_debug("%lld %lld %d %d\n", request,
 			ktime_to_us(ktime_sub(exit_time, entry_time)),
@@ -337,7 +375,7 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 		if ((timer_context.cntp_ctl & ARCH_TIMER_CTRL_ENABLE) &&
 		    ~(timer_context.cntp_ctl & ARCH_TIMER_CTRL_IT_MASK)) {
 			if (timer_context.cntp_tval <= 0) {
-				tegra_cpu_wfi();
+				cpu_do_idle();
 				return false;
 			}
 			request = div_u64((u64)timer_context.cntp_tval *
@@ -355,13 +393,13 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 		}
 	}
 
-	if (!tegra_is_lp2_timer_ready(dev->cpu) ||
+	if (!tegra_is_cpu_wake_timer_ready(dev->cpu) ||
 	    (request < state->target_residency) ||
 	    (!ts) || (ts->nohz_mode == NOHZ_MODE_INACTIVE)) {
 		/*
 		 * Not enough time left to enter LP2, or wake timer not ready
 		 */
-		tegra_cpu_wfi();
+		cpu_do_idle();
 		return false;
 	}
 
@@ -371,7 +409,7 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	sleep_time = request - state->exit_latency;
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
 	arch_timer_suspend(&timer_context);
-	tegra_lp2_set_trigger(sleep_time);
+	tegra_pd_set_trigger(sleep_time);
 #endif
 	idle_stats.tear_down_count[cpu_number(dev->cpu)]++;
 
@@ -389,23 +427,23 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	if (!arch_timer_get_state(&timer_context))
 		sleep_completed = (timer_context.cntp_tval <= 0);
 #else
-	sleep_completed = !tegra_lp2_timer_remain();
-	tegra_lp2_set_trigger(0);
+	sleep_completed = !tegra_pd_timer_remain();
+	tegra_pd_set_trigger(0);
 	arch_timer_resume(&timer_context);
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT, &dev->cpu);
 #endif
 	sleep_time = ktime_to_us(ktime_sub(ktime_get(), entry_time));
-	idle_stats.in_lp2_time[cpu_number(dev->cpu)] += sleep_time;
+	idle_stats.cpu_pg_time[cpu_number(dev->cpu)] += sleep_time;
 	if (sleep_completed) {
 		/*
 		 * Stayed in LP2 for the full time until timer expires,
 		 * adjust the exit latency based on measurement
 		 */
 		int offset = sleep_time - request;
-		int latency = lp2_exit_latencies[cpu_number(dev->cpu)] +
+		int latency = pd_exit_latencies[cpu_number(dev->cpu)] +
 			offset / 16;
 		latency = clamp(latency, 0, 10000);
-		lp2_exit_latencies[cpu_number(dev->cpu)] = latency;
+		pd_exit_latencies[cpu_number(dev->cpu)] = latency;
 		state->exit_latency = latency;		/* for idle governor */
 		smp_wmb();
 	}
@@ -415,15 +453,15 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	return true;
 }
 
-bool tegra11x_idle_lp2(struct cpuidle_device *dev,
+bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 			   struct cpuidle_state *state)
 {
-	bool entered_lp2;
+	bool power_down;
 	bool cpu_gating_only = false;
 	bool power_gating_cpu_only = true;
 	s64 request = ktime_to_us(tick_nohz_get_sleep_length());
 
-	tegra_set_cpu_in_lp2(dev->cpu);
+	tegra_set_cpu_in_pd(dev->cpu);
 	cpu_gating_only = (((fast_cluster_power_down_mode
 			<< TEGRA_POWER_CLUSTER_PART_SHIFT)
 			& TEGRA_POWER_CLUSTER_PART_MASK) == 0);
@@ -443,29 +481,17 @@ bool tegra11x_idle_lp2(struct cpuidle_device *dev,
 		power_gating_cpu_only = true;
 
 	if (power_gating_cpu_only)
-		entered_lp2 = tegra_cpu_core_power_down(dev, state, request);
+		power_down = tegra_cpu_core_power_down(dev, state, request);
 	else
-		entered_lp2 = tegra_cpu_cluster_power_down(dev, state, request);
+		power_down = tegra_cpu_cluster_power_down(dev, state, request);
 
-	tegra_clear_cpu_in_lp2(dev->cpu);
+	tegra_clear_cpu_in_pd(dev->cpu);
 
-	return entered_lp2;
-}
-
-int tegra11x_cpuidle_init_soc(void)
-{
-	int i;
-
-	cpu_clk_for_dvfs = tegra_get_clock_by_name("cpu_g");
-
-	for (i = 0; i < ARRAY_SIZE(lp2_exit_latencies); i++)
-		lp2_exit_latencies[i] = tegra_lp2_exit_latency;
-
-	return 0;
+	return power_down;
 }
 
 #ifdef CONFIG_DEBUG_FS
-int tegra11x_lp2_debug_show(struct seq_file *s, void *data)
+int tegra11x_pd_debug_show(struct seq_file *s, void *data)
 {
 	int bin;
 	int i;
@@ -483,56 +509,120 @@ int tegra11x_lp2_debug_show(struct seq_file *s, void *data)
 		idle_stats.tear_down_count[2],
 		idle_stats.tear_down_count[3],
 		idle_stats.tear_down_count[4]);
-	seq_printf(s, "lp2:            %8u\n", idle_stats.lp2_count);
-	seq_printf(s, "lp2 completed:  %8u %7u%%\n",
-		idle_stats.lp2_completed_count,
-		idle_stats.lp2_completed_count * 100 /
-			(idle_stats.lp2_count ?: 1));
+	seq_printf(s, "rail gating count:      %8u\n",
+		idle_stats.rail_gating_count);
+	seq_printf(s, "rail gating completed:  %8u %7u%%\n",
+		idle_stats.rail_gating_done_count,
+		idle_stats.rail_gating_done_count * 100 /
+			(idle_stats.rail_gating_count ?: 1));
+
+	seq_printf(s, "c0nc gating count:      %8u\n",
+		idle_stats.c0nc_gating_count);
+	seq_printf(s, "c0nc gating completed:  %8u %7u%%\n",
+		idle_stats.c0nc_gating_done_count,
+		idle_stats.c0nc_gating_done_count * 100 /
+			(idle_stats.c0nc_gating_count ?: 1));
+
+	seq_printf(s, "c1nc gating count:      %8u\n",
+		idle_stats.c1nc_gating_count);
+	seq_printf(s, "c1nc gating completed:  %8u %7u%%\n",
+		idle_stats.c1nc_gating_done_count,
+		idle_stats.c1nc_gating_done_count * 100 /
+			(idle_stats.c1nc_gating_count ?: 1));
 
 	seq_printf(s, "\n");
-	seq_printf(s, "cpu ready time:                 %8llu %8llu %8llu %8llu %8llu ms\n",
-		div64_u64(idle_stats.cpu_wants_lp2_time[0], 1000),
-		div64_u64(idle_stats.cpu_wants_lp2_time[1], 1000),
-		div64_u64(idle_stats.cpu_wants_lp2_time[2], 1000),
-		div64_u64(idle_stats.cpu_wants_lp2_time[3], 1000),
-		div64_u64(idle_stats.cpu_wants_lp2_time[4], 1000));
+	seq_printf(s, "cpu ready time:                 " \
+			"%8llu %8llu %8llu %8llu %8llu ms\n",
+		div64_u64(idle_stats.cpu_wants_pd_time[0], 1000),
+		div64_u64(idle_stats.cpu_wants_pd_time[1], 1000),
+		div64_u64(idle_stats.cpu_wants_pd_time[2], 1000),
+		div64_u64(idle_stats.cpu_wants_pd_time[3], 1000),
+		div64_u64(idle_stats.cpu_wants_pd_time[4], 1000));
 
-	seq_printf(s, "lp2 time:                       %8llu %8llu %8llu %8llu %8llu ms\n",
-		div64_u64(idle_stats.in_lp2_time[0], 1000),
-		div64_u64(idle_stats.in_lp2_time[1], 1000),
-		div64_u64(idle_stats.in_lp2_time[2], 1000),
-		div64_u64(idle_stats.in_lp2_time[3], 1000),
-		div64_u64(idle_stats.in_lp2_time[4], 1000));
+	seq_printf(s, "cpu power gating time:          " \
+			"%8llu %8llu %8llu %8llu %8llu ms\n",
+		div64_u64(idle_stats.cpu_pg_time[0], 1000),
+		div64_u64(idle_stats.cpu_pg_time[1], 1000),
+		div64_u64(idle_stats.cpu_pg_time[2], 1000),
+		div64_u64(idle_stats.cpu_pg_time[3], 1000),
+		div64_u64(idle_stats.cpu_pg_time[4], 1000));
 
-	seq_printf(s, "lp2 %%:                         %7d%% %7d%% %7d%% %7d%% %7d%%\n",
-		(int)(idle_stats.cpu_wants_lp2_time[0] ?
-			div64_u64(idle_stats.in_lp2_time[0] * 100,
-			idle_stats.cpu_wants_lp2_time[0]) : 0),
-		(int)(idle_stats.cpu_wants_lp2_time[1] ?
-			div64_u64(idle_stats.in_lp2_time[1] * 100,
-			idle_stats.cpu_wants_lp2_time[1]) : 0),
-		(int)(idle_stats.cpu_wants_lp2_time[2] ?
-			div64_u64(idle_stats.in_lp2_time[2] * 100,
-			idle_stats.cpu_wants_lp2_time[2]) : 0),
-		(int)(idle_stats.cpu_wants_lp2_time[3] ?
-			div64_u64(idle_stats.in_lp2_time[3] * 100,
-			idle_stats.cpu_wants_lp2_time[3]) : 0),
-		(int)(idle_stats.cpu_wants_lp2_time[4] ?
-			div64_u64(idle_stats.in_lp2_time[4] * 100,
-			idle_stats.cpu_wants_lp2_time[4]) : 0));
+	seq_printf(s, "power gated %%:                 " \
+			"%7d%% %7d%% %7d%% %7d%% %7d%%\n",
+		(int)(idle_stats.cpu_wants_pd_time[0] ?
+			div64_u64(idle_stats.cpu_pg_time[0] * 100,
+			idle_stats.cpu_wants_pd_time[0]) : 0),
+		(int)(idle_stats.cpu_wants_pd_time[1] ?
+			div64_u64(idle_stats.cpu_pg_time[1] * 100,
+			idle_stats.cpu_wants_pd_time[1]) : 0),
+		(int)(idle_stats.cpu_wants_pd_time[2] ?
+			div64_u64(idle_stats.cpu_pg_time[2] * 100,
+			idle_stats.cpu_wants_pd_time[2]) : 0),
+		(int)(idle_stats.cpu_wants_pd_time[3] ?
+			div64_u64(idle_stats.cpu_pg_time[3] * 100,
+			idle_stats.cpu_wants_pd_time[3]) : 0),
+		(int)(idle_stats.cpu_wants_pd_time[4] ?
+			div64_u64(idle_stats.cpu_pg_time[4] * 100,
+			idle_stats.cpu_wants_pd_time[4]) : 0));
+
+	seq_printf(s, "\n");
+	seq_printf(s, "rail gating time  c0nc gating time  c1nc gating time\n");
+	seq_printf(s, "%8llu ms          %8llu ms          %8llu ms\n",
+		div64_u64(idle_stats.rail_pd_time, 1000),
+		div64_u64(idle_stats.c0nc_pg_time, 1000),
+		div64_u64(idle_stats.c1nc_pg_time, 1000));
+	seq_printf(s, "%8d%%             %8d%%             %8d%%\n",
+		(int)(idle_stats.cpu_wants_pd_time[0] ?
+			div64_u64(idle_stats.rail_pd_time * 100,
+			idle_stats.cpu_wants_pd_time[0]) : 0),
+		(int)(idle_stats.cpu_wants_pd_time[0] ?
+			div64_u64(idle_stats.c0nc_pg_time * 100,
+			idle_stats.cpu_wants_pd_time[0]) : 0),
+		(int)(idle_stats.cpu_wants_pd_time[4] ?
+			div64_u64(idle_stats.c1nc_pg_time * 100,
+			idle_stats.cpu_wants_pd_time[4]) : 0));
+
 	seq_printf(s, "\n");
 
-	seq_printf(s, "%19s %8s %8s %8s\n", "", "lp2", "comp", "%");
+	seq_printf(s, "%19s %8s %8s %8s\n", "", "rail gating", "comp", "%");
 	seq_printf(s, "-------------------------------------------------\n");
 	for (bin = 0; bin < 32; bin++) {
-		if (idle_stats.lp2_count_bin[bin] == 0)
+		if (idle_stats.rail_gating_bin[bin] == 0)
 			continue;
 		seq_printf(s, "%6u - %6u ms: %8u %8u %7u%%\n",
 			1 << (bin - 1), 1 << bin,
-			idle_stats.lp2_count_bin[bin],
-			idle_stats.lp2_completed_count_bin[bin],
-			idle_stats.lp2_completed_count_bin[bin] * 100 /
-				idle_stats.lp2_count_bin[bin]);
+			idle_stats.rail_gating_bin[bin],
+			idle_stats.rail_gating_done_count_bin[bin],
+			idle_stats.rail_gating_done_count_bin[bin] * 100 /
+				idle_stats.rail_gating_bin[bin]);
+	}
+	seq_printf(s, "\n");
+
+	seq_printf(s, "%19s %8s %8s %8s\n", "", "c0nc gating", "comp", "%");
+	seq_printf(s, "-------------------------------------------------\n");
+	for (bin = 0; bin < 32; bin++) {
+		if (idle_stats.c0nc_gating_bin[bin] == 0)
+			continue;
+		seq_printf(s, "%6u - %6u ms: %8u %8u %7u%%\n",
+			1 << (bin - 1), 1 << bin,
+			idle_stats.c0nc_gating_bin[bin],
+			idle_stats.c0nc_gating_done_count_bin[bin],
+			idle_stats.c0nc_gating_done_count_bin[bin] * 100 /
+				idle_stats.c0nc_gating_bin[bin]);
+	}
+	seq_printf(s, "\n");
+
+	seq_printf(s, "%19s %8s %8s %8s\n", "", "c1nc gating", "comp", "%");
+	seq_printf(s, "-------------------------------------------------\n");
+	for (bin = 0; bin < 32; bin++) {
+		if (idle_stats.c1nc_gating_bin[bin] == 0)
+			continue;
+		seq_printf(s, "%6u - %6u ms: %8u %8u %7u%%\n",
+			1 << (bin - 1), 1 << bin,
+			idle_stats.c1nc_gating_bin[bin],
+			idle_stats.c1nc_gating_done_count_bin[bin],
+			idle_stats.c1nc_gating_done_count_bin[bin] * 100 /
+				idle_stats.c1nc_gating_bin[bin]);
 	}
 
 	seq_printf(s, "\n");
@@ -540,16 +630,38 @@ int tegra11x_lp2_debug_show(struct seq_file *s, void *data)
 		"int", "name", "count", "last count");
 	seq_printf(s, "--------------------------------------------\n");
 	for (i = 0; i < NR_IRQS; i++) {
-		if (idle_stats.lp2_int_count[i] == 0)
+		if (idle_stats.pd_int_count[i] == 0)
 			continue;
 		seq_printf(s, "%3d %20s %6d %10d\n",
 			i, irq_to_desc(i)->action ?
 				irq_to_desc(i)->action->name ?: "???" : "???",
-			idle_stats.lp2_int_count[i],
-			idle_stats.lp2_int_count[i] -
-				idle_stats.last_lp2_int_count[i]);
-		idle_stats.last_lp2_int_count[i] = idle_stats.lp2_int_count[i];
+			idle_stats.pd_int_count[i],
+			idle_stats.pd_int_count[i] -
+				idle_stats.last_pd_int_count[i]);
+		idle_stats.last_pd_int_count[i] = idle_stats.pd_int_count[i];
 	};
 	return 0;
 }
 #endif
+
+int __init tegra11x_cpuidle_init_soc(struct tegra_cpuidle_ops *idle_ops)
+{
+	int i;
+	struct tegra_cpuidle_ops ops = {
+		tegra11x_idle_power_down,
+		tegra11x_cpu_idle_stats_pd_ready,
+		tegra11x_cpu_idle_stats_pd_time,
+		tegra11x_pd_is_allowed,
+#ifdef CONFIG_DEBUG_FS
+		tegra11x_pd_debug_show
+#endif
+	};
+
+	cpu_clk_for_dvfs = tegra_get_clock_by_name("cpu_g");
+
+	for (i = 0; i < ARRAY_SIZE(pd_exit_latencies); i++)
+		pd_exit_latencies[i] = tegra_pg_exit_latency;
+
+	*idle_ops = ops;
+	return 0;
+}

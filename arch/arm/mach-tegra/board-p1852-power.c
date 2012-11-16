@@ -22,6 +22,12 @@
 #include "pm.h"
 #include "wakeups-t3.h"
 
+#define CPU_SOFTRST_CTRL		0x380
+
+static void __iomem *reg_clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+
+#define clk_writel(value, reg) \
+	__raw_writel(value, (u32)reg_clk_base + (reg))
 
 static struct tegra_suspend_platform_data p1852_suspend_data = {
 	/* FIXME: This value needs to come from SysEng */
@@ -31,8 +37,11 @@ static struct tegra_suspend_platform_data p1852_suspend_data = {
 	.cpu_lp2_min_residency = 2000,
 };
 
+
 int __init p1852_suspend_init(void)
 {
+	/* FIXME Get correct value from sys-eng */
+	clk_writel(0x8040, CPU_SOFTRST_CTRL);
 	tegra_init_suspend(&p1852_suspend_data);
 	return 0;
 }

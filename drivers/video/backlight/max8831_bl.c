@@ -27,6 +27,7 @@
 #include <linux/i2c.h>
 #include <linux/err.h>
 #include <linux/mfd/max8831.h>
+#include <linux/max8831_backlight.h>
 #include <linux/regulator/consumer.h>
 
 struct max8831_backlight_data {
@@ -34,6 +35,9 @@ struct max8831_backlight_data {
 	int			id;
 	int			current_brightness;
 	struct regulator	*regulator;
+
+	int (*notify)(struct device *dev, int brightness);
+	bool (*is_powered)(void);
 };
 
 static int max8831_backlight_set(struct backlight_device *bl, int brightness)
@@ -43,6 +47,10 @@ static int max8831_backlight_set(struct backlight_device *bl, int brightness)
 
 	/* ranges from 0-255 */
 	data->current_brightness = brightness;
+
+	if (data->is_powered)
+		if (!data->is_powered())
+			return 0;
 
 	if (data->id == MAX8831_BL_LEDS) {
 		/* map 0-255 brightness to max8831 range */
@@ -66,7 +74,9 @@ static int max8831_backlight_set(struct backlight_device *bl, int brightness)
 }
 static int max8831_backlight_update_status(struct backlight_device *bl)
 {
+	struct max8831_backlight_data *data = bl_get_data(bl);
 	int brightness = bl->props.brightness;
+
 /*
 	if (bl->props.power != FB_BLANK_UNBLANK)
 		brightness = 0;
@@ -74,6 +84,10 @@ static int max8831_backlight_update_status(struct backlight_device *bl)
 	if (bl->props.fb_blank != FB_BLANK_UNBLANK)
 		brightness = 0;
 */
+
+	if (data->notify)
+		brightness = data->notify(data->max8831_dev, brightness);
+
 	return max8831_backlight_set(bl, brightness);
 }
 
@@ -93,6 +107,7 @@ static int __devinit max8831_bl_probe(struct platform_device *pdev)
 	struct max8831_backlight_data *data;
 	struct backlight_device *bl;
 	struct backlight_properties props;
+	struct platform_max8831_backlight_data *pData = pdev->dev.platform_data;
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 	if (data == NULL)
@@ -101,6 +116,8 @@ static int __devinit max8831_bl_probe(struct platform_device *pdev)
 	data->max8831_dev = pdev->dev.parent;
 	data->current_brightness = 0;
 	data->id = pdev->id;
+	data->notify = pData->notify;
+	data->is_powered = pData->is_powered;
 	data->regulator = regulator_get(data->max8831_dev,
 			"avdd_backlight_3v0");
 	if (IS_ERR(data->regulator)) {
@@ -120,7 +137,7 @@ static int __devinit max8831_bl_probe(struct platform_device *pdev)
 		return PTR_ERR(bl);
 	}
 
-	bl->props.brightness = MAX8831_BL_LEDS_MAX_CURR;
+	bl->props.brightness = pData->dft_brightness;
 
 	platform_set_drvdata(pdev, bl);
 	backlight_update_status(bl);

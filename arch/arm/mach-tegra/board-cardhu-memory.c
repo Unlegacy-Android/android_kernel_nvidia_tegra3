@@ -7692,7 +7692,7 @@ static struct tegra30_emc_pdata cardhu_emc_chip_h5tc4g = {
 	.num_tables = ARRAY_SIZE(cardhu_emc_tables_h5tc4g83mfr)
 };
 
-int cardhu_emc_init(void)
+int __init cardhu_emc_init(void)
 {
 	struct board_info board;
 	struct tegra30_emc_pdata *emc_platdata = NULL;

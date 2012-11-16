@@ -158,11 +158,11 @@ static struct resource pinmux_resource[] = {
 
 struct platform_device tegra_pinmux_device = {
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	.name		= "tegra30-pinmux-ctlr",
+	.name		= "tegra30-pinmux-ctl",
 #elif defined(CONFIG_ARCH_TEGRA_2x_SOC)
-	.name		= "tegra20-pinmux-ctlr",
+	.name		= "tegra20-pinmux-ctl",
 #elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	.name		= "tegra11x-pinmux",
+	.name		= "tegra11x-pinmux-ctl",
 #endif
 	.id		= -1,
 	.resource	= pinmux_resource,
@@ -1891,7 +1891,7 @@ struct resource tegra_nvavp_resources[] = {
 	},
 };
 
-struct nvhost_device nvavp_device = {
+struct platform_device nvavp_device = {
 	.name           = "nvavp",
 	.id             = -1,
 	.resource       = tegra_nvavp_resources,
@@ -2090,7 +2090,7 @@ static struct resource tegra_disp1_resources[] = {
 	},
 };
 
-struct nvhost_device tegra_disp1_device = {
+struct platform_device tegra_disp1_device = {
 	.name		= "tegradc",
 	.id		= 0,
 	.resource	= tegra_disp1_resources,
@@ -2124,7 +2124,7 @@ static struct resource tegra_disp2_resources[] = {
 	},
 };
 
-struct nvhost_device tegra_disp2_device = {
+struct platform_device tegra_disp2_device = {
 	.name		= "tegradc",
 	.id		= 1,
 	.resource	= tegra_disp2_resources,

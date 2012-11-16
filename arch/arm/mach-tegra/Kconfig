@@ -113,6 +113,7 @@ config ARCH_TEGRA_11x_SOC
 	select REPORT_PRESENT_CPUS if TEGRA_AUTO_HOTPLUG
 	select TEGRA_LP2_CPU_TIMER if !TEGRA_RAIL_OFF_MULTIPLE_CPUS
 	select CPA
+	select NVMAP_CACHE_MAINT_BY_SET_WAYS
 	select ARCH_TEGRA_HAS_CL_DVFS
 	select TEGRA_DYNAMIC_CBUS
 	select TEGRA_DUAL_CBUS
@@ -121,10 +122,10 @@ config ARCH_TEGRA_11x_SOC
 	select TEGRA_LATENCY_ALLOWANCE if !TEGRA_FPGA_PLATFORM
 	select TEGRA_MC_PTSA if !TEGRA_FPGA_PLATFORM
 	select SOC_BUS
-	select TEGRA_USE_DFLL if TEGRA_SILICON_PLATFORM
 	select TEGRA_ISOMGR
 	select TEGRA_ISOMGR_SYSFS
 	select TEGRA_ISOMGR_DEBUG
+	select TEGRA_ERRATA_1157520
 	help
 	  Support for NVIDIA Tegra 11x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
@@ -314,6 +315,14 @@ config MACH_TEGRA_PLUTO
        help
          Support for NVIDIA PLUTO development platform
 
+config MACH_ROTH
+       bool "Thor board"
+       depends on ARCH_TEGRA_11x_SOC
+       select MACH_HAS_SND_SOC_TEGRA_RT5639 if SND_SOC
+       select MACH_HAS_SND_SOC_TEGRA_RT5640 if SND_SOC
+       help
+         Support for NVIDIA THOR development platform
+
 choice
        prompt "Tegra platform type"
        default TEGRA_SILICON_PLATFORM
@@ -325,6 +334,7 @@ config TEGRA_SILICON_PLATFORM
 
 config TEGRA_SIMULATION_PLATFORM
         bool "Simulation"
+	select LESS_GCC_OPT if DEBUG_KERNEL
         help
           This enables support for a Tegra simulation platform.
           Select this only if you are an NVIDIA developer working
@@ -517,12 +527,21 @@ config TEGRA_AUTO_HOTPLUG
 
 config TEGRA_MC_EARLY_ACK
 	bool "Enable early acknowledgement from mermory controller"
-	depends on ARCH_TEGRA_3x_SOC
+	depends on ARCH_TEGRA_3x_SOC || ARCH_TEGRA_11x_SOC
 	default y
 	help
 	  This option enables early acknowledgement from memory
 	  controller. This feature is used to improve CPU memory
 	  write performance.
+
+config TEGRA_ERRATA_1157520
+	bool "Memory writes are not consistent/ordered from CPU"
+	depends on ARCH_TEGRA_11x_SOC
+	help
+	  On T11x With early ack scoreboard on, the read/writes to
+	  SO and Non-Cached meory are randomly not observed in the
+	  order they are performed. Enabling this errata disables
+	  early ack scoreboard for T11x.
 
 config TEGRA_MC_PROFILE
 	tristate "Enable profiling memory controller utilization"
@@ -780,18 +799,55 @@ config TEGRA_IO_DPD
 	  Deep Power Down (DPD) state. This is a temporary config
 	  option until a proper way is implemented to resolve this issue.
 
-config TEGRA_USE_DFLL
-	bool "Use DFLL as CPU clock source by default"
+config TEGRA_USE_DFLL_RANGE
+	int "Default CPU DFLL operating range"
 	depends on ARCH_TEGRA_HAS_CL_DVFS
-	default n
-        help
-	  Enables dynamic frequency lock loop (DFLL) as CPU clock
-	  source.
+	range 0 2
+	default "1" if TEGRA_SILICON_PLATFORM
+	default "0"
+	help
+	  Defines default range for dynamic frequency lock loop (DFLL)
+	  to be used as CPU clock source:
+	  "0" - DFLL is not used,
+	  "1" - DFLL is used as a source for all CPU rates
+	  "2" - DFLL is used only for high rates above crossover with
+		PLL dvfs curve
+
+config TEGRA_TIMER_HZ
+	int "Kernel HZ (jiffies per second)"
+	default "100" if TEGRA_FPGA_PLATFORM
+	default "1000"
 
 config TEGRA_SOCTHERM
 	bool "Enable soctherm"
-	default n
+	depends on ARCH_TEGRA_11x_SOC
+	default y
         help
 	  Enables use of soctherm for thermal management.
 
+config TEGRA_VIRTUAL_CPUID
+	bool "virtualized CPUID"
+	depends on !TRUSTED_FOUNDATIONS
+	depends on ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+	default n
+	help
+	  Enables virtualized CPUID.
+
+config TEGRA_NVDUMPER
+	bool "Enable NvDumper for post-mortem debugging"
+	default n
+	help
+	  The nvdumper is a tool that saves a copy of RAM following a crash.
+	  nvdumper kernel module tracks whether the system has been rebooted
+	  cleanly. It does this by writing 'dirty' to a fixed physical memory
+	  address when the kernel starts.
+	  Then, on a planned reboot, we write 'clean' to this location.
+	  The bootloader can then examine this location and see if the reboot
+	  was dirty or clean.
+	  It will dump the contents of memory after a dirty reboot.
+	  This tool would be helpful for debugging kernel crash.
+	  In order to use this feature, you should enable debug feature in
+	  bootloader compiling option also (-DENABLE_NVDUMPER).
+	  You can dump RAM with nvflash tool in dirty boot status.
+	  usage: nvflash --dumpram [phy. RAM offset] [length] <filename>
 endif

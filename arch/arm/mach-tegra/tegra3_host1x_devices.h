@@ -21,6 +21,6 @@
 #ifndef TEGRA3_HOST1X_DEVICES_H
 #define TEGRA3_HOST1X_DEVICES_H
 
-int tegra3_register_host1x_devices(void);
+struct platform_device *tegra3_register_host1x_devices(void);
 
 #endif

@@ -30,6 +30,9 @@
 
 #include <mach/iovmm.h>
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/nvmap_iovmm.h>
+
 /*
  * after the best-fit block is located, the remaining pages not needed
  * for the allocation will be split into a new free block if the
@@ -512,6 +515,9 @@ struct tegra_iovmm_area *tegra_iovmm_create_vm(
 	}
 	up_read(&b->vm_area.domain->map_lock);
 
+	trace_tegra_iovmm_create_vm(current ? current->comm:"No process ctx",
+		iovmm_start(b), iovmm_end(b));
+
 	return &b->vm_area;
 }
 
@@ -576,6 +582,10 @@ void tegra_iovmm_free_vm(struct tegra_iovmm_area *vm)
 		return;
 
 	b = container_of(vm, struct tegra_iovmm_block, vm_area);
+
+	trace_tegra_iovmm_free_vm(current ? current->comm:"No process ctx",
+		iovmm_start(b), iovmm_end(b));
+
 	domain = vm->domain;
 	down_read(&domain->map_lock);
 	if (!test_and_clear_bit(BK_MAP_DIRTY, &b->flags))

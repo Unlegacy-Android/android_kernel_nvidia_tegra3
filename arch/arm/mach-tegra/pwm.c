@@ -57,11 +57,11 @@ static inline int pwm_writel(struct pwm_device *pwm, unsigned long val)
 {
 	int rc;
 
-	rc = clk_enable(pwm->clk);
+	rc = clk_prepare_enable(pwm->clk);
 	if (WARN_ON(rc))
 		return rc;
 	writel(val, pwm->mmio_base);
-	clk_disable(pwm->clk);
+	clk_disable_unprepare(pwm->clk);
 	return 0;
 }
 
@@ -109,7 +109,7 @@ int pwm_enable(struct pwm_device *pwm)
 
 	mutex_lock(&pwm_lock);
 	if (!pwm->clk_enb) {
-		rc = clk_enable(pwm->clk);
+		rc = clk_prepare_enable(pwm->clk);
 		if (!rc) {
 			u32 val = readl(pwm->mmio_base);
 			writel(val | PWM_ENABLE, pwm->mmio_base);
@@ -128,7 +128,7 @@ void pwm_disable(struct pwm_device *pwm)
 	if (pwm->clk_enb) {
 		u32 val = readl(pwm->mmio_base);
 		writel(val & ~PWM_ENABLE, pwm->mmio_base);
-		clk_disable(pwm->clk);
+		clk_disable_unprepare(pwm->clk);
 		pwm->clk_enb = 0;
 	} else
 		dev_warn(&pwm->pdev->dev, "%s called on disabled PWM\n",
@@ -243,7 +243,7 @@ static int __devexit tegra_pwm_remove(struct platform_device *pdev)
 
 	rc = pwm_writel(pwm, 0);
 	if (pwm->clk_enb)
-		clk_disable(pwm->clk);
+		clk_disable_unprepare(pwm->clk);
 
 	return rc;
 }

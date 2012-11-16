@@ -22,13 +22,15 @@
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/resource.h>
-#include <asm/mach-types.h>
 #include <linux/platform_device.h>
 #include <linux/tegra_pwm_bl.h>
 #include <linux/pwm_backlight.h>
-#include <asm/atomic.h>
 #include <linux/nvhost.h>
 #include <linux/nvmap.h>
+
+#include <asm/mach-types.h>
+#include <asm/atomic.h>
+
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/dc.h>
@@ -148,6 +150,41 @@ static tegra_dc_bl_output enterprise_bl_output_measured_a03 = {
 	250, 251, 251, 252, 253, 254, 254, 255,
 };
 
+static tegra_dc_bl_output tai_bl_output_measured = {
+	0, 1, 2, 4, 5, 6, 8, 9,
+	10, 12, 13, 14, 15, 16, 16, 17,
+	18, 19, 20, 20, 21, 22, 24, 25,
+	26, 27, 28, 29, 30, 31, 33, 34,
+	35, 36, 37, 38, 39, 41, 42, 43,
+	44, 45, 46, 46, 47, 48, 49, 50,
+	50, 51, 52, 53, 53, 54, 55, 55,
+	56, 57, 57, 58, 58, 59, 60, 61,
+	62, 63, 64, 65, 65, 66, 67, 68,
+	68, 69, 70, 70, 71, 72, 73, 73,
+	74, 75, 76, 77, 77, 78, 79, 80,
+	81, 82, 83, 84, 85, 86, 87, 87,
+	88, 89, 90, 91, 92, 93, 94, 94,
+	95, 95, 96, 97, 97, 98, 99, 99,
+	100, 101, 101, 102, 103, 103, 104, 105,
+	105, 106, 107, 108, 108, 109, 110, 111,
+	111, 112, 113, 114, 115, 115, 116, 117,
+	118, 119, 120, 121, 121, 122, 123, 124,
+	125, 126, 126, 127, 128, 129, 130, 131,
+	132, 133, 134, 134, 135, 136, 137, 138,
+	139, 140, 141, 143, 144, 145, 146, 147,
+	148, 149, 151, 152, 153, 154, 155, 156,
+	157, 158, 159, 160, 161, 163, 164, 165,
+	166, 167, 169, 170, 171, 172, 173, 175,
+	176, 177, 179, 180, 182, 183, 185, 186,
+	187, 189, 190, 191, 193, 194, 195, 197,
+	198, 199, 200, 202, 203, 204, 205, 207,
+	208, 209, 210, 212, 213, 214, 215, 216,
+	218, 219, 220, 221, 222, 223, 225, 226,
+	227, 228, 229, 231, 232, 233, 234, 235,
+	237, 238, 239, 241, 242, 244, 245, 246,
+	248, 249, 250, 251, 252, 253, 254, 255,
+};
+
 static p_tegra_dc_bl_output bl_output;
 
 static bool kernel_1st_panel_init = true;
@@ -156,14 +193,14 @@ static int enterprise_backlight_notify(struct device *unused, int brightness)
 {
 	int cur_sd_brightness = atomic_read(&sd_brightness);
 
-	/* SD brightness is a percentage, 8-bit value. */
-	brightness = (brightness * cur_sd_brightness) / 255;
-
 	/* Apply any backlight response curve */
 	if (brightness > 255)
 		pr_info("Error: Brightness > 255!\n");
 	else
 		brightness = bl_output[brightness];
+
+	/* SD brightness is a percentage, 8-bit value. */
+	brightness = (brightness * cur_sd_brightness) / 255;
 
 	return brightness;
 }
@@ -817,7 +854,7 @@ static struct tegra_dc_platform_data enterprise_disp1_pdata = {
 	.fb		= &enterprise_dsi_fb_data,
 };
 
-static struct nvhost_device enterprise_disp1_device = {
+static struct platform_device enterprise_disp1_device = {
 	.name		= "tegradc",
 	.id		= 0,
 	.resource	= enterprise_disp1_resources,
@@ -832,7 +869,7 @@ static int enterprise_disp1_check_fb(struct device *dev, struct fb_info *info)
 	return info->device == &enterprise_disp1_device.dev;
 }
 
-static struct nvhost_device enterprise_disp2_device = {
+static struct platform_device enterprise_disp2_device = {
 	.name		= "tegradc",
 	.id		= 1,
 	.resource	= enterprise_disp2_resources,
@@ -896,6 +933,7 @@ int __init enterprise_panel_init(void)
 	int err;
 	struct resource __maybe_unused *res;
 	struct board_info board_info;
+	struct platform_device *phost1x;
 
 	tegra_get_board_info(&board_info);
 
@@ -911,10 +949,8 @@ int __init enterprise_panel_init(void)
 		} else
 			bl_output = enterprise_bl_output_measured_a02;
 	} else {
-		enterprise_bl_devices[0]         =
-					&external_pwm_disp1_backlight_device;
-		bl_output                        =
-					enterprise_bl_output_measured_a03;
+		enterprise_bl_devices[0] = &external_pwm_disp1_backlight_device;
+		bl_output = tai_bl_output_measured;
 	}
 	enterprise_dsi.chip_id = tegra_get_chipid();
 	enterprise_dsi.chip_rev = tegra_revision;
@@ -1000,21 +1036,21 @@ int __init enterprise_panel_init(void)
 	}
 #endif
 
+	if (board_info.board_id != BOARD_E1239)
+		err = platform_add_devices(enterprise_gfx_devices,
+			ARRAY_SIZE(enterprise_gfx_devices));
+	else
+		err = platform_add_devices(external_pwm_gfx_devices,
+			ARRAY_SIZE(external_pwm_gfx_devices));
+
 #ifdef CONFIG_TEGRA_GRHOST
-	err = tegra3_register_host1x_devices();
-	if (err)
-		return err;
+	phost1x = tegra3_register_host1x_devices();
+	if (!phost1x)
+		return -EINVAL;
 #endif
 
-	if (board_info.board_id != BOARD_E1239) {
-		err = platform_add_devices(enterprise_gfx_devices,
-					ARRAY_SIZE(enterprise_gfx_devices));
-	} else {
-		err = platform_add_devices(external_pwm_gfx_devices,
-					ARRAY_SIZE(external_pwm_gfx_devices));
-	}
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	res = nvhost_get_resource_byname(&enterprise_disp1_device,
+	res = platform_get_resource_byname(&enterprise_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
@@ -1025,20 +1061,26 @@ int __init enterprise_panel_init(void)
 		min(tegra_fb_size, tegra_bootloader_fb_size));
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	if (!err)
-		err = nvhost_device_register(&enterprise_disp1_device);
+	if (!err) {
+		enterprise_disp1_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&enterprise_disp1_device);
+	}
 
-	res = nvhost_get_resource_byname(&enterprise_disp2_device,
+	res = platform_get_resource_byname(&enterprise_disp2_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb2_start;
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
-	if (!err)
-		err = nvhost_device_register(&enterprise_disp2_device);
+	if (!err) {
+		enterprise_disp2_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&enterprise_disp2_device);
+	}
 #endif
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_NVAVP)
-	if (!err)
-		err = nvhost_device_register(&nvavp_device);
+	if (!err) {
+		nvavp_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&nvavp_device);
+	}
 #endif
 
 	if (!err)

@@ -263,7 +263,7 @@ static int find_safe_output(
 
 	for (i = 0; i < n; i++) {
 		if (freqs[i] >= rate) {
-			*safe_output = cld->clk_dvfs_map[i] ? : 1;
+			*safe_output = cld->clk_dvfs_map[i];
 			return 0;
 		}
 	}
@@ -683,10 +683,13 @@ int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 		val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
 		val &= ~(CL_DVFS_OUTPUT_CFG_SAFE_MASK |
 			 CL_DVFS_OUTPUT_CFG_MAX_MASK);
-		val |= req->output << CL_DVFS_OUTPUT_CFG_SAFE_SHIFT;
-		val |= req->output << CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
+
+		/* make sure we have at least one LUT step above and
+		   one below new safe value */
+		cld->safe_ouput = (req->output >= 2) ? (req->output - 1) : 1;
+		val |= (cld->safe_ouput + 1) << CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
+		val |= cld->safe_ouput << CL_DVFS_OUTPUT_CFG_SAFE_SHIFT;
 		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
-		cld->safe_ouput = req->output;
 
 		val = req->freq << CL_DVFS_FREQ_REQ_FREQ_SHIFT;
 		val |= req->scale << CL_DVFS_FREQ_REQ_SCALE_SHIFT;
@@ -746,8 +749,8 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 	/* Determine DFLL output scale */
 	req.scale = SCALE_MAX - 1;
 	if (rate < cld->dfll_rate_min) {
-		req.scale = rate / 1000 * SCALE_MAX /
-			(cld->dfll_rate_min / 1000);
+		req.scale = DIV_ROUND_UP((rate / 1000 * SCALE_MAX),
+			(cld->dfll_rate_min / 1000));
 		if (!req.scale) {
 			pr_err("%s: Rate %lu is below scalable range\n",
 			       __func__, rate);
@@ -808,7 +811,7 @@ unsigned long tegra_cl_dvfs_request_get(struct tegra_cl_dvfs *cld)
 	struct dfll_rate_req *req = &cld->last_req;
 	u32 rate = GET_REQUEST_RATE(req->freq, cld->ref_rate);
 	if ((req->scale + 1) < SCALE_MAX) {
-		rate = DIV_ROUND_UP(rate / 1000 * (req->scale + 1), SCALE_MAX);
+		rate = (rate / 1000 * (req->scale + 1)) / SCALE_MAX;
 		rate *= 1000;
 	}
 	return rate;

@@ -234,6 +234,11 @@ ENDPROC(tegra3_cpu_reset)
  * tegra3_tear_down_core in IRAM
  */
 ENTRY(tegra3_sleep_core_finish)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	mov	r4, r0
+	bl	tegra_flush_cache
+	mov	r0, r4
+#endif
 	bl	tegra_cpu_exit_coherency
 
 	/* preload all the address literals that are needed for the

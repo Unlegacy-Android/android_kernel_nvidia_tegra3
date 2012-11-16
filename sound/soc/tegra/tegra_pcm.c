@@ -125,7 +125,7 @@ static void setup_dma_tx_request(struct tegra_dma_req *req,
 	req->dest_bus_width = dmap->width;
 	req->req_sel = dmap->req_sel;
 	req->use_smmu = false;
-#ifdef TEGRA30_USE_SMMU
+#if TEGRA30_USE_SMMU
 	req->use_smmu = true;
 #endif
 }
@@ -142,7 +142,7 @@ static void setup_dma_rx_request(struct tegra_dma_req *req,
 	req->dest_bus_width = 32;
 	req->req_sel = dmap->req_sel;
 	req->use_smmu = false;
-#ifdef TEGRA30_USE_SMMU
+#if TEGRA30_USE_SMMU
 	req->use_smmu = true;
 #endif
 }
@@ -366,7 +366,7 @@ static int tegra_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 {
 	struct snd_pcm_substream *substream = pcm->streams[stream].substream;
 	struct snd_dma_buffer *buf = &substream->dma_buffer;
-#ifdef TEGRA30_USE_SMMU
+#if TEGRA30_USE_SMMU
 	unsigned char *vaddr;
 	phys_addr_t paddr;
 	struct tegra_smmu_data *ptsd;
@@ -402,7 +402,7 @@ void tegra_pcm_deallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 {
 	struct snd_pcm_substream *substream;
 	struct snd_dma_buffer *buf;
-#ifdef TEGRA30_USE_SMMU
+#if TEGRA30_USE_SMMU
 	struct tegra_smmu_data *ptsd;
 #endif
 
@@ -414,7 +414,7 @@ void tegra_pcm_deallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 	if (!buf->area)
 		return;
 
-#ifdef TEGRA30_USE_SMMU
+#if TEGRA30_USE_SMMU
 	if (!buf->private_data)
 		return;
 	ptsd = (struct tegra_smmu_data *)buf->private_data;

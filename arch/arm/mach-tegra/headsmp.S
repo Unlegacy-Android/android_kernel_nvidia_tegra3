@@ -51,6 +51,17 @@
 	__CPUINIT
 ENTRY(tegra_secondary_startup)
 	bl	__invalidate_cpu_state
+
+	/* enable user space perf counter access */
+	/* only accessible in secure state       */
+	mrc	p15, 0, r0, c9, c12, 0
+	lsr	r0, #11
+	and	r0, r0, #0x1f
+	movt	r0, #0x8000
+	mcr	p15, 0, r0, c9, c14, 2
+	mov	r0, #1
+	mcr	p15, 0, r0, c9, c14, 0
+
 	b	secondary_startup
 ENDPROC(tegra_secondary_startup)
 #endif
@@ -68,13 +79,16 @@ ENTRY(tegra_resume)
 	bl	__invalidate_cpu_state
 
 	cpu_id	r0
+#ifndef CONFIG_TEGRA_VIRTUAL_CPUID
 	cmp	r0, #0				@ CPU0?
 	bne	cpu_resume			@ no
+#endif
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	@ Clear the flow controller flags for this CPU.
-	mov32	r2, TEGRA_FLOW_CTRL_BASE+8	@ CPU0 CSR
-	ldr	r1, [r2]
+	cpu_to_csr_reg	r1, r0
+	mov32	r2, TEGRA_FLOW_CTRL_BASE
+	ldr	r1, [r2, r1]
 	orr	r1, r1, #(1 << 15) | (1 << 14)	@ write to clear event & intr
 	movw	r0, #0x3FFD	@ enable, enable_ext, cluster_switch, immed, & bitmaps
 	bic	r1, r1, r0
@@ -131,18 +145,17 @@ __invalidate_cpu_state:
 	mov32	r0, TEGRA_FLOW_CTRL_BASE+0x2c	@ CLUSTER_CONTROL
 	ldr	r0, [r0]
 	tst	r0, #1
-	bne	enable_icache_bp
+	movne	pc, lr
 	mrc	p15, 0x1, r0, c9, c0, 2
 	and	r1, r0, #7
 	cmp	r1, #2
-	beq	enable_icache_bp
-	bic r0, r0, #7
-	orr r0, r0, #2
-	mcr p15, 0x1, r0, c9, c0, 2
-
+	moveq	pc, lr
+	bic	r0, r0, #7
+	orr	r0, r0, #2
+	mcr	p15, 0x1, r0, c9, c0, 2
+	mov	pc, lr
 #endif
 
-enable_icache_bp:
 	dsb
 	mov	r0, #0x1800
 	mcr	p15, 0, r0, c1, c0, 0	@ enable branch prediction, i-cache
@@ -152,26 +165,12 @@ enable_icache_bp:
 /*
  *	tegra_invalidate_cache
  *
- *	  Invalidates the L1 or L2 data cache (no clean) during initial boot of
- *	  a cpu. For architecture with external L2, invalidate L1 only. For
- *	  architecture with integrated L2 and SCU, invalidate L2 if current CPU
- *	  boots up with a power gated NC partition initially or power rail was
- *	  initially off, invalidates L1 in other cases
+ *	  Invalidates the L1 data cache (no clean) during initial boot of a cpu
  *
  *	  Corrupted registers: r0-r6
  */
 tegra_invalidate_cache:
-#if defined(CONFIG_HAVE_ARM_SCU)
 	mov	r0, #0
-#else
-	cpu_id	r0
-	cpu_to_csr_reg	r1, r0
-	mov32	r0, TEGRA_FLOW_CTRL_BASE
-	ldr	r0, [r0, r1]
-	tst	r0, #FLOW_CTRL_CSR_ENABLE_EXT_MASK
-	movne	r0, #2
-	moveq	r0, #0
-#endif
 	mcr	p15, 2, r0, c0, c0, 0
 	mrc	p15, 1, r0, c0, c0, 0
 
@@ -198,10 +197,6 @@ tegra_invalidate_cache:
 	bgt	2b
 	cmp	r2, #0
 	bgt	1b
-#if !defined(CONFIG_HAVE_ARM_SCU)
-	mov	r0, #0
-	mcr	p15, 2, r0, c0, c0, 0
-#endif
 	dsb
 	isb
 	mov	pc, lr
@@ -315,10 +310,12 @@ __is_not_lp1:
 __is_not_lp2:
 
 #ifdef CONFIG_SMP
+#ifndef CONFIG_TEGRA_VIRTUAL_CPUID
 	/* Can only be secondary boot (initial or hotplug) but CPU 0
 	   cannot be here. */
 	cmp	r10, #0
 	bleq	__die				@ CPU0 cannot be here
+#endif
 	ldr	lr, [r12, #RESET_DATA(STARTUP_SECONDARY)]
 	cmp	lr, #0
 	bleq	__die				@ no secondary startup handler

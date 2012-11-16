@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pluto-power.c
  *
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -103,7 +103,7 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("avdd_audio", NULL),
 	REGULATOR_SUPPLY("vdd_com_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_bt_1v8", NULL),
-	REGULATOR_SUPPLY("vdd_ts_1v8", NULL),
+	REGULATOR_SUPPLY("dvdd", "spi3.2"),
 	REGULATOR_SUPPLY("avdd_pll_bb", NULL),
 };
 
@@ -155,12 +155,12 @@ static struct regulator_consumer_supply palmas_ldo4_supply[] = {
 
 static struct regulator_consumer_supply palmas_ldo5_supply[] = {
 	REGULATOR_SUPPLY("avdd_cam1", NULL),
+	REGULATOR_SUPPLY("vana", "2-0010"),
 };
 
 static struct regulator_consumer_supply palmas_ldo6_supply[] = {
 	REGULATOR_SUPPLY("vdd_temp", NULL),
 	REGULATOR_SUPPLY("vdd_mb", NULL),
-	REGULATOR_SUPPLY("avdd_ts_3v0", NULL),
 	REGULATOR_SUPPLY("avdd_backlight_3v0", "1-004d"),
 	REGULATOR_SUPPLY("vdd_nfc_3v0", NULL),
 	REGULATOR_SUPPLY("vdd_irled", NULL),
@@ -169,10 +169,12 @@ static struct regulator_consumer_supply palmas_ldo6_supply[] = {
 	REGULATOR_SUPPLY("vaux_3v3", NULL),
 	REGULATOR_SUPPLY("vdd", "0-0044"),
 	REGULATOR_SUPPLY("vdd", "0-004c"),
+	REGULATOR_SUPPLY("avdd", "spi3.2"),
 };
 
 static struct regulator_consumer_supply palmas_ldo7_supply[] = {
 	REGULATOR_SUPPLY("vdd_af_cam1", NULL),
+	REGULATOR_SUPPLY("vdd", "2-000e"),
 };
 static struct regulator_consumer_supply palmas_ldo8_supply[] = {
 	REGULATOR_SUPPLY("vdd_rtc", NULL),
@@ -183,6 +185,7 @@ static struct regulator_consumer_supply palmas_ldo9_supply[] = {
 };
 static struct regulator_consumer_supply palmas_ldoln_supply[] = {
 	REGULATOR_SUPPLY("avdd_cam2", NULL),
+	REGULATOR_SUPPLY("vana", "2-0036"),
 };
 
 static struct regulator_consumer_supply palmas_ldousb_supply[] = {
@@ -230,9 +233,9 @@ static struct regulator_consumer_supply palmas_regen2_supply[] = {
 
 PALMAS_PDATA_INIT(smps123, 900,  1300, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(smps45, 900,  1400, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(smps6, 1100,  1100, NULL, 0, 0, 1);
+PALMAS_PDATA_INIT(smps6, 850,  850, NULL, 0, 0, 1);
 PALMAS_PDATA_INIT(smps7, 1200,  1200, NULL, 0, 0, 1);
-PALMAS_PDATA_INIT(smps8, 1800,  1800, NULL, 0, 1, 1);
+PALMAS_PDATA_INIT(smps8, 1800,  1800, NULL, 1, 1, 1);
 PALMAS_PDATA_INIT(smps9, 2800,  2800, NULL, 0, 0, 1);
 PALMAS_PDATA_INIT(smps10, 5000,  5000, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo1, 1050,  1050, palmas_rails(smps7), 0, 0, 1);
@@ -240,7 +243,7 @@ PALMAS_PDATA_INIT(ldo2, 2800,  3000, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo3, 1200,  1200, palmas_rails(smps8), 0, 1, 1);
 PALMAS_PDATA_INIT(ldo4, 900,  3300, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo5, 2700,  2700, NULL, 0, 0, 1);
-PALMAS_PDATA_INIT(ldo6, 3000,  3000, NULL, 0, 0, 1);
+PALMAS_PDATA_INIT(ldo6, 3000,  3000, NULL, 1, 1, 1);
 PALMAS_PDATA_INIT(ldo7, 2800,  2800, NULL, 0, 0, 1);
 PALMAS_PDATA_INIT(ldo8, 900,  900, NULL, 1, 1, 1);
 PALMAS_PDATA_INIT(ldo9, 1800,  3300, palmas_rails(smps9), 0, 0, 1);
@@ -295,22 +298,22 @@ PALMAS_REG_INIT(smps123, 0, PALMAS_EXT_CONTROL_ENABLE1, 0, 0, 0);
 PALMAS_REG_INIT(smps3, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps45, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REG_INIT(smps457, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps6, 0, PALMAS_EXT_CONTROL_ENABLE2, 0, 0, 0);
+PALMAS_REG_INIT(smps6, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps7, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps8, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps9, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps10, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo1, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo2, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo3, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo4, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo5, 0, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo1, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+PALMAS_REG_INIT(ldo2, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+PALMAS_REG_INIT(ldo3, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+PALMAS_REG_INIT(ldo4, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+PALMAS_REG_INIT(ldo5, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REG_INIT(ldo6, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo7, 0, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo7, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REG_INIT(ldo8, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo9, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldoln, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldousb, 0, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo9, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+PALMAS_REG_INIT(ldoln, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+PALMAS_REG_INIT(ldousb, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 
 #define PALMAS_REG_INIT_DATA(_sname) &reg_init_data_##_sname
 static struct palmas_reg_init *pluto_reg_init[PALMAS_NUM_REGS] = {
@@ -374,10 +377,15 @@ static struct regulator_consumer_supply fixed_reg_en_battery_supply[] = {
 static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_cam_supply[] = {
 	REGULATOR_SUPPLY("vddio_cam_mb", NULL),
 	REGULATOR_SUPPLY("vdd_1v8_cam12", NULL),
+	REGULATOR_SUPPLY("vif", "2-0010"),
+	REGULATOR_SUPPLY("vif", "2-0036"),
+	REGULATOR_SUPPLY("vdd_i2c", "2-000e"),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_1v2_cam_supply[] = {
 	REGULATOR_SUPPLY("vdd_1v2_cam", NULL),
+	REGULATOR_SUPPLY("vdig", "2-0010"),
+	REGULATOR_SUPPLY("vdig", "2-0036"),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_avdd_usb3_1v05_supply[] = {
@@ -589,9 +597,24 @@ static int __init pluto_cl_dvfs_init(void)
 }
 #endif
 
+static struct palmas_dvfs_init_data palmas_dvfs_idata[] = {
+	{
+		.en_pwm = false,
+	}, {
+		.en_pwm = true,
+		.ext_ctrl = PALMAS_EXT_CONTROL_ENABLE2,
+		.reg_id = PALMAS_REG_SMPS6,
+		.step_20mV = true,
+		.base_voltage_uV = 500000,
+		.max_voltage_uV = 1100000,
+	},
+};
+
 static struct palmas_pmic_platform_data pmic_platform = {
 	.enable_ldo8_tracking = true,
 	.disabe_ldo8_tracking_suspend = true,
+	.dvfs_init_data = palmas_dvfs_idata,
+	.dvfs_init_data_size = ARRAY_SIZE(palmas_dvfs_idata),
 };
 
 struct palmas_clk32k_init_data palmas_clk32k_idata[] = {
@@ -612,9 +635,11 @@ static struct palmas_platform_data palmas_pdata = {
 	.pad1 = 0,
 	.pad2 = (PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_5_MASK &
 			(1 << PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_5_SHIFT)),
+	.pad3 = PALMAS_PRIMARY_SECONDARY_PAD3_DVFS2,
 	.clk32k_init_data =  palmas_clk32k_idata,
 	.clk32k_init_data_size = ARRAY_SIZE(palmas_clk32k_idata),
 	.irq_type = IRQ_TYPE_LEVEL_HIGH,
+	.use_power_off = true,
 };
 
 static struct i2c_board_info palma_device[] = {
@@ -703,8 +728,6 @@ static struct soctherm_platform_data pluto_soctherm_data = {
 	.sensor_data = {
 		[TSENSE_CPU0] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -713,8 +736,6 @@ static struct soctherm_platform_data pluto_soctherm_data = {
 		},
 		[TSENSE_CPU1] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -723,8 +744,6 @@ static struct soctherm_platform_data pluto_soctherm_data = {
 		},
 		[TSENSE_CPU2] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -733,38 +752,21 @@ static struct soctherm_platform_data pluto_soctherm_data = {
 		},
 		[TSENSE_CPU3] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
 			.tsample = 163,
 			.pdiv = 10,
 		},
+		/* MEM0/MEM1 won't be used */
 		[TSENSE_MEM0] = {
-			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
-			.tall = 16300,
-			.tiddq = 1,
-			.ten_count = 1,
-			.tsample = 163,
-			.pdiv = 10,
+			.enable = false,
 		},
 		[TSENSE_MEM1] = {
-			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
-			.tall = 16300,
-			.tiddq = 1,
-			.ten_count = 1,
-			.tsample = 163,
-			.pdiv = 10,
+			.enable = false,
 		},
 		[TSENSE_GPU] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -773,8 +775,6 @@ static struct soctherm_platform_data pluto_soctherm_data = {
 		},
 		[TSENSE_PLLX] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -782,56 +782,9 @@ static struct soctherm_platform_data pluto_soctherm_data = {
 			.pdiv = 10,
 		},
 	},
-
-	.therm = {
-		[THERM_CPU] = {
-			.thermtrip = 90, /* in C */
-			.hw_backstop = 37, /* in C */
-
-			.trip_temp = 68000, /* in mC */
-			.tc1 = 0,
-			.tc2 = 1,
-			.passive_delay = 2000,
-		},
-	},
-
-	.throttle = {
-		[THROTTLE_HEAVY] = {
-			.priority = 1,
-			.devs = {
-				[THROTTLE_DEV_CPU] = {
-					.enable = true,
-					.dividend = 1,
-					.divisor = 255,
-					.step = 0,
-					.duration = 65535,
-				},
-			},
-		},
-	},
 };
 
-static struct balanced_throttle tj_throttle = {
-	.throt_tab_size = 10,
-	.throt_tab = {
-		{      0, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 760000, 1000 },
-		{ 760000, 1050 },
-		{1000000, 1050 },
-		{1000000, 1100 },
-	},
-};
-
-static int __init pluto_soctherm_init(void)
+int __init pluto_soctherm_init(void)
 {
-	pluto_soctherm_data.therm[THERM_CPU].cdev =
-			balanced_throttle_register(&tj_throttle);
-
 	return tegra11_soctherm_init(&pluto_soctherm_data);
 }
-module_init(pluto_soctherm_init);

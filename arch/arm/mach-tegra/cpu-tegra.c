@@ -726,6 +726,9 @@ static struct notifier_block tegra_cpu_pm_notifier = {
 
 static int tegra_cpu_init(struct cpufreq_policy *policy)
 {
+	int idx, ret;
+	unsigned int freq;
+
 	if (policy->cpu >= CONFIG_NR_CPUS)
 		return -EINVAL;
 
@@ -739,12 +742,22 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 		return PTR_ERR(emc_clk);
 	}
 
-	clk_enable(emc_clk);
-	clk_enable(cpu_clk);
+	clk_prepare_enable(emc_clk);
+	clk_prepare_enable(cpu_clk);
 
 	cpufreq_frequency_table_cpuinfo(policy, freq_table);
 	cpufreq_frequency_table_get_attr(freq_table, policy->cpu);
-	policy->cur = tegra_getspeed(policy->cpu);
+
+	/* clip boot frequency to table entry */
+	freq = tegra_getspeed(policy->cpu);
+	ret = cpufreq_frequency_table_target(policy, freq_table, freq,
+		CPUFREQ_RELATION_H, &idx);
+	if (!ret && (freq != freq_table[idx].frequency)) {
+		ret = tegra_update_cpu_speed(freq_table[idx].frequency);
+		if (!ret)
+			freq = freq_table[idx].frequency;
+	}
+	policy->cur = freq;
 	target_cpu_speed[policy->cpu] = policy->cur;
 
 	/* FIXME: what's the actual transition time? */
@@ -753,17 +766,13 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 	policy->shared_type = CPUFREQ_SHARED_TYPE_ALL;
 	cpumask_copy(policy->related_cpus, cpu_possible_mask);
 
-	if (policy->cpu == 0) {
-		register_pm_notifier(&tegra_cpu_pm_notifier);
-	}
-
 	return 0;
 }
 
 static int tegra_cpu_exit(struct cpufreq_policy *policy)
 {
 	cpufreq_frequency_table_cpuinfo(policy, freq_table);
-	clk_disable(emc_clk);
+	clk_disable_unprepare(emc_clk);
 	clk_put(emc_clk);
 	clk_put(cpu_clk);
 	return 0;
@@ -785,7 +794,7 @@ static int tegra_cpufreq_policy_notifier(
 			ret ? policy->max : freq_table[i].frequency;
 
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
-		if (once && policy->cpu == 0 &&
+		if (once &&
 		    sysfs_merge_group(&policy->kobj, &stats_attr_grp) == 0)
 			once = 0;
 #endif
@@ -837,8 +846,14 @@ static int __init tegra_cpufreq_init(void)
 	freq_table = table_data->freq_table;
 	tegra_cpu_edp_init(false);
 
+	ret = register_pm_notifier(&tegra_cpu_pm_notifier);
+
+	if (ret)
+		return ret;
+
 	ret = cpufreq_register_notifier(
 		&tegra_cpufreq_policy_nb, CPUFREQ_POLICY_NOTIFIER);
+
 	if (ret)
 		return ret;
 

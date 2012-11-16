@@ -848,11 +848,15 @@ static int nct1008_ext_bind(struct thermal_zone_device *thz,
 	struct nct1008_data *data = thz->devdata;
 
 	if (cdev == data->passive_cdev)
-		return thermal_zone_bind_cooling_device(thz, 0, cdev);
+		return thermal_zone_bind_cooling_device(thz, 0, cdev,
+							THERMAL_NO_LIMIT,
+							THERMAL_NO_LIMIT);
 
 	for (i = 0; data->active_cdev[i]; i++)
 		if (cdev == data->active_cdev[i])
-			return thermal_zone_bind_cooling_device(thz, i+1, cdev);
+			return thermal_zone_bind_cooling_device(thz, i+1, cdev,
+							THERMAL_NO_LIMIT,
+							THERMAL_NO_LIMIT);
 
 	return 0;
 }
@@ -1053,8 +1057,6 @@ static int __devinit nct1008_probe(struct i2c_client *client,
 						0x0,
 						data,
 						&nct_int_ops,
-						0,
-						1,
 						2000,
 						0);
 	if (IS_ERR_OR_NULL(data->nct_int))
@@ -1065,11 +1067,9 @@ static int __devinit nct1008_probe(struct i2c_client *client,
 					mask,
 					data,
 					&nct_ext_ops,
-					data->plat_data.passive.tc1,
-					data->plat_data.passive.tc2,
 					data->plat_data.passive.passive_delay,
 					0);
-	if (IS_ERR_OR_NULL(data->nct_int)) {
+	if (IS_ERR_OR_NULL(data->nct_ext)) {
 		thermal_zone_device_unregister(data->nct_int);
 		data->nct_int = NULL;
 		goto error;

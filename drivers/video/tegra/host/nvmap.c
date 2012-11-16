@@ -75,8 +75,10 @@ struct sg_table *nvhost_nvmap_pin(struct mem_mgr *mgr,
 		return ERR_PTR(-ENOMEM);
 
 	err = __sg_alloc_table(sgt, 1, 1, (gfp_t)(sgt+1), sg_kmalloc);
-	if (err)
+	if (err) {
+		kfree(sgt);
 		return ERR_PTR(err);
+	}
 
 	ret = nvmap_pin((struct nvmap_client *)mgr,
 			(struct nvmap_handle_ref *)handle);
@@ -152,8 +154,10 @@ int nvhost_nvmap_pin_array_ids(struct mem_mgr *mgr,
 	for (i = 0; i < result; i++)
 		unpin_data[i].h = (struct mem_handle *)unique_handle_refs[i];
 
-	for (i = 0; i < count; i++)
-		phys_addr[i] = (dma_addr_t)_nvmap_get_addr_from_id(ids[i]);
+	for (i = 0; i < count; i++) {
+		if ((ids[i] & id_type_mask) == id_type)
+			phys_addr[i] = (dma_addr_t)_nvmap_get_addr_from_id(ids[i]);
+	}
 
 fail:
 	kfree(ptrs);
@@ -161,7 +165,7 @@ fail:
 }
 
 struct mem_handle *nvhost_nvmap_get(struct mem_mgr *mgr,
-		u32 id, struct nvhost_device *dev)
+		u32 id, struct platform_device *dev)
 {
 	return (struct mem_handle *)
 		_nvmap_duplicate_handle_id((struct nvmap_client *)mgr, id);

@@ -44,7 +44,7 @@
 #define TEGRA_GPIO_SPKR_EN		-1
 #define TEGRA_GPIO_HP_DET		TEGRA_GPIO_PR7
 #define TEGRA_GPIO_INT_MIC_EN		TEGRA_GPIO_PK3
-#define TEGRA_GPIO_EXT_MIC_EN		TEGRA_GPIO_PK4
+#define TEGRA_GPIO_EXT_MIC_EN		-1
 
 #define TEGRA_GPIO_W_DISABLE		TEGRA_GPIO_PDD7
 #define TEGRA_GPIO_MODEM_RSVD1		TEGRA_GPIO_PV0
@@ -108,7 +108,9 @@ int dalmore_sensors_init(void);
 int dalmore_emc_init(void);
 int dalmore_edp_init(void);
 int dalmore_panel_init(void);
+int roth_panel_init(void);
 int dalmore_kbc_init(void);
 int dalmore_pmon_init(void);
+int dalmore_soctherm_init(void);
 
 #endif

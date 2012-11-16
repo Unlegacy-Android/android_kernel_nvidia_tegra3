@@ -244,3 +244,13 @@ config USB_YUREX
 	  To compile this driver as a module, choose M here: the
 	  module will be called yurex.
 
+config USB_RENESAS_MODEM
+        tristate "USB VENDOR SPECIFIC CLASS driver support"
+        depends on USB
+        help
+          This driver load the vendor specific class for Renesas Modem
+          for modem boot code.
+          This driver supports read/write for user space interface
+
+          To compile this driver as a module, choose M here: the
+          module will be called renesas modem.

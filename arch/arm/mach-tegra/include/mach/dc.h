@@ -411,6 +411,7 @@ struct tegra_dc_sd_settings {
 
 	bool sd_proc_control;
 	bool soft_clipping_correction;
+	bool use_vpulse2;
 
 	struct tegra_dc_sd_fc fc;
 	struct tegra_dc_sd_blp blp;
@@ -512,8 +513,12 @@ struct tegra_dc_out {
 #define TEGRA_DC_ORDER_RED_BLUE		0
 #define TEGRA_DC_ORDER_BLUE_RED		1
 
+/* Errands use the interrupts */
 #define V_BLANK_FLIP		0
 #define V_BLANK_NVSD		1
+
+#define V_PULSE2_FLIP		0
+#define V_PULSE2_NVSD		1
 
 struct tegra_dc;
 struct nvmap_handle_ref;
@@ -736,5 +741,7 @@ void tegra_dc_put_edid(struct tegra_dc_edid *edid);
 int tegra_dc_set_flip_callback(void (*callback)(void));
 int tegra_dc_unset_flip_callback(void);
 int tegra_dc_get_panel_sync_rate(void);
+
+int tegra_dc_get_out(const struct tegra_dc *dc);
 
 #endif

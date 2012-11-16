@@ -22,13 +22,15 @@
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/resource.h>
-#include <asm/mach-types.h>
 #include <linux/platform_device.h>
 #include <linux/kernel.h>
 #include <linux/pwm_backlight.h>
 #include <linux/tegra_pwm_bl.h>
 #include <linux/nvhost.h>
 #include <linux/nvmap.h>
+
+#include <asm/mach-types.h>
+
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/dc.h>
@@ -244,7 +246,7 @@ static struct tegra_dc_platform_data whistler_disp1_pdata = {
 	.fb		= &whistler_fb_data,
 };
 
-static struct nvhost_device whistler_disp1_device = {
+static struct platform_device whistler_disp1_device = {
 	.name		= "tegradc",
 	.id		= 0,
 	.resource	= whistler_disp1_resources,
@@ -260,7 +262,7 @@ static struct tegra_dc_platform_data whistler_disp2_pdata = {
 	.fb		= &whistler_hdmi_fb_data,
 };
 
-static struct nvhost_device whistler_disp2_device = {
+static struct platform_device whistler_disp2_device = {
 	.name		= "tegradc",
 	.id		= 1,
 	.resource	= whistler_disp2_resources,
@@ -308,6 +310,7 @@ int __init whistler_panel_init(void)
 {
 	int err;
 	struct resource __maybe_unused *res;
+	struct platform_device *phost1x;
 
 	gpio_request(whistler_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(whistler_hdmi_hpd);
@@ -317,17 +320,17 @@ int __init whistler_panel_init(void)
 	whistler_carveouts[1].size = tegra_carveout_size;
 #endif
 
+	err = platform_add_devices(whistler_gfx_devices,
+		ARRAY_SIZE(whistler_gfx_devices));
+
 #ifdef CONFIG_TEGRA_GRHOST
-	err = tegra2_register_host1x_devices();
-	if (err)
-		return err;
+	phost1x = tegra2_register_host1x_devices();
+	if (!phost1x)
+		return -EINVAL;
 #endif
 
-	err = platform_add_devices(whistler_gfx_devices,
-				   ARRAY_SIZE(whistler_gfx_devices));
-
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	res = nvhost_get_resource_byname(&whistler_disp1_device,
+	res = platform_get_resource_byname(&whistler_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
@@ -338,16 +341,20 @@ int __init whistler_panel_init(void)
 		min(tegra_fb_size, tegra_bootloader_fb_size));
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	res = nvhost_get_resource_byname(&whistler_disp2_device,
+	res = platform_get_resource_byname(&whistler_disp2_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb2_start;
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
 
-	if (!err)
-		err = nvhost_device_register(&whistler_disp1_device);
+	if (!err) {
+		whistler_disp1_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&whistler_disp1_device);
+	}
 
-	if (!err)
-		err = nvhost_device_register(&whistler_disp2_device);
+	if (!err) {
+		whistler_disp2_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&whistler_disp2_device);
+	}
 #endif
 
 	return err;

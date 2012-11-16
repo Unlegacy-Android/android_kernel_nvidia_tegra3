@@ -40,6 +40,7 @@
 #include <linux/workqueue.h>
 #include <linux/tegra_uart.h>
 #include <linux/tty_flip.h>
+#include <linux/pm_runtime.h>
 
 #include <mach/dma.h>
 #include <mach/clk.h>
@@ -758,6 +759,7 @@ static void tegra_uart_hw_deinit(struct tegra_uart_port *t)
 	spin_unlock_irqrestore(&t->uport.lock, flags);
 
 	clk_disable(t->clk);
+	pm_runtime_put_sync((&t->uport)->dev);
 }
 
 static void tegra_uart_free_rx_dma_buffer(struct tegra_uart_port *t)
@@ -792,6 +794,7 @@ static int tegra_uart_hw_init(struct tegra_uart_port *t)
 	t->ier_shadow = 0;
 	t->baud = 0;
 
+	pm_runtime_get_sync((&t->uport)->dev);
 	clk_enable(t->clk);
 
 	/* Reset the UART controller to clear all previous status.*/
@@ -1573,7 +1576,7 @@ static int __init tegra_uart_probe(struct platform_device *pdev)
 	u->iotype = UPIO_MEM32;
 
 	u->irq = platform_get_irq(pdev, 0);
-	if (unlikely(u->irq < 0)) {
+	if (unlikely((int)(u->irq) < 0)) {
 		ret = -ENXIO;
 		goto fail;
 	}
@@ -1609,6 +1612,7 @@ static int __init tegra_uart_probe(struct platform_device *pdev)
 		}
 	}
 	tasklet_init(&t->tlet, tegra_uart_tasklet_action, (unsigned long) t);
+	pm_runtime_enable((&t->uport)->dev);
 
 	return ret;
 
@@ -1635,6 +1639,7 @@ static int __devexit tegra_uart_remove(struct platform_device *pdev)
 
 	u = &t->uport;
 	tasklet_kill(&t->tlet);
+	pm_runtime_disable(u->dev);
 	uart_remove_one_port(&tegra_uart_driver, u);
 
 	tegra_uart_free_rx_dma_buffer(t);
@@ -1661,6 +1666,7 @@ static int tegra_uart_suspend(struct platform_device *pdev, pm_message_t state)
 	/* enable clock before calling suspend so that controller
 	   register can be accessible */
 	if (t->uart_state == TEGRA_UART_CLOCK_OFF) {
+		pm_runtime_get_sync(u->dev);
 		clk_enable(t->clk);
 		t->uart_state = TEGRA_UART_OPENED;
 	}
@@ -1707,9 +1713,10 @@ void tegra_uart_request_clock_off(struct uart_port *uport)
 	}
 	spin_unlock_irqrestore(&uport->lock, flags);
 
-	if (is_clk_disable)
+	if (is_clk_disable) {
 		clk_disable(t->clk);
-
+		pm_runtime_put_sync(uport->dev);
+	}
 	return;
 }
 
@@ -1731,9 +1738,10 @@ void tegra_uart_request_clock_on(struct uart_port *uport)
 	}
 	spin_unlock_irqrestore(&uport->lock, flags);
 
-	if (is_clk_enable)
+	if (is_clk_enable) {
+		pm_runtime_get_sync(uport->dev);
 		clk_enable(t->clk);
-
+	}
 	return;
 }
 

@@ -34,6 +34,7 @@
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
 
+#include <asm/smp_plat.h>
 #include <asm/cputype.h>
 #include <asm/hardware/gic.h>
 
@@ -221,11 +222,14 @@ void tegra_cluster_switch_prolog(unsigned int flags)
 					? TEGRA_POWER_CLUSTER_LP
 					: TEGRA_POWER_CLUSTER_G;
 	u32 reg;
+	u32 cpu;
+
+	cpu = cpu_logical_map(smp_processor_id());
 
 	/* Read the flow controler CSR register and clear the CPU switch
 	   and immediate flags. If an actual CPU switch is to be performed,
 	   re-write the CSR register with the desired values. */
-	reg = readl(FLOW_CTRL_CPU_CSR(0));
+	reg = readl(FLOW_CTRL_CPU_CSR(cpu));
 	reg &= ~(FLOW_CTRL_CSR_IMMEDIATE_WAKE |
 		 FLOW_CTRL_CSR_SWITCH_CLUSTER);
 
@@ -268,7 +272,7 @@ void tegra_cluster_switch_prolog(unsigned int flags)
 	}
 
 done:
-	writel(reg, FLOW_CTRL_CPU_CSR(0));
+	writel(reg, FLOW_CTRL_CPU_CSR(cpu));
 }
 
 
@@ -336,17 +340,20 @@ static void cluster_switch_epilog_gic(void)
 void tegra_cluster_switch_epilog(unsigned int flags)
 {
 	u32 reg;
+	u32 cpu;
+
+	cpu = cpu_logical_map(smp_processor_id());
 
 	/* Make sure the switch and immediate flags are cleared in
 	   the flow controller to prevent undesirable side-effects
 	   for future users of the flow controller. */
-	reg = readl(FLOW_CTRL_CPU_CSR(0));
+	reg = readl(FLOW_CTRL_CPU_CSR(cpu));
 	reg &= ~(FLOW_CTRL_CSR_IMMEDIATE_WAKE |
 		 FLOW_CTRL_CSR_SWITCH_CLUSTER);
 #if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
 	reg &= ~FLOW_CTRL_CSR_ENABLE_EXT_MASK;
 #endif
-	writel(reg, FLOW_CTRL_CPU_CSR(0));
+	writel(reg, FLOW_CTRL_CPU_CSR(cpu));
 
 	/* Perform post-switch LP=>G clean-up */
 	if (!is_lp_cluster()) {
@@ -433,6 +440,12 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 #endif
 
 		} else {
+#ifdef CONFIG_TEGRA_VIRTUAL_CPUID
+			u32 cpu;
+
+			cpu = cpu_logical_map(smp_processor_id());
+			writel(cpu, FLOW_CTRL_MPID);
+#endif
 			last_g2lp = now;
 			tegra_dvfs_rail_off(tegra_cpu_rail, now);
 		}
@@ -440,28 +453,30 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 
 	if (flags & TEGRA_POWER_SDRAM_SELFREFRESH) {
 		if (us)
-			tegra_lp2_set_trigger(us);
+			tegra_pd_set_trigger(us);
 
 		tegra_cluster_switch_prolog(flags);
 		tegra_suspend_dram(TEGRA_SUSPEND_LP1, flags);
 		tegra_cluster_switch_epilog(flags);
 
 		if (us)
-			tegra_lp2_set_trigger(0);
+			tegra_pd_set_trigger(0);
 	} else {
-		int cpu = 0;
+		int cpu;
 
-		tegra_set_cpu_in_lp2(0);
+		cpu = cpu_logical_map(smp_processor_id());
+
+		tegra_set_cpu_in_pd(cpu);
 		cpu_pm_enter();
 		if (!timekeeping_suspended)
 			clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER,
 					   &cpu);
-		tegra_idle_lp2_last(0, flags);
+		tegra_idle_power_down_last(0, flags);
 		if (!timekeeping_suspended)
 			clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT,
 					   &cpu);
 		cpu_pm_exit();
-		tegra_clear_cpu_in_lp2(0);
+		tegra_clear_cpu_in_pd(cpu);
 	}
 	local_irq_restore(irq_flags);
 
@@ -499,7 +514,7 @@ void tegra_lp0_cpu_mode(bool enter)
 
 	if (entered_on_g) {
 		if (enter)
-			clk_enable(cclk_lp);
+			tegra_clk_prepare_enable(cclk_lp);
 
 		flags = enter ? TEGRA_POWER_CLUSTER_LP : TEGRA_POWER_CLUSTER_G;
 		flags |= TEGRA_POWER_CLUSTER_IMMEDIATE;
@@ -508,7 +523,7 @@ void tegra_lp0_cpu_mode(bool enter)
 #endif
 		if (!tegra_cluster_control(0, flags)) {
 			if (!enter)
-				clk_disable(cclk_lp);
+				tegra_clk_disable_unprepare(cclk_lp);
 			pr_info("Tegra: switched to %s cluster\n",
 				enter ? "LP" : "G");
 		}

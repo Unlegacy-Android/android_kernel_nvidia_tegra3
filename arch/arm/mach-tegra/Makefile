@@ -55,7 +55,7 @@ obj-y                                   += sleep.o
 plus_sec := $(call as-instr,.arch_extension sec,+sec)
 AFLAGS_sleep.o :=-Wa,-march=armv7-a$(plus_sec)
 
-obj-y                                   += fuse.o
+obj-y                                   += tegra_fuse.o
 obj-y                                   += kfuse.o
 obj-y                                   += csi.o
 obj-y                                   += tegra_odm_fuses.o
@@ -261,6 +261,7 @@ obj-${CONFIG_MACH_DALMORE}              += board-dalmore-power.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-powermon.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-sdhci.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-panel.o
+obj-${CONFIG_MACH_DALMORE}              += board-roth-panel.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-kbc.o
 obj-${CONFIG_MACH_DALMORE}          	+= board-dalmore-sensors.o
 
@@ -272,8 +273,11 @@ obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-sdhci.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-panel.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-kbc.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-sensors.o
+obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-powermon.o
 
 obj-${CONFIG_TEGRA_BB_XMM_POWER}        += baseband-xmm-power.o
 obj-${CONFIG_TEGRA_BB_XMM_POWER2}       += baseband-xmm-power2.o
 
-obj-${CONFIG_TEGRA_ISOMGR}		+= isomgr.o
+obj-${CONFIG_TEGRA_ISOMGR}              += isomgr.o
+
+obj-${CONFIG_TEGRA_NVDUMPER}            += nvdumper.o

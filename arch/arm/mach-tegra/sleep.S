@@ -107,21 +107,6 @@ ENTRY(tegra_pen_unlock)
 	mov	pc, lr
 ENDPROC(tegra_pen_unlock)
 
-
-/*
- * tegra_cpu_wfi
- *
- * puts current CPU in wfi
- * CPU core clock-gates itself during wfi
- *
- * must be called with MMU on
- */
-ENTRY(tegra_cpu_wfi)
-	dsb
-	wfi
-	mov	pc, lr
-ENDPROC(tegra_cpu_wfi)
-
 /*
  * tegra_cpu_exit_coherency
  *

@@ -27,12 +27,12 @@
 
 static inline void tegra_dc_io_start(struct tegra_dc *dc)
 {
-	nvhost_module_busy_ext(nvhost_get_parent(dc->ndev));
+	nvhost_module_busy_ext(dc->ndev);
 }
 
 static inline void tegra_dc_io_end(struct tegra_dc *dc)
 {
-	nvhost_module_idle_ext(nvhost_get_parent(dc->ndev));
+	nvhost_module_idle_ext(dc->ndev);
 }
 
 static inline unsigned long tegra_dc_readl(struct tegra_dc *dc,
@@ -40,7 +40,7 @@ static inline unsigned long tegra_dc_readl(struct tegra_dc *dc,
 {
 	unsigned long ret;
 
-	BUG_ON(!nvhost_module_powered_ext(to_nvhost_device(dc->ndev->dev.parent)));
+	BUG_ON(!nvhost_module_powered_ext(dc->ndev));
 	if (!tegra_is_clk_enabled(dc->clk))
 		WARN(1, "DC is clock-gated.\n");
 
@@ -52,7 +52,7 @@ static inline unsigned long tegra_dc_readl(struct tegra_dc *dc,
 static inline void tegra_dc_writel(struct tegra_dc *dc, unsigned long val,
 				   unsigned long reg)
 {
-	BUG_ON(!nvhost_module_powered_ext(to_nvhost_device(dc->ndev->dev.parent)));
+	BUG_ON(!nvhost_module_powered_ext(dc->ndev));
 	if (!tegra_is_clk_enabled(dc->clk))
 		WARN(1, "DC is clock-gated.\n");
 
@@ -175,21 +175,26 @@ static inline bool tegra_dc_is_yuv_planar(int fmt)
 	return false;
 }
 
-static inline void tegra_dc_unmask_interrupt(struct tegra_dc *dc, u32 int_val)
+static inline u32 tegra_dc_unmask_interrupt(struct tegra_dc *dc, u32 int_val)
 {
 	u32 val;
 
 	val = tegra_dc_readl(dc, DC_CMD_INT_MASK);
-	val |= int_val;
-	tegra_dc_writel(dc, val, DC_CMD_INT_MASK);
+	tegra_dc_writel(dc, val | int_val, DC_CMD_INT_MASK);
+	return val;
 }
 
-static inline void tegra_dc_mask_interrupt(struct tegra_dc *dc, u32 int_val)
+static inline u32 tegra_dc_mask_interrupt(struct tegra_dc *dc, u32 int_val)
 {
 	u32 val;
 
 	val = tegra_dc_readl(dc, DC_CMD_INT_MASK);
-	val &= ~int_val;
+	tegra_dc_writel(dc, val & ~int_val, DC_CMD_INT_MASK);
+	return val;
+}
+
+static inline void tegra_dc_restore_interrupt(struct tegra_dc *dc, u32 val)
+{
 	tegra_dc_writel(dc, val, DC_CMD_INT_MASK);
 }
 

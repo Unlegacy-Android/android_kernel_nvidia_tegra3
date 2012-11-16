@@ -1,9 +1,9 @@
 /*
- * drivers/video/tegra/host/bus.h
+ * drivers/video/tegra/host/gr2d/gr2d_t30.c
  *
- * Tegra Graphics Host bus API header
+ * Tegra Graphics 2D Tegra3 specific parts
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -18,21 +18,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __NVHOST_BUS_H
-#define __NVHOST_BUS_H
+#include <linux/nvhost.h>
+#include <linux/io.h>
+#include "host1x/host1x.h"
+#include "host1x/hw_host1x01_sync.h"
 
-#include <linux/types.h>
-#include <linux/device.h>
+#include "gr2d_common.c"
 
-#include "chip_support.h"
-
-struct nvhost_bus {
-	struct nvhost_chip_support *nvhost_chip_ops;
-	struct bus_type nvhost_bus_type;
-};
-
-struct nvhost_bus *nvhost_bus_get(void);
-
-extern struct nvhost_bus *nvhost_bus_inst;
-
-#endif
+void nvhost_gr2d_t30_finalize_poweron(struct platform_device *dev)
+{
+	gr2d_reset(dev);
+}

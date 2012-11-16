@@ -82,6 +82,7 @@ static struct regulator_consumer_supply max77663_sd2_supply[] = {
 	REGULATOR_SUPPLY("vcore_nand", NULL),
 	REGULATOR_SUPPLY("pwrdet_nand", NULL),
 	REGULATOR_SUPPLY("vlogic", "0-0068"),
+	REGULATOR_SUPPLY("dvdd", "spi0.0"),
 };
 
 static struct regulator_consumer_supply max77663_sd3_supply[] = {
@@ -379,6 +380,7 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_pnl_supply[] = {
 	REGULATOR_SUPPLY("vdd_lcd_panel", NULL),
 	REGULATOR_SUPPLY("vdd_touch", NULL),
 	REGULATOR_SUPPLY("vddio_ts", NULL),
+	REGULATOR_SUPPLY("avdd", "spi0.0"),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_cam3_ldo_supply[] = {

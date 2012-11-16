@@ -322,39 +322,15 @@ static bool pmc_check_rst_sensor(struct tegra_tsensor_data *data)
 		return false;
 }
 
-/* function to get chip revision */
-static void get_chip_rev(unsigned short *p_id, unsigned short *p_major,
-		unsigned short *p_minor)
-{
-	unsigned int reg;
-
-	reg = readl(IO_TO_VIRT(TEGRA_APB_MISC_BASE) +
-		TEGRA_REV_REG_OFFSET);
-	*p_id = (reg >> 8) & 0xff;
-	*p_major = (reg >> 4) & 0xf;
-	*p_minor = (reg >> 16) & 0xf;
-	pr_info("Tegra chip revision for tsensor detected as: "
-		"Chip Id=%x, Major=%d, Minor=%d\n", (int)*p_id,
-		(int)*p_major, (int)*p_minor);
-}
-
 /*
  * function to get chip revision specific tsensor coefficients
  * obtained after chip characterization
  */
 static void get_chip_tsensor_coeff(struct tegra_tsensor_data *data)
 {
-	unsigned short chip_id, major_rev, minor_rev;
 	unsigned short coeff_index;
 
-	get_chip_rev(&chip_id, &major_rev, &minor_rev);
-	switch (minor_rev) {
-	default:
-		pr_info("Warning: tsensor coefficient for chip pending\n");
-	case 1:
-		coeff_index = TSENSOR_COEFF_SET1;
-		break;
-	}
+	coeff_index = TSENSOR_COEFF_SET1;
 	if (data->instance == TSENSOR_INSTANCE1)
 		coeff_index = TSENSOR_COEFF_SET2;
 	data->m_e_minus6 = coeff_table[coeff_index].e_minus6_m;
@@ -1802,11 +1778,15 @@ static int tsensor_bind(struct thermal_zone_device *thz,
 	struct tegra_tsensor_data *data = thz->devdata;
 
 	if (cdev == data->plat_data.passive.cdev)
-		return thermal_zone_bind_cooling_device(thz, 0, cdev);
+		return thermal_zone_bind_cooling_device(thz, 0, cdev,
+							THERMAL_NO_LIMIT,
+							THERMAL_NO_LIMIT);
 
 	for (i = 0; data->plat_data.active[i].cdev; i++)
 		if (cdev == data->plat_data.active[i].cdev)
-			return thermal_zone_bind_cooling_device(thz, i+1, cdev);
+			return thermal_zone_bind_cooling_device(thz, i+1, cdev,
+							THERMAL_NO_LIMIT,
+							THERMAL_NO_LIMIT);
 
 	return 0;
 }
@@ -1997,8 +1977,6 @@ static int __devinit tegra_tsensor_probe(struct platform_device *pdev)
 					0x0,
 					data,
 					&tsensor_ops,
-					tsensor_data->passive.tc1,
-					tsensor_data->passive.tc2,
 					tsensor_data->passive.passive_delay,
 					0);
 	if (IS_ERR_OR_NULL(data->thz))

@@ -304,7 +304,7 @@ static int aes_hw_init(struct tegra_aes_engine *engine)
 	int ret = 0;
 
 	if (engine->pclk) {
-		ret = clk_enable(engine->pclk);
+		ret = clk_prepare_enable(engine->pclk);
 		if (ret < 0) {
 			dev_err(dd->dev, "%s: pclock enable fail(%d)\n",
 			__func__, ret);
@@ -313,12 +313,12 @@ static int aes_hw_init(struct tegra_aes_engine *engine)
 	}
 
 	if (engine->iclk) {
-		ret = clk_enable(engine->iclk);
+		ret = clk_prepare_enable(engine->iclk);
 		if (ret < 0) {
 			dev_err(dd->dev, "%s: iclock enable fail(%d)\n",
 			__func__, ret);
 			if (engine->pclk)
-				clk_disable(engine->pclk);
+				clk_disable_unprepare(engine->pclk);
 			return ret;
 		}
 	}
@@ -329,10 +329,10 @@ static int aes_hw_init(struct tegra_aes_engine *engine)
 static void aes_hw_deinit(struct tegra_aes_engine *engine)
 {
 	if (engine->pclk)
-		clk_disable(engine->pclk);
+		clk_disable_unprepare(engine->pclk);
 
 	if (engine->iclk)
-		clk_disable(engine->iclk);
+		clk_disable_unprepare(engine->iclk);
 }
 
 #define MIN_RETRIES	3

@@ -27,6 +27,10 @@
 #include <linux/power_supply.h>
 #include <linux/memory.h>
 
+#ifdef CONFIG_TEGRA_NVDUMPER
+#define NVDUMPER_RESERVED_SIZE 4096UL
+#endif
+
 #define ADD_FIXED_VOLTAGE_REG(_name)	(&_name##_fixed_voltage_device)
 
 /* Macro for defining fixed voltage regulator */
@@ -122,6 +126,9 @@ extern unsigned long tegra_vpr_start;
 extern unsigned long tegra_vpr_size;
 extern unsigned long tegra_lp0_vec_start;
 extern unsigned long tegra_lp0_vec_size;
+#ifdef CONFIG_TEGRA_NVDUMPER
+extern unsigned long nvdumper_reserved;
+#endif
 extern bool tegra_lp0_vec_relocate;
 extern unsigned long tegra_grhost_aperture;
 
@@ -173,5 +180,5 @@ void tegra_enable_pinmux(void);
 enum image_type get_tegra_image_type(void);
 int tegra_get_cvb_alignment_uV(void);
 int tegra_soc_device_init(const char *machine);
-
+int get_pwr_i2c_clk_rate(void);
 #endif

@@ -618,7 +618,7 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 
 		if (!tegra_host->clk_enabled) {
 			pm_runtime_get_sync(&pdev->dev);
-			clk_enable(pltfm_host->clk);
+			clk_prepare_enable(pltfm_host->clk);
 			ctrl = sdhci_readb(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
 			ctrl |= SDHCI_VENDOR_CLOCK_CNTRL_SDMMC_CLK;
 			sdhci_writeb(sdhci, ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
@@ -633,7 +633,7 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 		ctrl = sdhci_readb(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
 		ctrl &= ~SDHCI_VENDOR_CLOCK_CNTRL_SDMMC_CLK;
 		sdhci_writeb(sdhci, ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
-		clk_disable(pltfm_host->clk);
+		clk_disable_unprepare(pltfm_host->clk);
 		pm_runtime_put_sync(&pdev->dev);
 		tegra_host->clk_enabled = false;
 		/* io dpd enable call for sd instance */
@@ -1022,7 +1022,11 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	struct platform_device *pdev;
+	struct tegra_sdhci_platform_data *plat;
 
+	pdev = to_platform_device(mmc_dev(sdhci->mmc));
+	plat = pdev->dev.platform_data;
 	/* Enable the power rails if any */
 	if (tegra_host->card_present) {
 		if (!tegra_host->is_rail_enabled) {
@@ -1030,7 +1034,13 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 				regulator_enable(tegra_host->vdd_slot_reg);
 			if (tegra_host->vdd_io_reg) {
 				regulator_enable(tegra_host->vdd_io_reg);
-				tegra_sdhci_signal_voltage_switch(sdhci, MMC_SIGNAL_VOLTAGE_330);
+				if (plat->mmc_data.ocr_mask &
+							SDHOST_1V8_OCR_MASK)
+					tegra_sdhci_signal_voltage_switch(sdhci,
+							MMC_SIGNAL_VOLTAGE_180);
+				else
+					tegra_sdhci_signal_voltage_switch(sdhci,
+							MMC_SIGNAL_VOLTAGE_330);
 			}
 			tegra_host->is_rail_enabled = 1;
 		}
@@ -1082,6 +1092,7 @@ static struct sdhci_pltfm_data sdhci_tegra20_pdata = {
 		  SDHCI_QUIRK_BROKEN_ADMA_ZEROLEN_DESC |
 		  SDHCI_QUIRK_BROKEN_CARD_DETECTION |
 		  SDHCI_QUIRK_NO_CALC_MAX_DISCARD_TO,
+	.quirks2 = SDHCI_QUIRK2_BROKEN_PRESET_VALUES,
 	.ops  = &tegra_sdhci_ops,
 };
 
@@ -1320,7 +1331,7 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 		goto err_clk_get;
 	}
 	pm_runtime_get_sync(&pdev->dev);
-	rc = clk_enable(pltfm_host->clk);
+	rc = clk_prepare_enable(pltfm_host->clk);
 	if (rc != 0)
 		goto err_clk_put;
 
@@ -1386,7 +1397,7 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 
 err_add_host:
 	clk_put(tegra_host->emc_clk);
-	clk_disable(pltfm_host->clk);
+	clk_disable_unprepare(pltfm_host->clk);
 	pm_runtime_put_sync(&pdev->dev);
 err_clk_put:
 	clk_put(pltfm_host->clk);
@@ -1442,7 +1453,7 @@ static int __devexit sdhci_tegra_remove(struct platform_device *pdev)
 		gpio_free(plat->power_gpio);
 
 	if (tegra_host->clk_enabled) {
-		clk_disable(pltfm_host->clk);
+		clk_disable_unprepare(pltfm_host->clk);
 		pm_runtime_put_sync(&pdev->dev);
 	}
 	clk_put(pltfm_host->clk);

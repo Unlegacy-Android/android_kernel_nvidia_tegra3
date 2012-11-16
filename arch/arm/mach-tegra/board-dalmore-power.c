@@ -100,7 +100,7 @@ static struct regulator_consumer_supply tps65090_fet3_supply[] = {
 
 static struct regulator_consumer_supply tps65090_fet4_supply[] = {
 	REGULATOR_SUPPLY("avdd_lcd", NULL),
-	REGULATOR_SUPPLY("vdd_ts_3v3", NULL),
+	REGULATOR_SUPPLY("avdd", "spi3.2"),
 };
 
 static struct regulator_consumer_supply tps65090_fet5_supply[] = {
@@ -220,7 +220,7 @@ static struct regulator_consumer_supply max77663_sd2_supply[] = {
 	REGULATOR_SUPPLY("vdd_mic_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_nfc_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_ds_1v8", NULL),
-	REGULATOR_SUPPLY("vdd_ts_1v8", NULL),
+	REGULATOR_SUPPLY("dvdd", "spi3.2"),
 	REGULATOR_SUPPLY("vdd_spi_1v8", NULL),
 	REGULATOR_SUPPLY("dvdd_lcd", NULL),
 	REGULATOR_SUPPLY("vdd_com_1v8", NULL),
@@ -284,11 +284,13 @@ static struct regulator_consumer_supply max77663_ldo6_supply[] = {
 static struct regulator_consumer_supply max77663_ldo7_supply[] = {
 	REGULATOR_SUPPLY("avdd_cam1", NULL),
 	REGULATOR_SUPPLY("avdd_2v8_cam_af", NULL),
+	REGULATOR_SUPPLY("vana", "2-0036"),
 };
 
 /* FIXME!! Put the device address of camera */
 static struct regulator_consumer_supply max77663_ldo8_supply[] = {
 	REGULATOR_SUPPLY("avdd_cam2", NULL),
+	REGULATOR_SUPPLY("avdd", "2-0010"),
 };
 
 static struct max77663_regulator_fps_cfg max77663_fps_cfgs[] = {
@@ -571,6 +573,7 @@ static struct regulator_consumer_supply palmas_ldo4_supply[] = {
 
 static struct regulator_consumer_supply palmas_ldo7_supply[] = {
 	REGULATOR_SUPPLY("vdd_af_cam1", NULL),
+	REGULATOR_SUPPLY("vdd", "2-000e"),
 };
 
 #define palmas_ldo8_supply max77663_ldo4_supply
@@ -614,7 +617,7 @@ PALMAS_PDATA_INIT(smps12, 1350,  1350, tps65090_rails(DCDC3), 0, 0, 0);
 PALMAS_PDATA_INIT(smps3, 1800,  1800, tps65090_rails(DCDC3), 0, 0, 0);
 PALMAS_PDATA_INIT(smps45, 900,  1400, tps65090_rails(DCDC2), 1, 1, 0);
 PALMAS_PDATA_INIT(smps8, 1050,  1050, tps65090_rails(DCDC2), 0, 1, 1);
-PALMAS_PDATA_INIT(smps9, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 0);
+PALMAS_PDATA_INIT(smps9, 2800,  2800, tps65090_rails(DCDC2), 1, 0, 0);
 PALMAS_PDATA_INIT(ldo1, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1);
 PALMAS_PDATA_INIT(ldo2, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1);
 PALMAS_PDATA_INIT(ldo3, 1200,  1200, palmas_rails(smps3), 0, 0, 1);
@@ -737,6 +740,7 @@ static struct palmas_platform_data palmas_pdata = {
 	.pad1 = 0,
 	.pad2 = 0,
 	.pad3 = PALMAS_PRIMARY_SECONDARY_PAD3_DVFS1,
+	.use_power_off = true,
 };
 
 static struct i2c_board_info palma_device[] = {
@@ -762,6 +766,9 @@ static struct regulator_consumer_supply fixed_reg_en_1v8_cam_supply[] = {
 	REGULATOR_SUPPLY("dvdd_cam", NULL),
 	REGULATOR_SUPPLY("vdd_cam_1v8", NULL),
 	REGULATOR_SUPPLY("vi2c", "2-0030"),
+	REGULATOR_SUPPLY("vif", "2-0036"),
+	REGULATOR_SUPPLY("dovdd", "2-0010"),
+	REGULATOR_SUPPLY("vdd_i2c", "2-000e"),
 };
 
 /* EN_CAM_1v8 on e1611 From PMU GP6 */
@@ -769,6 +776,9 @@ static struct regulator_consumer_supply fixed_reg_en_1v8_cam_e1611_supply[] = {
 	REGULATOR_SUPPLY("dvdd_cam", NULL),
 	REGULATOR_SUPPLY("vdd_cam_1v8", NULL),
 	REGULATOR_SUPPLY("vi2c", "2-0030"),
+	REGULATOR_SUPPLY("vif", "2-0036"),
+	REGULATOR_SUPPLY("dovdd", "2-0010"),
+	REGULATOR_SUPPLY("vdd_i2c", "2-000e"),
 };
 
 static struct regulator_consumer_supply fixed_reg_vdd_hdmi_5v0_supply[] = {
@@ -1082,7 +1092,8 @@ static int __init dalmore_fixed_regulator_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_E1611)
+	if (board_info.board_id == BOARD_E1611 ||
+		board_info.board_id == BOARD_P2454)
 		return platform_add_devices(fixed_reg_devs_e1611_a00,
 				ARRAY_SIZE(fixed_reg_devs_e1611_a00));
 	else
@@ -1100,7 +1111,8 @@ int __init dalmore_regulator_init(void)
 	dalmore_cl_dvfs_init();
 #endif
 	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_E1611)
+	if (board_info.board_id == BOARD_E1611 ||
+		board_info.board_id == BOARD_P2454)
 		dalmore_palmas_regulator_init();
 	else
 		dalmore_max77663_regulator_init();
@@ -1140,8 +1152,6 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 	.sensor_data = {
 		[TSENSE_CPU0] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -1150,8 +1160,6 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 		},
 		[TSENSE_CPU1] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -1160,8 +1168,6 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 		},
 		[TSENSE_CPU2] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -1170,38 +1176,21 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 		},
 		[TSENSE_CPU3] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
 			.tsample = 163,
 			.pdiv = 10,
 		},
+		/* MEM0/MEM1 won't be used */
 		[TSENSE_MEM0] = {
-			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
-			.tall = 16300,
-			.tiddq = 1,
-			.ten_count = 1,
-			.tsample = 163,
-			.pdiv = 10,
+			.enable = false,
 		},
 		[TSENSE_MEM1] = {
-			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
-			.tall = 16300,
-			.tiddq = 1,
-			.ten_count = 1,
-			.tsample = 163,
-			.pdiv = 10,
+			.enable = false,
 		},
 		[TSENSE_GPU] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -1210,8 +1199,6 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 		},
 		[TSENSE_PLLX] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -1219,56 +1206,9 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 			.pdiv = 10,
 		},
 	},
-
-	.therm = {
-		[THERM_CPU] = {
-			.thermtrip = 90, /* in C */
-			.hw_backstop = 37, /* in C */
-
-			.trip_temp = 68000, /* in mC */
-			.tc1 = 0,
-			.tc2 = 1,
-			.passive_delay = 2000,
-		},
-	},
-
-	.throttle = {
-		[THROTTLE_HEAVY] = {
-			.priority = 1,
-			.devs = {
-				[THROTTLE_DEV_CPU] = {
-					.enable = true,
-					.dividend = 1,
-					.divisor = 255,
-					.step = 0,
-					.duration = 65535,
-				},
-			},
-		},
-	},
 };
 
-static struct balanced_throttle tj_throttle = {
-	.throt_tab_size = 10,
-	.throt_tab = {
-		{      0, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 760000, 1000 },
-		{ 760000, 1050 },
-		{1000000, 1050 },
-		{1000000, 1100 },
-	},
-};
-
-static int __init dalmore_soctherm_init(void)
+int __init dalmore_soctherm_init(void)
 {
-	dalmore_soctherm_data.therm[THERM_CPU].cdev =
-			balanced_throttle_register(&tj_throttle);
-
 	return tegra11_soctherm_init(&dalmore_soctherm_data);
 }
-module_init(dalmore_soctherm_init);

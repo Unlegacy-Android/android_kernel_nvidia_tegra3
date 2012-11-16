@@ -460,6 +460,9 @@ static void tegra_se_write_key_table(u8 *pdata, u32 data_len,
 	u8 pkt = 0, quad = 0;
 	u32 val = 0, i;
 
+	if (pdata_buf == NULL)
+		return;
+
 	if ((type == SE_KEY_TABLE_TYPE_KEY) && (slot_num == ssk_slot.slot_num))
 		return;
 
@@ -660,22 +663,48 @@ static void tegra_se_read_hash_result(struct tegra_se_dev *se_dev,
 	}
 }
 
-static int tegra_se_count_sgs(struct scatterlist *sl, u32 total_bytes)
+static int tegra_map_sg(struct device *dev, struct scatterlist *sg,
+			unsigned int nents, enum dma_data_direction dir,
+			struct tegra_se_ll *se_ll, u32 total)
 {
-	int i = 0;
+	u32 total_loop = 0;
+	total_loop = total;
 
-	if (!total_bytes)
-		return 0;
+		while (sg) {
+			dma_map_sg(dev, sg, 1, dir);
+			se_ll->addr = sg_dma_address(sg);
+			se_ll->data_len = min(sg->length, total_loop);
+			total_loop -= min(sg->length, total_loop);
+				sg = scatterwalk_sg_next(sg);
+			se_ll++;
+		}
+	return nents;
+}
 
-	do {
-		if (!sl->length)
-			return 0;
-		total_bytes -= min(sl->length, total_bytes);
-		i++;
-		sl = sg_next(sl);
-	} while (total_bytes && sl);
+static void tegra_unmap_sg(struct device *dev, struct scatterlist *sg,
+				enum dma_data_direction dir, u32 total)
+{
+	while (sg) {
+		dma_unmap_sg(dev, sg, 1, dir);
+			sg = scatterwalk_sg_next(sg);
+	}
+}
 
-	return i;
+static int tegra_se_count_sgs(struct scatterlist *sl, u32 nbytes, int *chained)
+{
+	struct scatterlist *sg = sl;
+	int sg_nents = 0;
+
+	*chained = 0;
+	while (sg) {
+		sg_nents++;
+		nbytes -= min(sl->length, nbytes);
+		if (!sg_is_last(sg) && (sg + 1)->length == 0)
+			*chained = 1;
+		sg = scatterwalk_sg_next(sg);
+	}
+
+	return sg_nents;
 }
 
 static int tegra_se_alloc_ll_buf(struct tegra_se_dev *se_dev,
@@ -735,10 +764,11 @@ static int tegra_se_setup_ablk_req(struct tegra_se_dev *se_dev,
 	struct scatterlist *src_sg, *dst_sg;
 	struct tegra_se_ll *src_ll, *dst_ll;
 	u32 total, num_src_sgs, num_dst_sgs;
+	int src_chained, dst_chained;
 	int ret = 0;
 
-	num_src_sgs = tegra_se_count_sgs(req->src, req->nbytes);
-	num_dst_sgs = tegra_se_count_sgs(req->dst, req->nbytes);
+	num_src_sgs = tegra_se_count_sgs(req->src, req->nbytes, &src_chained);
+	num_dst_sgs = tegra_se_count_sgs(req->dst, req->nbytes, &dst_chained);
 
 	if ((num_src_sgs > SE_MAX_SRC_SG_COUNT) ||
 		(num_dst_sgs > SE_MAX_DST_SG_COUNT)) {
@@ -756,32 +786,12 @@ static int tegra_se_setup_ablk_req(struct tegra_se_dev *se_dev,
 	dst_sg = req->dst;
 	total = req->nbytes;
 
-	while (total) {
-		ret = dma_map_sg(se_dev->dev, src_sg, 1, DMA_TO_DEVICE);
-		if (!ret) {
-			dev_err(se_dev->dev, "dma_map_sg() error\n");
-			return -EINVAL;
-		}
-
-		ret = dma_map_sg(se_dev->dev, dst_sg, 1, DMA_FROM_DEVICE);
-		if (!ret) {
-			dev_err(se_dev->dev, "dma_map_sg() error\n");
-			dma_unmap_sg(se_dev->dev, src_sg, 1, DMA_TO_DEVICE);
-			return -EINVAL;
-		}
-
+	if (total) {
+		tegra_map_sg(se_dev->dev, src_sg, 1, DMA_TO_DEVICE,
+					src_ll, total);
+		tegra_map_sg(se_dev->dev, dst_sg, 1, DMA_FROM_DEVICE,
+					dst_ll, total);
 		WARN_ON(src_sg->length != dst_sg->length);
-		src_ll->addr = sg_dma_address(src_sg);
-		src_ll->data_len = min(src_sg->length, total);
-		dst_ll->addr = sg_dma_address(dst_sg);
-		dst_ll->data_len = min(dst_sg->length, total);
-		total -= min(src_sg->length, total);
-
-		src_sg = sg_next(src_sg);
-		dst_sg = sg_next(dst_sg);
-		dst_ll++;
-		src_ll++;
-		WARN_ON(((total != 0) && (!src_sg || !dst_sg)));
 	}
 	return ret;
 }
@@ -790,19 +800,19 @@ static void tegra_se_dequeue_complete_req(struct tegra_se_dev *se_dev,
 	struct ablkcipher_request *req)
 {
 	struct scatterlist *src_sg, *dst_sg;
+	u32 num_src_sgs, num_dst_sgs;
+	int src_chained, dst_chained;
 	u32 total;
+
+	num_src_sgs = tegra_se_count_sgs(req->src, req->nbytes, &src_chained);
+	num_dst_sgs = tegra_se_count_sgs(req->dst, req->nbytes, &dst_chained);
 
 	if (req) {
 		src_sg = req->src;
 		dst_sg = req->dst;
 		total = req->nbytes;
-		while (total) {
-			dma_unmap_sg(se_dev->dev, dst_sg, 1, DMA_FROM_DEVICE);
-			dma_unmap_sg(se_dev->dev, src_sg, 1, DMA_TO_DEVICE);
-			total -= min(src_sg->length, total);
-			src_sg = sg_next(src_sg);
-			dst_sg = sg_next(dst_sg);
-		}
+		tegra_unmap_sg(se_dev->dev, dst_sg,  DMA_FROM_DEVICE, total);
+		tegra_unmap_sg(se_dev->dev, src_sg,  DMA_TO_DEVICE, total);
 	}
 }
 
@@ -890,12 +900,14 @@ static void tegra_se_work_handler(struct work_struct *work)
 
 static int tegra_se_aes_queue_req(struct ablkcipher_request *req)
 {
+
 	struct tegra_se_dev *se_dev = sg_tegra_se_dev;
 	unsigned long flags;
 	bool idle = true;
 	int err = 0;
+	int chained;
 
-	if (!tegra_se_count_sgs(req->src, req->nbytes))
+	if (!tegra_se_count_sgs(req->src, req->nbytes, &chained))
 		return -EINVAL;
 
 	spin_lock_irqsave(&se_dev->lock, flags);
@@ -1357,6 +1369,7 @@ int tegra_se_sha_final(struct ahash_request *req)
 	struct tegra_se_ll *src_ll;
 	u32 total, num_sgs;
 	int err = 0;
+	int chained;
 
 	if (!req->nbytes)
 		return -EINVAL;
@@ -1380,33 +1393,22 @@ int tegra_se_sha_final(struct ahash_request *req)
 	mutex_lock(&se_hw_lock);
 	pm_runtime_get_sync(se_dev->dev);
 
-	num_sgs = tegra_se_count_sgs(req->src, req->nbytes);
+	num_sgs = tegra_se_count_sgs(req->src, req->nbytes, &chained);
 	if ((num_sgs > SE_MAX_SRC_SG_COUNT)) {
 		dev_err(se_dev->dev, "num of SG buffers are more\n");
 		pm_runtime_put(se_dev->dev);
 		mutex_unlock(&se_hw_lock);
 		return -EINVAL;
 	}
-	*se_dev->src_ll_buf = num_sgs-1;
+
+	*se_dev->src_ll_buf = num_sgs - 1;
 	src_ll = (struct tegra_se_ll *)(se_dev->src_ll_buf + 1);
 	src_sg = req->src;
 	total = req->nbytes;
 
-	while (total) {
-		err = dma_map_sg(se_dev->dev, src_sg, 1, DMA_TO_DEVICE);
-		if (!err) {
-			dev_err(se_dev->dev, "dma_map_sg() error\n");
-			pm_runtime_put(se_dev->dev);
-			mutex_unlock(&se_hw_lock);
-			return -EINVAL;
-		}
-		src_ll->addr = sg_dma_address(src_sg);
-		src_ll->data_len = src_sg->length;
-
-		total -= src_sg->length;
-		src_sg = sg_next(src_sg);
-		src_ll++;
-	}
+	if (total)
+		tegra_map_sg(se_dev->dev, src_sg, 1, DMA_TO_DEVICE,
+							src_ll, total);
 
 	tegra_se_config_algo(se_dev, sha_ctx->op_mode, false, 0);
 	tegra_se_config_sha(se_dev, req->nbytes);
@@ -1430,11 +1432,9 @@ int tegra_se_sha_final(struct ahash_request *req)
 
 	src_sg = req->src;
 	total = req->nbytes;
-	while (total) {
-		dma_unmap_sg(se_dev->dev, src_sg, 1, DMA_TO_DEVICE);
-		total -= src_sg->length;
-		src_sg = sg_next(src_sg);
-	}
+	if (total)
+		tegra_unmap_sg(se_dev->dev, src_sg, DMA_TO_DEVICE, total);
+
 	pm_runtime_put(se_dev->dev);
 	mutex_unlock(&se_hw_lock);
 
@@ -1485,6 +1485,7 @@ int tegra_se_aes_cmac_final(struct ahash_request *req)
 	unsigned int sg_flags = SG_MITER_ATOMIC;
 	u8 *temp_buffer = NULL;
 	bool use_orig_iv = true;
+	int chained;
 
 	/* take access to the hw */
 	mutex_lock(&se_hw_lock);
@@ -1511,7 +1512,7 @@ int tegra_se_aes_cmac_final(struct ahash_request *req)
 
 	/* first process all blocks except last block */
 	if (blocks_to_process) {
-		num_sgs = tegra_se_count_sgs(req->src, req->nbytes);
+		num_sgs = tegra_se_count_sgs(req->src, req->nbytes, &chained);
 		if (num_sgs > SE_MAX_SRC_SG_COUNT) {
 			dev_err(se_dev->dev, "num of SG buffers are more\n");
 			goto out;
@@ -1535,7 +1536,7 @@ int tegra_se_aes_cmac_final(struct ahash_request *req)
 
 			total -= src_sg->length;
 			if (total > 0) {
-				src_sg = sg_next(src_sg);
+					src_sg = scatterwalk_sg_next(src_sg);
 				src_ll++;
 			}
 			WARN_ON(((total != 0) && (!src_sg)));
@@ -1554,14 +1555,14 @@ int tegra_se_aes_cmac_final(struct ahash_request *req)
 		src_sg = req->src;
 		while (mapped_sg_count--) {
 			dma_unmap_sg(se_dev->dev, src_sg, 1, DMA_TO_DEVICE);
-			src_sg = sg_next(src_sg);
+				src_sg = scatterwalk_sg_next(src_sg);
 		}
 		use_orig_iv = false;
 	}
 
 	/* get the last block bytes from the sg_dma buffer using miter */
 	src_sg = req->src;
-	num_sgs = tegra_se_count_sgs(req->src, req->nbytes);
+	num_sgs = tegra_se_count_sgs(req->src, req->nbytes, &chained);
 	sg_flags |= SG_MITER_FROM_SG;
 	sg_miter_start(&miter, req->src, num_sgs, sg_flags);
 	local_irq_save(flags);
@@ -1958,6 +1959,7 @@ int tegra_se_rsa_digest(struct ahash_request *req)
 	u32 num_sgs;
 	int total, ret = 0;
 	u32 val = 0;
+	int chained;
 
 	if (!req)
 		return -EINVAL;
@@ -1979,7 +1981,7 @@ int tegra_se_rsa_digest(struct ahash_request *req)
 			(req->nbytes > TEGRA_SE_RSA2048_DIGEST_SIZE))
 		return -EINVAL;
 
-	num_sgs = tegra_se_count_sgs(req->src, req->nbytes);
+	num_sgs = tegra_se_count_sgs(req->src, req->nbytes, &chained);
 	if (num_sgs > SE_MAX_SRC_SG_COUNT) {
 		dev_err(se_dev->dev, "num of SG buffers are more\n");
 		return -EINVAL;
@@ -2001,7 +2003,7 @@ int tegra_se_rsa_digest(struct ahash_request *req)
 
 		total -= src_sg->length;
 		if (total > 0) {
-			src_sg = sg_next(src_sg);
+				src_sg = scatterwalk_sg_next(src_sg);
 			src_ll++;
 		}
 		WARN_ON(((total != 0) && (!src_sg)));
@@ -2837,7 +2839,15 @@ static int tegra_se_lp_keytable_context_save(struct tegra_se_dev *se_dev)
 
 	*se_dev->dst_ll_buf = 0;
 	dst_ll = (struct tegra_se_ll *)(se_dev->dst_ll_buf + 1);
-	dst_ll->addr = (se_dev->ctx_save_buf_adr + SE_CONTEXT_SAVE_KEYS_OFFSET);
+	if (!se_dev->chipdata->drbg_supported)
+		dst_ll->addr =
+			(se_dev->ctx_save_buf_adr +
+			SE_CONTEXT_SAVE_KEYS_OFFSET);
+	else
+		dst_ll->addr =
+			(se_dev->ctx_save_buf_adr +
+			SE11_CONTEXT_SAVE_KEYS_OFFSET);
+
 	dst_ll->data_len = TEGRA_SE_KEY_128_SIZE;
 
 	for (i = 0; i < TEGRA_SE_KEYSLOT_COUNT; i++) {
@@ -3039,7 +3049,10 @@ static int tegra_se_suspend(struct device *dev)
 
 	/* Original iv context save*/
 	err = tegra_se_lp_iv_context_save(se_dev,
-		true, SE_CONTEXT_ORIGINAL_IV_OFFSET);
+		true,
+		(se_dev->chipdata->drbg_supported ?
+			SE11_CONTEXT_ORIGINAL_IV_OFFSET :
+			SE_CONTEXT_ORIGINAL_IV_OFFSET));
 	if (err) {
 		dev_err(se_dev->dev, "\n LP original iv save failure\n");
 		goto out;
@@ -3047,7 +3060,10 @@ static int tegra_se_suspend(struct device *dev)
 
 	/* Updated iv context save*/
 	err = tegra_se_lp_iv_context_save(se_dev,
-		false, SE_CONTEXT_UPDATED_IV_OFFSET);
+		false,
+		(se_dev->chipdata->drbg_supported ?
+		SE11_CONTEXT_UPDATED_IV_OFFSET :
+		SE_CONTEXT_UPDATED_IV_OFFSET));
 	if (err) {
 		dev_err(se_dev->dev, "\n LP updated iv save failure\n");
 		goto out;
@@ -3110,13 +3126,13 @@ static int tegra_se_runtime_suspend(struct device *dev)
 	 */
 	se_readl(sg_tegra_se_dev, SE_CONFIG_REG_OFFSET);
 
-	clk_disable(sg_tegra_se_dev->pclk);
+	clk_disable_unprepare(sg_tegra_se_dev->pclk);
 	return 0;
 }
 
 static int tegra_se_runtime_resume(struct device *dev)
 {
-	clk_enable(sg_tegra_se_dev->pclk);
+	clk_prepare_enable(sg_tegra_se_dev->pclk);
 	return 0;
 }
 

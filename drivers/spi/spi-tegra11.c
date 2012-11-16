@@ -151,7 +151,7 @@
 #define SPI_TX_FIFO			0x108
 #define SPI_RX_FIFO			0x188
 #define MAX_CHIP_SELECT			4
-#define SPI_FIFO_DEPTH			32
+#define SPI_FIFO_DEPTH			64
 #define DATA_DIR_TX			(1 << 0)
 #define DATA_DIR_RX			(1 << 1)
 
@@ -465,7 +465,8 @@ static void spi_tegra_copy_client_txbuf_to_spi_txbuf(
 
 	if (tspi->is_packed) {
 		len = tspi->curr_dma_words * tspi->bytes_per_word;
-		memcpy(tspi->tx_buf, t->tx_buf + tspi->cur_pos, len);
+		if (t->tx_buf)
+			memcpy(tspi->tx_buf, t->tx_buf + tspi->cur_pos, len);
 	} else {
 		unsigned int i;
 		unsigned int count;
@@ -736,6 +737,19 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 		command1 = tspi->def_command1_reg;
 		command1 |= SPI_BIT_LENGTH(bits_per_word - 1);
 
+		command1 &= ~SPI_CONTROL_MODE_MASK;
+		req_mode = spi->mode & 0x3;
+		if (req_mode == SPI_MODE_0)
+			command1 |= SPI_CONTROL_MODE_0;
+		else if (req_mode == SPI_MODE_1)
+			command1 |= SPI_CONTROL_MODE_1;
+		else if (req_mode == SPI_MODE_2)
+			command1 |= SPI_CONTROL_MODE_2;
+		else if (req_mode == SPI_MODE_3)
+			command1 |= SPI_CONTROL_MODE_3;
+
+		spi_tegra_writel(tspi, command1, SPI_COMMAND1);
+
 		/* possibly use the hw based chip select */
 		tspi->is_hw_based_cs = false;
 		if (cdata && cdata->is_hw_based_cs && is_single_xfer) {
@@ -791,16 +805,6 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 			spi_tegra_writel(tspi, tspi->def_command2_reg, SPI_COMMAND2);
 		}
 
-		command1 &= ~SPI_CONTROL_MODE_MASK;
-		req_mode = spi->mode & 0x3;
-		if (req_mode == SPI_MODE_0)
-			command1 |= SPI_CONTROL_MODE_0;
-		else if (req_mode == SPI_MODE_1)
-			command1 |= SPI_CONTROL_MODE_1;
-		else if (req_mode == SPI_MODE_2)
-			command1 |= SPI_CONTROL_MODE_2;
-		else if (req_mode == SPI_MODE_3)
-			command1 |= SPI_CONTROL_MODE_3;
 	} else {
 		command1 = tspi->command1_reg;
 		command1 &= ~SPI_BIT_LENGTH(~0);
@@ -992,7 +996,8 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 
 	m->actual_length += cur_xfer_size;
 
-	if (!list_is_last(&tspi->cur->transfer_list, &m->transfers)) {
+	if (tspi->cur &&
+		!list_is_last(&tspi->cur->transfer_list, &m->transfers)) {
 		tspi->cur = list_first_entry(&tspi->cur->transfer_list,
 			struct spi_transfer, transfer_list);
 		spin_unlock_irqrestore(&tspi->lock, *irq_flags);

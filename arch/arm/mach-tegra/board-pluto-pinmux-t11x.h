@@ -60,7 +60,7 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	I2C_PINMUX(CAM_I2C_SDA, I2C3, NORMAL, NORMAL, INPUT, DISABLE, ENABLE),
 
 	/* VI pinmux */
-	VI_PINMUX(CAM_MCLK, VI_ALT2, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT),
+	VI_PINMUX(CAM_MCLK, VI_ALT3, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT),
 
 	/* VI_ALT1 pinmux */
 	VI_PINMUX(GPIO_PBB0, VI_ALT3, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT),
@@ -74,6 +74,8 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 
 	/* PWM3 pinmux */
 	DEFAULT_PINMUX(GMI_AD11,      PWM3,        NORMAL,    NORMAL,   OUTPUT),
+	DEFAULT_PINMUX(GMI_AD13,      GMI,         NORMAL,    NORMAL,   OUTPUT),
+
 
 	/* DTV pinmux */
 	DEFAULT_PINMUX(GMI_AD14,      DTV,         PULL_DOWN, TRISTATE, INPUT),
@@ -201,6 +203,9 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	/* OWR pinmux */
 	DEFAULT_PINMUX(OWR,           OWR,         NORMAL,    NORMAL,   INPUT),
 
+	DEFAULT_PINMUX(KB_ROW6,       RSVD2,       NORMAL,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(GPIO_X1_AUD,   RSVD1,       NORMAL,    TRISTATE, INPUT),
+
 	/* CEC pinmux */
 	CEC_PINMUX(HDMI_CEC, CEC, NORMAL, NORMAL, INPUT, DISABLE, DISABLE),
 
@@ -227,7 +232,6 @@ static struct gpio_init_pin_info init_gpio_mode_pluto_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX7, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PW2, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PW3, true, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX1, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX3, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PV0, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PV1, true, 0),
@@ -274,7 +278,6 @@ static struct gpio_init_pin_info init_gpio_mode_pluto_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR3, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR4, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR5, false, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR6, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR7, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PS0, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PEE1, false, 0),

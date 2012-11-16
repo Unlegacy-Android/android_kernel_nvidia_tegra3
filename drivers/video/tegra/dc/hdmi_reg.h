@@ -203,12 +203,8 @@
 
 #define HDMI_NV_PDISP_SOR_TEST					0x56
 #define HDMI_NV_PDISP_SOR_PLL0					0x57
-#define  SOR_PLL_PWR				(1 << 0)
-#define  SOR_PLL_PDBG				(1 << 1)
-#define  SOR_PLL_VCOPD				(1 << 2)
-#define  SOR_PLL_PDPORT				(1 << 3)
-#define  SOR_PLL_RESISTORSEL			(1 << 4)
-#define  SOR_PLL_PULLDOWN			(1 << 5)
+#define  SOR_PLL_PWR_OFF			(1 << 0)
+#define  SOR_PLL_RESISTORSEL_EXT		(1 << 4)
 #define  SOR_PLL_VCOCAP(x)			(((x) & 0xf) << 8)
 #define  SOR_PLL_BG_V17_S(x)			(((x) & 0xf) << 12)
 #define  SOR_PLL_FILTER(x)			(((x) & 0xf) << 16)
@@ -391,6 +387,10 @@
 #define HDMI_NV_PDISP_AUDIO_CNTRL0				0x8b
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define HDMI_NV_PDISP_SOR_AUDIO_CNTRL0_0		0xac
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#define HDMI_NV_PDISP_SOR_AUDIO_SPARE0_0		0xae
+#define HDMI_AUDIO_HBR_ENABLE_SHIFT		27
+#endif
 #define HDMI_NV_PDISP_SOR_AUDIO_HDA_ELD_BUFWR_0		0xbc
 #define HDMI_NV_PDISP_SOR_AUDIO_HDA_PRESENSE_0		0xbd
 #define HDMI_NV_PDISP_SOR_AUDIO_AVAL_0320_0			0xbf
@@ -476,6 +476,12 @@
 #define HDMI_NV_PDISP_KEY_HDCP_KEY_3				0xa1
 #define HDMI_NV_PDISP_KEY_HDCP_KEY_TRIG				0xa2
 #define HDMI_NV_PDISP_KEY_SKEY_INDEX				0xa3
+
+#define HDMI_NV_PDISP_SOR_IO_PEAK_CURRENT			0xd1
+#define  PEAK_CURRENT_LANE0(x)			(((x) & 0xf) << 0)
+#define  PEAK_CURRENT_LANE1(x)			(((x) & 0xf) << 8)
+#define  PEAK_CURRENT_LANE2(x)			(((x) & 0xf) << 16)
+#define  PEAK_CURRENT_LANE3(x)			(((x) & 0xf) << 24)
 
 #define HDMI_NV_PDISP_SOR_PAD_CTLS0				0xd2
 #define  DRIVE_CURRENT_FUSE_OVERRIDE_T11x	(1 << 31)

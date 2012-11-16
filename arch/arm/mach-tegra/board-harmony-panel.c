@@ -271,7 +271,7 @@ static struct tegra_dc_platform_data harmony_disp2_pdata = {
 	.fb		= &harmony_hdmi_fb_data,
 };
 
-static struct nvhost_device harmony_disp1_device = {
+static struct platform_device harmony_disp1_device = {
 	.name		= "tegradc",
 	.id		= 0,
 	.resource	= harmony_disp1_resources,
@@ -286,7 +286,7 @@ static int harmony_disp1_check_fb(struct device *dev, struct fb_info *info)
 	return info->device == &harmony_disp1_device.dev;
 }
 
-static struct nvhost_device harmony_disp2_device = {
+static struct platform_device harmony_disp2_device = {
 	.name		= "tegradc",
 	.id		= 1,
 	.resource	= harmony_disp2_resources,
@@ -332,6 +332,7 @@ int __init harmony_panel_init(void)
 {
 	int err;
 	struct resource *res;
+	struct platform_device *phost1x;
 
 	gpio_request(harmony_en_vdd_pnl, "en_vdd_pnl");
 	gpio_direction_output(harmony_en_vdd_pnl, 1);
@@ -350,25 +351,25 @@ int __init harmony_panel_init(void)
 	harmony_carveouts[1].size = tegra_carveout_size;
 #endif
 
-#ifdef CONFIG_TEGRA_GRHOST
-	err = tegra2_register_host1x_devices();
+	err = platform_add_devices(harmony_gfx_devices,
+		ARRAY_SIZE(harmony_gfx_devices));
 	if (err)
 		return err;
+
+#ifdef CONFIG_TEGRA_GRHOST
+	phost1x = tegra2_register_host1x_devices();
+	if (!phost1x)
+		return -EINVAL;
 #endif
 
-	err = platform_add_devices(harmony_gfx_devices,
-				   ARRAY_SIZE(harmony_gfx_devices));
-	if (err)
-		return err;
-
-	res = nvhost_get_resource_byname(&harmony_disp1_device,
+	res = platform_get_resource_byname(&harmony_disp1_device,
 		IORESOURCE_MEM, "fbmem");
 	if (res) {
 		res->start = tegra_fb_start;
 		res->end = tegra_fb_start + tegra_fb_size - 1;
 	}
 
-	res = nvhost_get_resource_byname(&harmony_disp2_device,
+	res = platform_get_resource_byname(&harmony_disp2_device,
 		IORESOURCE_MEM, "fbmem");
 	if (res) {
 		res->start = tegra_fb2_start;
@@ -380,11 +381,14 @@ int __init harmony_panel_init(void)
 		tegra_move_framebuffer(tegra_fb_start,
 			tegra_bootloader_fb_start,
 			min(tegra_fb_size, tegra_bootloader_fb_size));
-	err = nvhost_device_register(&harmony_disp1_device);
+
+	harmony_disp1_device.dev.parent = &phost1x->dev;
+	err = platform_device_register(&harmony_disp1_device);
 	if (err)
 		return err;
 
-	err = nvhost_device_register(&harmony_disp2_device);
+	harmony_disp2_device.dev.parent = &phost1x->dev;
+	err = platform_device_register(&harmony_disp2_device);
 	if (err)
 		return err;
 

@@ -31,6 +31,7 @@
 #include <linux/moduleparam.h>
 #include <linux/spinlock_types.h>
 
+#include <mach/hardware.h>
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 
@@ -323,17 +324,12 @@ static int __init tegra_mcerr_init(void)
 #if defined(CONFIG_TEGRA_MC_EARLY_ACK)
 	reg = readl(mc + MC_EMEM_ARB_OVERRIDE);
 	reg |= 3;
+#if defined(CONFIG_TEGRA_ERRATA_1157520)
+	if (tegra_revision == TEGRA_REVISION_A01)
+		reg &= ~2;
+#endif
 	writel(reg, mc + MC_EMEM_ARB_OVERRIDE);
 #endif
-
-	if (request_irq(INT_MC_GENERAL, tegra_mc_error_isr, 0,
-			"mc_status", NULL)) {
-		pr_err("%s: unable to register MC error interrupt\n", __func__);
-		ret = -ENXIO;
-	} else {
-		reg = MC_INT_EN_MASK;
-		writel(reg, mc + MC_INT_MASK);
-	}
 
 	chip_specific.mcerr_type         = mcerr_default_type;
 	chip_specific.mcerr_info         = mcerr_default_info;
@@ -347,6 +343,15 @@ static int __init tegra_mcerr_init(void)
 	 * functions as it wishes.
 	 */
 	mcerr_chip_specific_setup(&chip_specific);
+
+	if (request_irq(INT_MC_GENERAL, tegra_mc_error_isr, 0,
+			"mc_status", NULL)) {
+		pr_err("%s: unable to register MC error interrupt\n", __func__);
+		ret = -ENXIO;
+	} else {
+		reg = MC_INT_EN_MASK;
+		writel(reg, mc + MC_INT_MASK);
+	}
 
 	/*
 	 * Init the debugfs node for reporting errors from the MC. If this

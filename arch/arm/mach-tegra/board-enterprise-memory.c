@@ -1483,7 +1483,7 @@ static struct tegra30_emc_pdata enterprise_emc_chip_kmkts0_a03 = {
 	.num_tables = ARRAY_SIZE(enterprise_emc_tables_kmkts0_a03)
 };
 
-int enterprise_emc_init(void)
+int __init enterprise_emc_init(void)
 {
 	struct board_info board_info;
 	struct tegra30_emc_pdata *emc_platdata;
