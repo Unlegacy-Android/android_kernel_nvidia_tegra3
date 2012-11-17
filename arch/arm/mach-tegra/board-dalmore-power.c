@@ -112,9 +112,9 @@ static struct regulator_consumer_supply tps65090_fet6_supply[] = {
 };
 
 static struct regulator_consumer_supply tps65090_fet7_supply[] = {
-	REGULATOR_SUPPLY("vdd_wifi_3v3", NULL),
-	REGULATOR_SUPPLY("vdd_gps_3v3", NULL),
-	REGULATOR_SUPPLY("vdd_bt_3v3", NULL),
+	REGULATOR_SUPPLY("vdd_wifi_3v3", "bcm4329_wlan.1"),
+	REGULATOR_SUPPLY("vdd_gps_3v3", "reg-userspace-consumer.2"),
+	REGULATOR_SUPPLY("vdd_bt_3v3", "reg-userspace-consumer.1"),
 };
 
 #define TPS65090_PDATA_INIT(_id, _name, _supply_reg,			\
@@ -153,7 +153,7 @@ TPS65090_PDATA_INIT(LDO1, ldo1, NULL, 1, 1, 0, false, -1);
 TPS65090_PDATA_INIT(LDO2, ldo2, NULL, 1, 1, 0, false, -1);
 TPS65090_PDATA_INIT(FET1, fet1, NULL, 0, 0, 0, false, -1);
 TPS65090_PDATA_INIT(FET3, fet3, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
-TPS65090_PDATA_INIT(FET4, fet4, tps65090_rails(DCDC2), 1, 1, 0, false, -1); /* always_on and boot_on */
+TPS65090_PDATA_INIT(FET4, fet4, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
 TPS65090_PDATA_INIT(FET5, fet5, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
 TPS65090_PDATA_INIT(FET6, fet6, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
 TPS65090_PDATA_INIT(FET7, fet7, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
@@ -220,14 +220,14 @@ static struct regulator_consumer_supply max77663_sd2_supply[] = {
 	REGULATOR_SUPPLY("vdd_mic_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_nfc_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_ds_1v8", NULL),
-	REGULATOR_SUPPLY("dvdd", "spi3.2"),
 	REGULATOR_SUPPLY("vdd_spi_1v8", NULL),
 	REGULATOR_SUPPLY("dvdd_lcd", NULL),
 	REGULATOR_SUPPLY("vdd_com_1v8", NULL),
-	REGULATOR_SUPPLY("vddio_wifi_1v8", NULL),
-	REGULATOR_SUPPLY("vdd_gps_1v8", NULL),
-	REGULATOR_SUPPLY("vddio_bt_1v8", NULL),
+	REGULATOR_SUPPLY("vddio_wifi_1v8", "bcm4329_wlan.1"),
+	REGULATOR_SUPPLY("vdd_gps_1v8", "reg-userspace-consumer.2"),
+	REGULATOR_SUPPLY("vddio_bt_1v8", "reg-userspace-consumer.1"),
 	REGULATOR_SUPPLY("vdd_dtv_1v8", NULL),
+	REGULATOR_SUPPLY("vlogic", "0-0069"),
 };
 
 static struct regulator_consumer_supply max77663_sd3_supply[] = {
@@ -253,6 +253,7 @@ static struct regulator_consumer_supply max77663_ldo2_supply[] = {
 	REGULATOR_SUPPLY("vdd_sensor_2v85", NULL),
 	REGULATOR_SUPPLY("vdd_als", NULL),
 	REGULATOR_SUPPLY("vdd", "0-004c"),
+	REGULATOR_SUPPLY("vdd", "0-0069"),
 };
 
 static struct regulator_consumer_supply max77663_ldo3_supply[] = {
@@ -540,6 +541,7 @@ static struct regulator_consumer_supply palmas_smps12_supply[] = {
 
 #define palmas_smps3_supply max77663_sd2_supply
 #define palmas_smps45_supply max77663_sd0_supply
+#define palmas_smps457_supply max77663_sd0_supply
 
 static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("avdd_plla_p_c", NULL),
@@ -616,6 +618,7 @@ static struct regulator_consumer_supply palmas_ldousb_supply[] = {
 PALMAS_PDATA_INIT(smps12, 1350,  1350, tps65090_rails(DCDC3), 0, 0, 0);
 PALMAS_PDATA_INIT(smps3, 1800,  1800, tps65090_rails(DCDC3), 0, 0, 0);
 PALMAS_PDATA_INIT(smps45, 900,  1400, tps65090_rails(DCDC2), 1, 1, 0);
+PALMAS_PDATA_INIT(smps457, 900,  1400, tps65090_rails(DCDC2), 1, 1, 0);
 PALMAS_PDATA_INIT(smps8, 1050,  1050, tps65090_rails(DCDC2), 0, 1, 1);
 PALMAS_PDATA_INIT(smps9, 2800,  2800, tps65090_rails(DCDC2), 1, 0, 0);
 PALMAS_PDATA_INIT(ldo1, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1);
@@ -636,7 +639,7 @@ static struct regulator_init_data *dalmore_e1611_reg_data[PALMAS_NUM_REGS] = {
 	NULL,
 	PALMAS_REG_PDATA(smps3),
 	PALMAS_REG_PDATA(smps45),
-	NULL,
+	PALMAS_REG_PDATA(smps457),
 	NULL,
 	NULL,
 	PALMAS_REG_PDATA(smps8),
@@ -674,7 +677,7 @@ PALMAS_REG_INIT(smps12, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps123, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps3, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps45, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
-PALMAS_REG_INIT(smps457, 0, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps457, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REG_INIT(smps6, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps7, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps8, 0, 0, 0, 0, 0);
@@ -800,6 +803,11 @@ static struct regulator_consumer_supply fixed_reg_usb3_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
 };
 
+/* EN_1V8_TS From TEGRA_GPIO_PH5 */
+static struct regulator_consumer_supply fixed_reg_dvdd_ts_supply[] = {
+	REGULATOR_SUPPLY("dvdd", "spi3.2"),
+};
+
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_"#_name
 #define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,	\
@@ -872,6 +880,9 @@ FIXED_REG(7,	en_1v8_cam_e1611,	en_1v8_cam_e1611,
 	palmas_rails(smps3),	0,	0,
 	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO6,	false,	true,	0,	1800);
 
+FIXED_REG(8,	dvdd_ts,	dvdd_ts,
+	palmas_rails(smps3),	0,	0,
+	TEGRA_GPIO_PH5,	false,	false,	1,	1800);
 /*
  * Creating the fixed regulator device tables
  */
@@ -889,7 +900,8 @@ FIXED_REG(7,	en_1v8_cam_e1611,	en_1v8_cam_e1611,
 	ADD_FIXED_REG(vpp_fuse),		\
 
 #define E1611_FIXED_REG				\
-	ADD_FIXED_REG(en_1v8_cam_e1611),
+	ADD_FIXED_REG(en_1v8_cam_e1611), \
+	ADD_FIXED_REG(dvdd_ts),
 
 /* Gpio switch regulator platform data for Dalmore E1611 */
 static struct platform_device *fixed_reg_devs_e1611_a00[] = {

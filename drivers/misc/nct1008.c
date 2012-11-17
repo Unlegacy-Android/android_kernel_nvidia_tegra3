@@ -92,9 +92,10 @@ struct nct1008_data {
 	long current_lo_limit;
 	long current_hi_limit;
 	int conv_period_ms;
+	long etemp;
 
 	struct thermal_cooling_device *passive_cdev;
-	struct thermal_cooling_device *active_cdev[NCT1008_MAX_ACTIVE];
+	struct thermal_cooling_device *active_cdev;
 	struct thermal_zone_device *nct_int;
 	struct thermal_zone_device *nct_ext;
 };
@@ -589,7 +590,7 @@ static void nct1008_update(struct nct1008_data *data)
 			high_temp = trip_temp;
 
 		if ((trip_temp < temp) && (trip_temp > low_temp)) {
-			cdev = count ? &data->plat_data.active[count - 1] :
+			cdev = count ? &data->plat_data.active :
 					&data->plat_data.passive;
 			low_temp = trip_temp - cdev->hysteresis;
 		}
@@ -837,6 +838,7 @@ static int nct1008_ext_get_temp(struct thermal_zone_device *thz,
 				temp_ext_lo * 250;
 
 	*temp = temp_ext_milli;
+	data->etemp = temp_ext_milli;
 
 	return 0;
 }
@@ -852,11 +854,11 @@ static int nct1008_ext_bind(struct thermal_zone_device *thz,
 							THERMAL_NO_LIMIT,
 							THERMAL_NO_LIMIT);
 
-	for (i = 0; data->active_cdev[i]; i++)
-		if (cdev == data->active_cdev[i])
-			return thermal_zone_bind_cooling_device(thz, i+1, cdev,
-							THERMAL_NO_LIMIT,
-							THERMAL_NO_LIMIT);
+	if (cdev == data->active_cdev)
+		for (i = 0; i < data->plat_data.active.states[i].trip_temp; i++)
+			thermal_zone_bind_cooling_device(thz, i+1, cdev,
+					data->plat_data.active.states[i].state,
+					data->plat_data.active.states[i].state);
 
 	return 0;
 }
@@ -870,10 +872,9 @@ static int nct1008_ext_unbind(struct thermal_zone_device *thz,
 	if (cdev == data->passive_cdev)
 		return thermal_zone_unbind_cooling_device(thz, 0, cdev);
 
-	for (i = 0; data->active_cdev[i]; i++)
-		if (cdev == data->active_cdev[i])
-			return thermal_zone_unbind_cooling_device(thz,
-								i+1, cdev);
+	if (cdev == data->active_cdev)
+		for (i = 0; i < data->plat_data.active.states[i].trip_temp; i++)
+			thermal_zone_unbind_cooling_device(thz, i+1, cdev);
 
 	return 0;
 }
@@ -886,7 +887,7 @@ static int nct1008_ext_get_trip_temp(struct thermal_zone_device *thz,
 	if (trip == 0)
 		*temp = data->plat_data.passive.trip_temp;
 	else
-		*temp = data->plat_data.active[trip-1].trip_temp;
+		*temp = data->plat_data.active.states[trip-1].trip_temp;
 	return 0;
 }
 
@@ -898,7 +899,7 @@ static int nct1008_ext_set_trip_temp(struct thermal_zone_device *thz,
 	if (trip == 0)
 		data->plat_data.passive.trip_temp = temp;
 	else
-		data->plat_data.active[trip-1].trip_temp = temp;
+		data->plat_data.active.states[trip-1].trip_temp = temp;
 
 	nct1008_update(data);
 
@@ -910,6 +911,25 @@ static int nct1008_ext_get_trip_type(struct thermal_zone_device *thz,
 					enum thermal_trip_type *type)
 {
 	*type = (trip == 0) ? THERMAL_TRIP_PASSIVE : THERMAL_TRIP_ACTIVE;
+	return 0;
+}
+
+static int nct1008_ext_get_trend(struct thermal_zone_device *thz,
+				int trip, enum thermal_trend *trend)
+{
+	struct nct1008_data *data = thz->devdata;
+
+	if (trip > 0) {
+		/* aggressive active cooling */
+		*trend = THERMAL_TREND_RAISING;
+		return 0;
+	}
+
+	if (data->etemp > data->plat_data.passive.trip_temp)
+		*trend = THERMAL_TREND_RAISING;
+	else
+		*trend = THERMAL_TREND_DROPPING;
+
 	return 0;
 }
 
@@ -969,6 +989,7 @@ static struct thermal_zone_device_ops nct_ext_ops = {
 	.get_trip_type = nct1008_ext_get_trip_type,
 	.get_trip_temp = nct1008_ext_get_trip_temp,
 	.set_trip_temp = nct1008_ext_set_trip_temp,
+	.get_trend = nct1008_ext_get_trend,
 };
 #endif
 
@@ -1045,11 +1066,12 @@ static int __devinit nct1008_probe(struct i2c_client *client,
 		num_trips++;
 	}
 
-	for (i = 0; data->plat_data.active[i].create_cdev; i++) {
-		data->active_cdev[i] = data->plat_data.active[i].create_cdev(
-				data->plat_data.active[i].cdev_data);
-		mask |= (1 << num_trips);
-		num_trips++;
+	if (data->plat_data.active.create_cdev) {
+		data->active_cdev = data->plat_data.active.create_cdev(NULL);
+		for (i = 0; data->plat_data.active.states[i].trip_temp; i++) {
+			mask |= (1 << num_trips);
+			num_trips++;
+		}
 	}
 
 	data->nct_int = thermal_zone_device_register("nct_int",

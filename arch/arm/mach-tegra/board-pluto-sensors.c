@@ -612,27 +612,21 @@ static int pluto_camera_init(void)
 
 /* MPU board file definition */
 static struct mpu_platform_data mpu_gyro_data = {
-	.int_config	= 0x10,
+	.int_config	= 0x00,
 	.level_shifter	= 0,
 	.orientation	= MPU_GYRO_ORIENTATION,
-	.sec_slave_type	= SECONDARY_SLAVE_TYPE_NONE,
+	.sec_slave_type	= SECONDARY_SLAVE_TYPE_COMPASS,
+	.sec_slave_id	= COMPASS_ID_AK8963,
+	.secondary_i2c_addr	= MPU_COMPASS_ADDR,
+	.secondary_orientation	= MPU_COMPASS_ORIENTATION,
 	.key		= {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
 			   0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
-};
-
-static struct mpu_platform_data mpu_compass_data = {
-	.orientation    = MPU_COMPASS_ORIENTATION,
-	.sec_slave_type = SECONDARY_SLAVE_TYPE_NONE,
 };
 
 static struct i2c_board_info __initdata inv_mpu_i2c0_board_info[] = {
 	{
 		I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
 		.platform_data = &mpu_gyro_data,
-	},
-	{
-		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
-		.platform_data = &mpu_compass_data,
 	},
 };
 
@@ -688,25 +682,26 @@ static int pluto_nct1008_init(void)
 	if (nct1008_port >= 0) {
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 		const struct tegra_edp_limits *cpu_edp_limits;
+		struct nct1008_cdev *active_cdev;
 		int cpu_edp_limits_size;
 		int i;
 
 		/* edp capping */
 		tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
 
-		if (cpu_edp_limits_size > MAX_THROT_TABLE_SIZE)
+		if ((cpu_edp_limits_size > MAX_THROT_TABLE_SIZE) ||
+			(cpu_edp_limits_size > MAX_ACTIVE_TEMP_STATE))
 			BUG();
 
+		active_cdev = &pluto_nct1008_pdata.active;
+		active_cdev->create_cdev = edp_cooling_device_create;
+		active_cdev->hysteresis = 1000;
+
 		for (i = 0; i < cpu_edp_limits_size-1; i++) {
-			pluto_nct1008_pdata.active[i].create_cdev =
-				(struct thermal_cooling_device *(*)(void *))
-					edp_cooling_device_create;
-			pluto_nct1008_pdata.active[i].cdev_data = (void *)i;
-			pluto_nct1008_pdata.active[i].trip_temp =
+			active_cdev->states[i].trip_temp =
 				cpu_edp_limits[i].temperature * 1000;
-			pluto_nct1008_pdata.active[i].hysteresis = 1000;
+			active_cdev->states[i].state = i + 1;
 		}
-		pluto_nct1008_pdata.active[i].create_cdev = NULL;
 #endif
 
 		pluto_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
