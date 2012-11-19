@@ -125,6 +125,7 @@ config ARCH_TEGRA_11x_SOC
 	select TEGRA_ISOMGR_DEBUG
 	select TEGRA_ERRATA_1157520
 	#select TEGRA_CORE_EDP_LIMITS
+	select TEGRA_THERMAL_THROTTLE_EXACT_FREQ
 	help
 	  Support for NVIDIA Tegra 11x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
@@ -493,6 +494,16 @@ config TEGRA_THERMAL_THROTTLE
 	default y
 	help
 	  Also requires enabling a temperature sensor such as NCT1008.
+
+config TEGRA_THERMAL_THROTTLE_EXACT_FREQ
+	bool "Use exact cpu frequency capping when thermal throttling"
+	depends on TEGRA_THERMAL_THROTTLE
+	default n
+	help
+	  When this option is enabled, the cpu will run at the exact
+	  frequency specified in the thermal throttle table when thermal
+	  throttling; when disabled, the cpu frequency will clip to
+	  the next lower frequency from the cpu frequency table.
 
 config TEGRA_CLOCK_DEBUG_WRITE
 	bool "Enable debugfs write access to clock tree"
