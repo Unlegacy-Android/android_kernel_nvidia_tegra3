@@ -1286,6 +1286,7 @@ static void __init tegra_pluto_init(void)
 	pluto_sensors_init();
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	pluto_soctherm_init();
+	tegra_register_fuse();
 }
 
 static void __init pluto_ramconsole_reserve(unsigned long size)
