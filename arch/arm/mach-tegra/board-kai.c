@@ -879,6 +879,7 @@ static void __init tegra_kai_init(void)
 	tegra_wdt_recovery_init();
 #endif
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
+	tegra_register_fuse();
 }
 
 static void __init kai_ramconsole_reserve(unsigned long size)

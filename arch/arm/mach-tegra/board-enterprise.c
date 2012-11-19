@@ -1145,6 +1145,7 @@ static void __init tegra_enterprise_init(void)
 	tegra_release_bootloader_fb();
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	enterprise_vibrator_init();
+	tegra_register_fuse();
 }
 
 static void __init tegra_enterprise_dt_init(void)
