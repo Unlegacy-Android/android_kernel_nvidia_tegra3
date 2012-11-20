@@ -192,6 +192,11 @@ struct palmas_pmic_platform_data {
 
 };
 
+struct palmas_rtc_platform_data {
+	unsigned enable_charging:1;
+	unsigned charging_current_ua;
+};
+
 struct palmas_platform_data {
 	int gpio_base;
 	int irq_base;
@@ -208,6 +213,7 @@ struct palmas_platform_data {
 	u8 pad1, pad2, pad3;
 
 	struct palmas_pmic_platform_data *pmic_pdata;
+	struct palmas_rtc_platform_data *rtc_pdata;
 
 	struct palmas_clk32k_init_data  *clk32k_init_data;
 	int clk32k_init_data_size;
