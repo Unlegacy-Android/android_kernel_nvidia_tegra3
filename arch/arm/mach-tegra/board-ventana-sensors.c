@@ -255,14 +255,18 @@ static struct nct1008_platform_data ventana_nct1008_pdata = {
 	.shutdown_local_limit = 125,
 	.shutdown_ext_limit = 115,
 
-	/* Thermal Throttling */
-	.passive = {
-		.enable = true,
-		.type = "ventana-nct",
-		.trip_temp = 90000,
-		.tc1 = 0,
-		.tc2 = 1,
-		.passive_delay = 2000,
+	.passive_delay = 2000,
+
+	.num_trips = 1,
+	.trips = {
+		/* Thermal Throttling */
+		[0] = {
+			.cdev_type = "ventana-nct",
+			.trip_temp = 90000,
+			.trip_type = THERMAL_TRIP_PASSIVE,
+			.state = THERMAL_NO_LIMIT,
+			.hysteresis = 0,
+		},
 	},
 };
 
