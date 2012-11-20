@@ -25,6 +25,11 @@
 #include <linux/irq.h>
 #include <linux/regmap.h>
 
+struct tps65090_charger_data {
+	int irq_base;
+	void (*update_status)(void);
+};
+
 struct tps65090 {
 	struct device		*dev;
 	struct regmap		*rmap;
@@ -38,6 +43,7 @@ struct tps65090_platform_data {
 	unsigned long irq_flag;
 	struct tps65090_regulator_platform_data **reg_pdata;
 	int num_reg_pdata;
+	struct tps65090_charger_data *charger_pdata;
 };
 
 /* Define tps65090 IRQ numbers */
