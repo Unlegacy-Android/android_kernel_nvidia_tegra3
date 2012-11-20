@@ -495,12 +495,21 @@ static struct resource cardhu_disp2_resources[] = {
 		.start	= 0,
 		.end	= 0,
 	},
+#ifdef CONFIG_TEGRA_CARDHU_DUAL_DSI_PANEL
+	{
+		.name  = "dsi_regs",
+		.start	= TEGRA_DSIB_BASE,
+		.end	= TEGRA_DSIB_BASE + TEGRA_DSIB_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+#else
 	{
 		.name	= "hdmi_regs",
 		.start	= TEGRA_HDMI_BASE,
 		.end	= TEGRA_HDMI_BASE + TEGRA_HDMI_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
 	},
+#endif
 };
 #endif
 
@@ -873,7 +882,6 @@ static int cardhu_dsi_panel_disable(void)
 	int err;
 
 	err = 0;
-
 	if (is_panel_219) {
 		gpio_free(cardhu_dsi_219_pnl_reset);
 		gpio_free(cardhu_bl_enb);
@@ -908,7 +916,6 @@ static int cardhu_dsi_panel_postsuspend(void)
 
 	if (is_panel_218)
 		gpio_free(AVDD_LCD);
-
 	return err;
 }
 
@@ -1204,6 +1211,113 @@ static struct platform_device *cardhu_gfx_devices[] __initdata = {
 	&cardhu_backlight_device,
 };
 
+#ifdef CONFIG_TEGRA_CARDHU_DUAL_DSI_PANEL
+struct tegra_dsi_out cardhu_dsi2 = {
+	.n_data_lanes = 2,
+	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
+
+#if (DC_CTRL_MODE & TEGRA_DC_OUT_ONE_SHOT_MODE)
+	/*
+	* The one-shot frame time must be shorter than the time between TE.
+	* Increasing refresh_rate will result in a decrease in the frame time
+	* for one-shot. rated_refresh_rate is only an approximation of the
+	* TE rate, and is only used to report refresh rate to upper layers.
+	*/
+	.refresh_rate = 66,
+	.rated_refresh_rate = 60,
+#else
+	.refresh_rate = 60,
+#endif
+	.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
+	.panel_has_frame_buffer = true,
+	.dsi_instance = 1,
+	.panel_reset = DSI_PANEL_RESET,
+	.n_init_cmd = ARRAY_SIZE(dsi_init_cmd),
+	.dsi_init_cmd = dsi_init_cmd,
+
+	.n_early_suspend_cmd = ARRAY_SIZE(dsi_early_suspend_cmd),
+	.dsi_early_suspend_cmd = dsi_early_suspend_cmd,
+
+	.n_late_resume_cmd = ARRAY_SIZE(dsi_late_resume_cmd),
+	.dsi_late_resume_cmd = dsi_late_resume_cmd,
+
+
+	.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
+	.dsi_suspend_cmd = dsi_suspend_cmd,
+	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
+	.lp_cmd_mode_freq_khz = 43000
+};
+
+static int cardhu_dual_dsi_panel_enable(struct device *dev)
+{
+	int ret;
+
+	if (cardhu_dsi_reg == NULL) {
+		cardhu_dsi_reg = regulator_get(dev, "avdd_dsi_csi");
+		if (IS_ERR_OR_NULL(cardhu_dsi_reg)) {
+			pr_err("dsi: Could not get regulator avdd_dsi_csi\n");
+			cardhu_dsi_reg = NULL;
+			return PTR_ERR(cardhu_dsi_reg);
+		}
+
+		regulator_enable(cardhu_dsi_reg);
+		if (!is_panel_1506) {
+			ret = gpio_request(AVDD_LCD, "avdd_lcd");
+			if (ret < 0)
+				gpio_free(AVDD_LCD);
+			ret = gpio_direction_output(AVDD_LCD, 1);
+			if (ret < 0)
+				gpio_free(AVDD_LCD);
+		}
+
+#if DSI_PANEL_RESET
+		if (is_panel_218) {
+			ret = gpio_request(cardhu_dsi_pnl_reset,
+							"dsi_panel_reset");
+			if (ret < 0)
+				return ret;
+
+			ret = gpio_direction_output(cardhu_dsi_pnl_reset, 0);
+			if (ret < 0) {
+				gpio_free(cardhu_dsi_pnl_reset);
+				return ret;
+			}
+
+			gpio_set_value(cardhu_dsi_pnl_reset, 1);
+			gpio_set_value(cardhu_dsi_pnl_reset, 0);
+			mdelay(2);
+			gpio_set_value(cardhu_dsi_pnl_reset, 1);
+			mdelay(2);
+		}
+#endif
+	}
+
+	return 0;
+}
+
+static void cardhu_dual_dsi_init(void)
+{
+
+	memset(&cardhu_disp2_out, 0, sizeof(cardhu_disp2_out));
+
+	cardhu_disp2_out.type = TEGRA_DC_OUT_DSI;
+	cardhu_disp2_out.align = TEGRA_DC_ALIGN_MSB;
+	cardhu_disp2_out.order = TEGRA_DC_ORDER_RED_BLUE;
+	cardhu_disp2_out.sd_settings = &cardhu_sd_settings;
+	cardhu_disp2_out.modes = cardhu_dsi_modes_218;
+	cardhu_disp2_out.n_modes = ARRAY_SIZE(cardhu_dsi_modes_218);
+	cardhu_disp2_out.dsi = &cardhu_dsi2;
+	cardhu_disp2_out.enable = cardhu_dual_dsi_panel_enable;
+	cardhu_disp2_out.height = 47;
+	cardhu_disp2_out.width = 84;
+	cardhu_disp2_pdata.fb = &cardhu_dsi_fb_data;
+	cardhu_disp1_out.enable = cardhu_dual_dsi_panel_enable;
+	cardhu_disp1_out.disable = NULL;
+	cardhu_disp1_out.postsuspend = NULL;
+	cardhu_disp1_out.flags = 0;
+
+}
+#endif
 static void cardhu_panel_preinit(void)
 {
 	if (display_board_info.board_id == BOARD_DISPLAY_E1213)
@@ -1249,6 +1363,9 @@ static void cardhu_panel_preinit(void)
 			/* Set height and width in mm. */
 			cardhu_disp1_out.height = 47;
 			cardhu_disp1_out.width = 84;
+#ifdef CONFIG_TEGRA_CARDHU_DUAL_DSI_PANEL
+			cardhu_dual_dsi_init();
+#endif
 		} else if (is_panel_219) {
 			cardhu_disp1_out.modes	= cardhu_dsi_modes_219;
 			cardhu_disp1_out.n_modes =
