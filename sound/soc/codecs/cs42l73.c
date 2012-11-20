@@ -651,6 +651,7 @@ static const struct snd_soc_dapm_widget cs42l73_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY("MIC1 Bias", CS42L73_PWRCTL2, 6, 1, NULL, 0),
 	SND_SOC_DAPM_INPUT("MIC2"),
 	SND_SOC_DAPM_SUPPLY("MIC2 Bias", CS42L73_PWRCTL2, 7, 1, NULL, 0),
+	SND_SOC_DAPM_SUPPLY("VSPINOUT", CS42L73_PWRCTL2, 4, 1, NULL, 0),
 
 	SND_SOC_DAPM_AIF_OUT("XSPOUTL", "XSP Capture",  0,
 			CS42L73_PWRCTL2, 1, 1),
@@ -661,9 +662,9 @@ static const struct snd_soc_dapm_widget cs42l73_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_OUT("ASPOUTR", "ASP Capture",  0,
 			CS42L73_PWRCTL2, 3, 1),
 	SND_SOC_DAPM_AIF_OUT("VSPOUTL", "VSP Capture",  0,
-			CS42L73_PWRCTL2, 4, 1),
+			SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_AIF_OUT("VSPOUTR", "VSP Capture",  0,
-			CS42L73_PWRCTL2, 4, 1),
+			SND_SOC_NOPM, 0, 0),
 
 	SND_SOC_DAPM_PGA("PGA Left", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_PGA("PGA Right", SND_SOC_NOPM, 0, 0, NULL, 0),
@@ -706,7 +707,7 @@ static const struct snd_soc_dapm_widget cs42l73_dapm_widgets[] = {
 				CS42L73_PWRCTL2, 2, 1),
 
 	SND_SOC_DAPM_AIF_IN("VSPIN", "VSP Playback", 0,
-				CS42L73_PWRCTL2, 4, 1),
+				SND_SOC_NOPM, 0, 0),
 
 	SND_SOC_DAPM_MIXER("HL Left Mixer", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_MIXER("HL Right Mixer", SND_SOC_NOPM, 0, 0, NULL, 0),
@@ -833,6 +834,8 @@ static const struct snd_soc_dapm_route cs42l73_audio_map[] = {
 	{"HL Left Mixer", NULL, "VSPIN"},
 	{"HL Right Mixer", NULL, "VSPIN"},
 
+	{"VSPIN", NULL, "VSPINOUT"},
+
 	/* Capture Paths */
 	{"MIC1", NULL, "MIC1 Bias"},
 	{"PGA Left Mux", "Mic 1", "MIC1"},
@@ -876,6 +879,9 @@ static const struct snd_soc_dapm_route cs42l73_audio_map[] = {
 
 	{"VSPOUTL", "VSP-IP Volume", "VSPL Output Mixer"},
 	{"VSPOUTR", "VSP-IP Volume", "VSPR Output Mixer"},
+
+	{"VSPOUTL", NULL, "VSPINOUT"},
+	{"VSPOUTR", NULL, "VSPINOUT"},
 
 	{"VSPOUTL", NULL, "VSPL Output Mixer"},
 	{"VSPOUTR", NULL, "VSPR Output Mixer"},
