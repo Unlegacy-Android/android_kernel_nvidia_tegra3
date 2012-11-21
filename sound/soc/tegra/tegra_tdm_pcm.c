@@ -2,11 +2,11 @@
  * tegra_tdm_pcm.c - Tegra TDM PCM driver
  *
  * Author: Nitin Pai <npai@nvidia.com>
- * Copyright (C) 2010 - NVIDIA, Inc.
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * Based on code copyright/by:
  *
- * Copyright (c) 2009-2010, NVIDIA Corporation.
+ * Copyright (c) 2009-2010, NVIDIA CORPORATION.  All rights reserved.
  * Scott Peterson <speterson@nvidia.com>
  * Stephen Warren <swarren@nvidia.com>
  * Vijay Mali <vmali@nvidia.com>
@@ -51,7 +51,7 @@ static const struct snd_pcm_hardware tegra_tdm_pcm_hardware = {
 	.formats		= SNDRV_PCM_FMTBIT_S16_LE,
 	.channels_min		= 8,
 	.channels_max		= 16,
-	.period_bytes_min	= 16 * 1024,
+	.period_bytes_min	= 8 * 1024,
 	.period_bytes_max	= 16 * 1024,
 	.periods_min		= 4,
 	.periods_max		= 4,
