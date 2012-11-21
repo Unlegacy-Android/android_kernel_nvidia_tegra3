@@ -1425,6 +1425,8 @@ static int mmc_suspend(struct mmc_host *host)
 	BUG_ON(!host);
 	BUG_ON(!host->card);
 
+	if (host->card->ext_csd.refresh)
+		del_timer_sync(&host->card->timer);
 	mmc_claim_host(host);
 	if (mmc_card_can_sleep(host) &&
 		!(host->caps2 & MMC_CAP2_NO_SLEEP_CMD)) {
@@ -1451,7 +1453,12 @@ static int mmc_resume(struct mmc_host *host)
 
 	BUG_ON(!host);
 	BUG_ON(!host->card);
-
+	if (host->card->ext_csd.refresh) {
+		host->card->timer.expires = jiffies +
+			((MMC_BKOPS_INTERVAL < MMC_REFRESH_INTERVAL) ?
+			 MMC_BKOPS_INTERVAL : MMC_REFRESH_INTERVAL);
+		add_timer(&host->card->timer);
+	}
 	mmc_claim_host(host);
 	if (mmc_card_is_sleep(host->card) &&
 		!(host->caps2 & MMC_CAP2_NO_SLEEP_CMD)) {
