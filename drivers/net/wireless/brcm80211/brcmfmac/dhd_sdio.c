@@ -576,12 +576,14 @@ struct brcmf_sdio {
 
 	struct timer_list timer;
 	struct completion watchdog_wait;
+	struct completion watchdog_exit;
 	struct task_struct *watchdog_tsk;
 	bool wd_timer_valid;
 	uint save_ms;
 
 	struct task_struct *dpc_tsk;
 	struct completion dpc_wait;
+	struct completion dpc_exit;
 	struct list_head dpc_tsklst;
 	spinlock_t dpc_tl_lock;
 
@@ -2293,13 +2295,15 @@ static void brcmf_sdbrcm_bus_stop(struct device *dev)
 
 	if (bus->watchdog_tsk) {
 		send_sig(SIGTERM, bus->watchdog_tsk, 1);
-		kthread_stop(bus->watchdog_tsk);
+		if (wait_for_completion_timeout(&bus->watchdog_exit, HZ)  == 0)
+			kthread_stop(bus->watchdog_tsk);
 		bus->watchdog_tsk = NULL;
 	}
 
 	if (bus->dpc_tsk && bus->dpc_tsk != current) {
 		send_sig(SIGTERM, bus->dpc_tsk, 1);
-		kthread_stop(bus->dpc_tsk);
+		if (wait_for_completion_timeout(&bus->dpc_exit, HZ)  == 0)
+			kthread_stop(bus->dpc_tsk);
 		bus->dpc_tsk = NULL;
 	}
 
@@ -2655,7 +2659,7 @@ static int brcmf_sdbrcm_dpc_thread(void *data)
 
 		if (list_empty(&bus->dpc_tsklst))
 			if (wait_for_completion_interruptible(&bus->dpc_wait))
-				break;
+				goto fail;
 
 		spin_lock_irqsave(&bus->dpc_tl_lock, flags);
 		list_for_each_safe(cur_hd, tmp_hd, &bus->dpc_tsklst) {
@@ -2666,7 +2670,7 @@ static int brcmf_sdbrcm_dpc_thread(void *data)
 				brcmf_sdbrcm_bus_stop(bus->sdiodev->dev);
 				bus->dpc_tsk = NULL;
 				spin_lock_irqsave(&bus->dpc_tl_lock, flags);
-				break;
+				goto fail;
 			}
 
 			if (brcmf_sdbrcm_dpc(bus))
@@ -2679,6 +2683,8 @@ static int brcmf_sdbrcm_dpc_thread(void *data)
 		spin_unlock_irqrestore(&bus->dpc_tl_lock, flags);
 	}
 	return 0;
+fail:
+	complete_and_exit(&bus->dpc_exit, 0);
 }
 
 static int brcmf_sdbrcm_bus_txdata(struct device *dev, struct sk_buff *pkt)
@@ -3884,9 +3890,11 @@ brcmf_sdbrcm_watchdog_thread(void *data)
 			/* Count the tick for reference */
 			bus->tickcnt++;
 		} else
-			break;
+			goto fail;
 	}
 	return 0;
+fail:
+	complete_and_exit(&bus->watchdog_exit, 0);
 }
 
 static void
@@ -3986,6 +3994,7 @@ void *brcmf_sdbrcm_probe(u32 regsva, struct brcmf_sdio_dev *sdiodev)
 
 	/* Initialize watchdog thread */
 	init_completion(&bus->watchdog_wait);
+	init_completion(&bus->watchdog_exit);
 	bus->watchdog_tsk = kthread_run(brcmf_sdbrcm_watchdog_thread,
 					bus, "brcmf_watchdog");
 	if (IS_ERR(bus->watchdog_tsk)) {
@@ -3994,6 +4003,7 @@ void *brcmf_sdbrcm_probe(u32 regsva, struct brcmf_sdio_dev *sdiodev)
 	}
 	/* Initialize DPC thread */
 	init_completion(&bus->dpc_wait);
+	init_completion(&bus->dpc_exit);
 	INIT_LIST_HEAD(&bus->dpc_tsklst);
 	spin_lock_init(&bus->dpc_tl_lock);
 	bus->dpc_tsk = kthread_run(brcmf_sdbrcm_dpc_thread,
