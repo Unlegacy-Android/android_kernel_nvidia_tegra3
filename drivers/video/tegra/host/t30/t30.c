@@ -114,9 +114,9 @@ static struct platform_device tegra_host1x01_device = {
 struct nvhost_device_data t30_gr3d_info = {
 	.version	= 2,
 	.index		= 1,
-	.syncpts	= BIT(NVSYNCPT_3D),
-	.waitbases	= BIT(NVWAITBASE_3D),
-	.modulemutexes	= BIT(NVMODMUTEX_3D),
+	.syncpts	= {NVSYNCPT_3D},
+	.waitbases	= {NVWAITBASE_3D},
+	.modulemutexes	= {NVMODMUTEX_3D},
 	.class		= NV_GRAPHICS_3D_CLASS_ID,
 	.clocks		= { {"gr3d", UINT_MAX, 8, true},
 			    {"gr3d2", UINT_MAX, 0, true},
@@ -152,10 +152,10 @@ static struct platform_device tegra_gr3d02_device = {
 struct nvhost_device_data t30_gr2d_info = {
 	.version	= 1,
 	.index		= 2,
-	.syncpts	= BIT(NVSYNCPT_2D_0) | BIT(NVSYNCPT_2D_1),
-	.waitbases	= BIT(NVWAITBASE_2D_0) | BIT(NVWAITBASE_2D_1),
-	.modulemutexes	= BIT(NVMODMUTEX_2D_FULL) | BIT(NVMODMUTEX_2D_SIMPLE) |
-			  BIT(NVMODMUTEX_2D_SB_A) | BIT(NVMODMUTEX_2D_SB_B),
+	.syncpts	= {NVSYNCPT_2D_0, NVSYNCPT_2D_1},
+	.waitbases	= {NVWAITBASE_2D_0, NVWAITBASE_2D_1},
+	.modulemutexes	= {NVMODMUTEX_2D_FULL, NVMODMUTEX_2D_SIMPLE,
+			  NVMODMUTEX_2D_SB_A, NVMODMUTEX_2D_SB_B},
 	.clocks		= { {"gr2d", 0, 7, true},
 			  {"epp", 0, 10, true},
 			  {"emc", 300000000, 75} },
@@ -185,8 +185,8 @@ static struct resource isp_resources[] = {
 
 struct nvhost_device_data t30_isp_info = {
 	.index		= 3,
-	.syncpts	= BIT(NVSYNCPT_VI_ISP_2) | BIT(NVSYNCPT_VI_ISP_3) |
-			  BIT(NVSYNCPT_VI_ISP_4),
+	.syncpts	= {NVSYNCPT_VI_ISP_2, NVSYNCPT_VI_ISP_3,
+			  NVSYNCPT_VI_ISP_4},
 	.clocks		= { {"epp", 0, 10} },
 	.keepalive	= true,
 	NVHOST_MODULE_NO_POWERGATE_IDS,
@@ -215,11 +215,11 @@ static struct resource vi_resources[] = {
 
 struct nvhost_device_data t30_vi_info = {
 	.index		= 4,
-	.syncpts	= BIT(NVSYNCPT_CSI_VI_0) | BIT(NVSYNCPT_CSI_VI_1) |
-			  BIT(NVSYNCPT_VI_ISP_0) | BIT(NVSYNCPT_VI_ISP_1) |
-			  BIT(NVSYNCPT_VI_ISP_2) | BIT(NVSYNCPT_VI_ISP_3) |
-			  BIT(NVSYNCPT_VI_ISP_4),
-	.modulemutexes	= BIT(NVMODMUTEX_VI),
+	.syncpts	= {NVSYNCPT_CSI_VI_0, NVSYNCPT_CSI_VI_1,
+			  NVSYNCPT_VI_ISP_0, NVSYNCPT_VI_ISP_1,
+			  NVSYNCPT_VI_ISP_2, NVSYNCPT_VI_ISP_3,
+			  NVSYNCPT_VI_ISP_4},
+	.modulemutexes	= {NVMODMUTEX_VI},
 	.exclusive	= true,
 	NVHOST_MODULE_NO_POWERGATE_IDS,
 	NVHOST_DEFAULT_CLOCKGATE_DELAY,
@@ -248,9 +248,9 @@ static struct resource tegra_mpe01_resources[] = {
 struct nvhost_device_data t30_mpe_info = {
 	.version	= 2,
 	.index		= 5,
-	.syncpts	= BIT(NVSYNCPT_MPE) | BIT(NVSYNCPT_MPE_EBM_EOF) |
-			  BIT(NVSYNCPT_MPE_WR_SAFE),
-	.waitbases	= BIT(NVWAITBASE_MPE),
+	.syncpts	= {NVSYNCPT_MPE, NVSYNCPT_MPE_EBM_EOF,
+			  NVSYNCPT_MPE_WR_SAFE},
+	.waitbases	= {NVWAITBASE_MPE},
 	.class		= NV_VIDEO_ENCODE_MPEG_CLASS_ID,
 	.waitbasesync	= true,
 	.keepalive	= true,

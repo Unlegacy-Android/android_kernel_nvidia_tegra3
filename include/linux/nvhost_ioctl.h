@@ -98,6 +98,11 @@ struct nvhost_get_param_args {
 	__u32 value;
 };
 
+struct nvhost_get_param_arg {
+	__u32 param;
+	__u32 value;
+};
+
 struct nvhost_set_nvmap_fd_args {
 	__u32 fd;
 };
@@ -194,10 +199,16 @@ struct nvhost_submit_args {
 	_IOWR(NVHOST_IOCTL_MAGIC, 14, struct nvhost_ctrl_module_regrdwr_args)
 #define NVHOST_IOCTL_CHANNEL_SUBMIT		\
 	_IOWR(NVHOST_IOCTL_MAGIC, 15, struct nvhost_submit_args)
+#define NVHOST_IOCTL_CHANNEL_GET_SYNCPOINT	\
+	_IOWR(NVHOST_IOCTL_MAGIC, 16, struct nvhost_get_param_arg)
+#define NVHOST_IOCTL_CHANNEL_GET_WAITBASE	\
+	_IOWR(NVHOST_IOCTL_MAGIC, 17, struct nvhost_get_param_arg)
 #define NVHOST_IOCTL_CHANNEL_SET_TIMEOUT_EX	\
 	_IOWR(NVHOST_IOCTL_MAGIC, 18, struct nvhost_set_timeout_ex_args)
+#define NVHOST_IOCTL_CHANNEL_GET_MODMUTEX	\
+	_IOWR(NVHOST_IOCTL_MAGIC, 23, struct nvhost_get_param_arg)
 #define NVHOST_IOCTL_CHANNEL_LAST		\
-	_IOC_NR(NVHOST_IOCTL_CHANNEL_SET_TIMEOUT_EX)
+	_IOC_NR(NVHOST_IOCTL_CHANNEL_GET_MODMUTEX)
 #define NVHOST_IOCTL_CHANNEL_MAX_ARG_SIZE sizeof(struct nvhost_submit_args)
 
 struct nvhost_ctrl_syncpt_read_args {
