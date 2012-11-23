@@ -39,7 +39,7 @@
 #include <linux/memblock.h>
 #include <linux/rfkill-gpio.h>
 #include <linux/mfd/tlv320aic3262-registers.h>
-#include <linux/mfd/tlv320aic3262-core.h>
+#include <linux/mfd/tlv320aic3xxx-core.h>
 
 #include <linux/nfc/pn544.h>
 #include <linux/of_platform.h>
@@ -257,7 +257,7 @@ static struct aic3262_gpio_setup aic3262_gpio[] = {
 	},
 };
 
-static struct aic3262_pdata aic3262_codec_pdata = {
+static struct aic3xxx_pdata aic3262_codec_pdata = {
 	.gpio_irq	= 1,
 	.gpio_reset	= TEGRA_GPIO_CODEC_RST,
 	.gpio		= aic3262_gpio,
