@@ -71,15 +71,18 @@ static void update_instance_for_throttle(struct thermal_zone_device *tz,
 				enum thermal_trend trend)
 {
 	struct thermal_instance *instance;
+	unsigned long old_target;
 
 	list_for_each_entry(instance, &tz->thermal_instances, tz_node) {
 		if (instance->trip != trip)
 			continue;
 
+		old_target = instance->target;
 		instance->target = get_target_state(instance, trend);
 
 		/* Activate a passive thermal instance */
-		if (instance->target == THERMAL_NO_TARGET)
+		if (old_target == THERMAL_NO_TARGET &&
+			instance->target != THERMAL_NO_TARGET)
 			update_passive_instance(tz, trip_type, 1);
 
 		instance->cdev->updated = false; /* cdev needs update */
@@ -92,6 +95,7 @@ static void update_instance_for_dethrottle(struct thermal_zone_device *tz,
 	struct thermal_instance *instance;
 	struct thermal_cooling_device *cdev;
 	unsigned long cur_state;
+	unsigned long old_target;
 
 	list_for_each_entry(instance, &tz->thermal_instances, tz_node) {
 		if (instance->trip != trip ||
@@ -101,11 +105,13 @@ static void update_instance_for_dethrottle(struct thermal_zone_device *tz,
 		cdev = instance->cdev;
 		cdev->ops->get_cur_state(cdev, &cur_state);
 
+		old_target = instance->target;
 		instance->target = cur_state > instance->lower ?
 			    (cur_state - 1) : THERMAL_NO_TARGET;
 
 		/* Deactivate a passive thermal instance */
-		if (instance->target == THERMAL_NO_TARGET)
+		if (old_target != THERMAL_NO_TARGET &&
+			instance->target == THERMAL_NO_TARGET)
 			update_passive_instance(tz, trip_type, -1);
 
 		cdev->updated = false; /* cdev needs update */
