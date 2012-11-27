@@ -238,6 +238,7 @@ int __cpuinit __cpu_disable(void)
 	 */
 	percpu_timer_stop();
 
+#ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	/*
 	 * Flush user cache and TLB mappings, and then remove this CPU
 	 * from the vm mask set of all processes.
@@ -245,8 +246,16 @@ int __cpuinit __cpu_disable(void)
 	 * Caches are flushed to the Level of Unification Inner Shareable
 	 * to write-back dirty lines to unified caches shared by all CPUs.
 	 */
+
+	/*
+	 * This step can be skipped over if we do the same thing later,
+	 * which happens to be the case for tegra. We need to be careful
+	 * here to make sure tegra_cpu_die always follows __cpu_disable
+	 * in cpu shutdown sequence.
+	 */
 	flush_cache_louis();
 	local_flush_tlb_all();
+#endif
 
 	read_lock(&tasklist_lock);
 	for_each_process(p) {
