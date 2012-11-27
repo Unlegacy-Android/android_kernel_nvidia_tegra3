@@ -106,6 +106,7 @@ static noinline void __init enterprise_bt_st(void)
        platform_device_register(&btwilink_device);
 }
 
+#ifdef CONFIG_BT_BLUESLEEP
 static struct rfkill_gpio_platform_data enterprise_bt_rfkill_pdata[] = {
 	{
 		.name           = "bt_rfkill",
@@ -187,7 +188,55 @@ static void __init enterprise_setup_bluesleep(void)
 	}
 	return;
 }
+#elif defined CONFIG_BLUEDROID_PM
+static struct resource enterprise_bluedroid_pm_resources[] = {
+	[0] = {
+		.name   = "shutdown_gpio",
+		.start  = TEGRA_GPIO_PE6,
+		.end    = TEGRA_GPIO_PE6,
+		.flags  = IORESOURCE_IO,
+	},
+	[1] = {
+		.name = "host_wake",
+		.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
+	},
+	[2] = {
+		.name = "gpio_ext_wake",
+		.start  = TEGRA_GPIO_PE7,
+		.end    = TEGRA_GPIO_PE7,
+		.flags  = IORESOURCE_IO,
+	},
+	[3] = {
+		.name = "gpio_host_wake",
+		.start  = TEGRA_GPIO_PS2,
+		.end    = TEGRA_GPIO_PS2,
+		.flags  = IORESOURCE_IO,
+	},
+};
 
+static struct platform_device enterprise_bluedroid_pm_device = {
+	.name = "bluedroid_pm",
+	.id             = 0,
+	.num_resources  = ARRAY_SIZE(enterprise_bluedroid_pm_resources),
+	.resource       = enterprise_bluedroid_pm_resources,
+};
+
+static void __init enterprise_bluedroid_pm(void)
+{
+	struct board_info board_info;
+	tegra_get_board_info(&board_info);
+
+	enterprise_bluedroid_pm_resources[1].start =
+		enterprise_bluedroid_pm_resources[1].end =
+				gpio_to_irq(TEGRA_GPIO_PS2);
+	if (board_info.board_id == BOARD_E1239)
+		enterprise_bluedroid_pm_resources[1].start =
+			enterprise_bluedroid_pm_resources[1].end =
+							TEGRA_GPIO_PF4;
+	platform_device_register(&enterprise_bluedroid_pm_device);
+	return;
+}
+#endif
 static __initdata struct tegra_clk_init_table enterprise_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "pll_m",	NULL,		0,		false},
@@ -1068,9 +1117,10 @@ static void __init tegra_enterprise_init(void)
 	enterprise_i2c_init();
 	enterprise_uart_init();
 	enterprise_usb_init();
+#ifdef CONFIG_BT_BLUESLEEP
 	if (board_info.board_id == BOARD_E1239)
 		enterprise_bt_rfkill_pdata[0].shutdown_gpio = TEGRA_GPIO_PF4;
-
+#endif
 	platform_add_devices(enterprise_devices, ARRAY_SIZE(enterprise_devices));
 	tegra_ram_console_debug_init();
 	enterprise_regulator_init();
@@ -1088,8 +1138,12 @@ static void __init tegra_enterprise_init(void)
 	if (tegra_get_commchip_id() == COMMCHIP_TI_WL18XX)
 		enterprise_bt_st();
 	else
+#ifdef CONFIG_BT_BLUESLEEP
 		enterprise_bt_rfkill();
 	enterprise_setup_bluesleep();
+#elif defined CONFIG_BLUEDROID_PM
+		enterprise_bluedroid_pm();
+#endif
 	enterprise_emc_init();
 	enterprise_sensors_init();
 	enterprise_suspend_init();
