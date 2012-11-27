@@ -714,10 +714,8 @@ static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
 	*pte = _PTE_VACANT(iova);
 	FLUSH_CPU_DCACHE(pte, page, sizeof(*pte));
 	flush_ptc_and_tlb(as->smmu, as, iova, pte, page, 0);
-	if (!--(*count)) {
+	if (!--(*count))
 		free_ptbl(as, iova);
-		smmu_flush_regs(as->smmu, 0);
-	}
 
 	return 0;
 }
