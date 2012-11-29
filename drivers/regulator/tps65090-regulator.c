@@ -45,6 +45,7 @@ struct tps65090_regulator {
 	bool				enable_ext_control;
 	int				gpio;
 	int				gpio_state;
+	int				wait_timeout_us;
 };
 
 static inline struct device *to_tps65090_dev(struct regulator_dev *rdev)
@@ -95,6 +96,27 @@ static int tps65090_reg_enable(struct regulator_dev *rdev)
 			ri->gpio_state = 1;
 		}
 		return 0;
+	}
+
+	/* Setup wait_time for current limited timeout, WTFET[1:0]@bits[3:2] */
+	if (ri->wait_timeout_us > 0) {
+		int wait_timeout = ri->wait_timeout_us;
+		u8 en_reg = ri->rinfo->reg_en_reg;
+
+		if (wait_timeout <= 200)
+			ret = tps65090_update_bits(parent, en_reg, 0xc, 0x0);
+		else if (wait_timeout <= 800)
+			ret = tps65090_update_bits(parent, en_reg, 0xc, 0x4);
+		else if (wait_timeout <= 1600)
+			ret = tps65090_update_bits(parent, en_reg, 0xc, 0x8);
+		else
+			ret = tps65090_update_bits(parent, en_reg, 0xc, 0xc);
+
+		if (ret < 0) {
+			dev_err(&rdev->dev, "Error updating reg 0x%x WTFET\n",
+				en_reg);
+			return ret;
+		}
 	}
 
 	ret = tps65090_set_bits(parent, ri->rinfo->reg_en_reg,
@@ -289,6 +311,7 @@ static int __devinit tps65090_regulator_probe(struct platform_device *pdev)
 		ri = &pmic[num];
 		ri->dev = &pdev->dev;
 		ri->rinfo = rinfo;
+		ri->wait_timeout_us = tps_pdata->wait_timeout_us;
 
 		if (is_dcdc(id)) {
 			ret = tps65090_regulator_preinit(id, ri, tps_pdata);

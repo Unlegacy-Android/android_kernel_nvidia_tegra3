@@ -1,3 +1,4 @@
+
 /*
  * Regulator driver interface for TI TPS65090 PMIC family
  *
@@ -47,6 +48,11 @@ enum {
  *	DCDC1, DCDC2 and DCDC3.
  * @gpio: Gpio number if external control is enabled and controlled through
  *	gpio.
+ * @wait_timeout_us: wait timeout in microseconds;
+ *	>0 : specify minimum wait timeout in us for FETx, will update WTFET[1:0]
+ *	     in FETx_CTRL reg;
+ *	 0 : not to update WTFET[1:0] in FETx_CTRL reg for FETx;
+ *	-1 : for non-FETx.
  */
 
 struct tps65090_regulator_platform_data {
@@ -54,6 +60,7 @@ struct tps65090_regulator_platform_data {
 	bool enable_ext_control;
 	int gpio;
 	struct regulator_init_data *reg_init_data;
+	int wait_timeout_us;
 };
 
 #endif	/* __REGULATOR_TPS65090_H */
