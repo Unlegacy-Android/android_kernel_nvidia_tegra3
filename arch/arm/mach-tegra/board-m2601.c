@@ -71,7 +71,7 @@ static __initdata struct tegra_clk_init_table m2601_clk_init_table[] = {
 	/* audio cif clock should be faster than i2s */
 	{ "pll_a_out0",		NULL,		24576000,	false},
 	{ "d_audio",		"pll_a_out0",	24576000,	false},
-	{ "nor",		"pll_p",	86500000,	true},
+	{ "nor",		"pll_p",	102000000,	true},
 	{ "uarta",		"pll_p",	480000000,	true},
 	{ "uartb",		"pll_p",	480000000,	true},
 	{ "uartc",		"pll_p",	480000000,	true},
@@ -100,7 +100,6 @@ static __initdata struct tegra_clk_init_table m2601_clk_init_table[] = {
 	{ "vi",			"pll_p",	470000000,	false},
 	{ "vi_sensor",		"pll_p",	150000000,	false},
 	{ "vde",		"pll_c",	484000000,	true},
-	{ "host1x",		"pll_c",	242000000,	true},
 	{ "mpe",		"pll_c",	484000000,	true},
 	{ "se",			"pll_m",	625000000,	true},
 	{ "i2c1",		"pll_p",	3200000,	true},
@@ -131,11 +130,10 @@ static struct tegra_i2c_platform_data m2601_i2c5_platform_data = {
 	.bus_count	= 1,
 	.bus_clk_rate	= { 100000, 0 },
 };
-
 static struct tegra_pci_platform_data m2601_pci_platform_data = {
 	.port_status[0] = 1,
-	.port_status[1] = 1,
-	.port_status[2] = 1,
+	.port_status[1] = 0,
+	.port_status[2] = 0,
 	.use_dock_detect = 0,
 	.gpio = 0,
 };
@@ -145,7 +143,6 @@ static void m2601_pcie_init(void)
 	tegra_pci_device.dev.platform_data = &m2601_pci_platform_data;
 	platform_device_register(&tegra_pci_device);
 }
-
 static void m2601_i2c_init(void)
 {
 	tegra_i2c_device1.dev.platform_data = &m2601_i2c1_platform_data;
@@ -216,6 +213,15 @@ static void __init m2601_register_spidev(void)
 #define m2601_register_spidev() do {} while (0)
 #endif
 
+#ifdef CONFIG_SATA_AHCI_TEGRA
+static void m2601_sata_init(void)
+{
+	platform_device_register(&tegra_sata_device);
+}
+#else
+static void m2601_sata_init(void) { }
+#endif
+
 
 static void m2601_spi_init(void)
 {
@@ -223,46 +229,15 @@ static void m2601_spi_init(void)
 	platform_device_register(&tegra_spi_device2);
 	m2601_register_spidev();
 }
-#if 0
-static struct platform_device tegra_camera = {
-	.name = "tegra_camera",
-	.id = -1,
-};
-#endif
 static struct platform_device *m2601_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
-/*	&tegra_camera,*/
 	&tegra_wdt0_device,
-	&tegra_wdt0_device,
-	&tegra_wdt0_device
+	&tegra_wdt1_device,
+	&tegra_wdt2_device
 };
 
-static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
-	.port_otg = false,
-	.has_hostpc = true,
-	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-	.op_mode = TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.vbus_gpio = -1,
-		.hot_plug = false,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
-	},
-	.u_cfg.utmi = {
-		.hssync_start_delay = 0,
-		.idle_wait_delay = 17,
-		.elastic_limit = 16,
-		.term_range_adj = 6,
-		.xcvr_setup = 63,
-		.xcvr_setup_offset = 6,
-		.xcvr_use_fuses = 1,
-		.xcvr_lsfslew = 2,
-		.xcvr_lsrslew = 2,
-		.xcvr_use_lsb = 1,
-	},
-};
 static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
@@ -287,18 +262,14 @@ static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 		.xcvr_use_lsb = 1,
 	},
 };
-
 static void m2601_usb_init(void)
 {
-	/* Need to parse sku info to decide host/device mode */
-
-	tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
-	platform_device_register(&tegra_ehci1_device);
-
 	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
 	platform_device_register(&tegra_ehci2_device);
-
 }
+
+#define NOR_VIRT_BASE ((void __iomem *)IO_NOR_VIRT)
+#define CHIP_SIZE_MSP14LV320 0x40000000ULL
 
 static struct tegra_nor_platform_data m2601_nor_data = {
 	.flash = {
@@ -308,21 +279,23 @@ static struct tegra_nor_platform_data m2601_nor_data = {
 	.chip_parms = {
 		.MuxMode = NorMuxMode_ADNonMux,
 		.ReadMode = NorReadMode_Page,
-		.PageLength = NorPageLength_8Word, /*please review the change*/
+		.PageLength = NorPageLength_8Word,
 		.ReadyActive = NorReadyActive_WithData,
 		.timing_default = {
-			.timing0 = 0x30300263,
-			.timing1 = 0x00030302,
+			.timing0 = 0xB040C310,
+			.timing1 = 0x000a0a04,
 		},
 		.timing_read = {
-			.timing0 = 0xB000C11B,
-			.timing1 = 0x00030205,
+			.timing0 = 0xB040C310,
+			.timing1 = 0x000a0a04,
 		},
 	},
 };
 
 static void m2601_nor_init(void)
 {
+	tegra_nor_device.resource[2].end = TEGRA_NOR_FLASH_BASE +
+						TEGRA_NOR_FLASH_SIZE - 1;
 	tegra_nor_device.dev.platform_data = &m2601_nor_data;
 	platform_device_register(&tegra_nor_device);
 }
@@ -333,17 +306,16 @@ static void __init tegra_m2601_init(void)
 	tegra_clk_init_from_table(m2601_clk_init_table);
 	tegra_enable_pinmux();
 	tegra_smmu_init();
+	tegra_soc_device_init("m2601");
 	m2601_pinmux_init();
 	m2601_i2c_init();
+	m2601_sata_init();
 /*	m2601_i2s_audio_init(); */
-	m2601_gpio_init();
 	m2601_uart_init();
 	m2601_usb_init();
-/*	tegra_io_dpd_init(); */
 	m2601_sdhci_init();
 	m2601_spi_init();
 	platform_add_devices(m2601_devices, ARRAY_SIZE(m2601_devices));
-/*	m2601_panel_init(); */
 	m2601_nor_init();
 	m2601_pcie_init();
 }
