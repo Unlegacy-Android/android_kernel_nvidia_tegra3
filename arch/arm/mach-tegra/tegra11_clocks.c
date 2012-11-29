@@ -4612,6 +4612,7 @@ static int tegra11_clk_cbus_update(struct clk *bus)
 		}
 	}
 
+	clk_rate_change_notify(bus, rate);
 	return 0;
 };
 #else
