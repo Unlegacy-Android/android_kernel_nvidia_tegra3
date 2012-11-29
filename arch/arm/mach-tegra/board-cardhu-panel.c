@@ -1532,7 +1532,8 @@ skip_lvds:
 #endif
 
 	/* Copy the bootloader fb to the fb. */
-	tegra_move_framebuffer(tegra_fb_start, tegra_bootloader_fb_start,
+	__tegra_move_framebuffer(&cardhu_nvmap_device,
+			       tegra_fb_start, tegra_bootloader_fb_start,
 				min(tegra_fb_size, tegra_bootloader_fb_size));
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
@@ -1547,7 +1548,8 @@ skip_lvds:
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
 
 	/* Copy the bootloader fb to the fb2. */
-	tegra_move_framebuffer(tegra_fb2_start, tegra_bootloader_fb_start,
+	__tegra_move_framebuffer(&cardhu_nvmap_device,
+			       tegra_fb2_start, tegra_bootloader_fb_start,
 				min(tegra_fb2_size, tegra_bootloader_fb_size));
 
 	if (!err) {
