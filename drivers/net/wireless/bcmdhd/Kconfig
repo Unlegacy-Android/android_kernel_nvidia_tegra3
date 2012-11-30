@@ -91,3 +91,12 @@ config BCMDHD_CUSTOM_REGULATORY_DOMAIN
 	default y
 	---help---
 	Use Custom Regulatory Domain set by driver.
+
+config BCMDHD_DISABLE_P2P_SYSFS_DEVICE_NODE
+	bool "Disable sysfs entry for P2P interfaces"
+	depends on BCMDHD
+	default n
+	---help---
+	Disable creation of sysfs device node for P2P interfaces.
+	This is a workaround to prevent management tools from
+	directly managing P2P virtual devices.

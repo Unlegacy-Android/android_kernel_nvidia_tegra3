@@ -2148,7 +2148,9 @@ wl_cfgp2p_register_ndev(struct wl_priv *wl)
 	net->ethtool_ops = &cfgp2p_ethtool_ops;
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24) */
 
+#ifndef CONFIG_BCMDHD_DISABLE_P2P_SYSFS_DEVICE_NODE
 	SET_NETDEV_DEV(net, wiphy_dev(wdev->wiphy));
+#endif
 
 	/* Associate p2p0 network interface with new wdev */
 	wdev->netdev = net;

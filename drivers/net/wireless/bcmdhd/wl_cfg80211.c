@@ -1120,7 +1120,9 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy, char *name,
 			vwdev->iftype = type;
 			_ndev =  wl_to_p2p_bss_ndev(wl, P2PAPI_BSSCFG_CONNECTION);
 			_ndev->ieee80211_ptr = vwdev;
+#ifndef CONFIG_BCMDHD_DISABLE_P2P_SYSFS_DEVICE_NODE
 			SET_NETDEV_DEV(_ndev, wiphy_dev(vwdev->wiphy));
+#endif
 			vwdev->netdev = _ndev;
 			wl_set_drv_status(wl, READY, _ndev);
 			wl->p2p->vif_created = true;
