@@ -140,6 +140,7 @@ obj-$(CONFIG_TEGRA_USB_MODEM_POWER)     += tegra_usb_modem_power.o
 obj-$(CONFIG_ARCH_TEGRA_HAS_CL_DVFS)    += tegra_cl_dvfs.o
 
 obj-y					+= board-common.o
+obj-$(CONFIG_TEGRA_WAKEUP_MONITOR)      += tegra_wakeup_monitor.o
 obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
 
 # MC error reporting.
