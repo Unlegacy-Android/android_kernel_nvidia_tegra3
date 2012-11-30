@@ -17,5 +17,5 @@ dtb-$(CONFIG_ARCH_TEGRA_2x_SOC) += tegra20-whistler.dtb
 dtb-$(CONFIG_ARCH_TEGRA_3x_SOC) += tegra30-cardhu.dtb
 dtb-$(CONFIG_ARCH_TEGRA_3x_SOC) += tegra30-enterprise.dtb
 dtb-$(CONFIG_ARCH_TEGRA_3x_SOC) += tegra30-tai.dtb
-dtb-$(CONFIG_ARCH_TEGRA_11x_SOC) += tegra11x-dalmore.dtb
-dtb-$(CONFIG_ARCH_TEGRA_11x_SOC) += tegra11x-pluto.dtb
+dtb-$(CONFIG_ARCH_TEGRA_11x_SOC) += tegra114-dalmore.dtb
+dtb-$(CONFIG_ARCH_TEGRA_11x_SOC) += tegra114-pluto.dtb
