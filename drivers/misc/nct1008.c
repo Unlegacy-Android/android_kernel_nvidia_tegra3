@@ -445,6 +445,7 @@ static void nct1008_update(struct nct1008_data *data)
 	struct thermal_zone_device *thz = data->nct_ext;
 	long temp, trip_temp, low_temp = 0, high_temp = NCT1008_MAX_TEMP * 1000;
 	int count;
+	enum events type = 0;
 
 	if (!thz)
 		return;
@@ -457,15 +458,19 @@ static void nct1008_update(struct nct1008_data *data)
 	for (count = 0; count < thz->trips; count++) {
 		thz->ops->get_trip_temp(thz, count, &trip_temp);
 
-		if ((trip_temp >= temp) && (trip_temp < high_temp))
+		if ((trip_temp >= temp) && (trip_temp < high_temp)) {
 			high_temp = trip_temp;
+			type = THERMAL_AUX1;
+		}
 
 		if ((trip_temp < temp) && (trip_temp > low_temp)) {
 			low_temp = trip_temp -
 				   data->plat_data.trips[count].hysteresis;
+			type = THERMAL_AUX0;
 		}
 	}
 
+	thermal_generate_netlink_event(thz->id, type);
 	nct1008_thermal_set_limits(data, low_temp, high_temp);
 }
 
