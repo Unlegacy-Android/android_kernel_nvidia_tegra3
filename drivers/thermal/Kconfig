@@ -87,3 +87,9 @@ config THERMAL_DEFAULT_GOV_USER_SPACE
 	  Select this if you want to let the user space manage the
 	  platform thermals.
 endchoice
+
+config PWM_FAN
+	bool "PWM Fan driver"
+	depends on THERMAL
+	help
+	  Enables the fan driver that is controlled by pwm
