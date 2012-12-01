@@ -8153,7 +8153,7 @@ s32 wl_cfg80211_attach_post(struct net_device *ndev)
 					/* Update MAC addr for p2p0 interface here. */
 					memcpy(wl->p2p_net->dev_addr, ndev->dev_addr, ETH_ALEN);
 					wl->p2p_net->dev_addr[0] |= 0x02;
-					WL_ERR(("%s: p2p_dev_addr="MACDBG "\n",
+					WL_DBG(("%s: p2p_dev_addr="MACDBG "\n",
 						wl->p2p_net->name,
 						MAC2STRDBG(wl->p2p_net->dev_addr)));
 				} else {
