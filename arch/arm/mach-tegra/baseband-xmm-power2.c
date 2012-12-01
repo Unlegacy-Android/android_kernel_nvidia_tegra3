@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/baseband-xmm-power2.c
  *
- * Copyright (C) 2011-2012, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (C) 2011-2013, NVIDIA Corporation. All Rights Reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -137,7 +137,7 @@ static void xmm_power2_step2(struct work_struct *work)
 
 	/* register usb host controller */
 	if (pdata->hsic_register)
-		data->hsic_device = pdata->hsic_register();
+		data->hsic_device = pdata->hsic_register(pdata->ehci_device);
 	else
 		pr_err("%s: hsic_register is missing\n", __func__);
 
