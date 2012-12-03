@@ -165,7 +165,36 @@ static void bcmsdh_sdmmc_remove(struct sdio_func *func)
 }
 
 /* devices we support, null terminated */
-static const struct sdio_device_id bcmsdh_sdmmc_ids[] = {
+static const struct sdio_device_id bcmsdh_sdmmc_claim_ids[] = {
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_DEFAULT) },
+#ifdef CONFIG_BCMDHD_CLAIM_BCM4325_SDGWB
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4325_SDGWB) },
+#endif
+#ifdef CONFIG_BCMDHD_CLAIM_BCM4325
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4325) },
+#endif
+#ifdef CONFIG_BCMDHD_CLAIM_BCM4319
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4319) },
+#endif
+#ifdef CONFIG_BCMDHD_CLAIM_BCM4330
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4330) },
+#endif
+#ifdef CONFIG_BCMDHD_CLAIM_BCM4334
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4334) },
+#endif
+#ifdef CONFIG_BCMDHD_CLAIM_BCM4324
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4324) },
+#endif
+#ifdef CONFIG_BCMDHD_CLAIM_BCM43239
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_43239) },
+#endif
+#ifdef CONFIG_BCMDHD_CLAIM_SDIO_CLASS_NONE
+	{ SDIO_DEVICE_CLASS(SDIO_CLASS_NONE)            },
+#endif
+	{ /* end: all zeroes */				},
+};
+
+static const struct sdio_device_id bcmsdh_sdmmc_support_ids[] = {
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_DEFAULT) },
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4325_SDGWB) },
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4325) },
@@ -174,13 +203,13 @@ static const struct sdio_device_id bcmsdh_sdmmc_ids[] = {
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4334) },
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4324) },
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_43239) },
-#ifdef CONFIG_ANDROID
+#ifdef CONFIG_BCMDHD_CLAIM_SDIO_CLASS_NONE
 	{ SDIO_DEVICE_CLASS(SDIO_CLASS_NONE)            },
 #endif
 	{ /* end: all zeroes */				},
 };
 
-MODULE_DEVICE_TABLE(sdio, bcmsdh_sdmmc_ids);
+MODULE_DEVICE_TABLE(sdio, bcmsdh_sdmmc_claim_ids);
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM)
 static int bcmsdh_sdmmc_suspend(struct device *pdev)
@@ -279,7 +308,7 @@ static struct sdio_driver dummy_sdmmc_driver = {
 	.probe		= dummy_probe,
 	.remove		= dummy_remove,
 	.name		= "dummy_sdmmc",
-	.id_table	= bcmsdh_sdmmc_ids,
+	.id_table	= bcmsdh_sdmmc_support_ids,
 	};
 
 int sdio_func_reg_notify(void* semaphore)
@@ -299,7 +328,7 @@ static struct sdio_driver bcmsdh_sdmmc_driver = {
 	.probe		= bcmsdh_sdmmc_probe,
 	.remove		= bcmsdh_sdmmc_remove,
 	.name		= "bcmsdh_sdmmc",
-	.id_table	= bcmsdh_sdmmc_ids,
+	.id_table	= bcmsdh_sdmmc_support_ids,
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM)
 	.drv = {
 	.pm	= &bcmsdh_sdmmc_pm_ops,

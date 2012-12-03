@@ -100,3 +100,59 @@ config BCMDHD_DISABLE_P2P_SYSFS_DEVICE_NODE
 	Disable creation of sysfs device node for P2P interfaces.
 	This is a workaround to prevent management tools from
 	directly managing P2P virtual devices.
+
+config BCMDHD_CLAIM_BCM4325_SDGWB
+	bool "Claim BCM4325 SDGWB"
+	depends on BCMDHD
+	default y
+	---help---
+	Claim BCM4325 SDGWB
+
+config BCMDHD_CLAIM_BCM4325
+	bool "Claim BCM4325"
+	depends on BCMDHD
+	default y
+	---help---
+	Claim BCM4325
+
+config BCMDHD_CLAIM_BCM4319
+	bool "Claim BCM4319"
+	depends on BCMDHD
+	default y
+	---help---
+	Claim BCM4319
+
+config BCMDHD_CLAIM_BCM4330
+	bool "Claim BCM4330"
+	depends on BCMDHD
+	default y
+	---help---
+	Claim BCM4330
+
+config BCMDHD_CLAIM_BCM4334
+	bool "Claim BCM4334"
+	depends on BCMDHD
+	default y
+	---help---
+	Claim BCM4334
+
+config BCMDHD_CLAIM_BCM4324
+	bool "Claim BCM4324"
+	depends on BCMDHD
+	default y
+	---help---
+	Claim BCM4324
+
+config BCMDHD_CLAIM_BCM43239
+	bool "Claim BCM43239"
+	depends on BCMDHD
+	default y
+	---help---
+	Claim BCM43239
+
+config BCMDHD_CLAIM_SDIO_CLASS_NONE
+	bool "Claim SDIO chip with no class"
+	depends on BCMDHD
+	default y
+	---help---
+	Claim SDIO chip with no class
