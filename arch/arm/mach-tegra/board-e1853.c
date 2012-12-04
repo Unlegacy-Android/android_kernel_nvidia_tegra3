@@ -349,9 +349,6 @@ static struct platform_device tegra_camera = {
 };
 
 static struct platform_device *e1853_devices[] __initdata = {
-#if defined(CONFIG_TEGRA_IOVMM_SMMU)
-	&tegra_smmu_device,
-#endif
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
