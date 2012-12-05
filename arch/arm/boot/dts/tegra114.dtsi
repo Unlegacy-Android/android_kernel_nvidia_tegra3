@@ -27,4 +27,11 @@
 		reg = <0x70000868 0xd4    /* Pad control registers */
 		       0x70003000 0x3e4>; /* Mux registers */
 	};
+
+	timer {
+		compatible = "arm,armv7-timer";
+		interrupts = <1 13 0xf04
+			      1 14 0xf04>;
+		clock-frequency = <12000000>;
+	};
 };
