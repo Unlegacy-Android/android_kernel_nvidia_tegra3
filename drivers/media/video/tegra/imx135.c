@@ -40,7 +40,7 @@ struct imx135_info {
 	struct miscdevice		miscdev_info;
 	int				mode;
 	struct imx135_power_rail	power;
-	struct imx135_sensordata	sensor_data;
+	struct nvc_fuseid		fuse_id;
 	struct i2c_client		*i2c_client;
 	struct imx135_platform_data	*pdata;
 	struct mutex			imx135_camera_lock;
@@ -2056,7 +2056,7 @@ static int imx135_get_sensor_id(struct imx135_info *info)
 	u8 bak = 0;
 
 	pr_info("%s\n", __func__);
-	if (info->sensor_data.fuse_id_size)
+	if (info->fuse_id.size)
 		return 0;
 
 	/* Note 1: If the sensor does not have power at this point
@@ -2066,11 +2066,11 @@ static int imx135_get_sensor_id(struct imx135_info *info)
 	ret |= imx135_write_reg(info->i2c_client, 0x3B00, 0x01);
 	for (i = 0; i < 9 ; i++) {
 		ret |= imx135_read_reg(info->i2c_client, 0x3B24 + i, &bak);
-		info->sensor_data.fuse_id[i] = bak;
+		info->fuse_id.data[i] = bak;
 	}
 
 	if (!ret)
-		info->sensor_data.fuse_id_size = i;
+		info->fuse_id.size = i;
 
 	/* Note 2: Need to clean up any action carried out in Note 1 */
 
@@ -2123,7 +2123,7 @@ imx135_ioctl(struct file *file,
 			}
 		return 0;
 	}
-	case IMX135_IOCTL_GET_SENSORDATA:
+	case IMX135_IOCTL_GET_FUSEID:
 	{
 		err = imx135_get_sensor_id(info);
 
@@ -2131,8 +2131,8 @@ imx135_ioctl(struct file *file,
 			pr_err("%s:Failed to get fuse id info.\n", __func__);
 			return err;
 		}
-		if (copy_to_user((void __user *)arg, &info->sensor_data,
-				sizeof(struct imx135_sensordata))) {
+		if (copy_to_user((void __user *)arg, &info->fuse_id,
+				sizeof(struct nvc_fuseid))) {
 			pr_info("%s:Failed to copy fuse id to user space\n",
 				__func__);
 			return -EFAULT;

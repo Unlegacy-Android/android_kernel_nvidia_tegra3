@@ -20,7 +20,7 @@
 #define IMX135_IOCTL_SET_FRAME_LENGTH	_IOW('o', 3, __u32)
 #define IMX135_IOCTL_SET_COARSE_TIME	_IOW('o', 4, __u32)
 #define IMX135_IOCTL_SET_GAIN		_IOW('o', 5, __u16)
-#define IMX135_IOCTL_GET_SENSORDATA	_IOR('o', 6, struct imx135_sensordata)
+#define IMX135_IOCTL_GET_FUSEID		_IOR('o', 6, struct nvc_fuseid)
 #define IMX135_IOCTL_SET_GROUP_HOLD	_IOW('o', 7, struct imx135_ae)
 #define IMX135_IOCTL_SET_HDR_COARSE_TIME	_IOW('o', 8, struct imx135_hdr)
 #define IMX135_IOCTL_SET_POWER		_IOW('o', 20, __u32)
@@ -53,11 +53,6 @@ struct imx135_ae {
 	__u8  gain_enable;
 };
 
-struct imx135_sensordata {
-	__u32 fuse_id_size;
-	__u8  fuse_id[16];
-};
-
 struct imx135_flash_control {
 	u8 enable;
 	u8 edge_trig_en;
@@ -65,7 +60,6 @@ struct imx135_flash_control {
 	u8 repeat;
 	u16 delay_frm;
 };
-
 
 #ifdef __KERNEL__
 struct imx135_power_rail {

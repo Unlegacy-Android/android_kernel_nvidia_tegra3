@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Motorola, Inc.
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (C) 2011-2013 NVIDIA CORPORATION. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -28,6 +28,7 @@
 #define OV2710_IOCTL_SET_GAIN		_IOW('o', 4, __u16)
 #define OV2710_IOCTL_GET_STATUS		_IOR('o', 5, __u8)
 #define OV2710_IOCTL_SET_GROUP_HOLD	_IOW('o', 6, struct ov2710_ae)
+#define OV2710_IOCTL_GET_FUSEID         _IOW('o', 7, struct nvc_fuseid)
 
 struct ov2710_mode {
 	int xres;

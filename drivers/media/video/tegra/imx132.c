@@ -24,6 +24,10 @@
 #include <linux/uaccess.h>
 #include <linux/regulator/consumer.h>
 #include <media/imx132.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_gpio.h>
+#include <media/nvc.h>
 #include <linux/gpio.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -39,7 +43,7 @@ struct imx132_info {
 	struct miscdevice		miscdev_info;
 	int				mode;
 	struct imx132_power_rail	power;
-	struct imx132_sensordata	sensor_data;
+	struct nvc_fuseid		fuse_id;
 	struct i2c_client		*i2c_client;
 	struct imx132_platform_data	*pdata;
 	atomic_t			in_use;
@@ -48,6 +52,7 @@ struct imx132_info {
 #define IMX132_TABLE_WAIT_MS 0
 #define IMX132_TABLE_END 1
 #define IMX132_WAIT_MS 5
+#define IMX132_FUSE_ID_SIZE 8
 
 static struct imx132_reg mode_1976x1200[] = {
 	/* Stand by */
@@ -505,13 +510,13 @@ imx132_set_group_hold(struct imx132_info *info, struct imx132_ae *ae)
 	return 0;
 }
 
-static int imx132_get_sensor_id(struct imx132_info *info)
+static int imx132_get_fuse_id(struct imx132_info *info)
 {
 	int ret = 0;
 	int i;
 	u8 bak = 0;
 
-	if (info->sensor_data.fuse_id_size)
+	if (info->fuse_id.size)
 		return 0;
 
 	/*
@@ -520,13 +525,13 @@ static int imx132_get_sensor_id(struct imx132_info *info)
 	 */
 
 	ret |= imx132_write_reg(info->i2c_client, 0x34C9, 0x10);
-	for (i = 0; i < NUM_OF_SENSOR_ID_SPECIFIC_REG ; i++) {
+	for (i = 0; i < IMX132_FUSE_ID_SIZE ; i++) {
 		ret |= imx132_read_reg(info->i2c_client, 0x3580 + i, &bak);
-		info->sensor_data.fuse_id[i] = bak;
+		info->fuse_id.data[i] = bak;
 	}
 
 	if (!ret)
-		info->sensor_data.fuse_id_size = i;
+		info->fuse_id.size = i;
 
 	return ret;
 }
@@ -572,9 +577,9 @@ imx132_ioctl(struct file *file,
 		}
 		return 0;
 	}
-	case IMX132_IOCTL_GET_SENSORDATA:
+	case IMX132_IOCTL_GET_FUSEID:
 	{
-		err = imx132_get_sensor_id(info);
+		err = imx132_get_fuse_id(info);
 
 		if (err) {
 			dev_err(dev, "%s:Failed to get fuse id info.\n",
@@ -582,8 +587,8 @@ imx132_ioctl(struct file *file,
 			return err;
 		}
 		if (copy_to_user((void __user *)arg,
-				&info->sensor_data,
-				sizeof(struct imx132_sensordata))) {
+				&info->fuse_id,
+				sizeof(struct nvc_fuseid))) {
 			dev_info(dev, "%s:Fail copy fuse id to user space\n",
 				__func__);
 			return -EFAULT;
