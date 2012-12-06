@@ -55,7 +55,12 @@
 #define FUSE_Y_COORDINATE_MASK	0x1ff
 #define FUSE_GPU_INFO		0x390
 #define FUSE_GPU_INFO_MASK	(1<<2)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #define FUSE_SPARE_BIT		0x244
+#endif
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define FUSE_SPARE_BIT		0x280
+#endif
 /* fuse registers used in public fuse data read API */
 #define FUSE_TEST_PROGRAM_REVISION_0	0x128
 /* fuse spare bits are used to get Tj-ADT values */
