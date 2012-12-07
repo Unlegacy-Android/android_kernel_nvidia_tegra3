@@ -793,7 +793,7 @@ static int cardhu_nct1008_init(void)
 
 			data->num_trips++;
 
-			if (data->num_trips > NCT_MAX_TRIPS)
+			if (data->num_trips >= NCT_MAX_TRIPS)
 				BUG();
 		}
 #endif

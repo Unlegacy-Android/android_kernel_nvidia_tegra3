@@ -140,7 +140,7 @@ static void enterprise_init_edp_cdev(void)
 
 		data->num_trips++;
 
-		if (data->num_trips > NCT_MAX_TRIPS)
+		if (data->num_trips >= NCT_MAX_TRIPS)
 			BUG();
 	}
 }
