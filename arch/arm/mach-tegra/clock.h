@@ -221,7 +221,6 @@ struct clk {
 		struct {
 			struct clk			*top_user;
 			struct clk			*slow_user;
-			unsigned long			fmax_at_vmin;
 		} cbus;
 		struct {
 			struct list_head		node;

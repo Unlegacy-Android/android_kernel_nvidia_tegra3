@@ -4364,7 +4364,6 @@ static void tegra11_clk_cbus_init(struct clk *c)
 {
 	c->state = OFF;
 	c->set = true;
-	c->min_rate = c->parent->min_rate;
 }
 
 static int tegra11_clk_cbus_enable(struct clk *c)
@@ -4372,40 +4371,30 @@ static int tegra11_clk_cbus_enable(struct clk *c)
 	return 0;
 }
 
-#define CBUS_LOW_RATE_STEP	48000000	/* 48MHz */
-
 static long tegra11_clk_cbus_round_rate(struct clk *c, unsigned long rate)
 {
 	int i;
-	unsigned long next_rate;
 
-	if (rate <= c->min_rate)
-		return c->min_rate;
-
-	if (!c->dvfs)
+	if (!c->dvfs) {
+		if (!c->min_rate)
+			c->min_rate = c->parent->min_rate;
+		rate = max(rate, c->min_rate);
 		return rate;
+	}
 
 	/* update min now, since no dvfs table was available during init
 	   (skip placeholder entries set to 1 kHz) */
-	if (!c->u.cbus.fmax_at_vmin) {
+	if (!c->min_rate) {
 		for (i = 0; i < (c->dvfs->num_freqs - 1); i++) {
 			if (c->dvfs->freqs[i] > 1 * c->dvfs->freqs_mult) {
-				c->u.cbus.fmax_at_vmin = c->dvfs->freqs[i];
+				c->min_rate = c->dvfs->freqs[i];
 				break;
 			}
 		}
-		BUG_ON(!c->u.cbus.fmax_at_vmin);
+		BUG_ON(!c->min_rate);
 	}
+	rate = max(rate, c->min_rate);
 
-	/* round up rates below Fmax@Vmin to the ladder with regular steps */
-	next_rate = c->u.cbus.fmax_at_vmin;
-	if (rate < next_rate) {
-		while ((rate + CBUS_LOW_RATE_STEP) < next_rate)
-			next_rate -= CBUS_LOW_RATE_STEP;
-		return next_rate;
-	}
-
-	/* round up rates above Fmax@Vmin to DVFS ladder */
 	for (i = 0; i < (c->dvfs->num_freqs - 1); i++) {
 		unsigned long f = c->dvfs->freqs[i];
 		int mv = c->dvfs->millivolts[i];
