@@ -579,6 +579,7 @@ struct rm_spi_ts_platform_data rm31080ts_kai_007_data = {
 	.config = 0,
 	.platform_id = RM_PLATFORM_K007,
 	.name_of_clock = NULL,
+	.name_of_clock_con = NULL,
 };
 
 struct rm_spi_ts_platform_data rm31080ts_kai_107_data = {
@@ -586,6 +587,7 @@ struct rm_spi_ts_platform_data rm31080ts_kai_107_data = {
 	.config = 0,
 	.platform_id = RM_PLATFORM_K107,
 	.name_of_clock = "clk_out_3",
+	.name_of_clock_con = "extern3",
 };
 
 struct spi_board_info rm31080a_kai_spi_board[1] = {
@@ -660,7 +662,6 @@ static int __init kai_touch_init(void)
 		pr_info("Raydium On-Board touch init\n");
 		tegra_clk_init_from_table(spi_clk_init_table);
 		tegra_clk_init_from_table(touch_clk_init_table);
-		clk_enable(tegra_get_clock_by_name("clk_out_3"));
 		rm31080a_kai_spi_board[0].platform_data =
 			&rm31080ts_kai_107_data;
 		rm31080a_kai_spi_board[0].irq =

@@ -852,6 +852,7 @@ struct rm_spi_ts_platform_data rm31080ts_cardhu_data = {
 	.config = 0,
 	.platform_id = RM_PLATFORM_C210,
 	.name_of_clock = "clk_out_3",
+	.name_of_clock_con = "extern3",
 };
 
 struct spi_board_info rm31080a_cardhu_spi_board[1] = {
