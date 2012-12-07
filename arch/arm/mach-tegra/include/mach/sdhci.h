@@ -29,6 +29,12 @@
 #define MMC_OCR_1V8_MASK    0x00000008
 #define MMC_OCR_2V8_MASK    0x00010000
 
+/* uhs mask can be used to mask any of the UHS modes support */
+#define MMC_UHS_MASK_SDR25	1
+#define MMC_UHS_MASK_SDR50	2
+#define MMC_UHS_MASK_DDR50	4
+#define MMC_UHS_MASK_SDR104	8
+
 struct tegra_sdhci_platform_data {
 	int cd_gpio;
 	int wp_gpio;
@@ -40,6 +46,7 @@ struct tegra_sdhci_platform_data {
 	unsigned int ddr_clk_limit;
 	unsigned int tap_delay;
 	unsigned int trim_delay;
+	unsigned int uhs_mask;
 	struct mmc_platform_data mmc_data;
 };
 
