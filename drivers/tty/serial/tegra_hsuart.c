@@ -1746,6 +1746,7 @@ void tegra_uart_request_clock_on(struct uart_port *uport)
 
 	return;
 }
+EXPORT_SYMBOL(tegra_uart_request_clock_on);
 
 /* Set the modem control signals state of uart controller. */
 void tegra_uart_set_mctrl(struct uart_port *uport, unsigned int mctrl)
@@ -1775,6 +1776,7 @@ void tegra_uart_set_mctrl(struct uart_port *uport, unsigned int mctrl)
 	spin_unlock_irqrestore(&uport->lock, flags);
 	return;
 }
+EXPORT_SYMBOL(tegra_uart_set_mctrl);
 
 /*
  * Return the status of the transmit fifo whether empty or not.
@@ -1785,6 +1787,7 @@ int tegra_uart_is_tx_empty(struct uart_port *uport)
 {
 	return tegra_tx_empty(uport);
 }
+EXPORT_SYMBOL(tegra_uart_is_tx_empty);
 
 static struct platform_driver tegra_uart_platform_driver __refdata= {
 	.probe		= tegra_uart_probe,
