@@ -78,13 +78,6 @@ config BCMDHD_HW_OOB
 	---help---
 	  Use out of band interrupt for card interrupt and wake on wireless.
 
-config BCMDHD_CSCAN_ENABLE
-	bool "Enable Combo Scan"
-	depends on BCMDHD
-	default n
-	---help---
-	Enable Combo Scan
-
 config BCMDHD_INSMOD_NO_FW_LOAD
 	bool "Enable delayed firmware load"
 	depends on BCMDHD
