@@ -27,7 +27,7 @@
 #include <linux/regulator/fixed.h>
 #include <linux/mfd/palmas.h>
 #include <linux/regulator/tps51632-regulator.h>
-#include <linux/mfd/bq24192.h>
+#include <linux/mfd/bq2419x.h>
 #include <linux/max17048_battery.h>
 #include <linux/gpio.h>
 #include <linux/regulator/userspace-consumer.h>
@@ -122,6 +122,44 @@ struct bq2419x_charger_platform_data bq2419x_charger_pdata = {
 	.gpio_interrupt = TEGRA_GPIO_PJ0,
 	.gpio_status = TEGRA_GPIO_PK0,
 	.update_status = max17048_battery_status,
+};
+
+struct max17048_battery_model max17048_mdata = {
+	.rcomp		= 160,
+	.soccheck_A	= 233,
+	.soccheck_B	= 235,
+	.bits		= 19,
+	.alert_threshold = 0x00,
+	.one_percent_alerts = 0x40,
+	.alert_on_reset = 0x40,
+	.rcomp_seg	= 0x0800,
+	.hibernate	= 0x3080,
+	.vreset		= 0x9696,
+	.valert		= 0xD4AA,
+	.ocvtest	= 55824,
+	.data_tbl = {
+		0x9F, 0x70, 0xA7, 0xD0, 0xAB, 0x10, 0xAE, 0x50,
+		0xB0, 0x30, 0xB1, 0xD0, 0xB3, 0xC0, 0xB5, 0x80,
+		0xB7, 0xB0, 0xBA, 0x80, 0xBE, 0x80, 0xC1, 0x30,
+		0xC3, 0xD0, 0xC8, 0x70, 0xCC, 0x40, 0xD0, 0x10,
+		0x09, 0x40, 0x0C, 0xA0, 0x0D, 0x80, 0x18, 0x40,
+		0x1B, 0x20, 0x1F, 0x60, 0x1D, 0xE0, 0x13, 0xE0,
+		0x10, 0x00, 0x10, 0x00, 0x14, 0x00, 0x12, 0x00,
+		0x10, 0x00, 0x0E, 0x00, 0x0E, 0x00, 0x0E, 0x00,
+        },
+};
+
+struct max17048_platform_data max17048_pdata = {
+	.use_ac = 0,
+	.use_usb = 0,
+	.model_data = &max17048_mdata,
+};
+
+static struct i2c_board_info __initdata max17048_boardinfo[] = {
+	{
+		I2C_BOARD_INFO("max17048", 0x36),
+		.platform_data	= &max17048_pdata,
+	},
 };
 
 struct bq2419x_platform_data bq2419x_pdata = {
@@ -669,6 +707,7 @@ int __init roth_regulator_init(void)
 	roth_palmas_regulator_init();
 
 	i2c_register_board_info(4, tps51632_boardinfo, 1);
+	i2c_register_board_info(0, max17048_boardinfo, 1);
 	i2c_register_board_info(0, bq2419x_boardinfo, 1);
 	platform_device_register(&roth_pda_power_device);
 	return 0;
