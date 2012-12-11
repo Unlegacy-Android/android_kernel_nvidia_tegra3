@@ -264,6 +264,7 @@ void tegra11x_init_clocks(void);
 void tegra11x_clk_init_la(void);
 void tegra_common_init_clock(void);
 void tegra_init_max_rate(struct clk *c, unsigned long max_rate);
+void tegra_clk_vefify_parents(void);
 void clk_init(struct clk *clk);
 struct clk *tegra_get_clock_by_name(const char *name);
 unsigned long tegra_clk_measure_input_freq(void);
