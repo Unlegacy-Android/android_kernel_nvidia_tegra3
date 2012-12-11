@@ -419,13 +419,13 @@ static u32 *save_regs(u32 *ptr, unsigned int *pending,
 		} else {
 			u32 word;
 			if (regs->type == HWCTX_REGINFO_WRITEBACK) {
-				BUG_ON(msi->out_pos >= NR_WRITEBACKS);
+				WARN_ON(msi->out_pos >= NR_WRITEBACKS);
 				word = msi->out[msi->out_pos++];
 			} else {
 				nvhost_channel_drain_read_fifo(channel,
 						&word, 1, pending);
 				if (regs->type == HWCTX_REGINFO_STASH) {
-					BUG_ON(msi->in_pos >= NR_STASHES);
+					WARN_ON(msi->in_pos >= NR_STASHES);
 					msi->in[msi->in_pos++] = word;
 				} else {
 					word = calculate_mpe(word, msi);

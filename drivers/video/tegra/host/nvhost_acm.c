@@ -628,8 +628,8 @@ int nvhost_module_init(struct platform_device *dev)
 	}
 
 	/* Init the power sysfs attributes for this device */
-	pdata->power_attrib = kzalloc(sizeof(struct nvhost_device_power_attr),
-		GFP_KERNEL);
+	pdata->power_attrib = devm_kzalloc(&dev->dev,
+		sizeof(struct nvhost_device_power_attr), GFP_KERNEL);
 	if (!pdata->power_attrib) {
 		dev_err(&dev->dev, "Unable to allocate sysfs attributes\n");
 		return -ENOMEM;
@@ -755,7 +755,10 @@ bool nvhost_module_powered_ext(struct platform_device *dev)
 {
 	struct platform_device *pdev;
 
-	BUG_ON(!nvhost_get_parent(dev));
+	if (!dev->dev.parent) {
+		dev_err(&dev->dev, "Module powered called with wrong dev\n");
+		return 0;
+	}
 
 	/* get the parent */
 	pdev = to_platform_device(dev->dev.parent);
@@ -767,7 +770,10 @@ void nvhost_module_busy_ext(struct platform_device *dev)
 {
 	struct platform_device *pdev;
 
-	BUG_ON(!nvhost_get_parent(dev));
+	if (!dev->dev.parent) {
+		dev_err(&dev->dev, "Module busy called with wrong dev\n");
+		return;
+	}
 
 	/* get the parent */
 	pdev = to_platform_device(dev->dev.parent);
@@ -779,7 +785,10 @@ void nvhost_module_idle_ext(struct platform_device *dev)
 {
 	struct platform_device *pdev;
 
-	BUG_ON(!nvhost_get_parent(dev));
+	if (!dev->dev.parent) {
+		dev_err(&dev->dev, "Module idle called with wrong dev\n");
+		return;
+	}
 
 	/* get the parent */
 	pdev = to_platform_device(dev->dev.parent);
