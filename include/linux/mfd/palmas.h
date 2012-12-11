@@ -188,6 +188,7 @@ struct palmas_pmic_platform_data {
 
 	bool enable_ldo8_tracking;
 	bool disabe_ldo8_tracking_suspend;
+	bool disable_smps10_boost_suspend;
 
 
 };
