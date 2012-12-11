@@ -3360,12 +3360,6 @@ static void __tegra_dc_dsi_init(struct tegra_dc *dc)
 		dsi->out_ops->init(dsi);
 
 	tegra_dsi_init_sw(dc, dsi);
-
-	if (!dsi->mipi_cal) {
-		dsi->mipi_cal = tegra_mipi_cal_init_sw(dc);
-		if (IS_ERR(dsi->mipi_cal))
-			dsi->mipi_cal = NULL;
-	}
 }
 
 static int tegra_dc_dsi_cp_p_cmd(struct tegra_dsi_cmd *src,
@@ -4104,6 +4098,13 @@ static int tegra_dc_dsi_init(struct tegra_dc *dc)
 		goto err_reg;
 	}
 
+	dsi->mipi_cal = tegra_mipi_cal_init_sw(dc);
+	if (IS_ERR(dsi->mipi_cal)) {
+		dev_err(&dc->ndev->dev, "dsi: mipi_cal sw init failed\n");
+		err = PTR_ERR(dsi->mipi_cal);
+		goto err_mipi;
+	}
+
 	if (dc->out->dsi->ganged_type) {
 		err = _tegra_dc_dsi_init(dc);
 		if (err < 0) {
@@ -4113,10 +4114,14 @@ static int tegra_dc_dsi_init(struct tegra_dc *dc)
 		}
 		tegra_dsi_instance[DSI_INSTANCE_1]->avdd_dsi_csi =
 							dsi->avdd_dsi_csi;
+		tegra_dsi_instance[DSI_INSTANCE_1]->mipi_cal =
+							dsi->mipi_cal;
 		tegra_dc_set_outdata(dc, tegra_dsi_instance[DSI_INSTANCE_0]);
 	}
 	return 0;
 err_ganged:
+	tegra_mipi_cal_destroy(dc);
+err_mipi:
 	regulator_put(dsi->avdd_dsi_csi);
 err_reg:
 	_tegra_dc_dsi_destroy(dc);
@@ -4140,6 +4145,7 @@ static void tegra_dc_dsi_destroy(struct tegra_dc *dc)
 	}
 
 	regulator_put(avdd_dsi_csi);
+	tegra_mipi_cal_destroy(dc);
 }
 
 static void tegra_dc_dsi_enable(struct tegra_dc *dc)
