@@ -252,10 +252,6 @@ static struct i2c_board_info __initdata rt5640_board_info = {
 static struct i2c_board_info __initdata roth_codec_tfa9887R_info = {
 	I2C_BOARD_INFO("tfa9887R", 0x37),
 };
-
-static struct i2c_board_info __initdata roth_codec_tfa9887L_info = {
-	I2C_BOARD_INFO("tfa9887L", 0x36),
-};
 #endif
 
 static void roth_i2c_init(void)
@@ -274,7 +270,6 @@ static void roth_i2c_init(void)
 
 	i2c_register_board_info(0, &rt5640_board_info, 1);
 	i2c_register_board_info(0, &roth_codec_tfa9887R_info, 1);
-	i2c_register_board_info(0, &roth_codec_tfa9887L_info, 1);
 }
 
 static struct platform_device *roth_uart_devices[] __initdata = {
