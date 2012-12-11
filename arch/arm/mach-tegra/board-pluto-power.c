@@ -596,6 +596,7 @@ static struct palmas_dvfs_init_data palmas_dvfs_idata[] = {
 static struct palmas_pmic_platform_data pmic_platform = {
 	.enable_ldo8_tracking = true,
 	.disabe_ldo8_tracking_suspend = true,
+	.disable_smps10_boost_suspend = true,
 	.dvfs_init_data = palmas_dvfs_idata,
 	.dvfs_init_data_size = ARRAY_SIZE(palmas_dvfs_idata),
 };
