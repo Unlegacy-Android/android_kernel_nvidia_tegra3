@@ -1126,6 +1126,7 @@ extern unsigned char *fb_ddc_read(struct i2c_adapter *adapter);
 /* drivers/video/modedb.c */
 #define VESA_MODEDB_SIZE 34
 #define CEA_MODEDB_SIZE 65
+#define HDMI_EXT_MODEDB_SIZE 5
 extern void fb_var_to_videomode(struct fb_videomode *mode,
 				const struct fb_var_screeninfo *var);
 extern void fb_videomode_to_var(struct fb_var_screeninfo *var,
@@ -1179,6 +1180,7 @@ struct fb_videomode {
 extern const char *fb_mode_option;
 extern const struct fb_videomode vesa_modes[];
 extern const struct fb_videomode cea_modes[];
+extern const struct fb_videomode hdmi_ext_modes[];
 
 struct fb_modelist {
 	struct list_head list;
