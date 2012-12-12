@@ -27,7 +27,8 @@
 #include <linux/regulator/fixed.h>
 #include <linux/mfd/palmas.h>
 #include <linux/regulator/tps51632-regulator.h>
-#include <linux/mfd/bq2419x.h>
+#include <linux/mfd/bq24192.h>
+#include <linux/max17048_battery.h>
 #include <linux/gpio.h>
 #include <linux/regulator/userspace-consumer.h>
 
@@ -120,6 +121,7 @@ struct bq2419x_charger_platform_data bq2419x_charger_pdata = {
 	.use_mains = 1,
 	.gpio_interrupt = TEGRA_GPIO_PJ0,
 	.gpio_status = TEGRA_GPIO_PK0,
+	.update_status = max17048_battery_status,
 };
 
 struct bq2419x_platform_data bq2419x_pdata = {
