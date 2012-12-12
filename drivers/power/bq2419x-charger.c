@@ -52,6 +52,8 @@ struct bq2419x_charger {
 	unsigned		use_mains:1;
 	unsigned		use_usb:1;
 	int			irq;
+	int status;
+	void (*update_status)(int, int);
 };
 
 static enum power_supply_property bq2419x_psy_props[] = {
@@ -159,6 +161,7 @@ static int bq2419x_get_status(struct bq2419x_charger *charger)
 
 	charger->usb_online = 0;
 	charger->ac_online = 0;
+	charger->status = 0;
 	ret = regmap_read(charger->chip->regmap, BQ2419X_SYS_STAT_REG, &val);
 	if (ret < 0)
 		dev_err(charger->dev, "error reading reg: 0x%x\n",
@@ -168,7 +171,12 @@ static int bq2419x_get_status(struct bq2419x_charger *charger)
 		ret = bq2419x_charger_disable(charger);
 		if (ret < 0)
 			goto error;
+		charger->status = 0;
+		if (charger->update_status)
+			charger->update_status
+				(charger->status, 0);
 	} else if ((val & 0xc0) == 0x40) {
+		charger->status = 1;
 		charger->usb_online = 1;
 		ret = bq2419x_init(charger);
 		if (ret < 0)
@@ -177,7 +185,12 @@ static int bq2419x_get_status(struct bq2419x_charger *charger)
 		ret = bq2419x_charger_enable(charger);
 		if (ret < 0)
 			goto error;
+		if (charger->update_status)
+			charger->update_status
+				(charger->status, 2);
+
 	} else if ((val & 0xc0) == 0x80) {
+		charger->status = 1;
 		charger->ac_online = 1;
 		ret = bq2419x_init(charger);
 		if (ret < 0)
@@ -186,6 +199,9 @@ static int bq2419x_get_status(struct bq2419x_charger *charger)
 		ret = bq2419x_charger_enable(charger);
 		if (ret < 0)
 			goto error;
+		if (charger->update_status)
+			charger->update_status
+				(charger->status, 1);
 	}
 	return 0;
 error:
@@ -203,6 +219,7 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		if (charger->use_usb)
 			power_supply_changed(&charger->usb);
 	}
+
 	return IRQ_HANDLED;
 }
 
@@ -237,6 +254,7 @@ static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 	charger->use_mains = bcharger_pdata->use_mains;
 	charger->gpio_status = bcharger_pdata->gpio_status;
 	charger->gpio_interrupt = bcharger_pdata->gpio_interrupt;
+	charger->update_status = bcharger_pdata->update_status;
 	platform_set_drvdata(pdev, charger);
 
 	ret = regmap_read(charger->chip->regmap, BQ2419X_REVISION_REG, &val);
@@ -292,6 +310,7 @@ static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 
 	charger->ac_online = 0;
 	charger->usb_online = 0;
+	charger->status = 0;
 	if (charger->use_mains) {
 		charger->ac.name		= "bq2419x-ac";
 		charger->ac.type		= POWER_SUPPLY_TYPE_MAINS;
@@ -328,6 +347,7 @@ static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 		if (charger->use_usb)
 			power_supply_changed(&charger->usb);
 	}
+
 	return 0;
 psy_error1:
 	power_supply_unregister(&charger->usb);

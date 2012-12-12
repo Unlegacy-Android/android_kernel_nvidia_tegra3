@@ -117,6 +117,7 @@ struct bq2419x_charger_platform_data bq2419x_charger_pdata = {
 	.usb_in_current_limit = 400,
 	.ac_in_current_limit = 1000,
 	.use_usb = 1,
+	.use_mains = 1,
 	.gpio_interrupt = TEGRA_GPIO_PJ0,
 	.gpio_status = TEGRA_GPIO_PK0,
 };
