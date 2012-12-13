@@ -803,7 +803,11 @@ static struct tegra_stereo_out enterprise_stereo = {
 #ifdef CONFIG_TEGRA_DC
 static struct tegra_dc_mode enterprise_dsi_modes[] = {
 	{
-		.pclk = 10000000,
+#if (DC_CTRL_MODE & TEGRA_DC_OUT_ONE_SHOT_MODE)
+		.pclk = 39446000,
+#else
+		.pclk = 35860000,
+#endif
 		.h_ref_to_sync = 4,
 		.v_ref_to_sync = 1,
 		.h_sync_width = 16,
