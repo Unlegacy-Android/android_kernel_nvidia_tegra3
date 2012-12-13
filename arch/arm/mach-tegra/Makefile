@@ -61,7 +61,6 @@ AFLAGS_sleep.o :=-Wa,-march=armv7-a$(plus_sec)
 obj-y                                   += tegra_fuse.o
 obj-y                                   += kfuse.o
 obj-y                                   += csi.o
-obj-y                                   += tegra_odm_fuses.o
 obj-y                                   += i2c_error_recovery.o
 obj-y                                   += mc.o
 obj-$(CONFIG_TEGRA_STAT_MON)            += tegra2_statmon.o
