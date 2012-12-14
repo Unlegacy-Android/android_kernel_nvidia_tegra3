@@ -1844,10 +1844,7 @@ int thermal_generate_netlink_event(u32 orig, enum events event)
 		return result;
 	}
 
-	result = genlmsg_multicast(skb, 0, thermal_event_mcgrp.id, GFP_ATOMIC);
-	if (result)
-		pr_info("failed to send netlink event:%d\n", result);
-
+	genlmsg_multicast(skb, 0, thermal_event_mcgrp.id, GFP_ATOMIC);
 	return result;
 }
 EXPORT_SYMBOL(thermal_generate_netlink_event);
