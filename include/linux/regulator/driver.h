@@ -63,6 +63,9 @@ enum regulator_status {
  * @get_optimum_mode: Get the most efficient operating mode for the regulator
  *                    when running with the specified parameters.
  *
+ * @set_control_mode: Set the control mode for the regulator.
+ * @get_control_mode: Get the control mode for the regulator.
+ *
  * @enable_time: Time taken for the regulator voltage output voltage to
  *               stabilise after being enabled, in microseconds.
  * @set_voltage_time_sel: Time taken for the regulator voltage output voltage
@@ -107,6 +110,10 @@ struct regulator_ops {
 	/* get/set regulator operating mode (defined in consumer.h) */
 	int (*set_mode) (struct regulator_dev *, unsigned int mode);
 	unsigned int (*get_mode) (struct regulator_dev *);
+
+	/* get/set regulator control mode (defined in consumer.h) */
+	int (*set_control_mode) (struct regulator_dev *, unsigned int mode);
+	unsigned int (*get_control_mode) (struct regulator_dev *);
 
 	/* Time taken to enable or set voltage on the regulator */
 	int (*enable_time) (struct regulator_dev *);
