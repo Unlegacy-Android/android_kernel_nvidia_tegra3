@@ -104,6 +104,7 @@ static int tps51632_dcdc_set_voltage(struct regulator_dev *rdev,
 	     int min_uV, int max_uV, unsigned *selector)
 {
 	struct tps51632_chip *tps = rdev_get_drvdata(rdev);
+	unsigned int reg = TPS51632_VOLTAGE_SELECT_REG;
 	int vsel;
 	int ret;
 
@@ -116,7 +117,10 @@ static int tps51632_dcdc_set_voltage(struct regulator_dev *rdev,
 	if (selector)
 		*selector = (vsel & TPS51632_VOUT_MASK);
 
-	ret = regmap_write(tps->regmap, TPS51632_VOLTAGE_SELECT_REG, vsel);
+	if (tps->pwm_enabled)
+		reg = TPS51632_VOLTAGE_BASE_REG;
+
+	ret = regmap_write(tps->regmap, reg, vsel);
 	if (ret < 0)
 		dev_err(tps->dev, "reg write failed, err %d\n", ret);
 	return ret;
@@ -148,11 +152,47 @@ static int tps51632_dcdc_set_voltage_time_sel(struct regulator_dev *rdev,
 	return DIV_ROUND_UP(abs(old_uV - new_uV), tps->change_uv_per_us);
 }
 
+static int tps51632_dcdc_set_control_mode(struct regulator_dev *rdev,
+		unsigned int mode)
+{
+	struct tps51632_chip *tps = rdev_get_drvdata(rdev);
+	int ret;
+
+	if (mode == REGULATOR_CONTROL_MODE_I2C)
+	     ret = regmap_update_bits(tps->regmap,
+			TPS51632_DVFS_CONTROL_REG, TPS51632_DVFS_PWMEN, 0);
+	else if (mode == REGULATOR_CONTROL_MODE_PWM)
+	      ret = regmap_update_bits(tps->regmap,
+			TPS51632_DVFS_CONTROL_REG, TPS51632_DVFS_PWMEN,
+			TPS51632_DVFS_PWMEN);
+	else
+		return -EINVAL;
+
+	if (ret < 0) {
+		dev_err(tps->dev, "DVFS reg write failed, err %d\n", ret);
+		return ret;
+	}
+	tps->pwm_enabled = (mode == REGULATOR_CONTROL_MODE_PWM);
+	return ret;
+}
+
+static unsigned int tps51632_dcdc_get_control_mode(struct regulator_dev *rdev)
+{
+	struct tps51632_chip *tps = rdev_get_drvdata(rdev);
+
+	if (tps->pwm_enabled)
+		return REGULATOR_CONTROL_MODE_PWM;
+	return REGULATOR_CONTROL_MODE_I2C;
+}
+
+
 static struct regulator_ops tps51632_dcdc_ops = {
 	.get_voltage_sel	= tps51632_dcdc_get_voltage_sel,
 	.set_voltage		= tps51632_dcdc_set_voltage,
 	.list_voltage		= tps51632_dcdc_list_voltage,
 	.set_voltage_time_sel	= tps51632_dcdc_set_voltage_time_sel,
+	.set_control_mode	= tps51632_dcdc_set_control_mode,
+	.get_control_mode	= tps51632_dcdc_get_control_mode,
 };
 
 static int __devinit tps51632_init_dcdc(struct tps51632_chip *tps,
@@ -166,15 +206,13 @@ static int __devinit tps51632_init_dcdc(struct tps51632_chip *tps,
 	if (pdata->enable_pwm) {
 		control |= TPS51632_DVFS_PWMEN;
 		tps->pwm_enabled = pdata->enable_pwm;
-		vsel = DIV_ROUND_UP(pdata->base_voltage_uV -
-			TPS51632_MIN_VOLATGE, TPS51632_VOLATGE_STEP) + 0x19;
-		ret = regmap_write(tps->regmap, TPS51632_VOLTAGE_BASE_REG,
-							vsel);
-		if (ret < 0) {
-			dev_err(tps->dev, "BASE reg write failed, err %d\n",
-					ret);
-			return ret;
-		}
+	}
+	vsel = DIV_ROUND_UP(pdata->base_voltage_uV -
+		TPS51632_MIN_VOLATGE, TPS51632_VOLATGE_STEP) + 0x19;
+	ret = regmap_write(tps->regmap, TPS51632_VOLTAGE_BASE_REG, vsel);
+	if (ret < 0) {
+		dev_err(tps->dev, "BASE reg write failed, err %d\n", ret);
+		return ret;
 	}
 	if (pdata->dvfs_step_20mV)
 		control |= TPS51632_DVFS_STEP_20;
