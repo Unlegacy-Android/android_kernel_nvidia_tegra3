@@ -39,6 +39,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/max17048_battery.h>
 #include <linux/leds.h>
+#include <linux/leds_pwm.h>
 #include <linux/i2c/at24.h>
 #include <linux/of_platform.h>
 #include <asm/hardware/gic.h>
@@ -394,6 +395,57 @@ static struct platform_device tegra_camera = {
 	.id = -1,
 };
 
+#ifdef CONFIG_LEDS_PWM
+static struct led_pwm roth_led_info[] = {
+	{
+		.name			= "roth-led",
+		.default_trigger	= "none",
+		.pwm_id			= 2,
+		.active_low		= 0,
+		.max_brightness		= 255,
+		.pwm_period_ns		= 10000000,
+	},
+};
+
+static struct led_pwm_platform_data roth_leds_pdata = {
+	.leds		= roth_led_info,
+	.num_leds	= ARRAY_SIZE(roth_led_info),
+};
+
+static struct platform_device roth_leds_pwm_device = {
+	.name	= "leds_pwm",
+	.id	= -1,
+	.dev	= {
+		.platform_data = &roth_leds_pdata,
+	},
+};
+
+#else
+static struct gpio_led roth_led_info[] = {
+	{
+		.name			= "roth-led",
+		.default_trigger	= "none",
+		.gpio			= TEGRA_GPIO_PQ3,
+		.active_low		= 0,
+		.retain_state_suspended	= 0,
+		.default_state		= LEDS_GPIO_DEFSTATE_OFF,
+	},
+};
+
+static struct gpio_led_platform_data roth_leds_pdata = {
+	.leds		= roth_led_info,
+	.num_leds	= ARRAY_SIZE(roth_led_info),
+};
+
+static struct platform_device roth_leds_gpio_device = {
+	.name	= "leds-gpio",
+	.id	= -1,
+	.dev	= {
+		.platform_data = &roth_leds_pdata,
+	},
+};
+#endif
+
 static struct platform_device *roth_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
@@ -423,6 +475,13 @@ static struct platform_device *roth_devices[] __initdata = {
 	&tegra_hda_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
+#endif
+
+#if CONFIG_LEDS_PWM
+	&tegra_pwfm2_device,
+	&roth_leds_pwm_device,
+#else
+	&roth_leds_gpio_device,
 #endif
 };
 
