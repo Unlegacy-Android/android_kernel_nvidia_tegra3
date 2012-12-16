@@ -1176,7 +1176,8 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 	.tsensor_clk_rate = 500000,
 	.sensor_data = {
 		[TSENSE_CPU0] = {
-			.enable = true,
+			.sensor_enable = true,
+			.zone_enable = false,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -1184,7 +1185,8 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 			.pdiv = 10,
 		},
 		[TSENSE_CPU1] = {
-			.enable = true,
+			.sensor_enable = true,
+			.zone_enable = false,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -1192,7 +1194,8 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 			.pdiv = 10,
 		},
 		[TSENSE_CPU2] = {
-			.enable = true,
+			.sensor_enable = true,
+			.zone_enable = false,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -1200,22 +1203,17 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 			.pdiv = 10,
 		},
 		[TSENSE_CPU3] = {
-			.enable = true,
+			.sensor_enable = true,
+			.zone_enable = false,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
 			.tsample = 163,
 			.pdiv = 10,
 		},
-		/* MEM0/MEM1 won't be used */
-		[TSENSE_MEM0] = {
-			.enable = false,
-		},
-		[TSENSE_MEM1] = {
-			.enable = false,
-		},
 		[TSENSE_GPU] = {
-			.enable = true,
+			.sensor_enable = true,
+			.zone_enable = false,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -1223,12 +1221,29 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 			.pdiv = 10,
 		},
 		[TSENSE_PLLX] = {
-			.enable = true,
+			.sensor_enable = true,
+			.zone_enable = false,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
 			.tsample = 163,
 			.pdiv = 10,
+		},
+	},
+	.therm = {
+		[THERM_CPU] = {
+			.zone_enable = true,
+			.cdev_type = "tegra-balanced",
+			.thermtrip = 115,
+			.trip_temp = 85000,
+			.passive_delay = 1000,
+			.hysteresis = 3000,
+		},
+		[THERM_GPU] = {
+			.zone_enable = true,
+		},
+		[THERM_PLL] = {
+			.zone_enable = true,
 		},
 	},
 };
