@@ -494,6 +494,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 		.xcvr_lsrslew = 2,
 		.xcvr_setup_offset = 0,
 		.xcvr_use_fuses = 1,
+		.vbus_oc_map = 0x4,
 	},
 };
 
@@ -519,6 +520,7 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 		.xcvr_lsrslew = 2,
 		.xcvr_setup_offset = 0,
 		.xcvr_use_fuses = 1,
+		.vbus_oc_map = 0x5,
 	},
 };
 
