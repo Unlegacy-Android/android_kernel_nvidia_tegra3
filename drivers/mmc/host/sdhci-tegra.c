@@ -1089,6 +1089,10 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 
 	pdev = to_platform_device(mmc_dev(sdhci->mmc));
 	plat = pdev->dev.platform_data;
+
+	if (gpio_is_valid(plat->cd_gpio))
+		tegra_host->card_present = (gpio_get_value(plat->cd_gpio) == 0);
+
 	/* Enable the power rails if any */
 	if (tegra_host->card_present) {
 		if (!tegra_host->is_rail_enabled) {
@@ -1107,6 +1111,7 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 			tegra_host->is_rail_enabled = 1;
 		}
 	}
+
 	/* Setting the min identification clock of freq 400KHz */
 	tegra_sdhci_set_clock(sdhci, 400000);
 
@@ -1118,6 +1123,16 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 	}
 
 	return 0;
+}
+
+static void tegra_sdhci_post_resume(struct sdhci_host *sdhci)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+
+	/* Turn OFF the clocks if the card is not present */
+	if (!(tegra_host->card_present) && tegra_host->clk_enabled)
+		tegra_sdhci_set_clock(sdhci, 0);
 }
 
 static struct sdhci_ops tegra_sdhci_ops = {
@@ -1132,6 +1147,7 @@ static struct sdhci_ops tegra_sdhci_ops = {
 	.set_clock		= tegra_sdhci_set_clock,
 	.suspend		= tegra_sdhci_suspend,
 	.resume			= tegra_sdhci_resume,
+	.platform_resume	= tegra_sdhci_post_resume,
 	.platform_reset_exit	= tegra_sdhci_reset_exit,
 	.set_uhs_signaling	= tegra_sdhci_set_uhs_signaling,
 	.switch_signal_voltage	= tegra_sdhci_signal_voltage_switch,
