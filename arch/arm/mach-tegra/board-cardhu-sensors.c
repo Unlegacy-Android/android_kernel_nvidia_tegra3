@@ -835,6 +835,7 @@ static int tegra_skin_get_temp(void *data, long *temp)
 }
 
 static struct therm_est_data skin_data = {
+	.cdev_type = "cardhu-skin",
 	.toffset = 9793,
 	.polling_period = 1100,
 	.ndevs = 2,
@@ -863,32 +864,32 @@ static struct therm_est_data skin_data = {
 			},
 	},
 	.trip_temp = 43000,
-	.tc1 = 1,
-	.tc2 = 15,
-	.passive_delay = 15000,
+	.passive_delay = 5000,
 };
 
 static struct balanced_throttle skin_throttle = {
-	.throt_tab_size = 6,
+	.throt_tab_size = 10,
 	.throt_tab = {
-		{ 640000, 1200 },
-		{ 640000, 1200 },
-		{ 760000, 1200 },
-		{ 760000, 1200 },
-		{1000000, 1200 },
-		{1000000, 1200 },
+		{      0, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 760000, 1000 },
+		{ 760000, 1050 },
+		{1000000, 1050 },
+		{1000000, 1100 },
 	},
 };
 
 static int __init cardhu_skin_init(void)
 {
-	struct thermal_cooling_device *skin_cdev;
-
-	skin_cdev = balanced_throttle_register(&skin_throttle, "cardhu-skin");
-
-	skin_data.cdev = skin_cdev;
-	tegra_skin_therm_est_device.dev.platform_data = &skin_data;
-	platform_device_register(&tegra_skin_therm_est_device);
+	if (machine_is_cardhu()) {
+		balanced_throttle_register(&skin_throttle, "cardhu-skin");
+		tegra_skin_therm_est_device.dev.platform_data = &skin_data;
+		platform_device_register(&tegra_skin_therm_est_device);
+	}
 
 	return 0;
 }
