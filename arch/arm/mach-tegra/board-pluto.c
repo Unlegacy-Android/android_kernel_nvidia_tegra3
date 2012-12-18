@@ -811,6 +811,10 @@ static int baseband_init(void)
 	else
 		regulator_enable(baseband_reg);
 
+	/* enable pull-down for MDM1 UART RX */
+	tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_GPIO_PU1,
+				    TEGRA_PUPD_PULL_DOWN);
+
 	/* enable pull-down for MDM1_COLD_BOOT */
 	tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_ULPI_DATA4,
 				    TEGRA_PUPD_PULL_DOWN);
