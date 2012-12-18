@@ -59,7 +59,7 @@ static struct balanced_throttle tj_throttle = {
 static int __init kai_throttle_init(void)
 {
 	if (machine_is_kai())
-		balanced_throttle_register(&tj_throttle, "kai-nct");
+		balanced_throttle_register(&tj_throttle, "tegra-balanced");
 	return 0;
 }
 module_init(kai_throttle_init);
@@ -77,7 +77,7 @@ static struct nct1008_platform_data kai_nct1008_pdata = {
 	.trips = {
 		/* Thermal Throttling */
 		[0] = {
-			.cdev_type = "kai-nct",
+			.cdev_type = "tegra-balanced",
 			.trip_temp = 80000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
 			.state = THERMAL_NO_LIMIT,

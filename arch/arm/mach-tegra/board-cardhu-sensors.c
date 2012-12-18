@@ -703,7 +703,7 @@ static struct balanced_throttle tj_throttle = {
 static int __init cardhu_throttle_init(void)
 {
 	if (machine_is_cardhu())
-		balanced_throttle_register(&tj_throttle, "cardhu-nct");
+		balanced_throttle_register(&tj_throttle, "tegra-balanced");
 	return 0;
 }
 module_init(cardhu_throttle_init);
@@ -722,7 +722,7 @@ static struct nct1008_platform_data cardhu_nct1008_pdata = {
 	.trips = {
 		/* Thermal Throttling */
 		[0] = {
-			.cdev_type = "cardhu-nct",
+			.cdev_type = "tegra-balanced",
 			.trip_temp = 80000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
 			.state = THERMAL_NO_LIMIT,
@@ -835,7 +835,7 @@ static int tegra_skin_get_temp(void *data, long *temp)
 }
 
 static struct therm_est_data skin_data = {
-	.cdev_type = "cardhu-skin",
+	.cdev_type = "skin-balanced",
 	.toffset = 9793,
 	.polling_period = 1100,
 	.ndevs = 2,
@@ -888,7 +888,7 @@ static struct balanced_throttle skin_throttle = {
 static int __init cardhu_skin_init(void)
 {
 	if (machine_is_cardhu()) {
-		balanced_throttle_register(&skin_throttle, "cardhu-skin");
+		balanced_throttle_register(&skin_throttle, "skin-balanced");
 		tegra_skin_therm_est_device.dev.platform_data = &skin_data;
 		platform_device_register(&tegra_skin_therm_est_device);
 	}
