@@ -151,6 +151,7 @@ static struct nvhost_device_data tegra_gr2d03_info = {
 	.clockgate_delay = 0,
 	.can_powergate  = true,
 	.powergate_delay = 100,
+	.powerup_reset	= true,
 	.moduleid	= NVHOST_MODULE_NONE,
 	.serialize	= true,
 };
