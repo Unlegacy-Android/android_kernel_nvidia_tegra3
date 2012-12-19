@@ -3436,7 +3436,9 @@ wl_cfg80211_set_power_mgmt(struct wiphy *wiphy, struct net_device *dev,
 	s32 err = 0;
 	struct wl_priv *wl = wiphy_priv(wiphy);
 	struct net_info *_net_info = wl_get_netinfo_by_netdev(wl, dev);
+#ifndef SUPPORT_PM2_ONLY
 	dhd_pub_t *dhd = (dhd_pub_t *)(wl->pub);
+#endif
 
 	CHECK_SYS_UP(wl);
 
@@ -3445,7 +3447,11 @@ wl_cfg80211_set_power_mgmt(struct wiphy *wiphy, struct net_device *dev,
 	}
 
 	/* android has special hooks to change pm when kernel suspended */
+#ifndef SUPPORT_PM2_ONLY
 	pm = enabled ? ((dhd->in_suspend) ? PM_MAX : PM_FAST) : PM_OFF;
+#else
+	pm = enabled ? PM_FAST : PM_OFF;
+#endif
 
 	/* Do not enable the power save after assoc if it is p2p interface */
 	if (_net_info->pm_block || wl->vsdb_mode) {
@@ -7898,6 +7904,8 @@ static s32 wl_notifier_change_state(struct wl_priv *wl, struct net_info *_net_in
 								WL_ERR(("error"
 									" (%d)\n", err));
 								break;
+						} else {
+							wl_cfg80211_update_power_mode(iter->ndev);
 						}
 					}
 					if (connected_cnt  > 1) {
@@ -7965,6 +7973,8 @@ static s32 wl_notifier_change_state(struct wl_priv *wl, struct net_info *_net_in
 								WL_ERR(("error"
 									" (%d)\n", err));
 							break;
+						} else {
+							wl_cfg80211_update_power_mode(iter->ndev);
 						}
 					}
 				}

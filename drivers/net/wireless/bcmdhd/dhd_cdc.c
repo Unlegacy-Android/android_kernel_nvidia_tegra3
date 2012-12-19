@@ -1759,6 +1759,7 @@ dhd_wlfc_txcomplete(dhd_pub_t *dhd, void *txp, bool success)
 	void* p;
 	int fifo_id;
 
+	dhd_os_wlfc_block(dhd);
 	if (DHD_PKTTAG_SIGNALONLY(PKTTAG(txp))) {
 #ifdef PROP_TXSTATUS_DEBUG
 		wlfc->stats.signal_only_pkts_freed++;
@@ -1766,6 +1767,7 @@ dhd_wlfc_txcomplete(dhd_pub_t *dhd, void *txp, bool success)
 		if (success)
 			/* is this a signal-only packet? */
 			PKTFREE(wlfc->osh, txp, TRUE);
+		dhd_os_wlfc_unblock(dhd);
 		return;
 	}
 	if (!success) {
@@ -1800,6 +1802,7 @@ dhd_wlfc_txcomplete(dhd_pub_t *dhd, void *txp, bool success)
 
 		PKTFREE(wlfc->osh, txp, TRUE);
 	}
+	dhd_os_wlfc_unblock(dhd);
 	return;
 }
 
@@ -2434,6 +2437,8 @@ dhd_wlfc_cleanup(dhd_pub_t *dhd)
 					if (h->items[i].state == WLFC_HANGER_ITEM_STATE_INUSE) {
 						PKTFREE(wlfc->osh, h->items[i].pkt, TRUE);
 						h->items[i].state = WLFC_HANGER_ITEM_STATE_FREE;
+						h->items[i].pkt = NULL;
+						h->items[i].identifier = 0;
 					} else if (h->items[i].state ==
 						WLFC_HANGER_ITEM_STATE_INUSE_SUPPRESSED) {
 						/* These are already freed from the psq */
@@ -2448,8 +2453,14 @@ dhd_wlfc_cleanup(dhd_pub_t *dhd)
 	/* flush remained pkt in hanger queue, not in bus->txq */
 	for (i = 0; i < h->max_items; i++) {
 		if (h->items[i].state == WLFC_HANGER_ITEM_STATE_INUSE) {
-			PKTFREE(wlfc->osh, h->items[i].pkt, TRUE);
+			if (!dhd->hang_was_sent) {
+				PKTFREE(wlfc->osh, h->items[i].pkt, TRUE);
+			} else {
+				printk("%s: Skip freeing skb %p\n", __func__, h->items[i].pkt);
+			}
 			h->items[i].state = WLFC_HANGER_ITEM_STATE_FREE;
+			h->items[i].pkt = NULL;
+			h->items[i].identifier = 0;
 		} else if (h->items[i].state == WLFC_HANGER_ITEM_STATE_INUSE_SUPPRESSED) {
 			/* These are freed from the psq so no need to free again */
 			h->items[i].state = WLFC_HANGER_ITEM_STATE_FREE;
@@ -2470,9 +2481,11 @@ dhd_wlfc_deinit(dhd_pub_t *dhd)
 	wlfc = (athost_wl_status_info_t*)
 		dhd->wlfc_state;
 
-	if (dhd->wlfc_state == NULL)
+	dhd_os_wlfc_block(dhd);
+	if (dhd->wlfc_state == NULL) {
+		dhd_os_wlfc_unblock(dhd);
 		return;
-
+	}
 #ifdef PROP_TXSTATUS_DEBUG
 	{
 		int i;
@@ -2492,6 +2505,7 @@ dhd_wlfc_deinit(dhd_pub_t *dhd)
 	/* free top structure */
 	MFREE(dhd->osh, dhd->wlfc_state, sizeof(athost_wl_status_info_t));
 	dhd->wlfc_state = NULL;
+	dhd_os_wlfc_unblock(dhd);
 	return;
 }
 #endif /* PROP_TXSTATUS */
@@ -2501,8 +2515,10 @@ dhd_prot_dump(dhd_pub_t *dhdp, struct bcmstrbuf *strbuf)
 {
 	bcm_bprintf(strbuf, "Protocol CDC: reqid %d\n", dhdp->prot->reqid);
 #ifdef PROP_TXSTATUS
+	dhd_os_wlfc_block(dhdp);
 	if (dhdp->wlfc_state)
 		dhd_wlfc_dump(dhdp, strbuf);
+	dhd_os_wlfc_unblock(dhdp);
 #endif
 }
 
@@ -2541,6 +2557,7 @@ dhd_prot_hdrpull(dhd_pub_t *dhd, int *ifidx, void *pktbuf, uchar *reorder_buf_in
 #ifdef BDC
 	struct bdc_header *h;
 #endif
+	uint8 data_offset = 0;
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
@@ -2557,15 +2574,23 @@ dhd_prot_hdrpull(dhd_pub_t *dhd, int *ifidx, void *pktbuf, uchar *reorder_buf_in
 
 	h = (struct bdc_header *)PKTDATA(dhd->osh, pktbuf);
 
+#if defined(NDIS630)
+	h->dataOffset = 0;
+#endif
+
+	if (!ifidx) {
+		/* for tx packet, skip the analysis and just exit */
+		data_offset = h->dataOffset;
+		PKTPULL(dhd->osh, pktbuf, BDC_HEADER_LEN);
+		goto exit;
+	}
+
 	if ((*ifidx = BDC_GET_IF_IDX(h)) >= DHD_MAX_IFS) {
 		DHD_ERROR(("%s: rx data ifnum out of range (%d)\n",
 		           __FUNCTION__, *ifidx));
 		return BCME_ERROR;
 	}
 
-#if defined(NDIS630)
-	h->dataOffset = 0;
-#endif
 	if (((h->flags & BDC_FLAG_VER_MASK) >> BDC_FLAG_VER_SHIFT) != BDC_PROTO_VER) {
 		DHD_ERROR(("%s: non-BDC packet received, flags = 0x%x\n",
 		           dhd_ifname(dhd, *ifidx), h->flags));
@@ -2582,6 +2607,7 @@ dhd_prot_hdrpull(dhd_pub_t *dhd, int *ifidx, void *pktbuf, uchar *reorder_buf_in
 	}
 
 	PKTSETPRIO(pktbuf, (h->priority & BDC_PRIORITY_MASK));
+	data_offset = h->dataOffset;
 	PKTPULL(dhd->osh, pktbuf, BDC_HEADER_LEN);
 #endif /* BDC */
 
@@ -2609,6 +2635,7 @@ dhd_prot_hdrpull(dhd_pub_t *dhd, int *ifidx, void *pktbuf, uchar *reorder_buf_in
 		dhd_os_wlfc_unblock(dhd);
 	}
 #endif /* PROP_TXSTATUS */
+exit:
 #if !defined(NDIS630)
 		PKTPULL(dhd->osh, pktbuf, (h->dataOffset << 2));
 #endif
