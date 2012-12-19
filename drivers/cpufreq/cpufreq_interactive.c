@@ -238,29 +238,26 @@ static void cpufreq_interactive_timer(unsigned long data)
 	if (delta_time < 1000)
 		goto rearm;
 
+	if (!io_is_busy)
+		delta_idle += delta_iowait;
+
 	if (delta_idle > delta_time)
 		cpu_load = 0;
-	else {
-		if (io_is_busy && delta_idle >= delta_iowait)
-			delta_idle -= delta_iowait;
-
+	else
 		cpu_load = 100 * (delta_time - delta_idle) / delta_time;
-	}
 
 	delta_idle = (unsigned int)(now_idle - pcpu->freq_change_time_in_idle);
 	delta_iowait = (unsigned int)(now_iowait - pcpu->freq_change_time_in_iowait);
 	delta_time = (unsigned int)(pcpu->timer_run_time - pcpu->freq_change_time);
 
+	if (!io_is_busy)
+		delta_idle += delta_iowait;
+
 	if ((delta_time == 0) || (delta_idle > delta_time))
 		load_since_change = 0;
-	else {
-		if (io_is_busy && delta_idle >= delta_iowait)
-			delta_idle -= delta_iowait;
-
+	else
 		load_since_change =
 			100 * (delta_time - delta_idle) / delta_time;
-	}
-
 	/*
 	 * Combine short-term load (since last idle timer started or timer
 	 * function re-armed itself) and long-term load (since last frequency
