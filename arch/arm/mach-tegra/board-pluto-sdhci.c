@@ -36,7 +36,6 @@
 #include "board-pluto.h"
 
 #define PLUTO_WLAN_PWR	TEGRA_GPIO_PCC5
-#define PLUTO_WLAN_RST	TEGRA_GPIO_PX7
 #define PLUTO_WLAN_WOW	TEGRA_GPIO_PU5
 #define PLUTO_SD_CD	TEGRA_GPIO_PV2
 static void (*wifi_status_cb)(int card_present, void *dev_id);
@@ -241,8 +240,6 @@ static int pluto_wifi_power(int on)
 	}
 	gpio_set_value(PLUTO_WLAN_PWR, on);
 	mdelay(100);
-	gpio_set_value(PLUTO_WLAN_RST, on);
-	mdelay(200);
 	if (sd_dpd) {
 		mutex_lock(&sd_dpd->delay_lock);
 		tegra_io_dpd_enable(sd_dpd);
@@ -265,9 +262,6 @@ static int __init pluto_wifi_init(void)
 	rc = gpio_request(PLUTO_WLAN_PWR, "wlan_power");
 	if (rc)
 		pr_err("WLAN_PWR gpio request failed:%d\n", rc);
-	rc = gpio_request(PLUTO_WLAN_RST, "wlan_rst");
-	if (rc)
-		pr_err("WLAN_RST gpio request failed:%d\n", rc);
 	rc = gpio_request(PLUTO_WLAN_WOW, "bcmsdh_sdmmc");
 	if (rc)
 		pr_err("WLAN_WOW gpio request failed:%d\n", rc);
@@ -275,9 +269,6 @@ static int __init pluto_wifi_init(void)
 	rc = gpio_direction_output(PLUTO_WLAN_PWR, 0);
 	if (rc)
 		pr_err("WLAN_PWR gpio direction configuration failed:%d\n", rc);
-	gpio_direction_output(PLUTO_WLAN_RST, 0);
-	if (rc)
-		pr_err("WLAN_RST gpio direction configuration failed:%d\n", rc);
 	rc = gpio_direction_input(PLUTO_WLAN_WOW);
 	if (rc)
 		pr_err("WLAN_WOW gpio direction configuration failed:%d\n", rc);
