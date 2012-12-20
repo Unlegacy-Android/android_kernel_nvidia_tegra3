@@ -53,6 +53,7 @@
 #include "tegra_cl_dvfs.h"
 #include "devices.h"
 #include "tegra11_soctherm.h"
+#include "tegra3_tsensor.h"
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
@@ -1181,6 +1182,26 @@ static struct thermal_zone_params dalmore_soctherm_therm_cpu_tzp = {
 	.governor_name = "pid_thermal_gov",
 };
 
+static struct tegra_tsensor_pmu_data tpdata_palmas = {
+	.reset_tegra = 1,
+	.pmu_16bit_ops = 0,
+	.controller_type = 0,
+	.pmu_i2c_addr = 0x58,
+	.i2c_controller_id = 4,
+	.poweroff_reg_addr = 0xa0,
+	.poweroff_reg_data = 0x0,
+};
+
+static struct tegra_tsensor_pmu_data tpdata_max77663 = {
+	.reset_tegra = 1,
+	.pmu_16bit_ops = 0,
+	.controller_type = 0,
+	.pmu_i2c_addr = 0x3c,
+	.i2c_controller_id = 4,
+	.poweroff_reg_addr = 0x41,
+	.poweroff_reg_data = 0x80,
+};
+
 static struct soctherm_platform_data dalmore_soctherm_data = {
 	.therm = {
 		[THERM_CPU] = {
@@ -1228,10 +1249,18 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 			},
 		},
 	},
+	.tshut_pmu_trip_data = &tpdata_palmas,
 };
 
 int __init dalmore_soctherm_init(void)
 {
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+	if (!(board_info.board_id == BOARD_E1611 ||
+		board_info.board_id == BOARD_P2454))
+		dalmore_soctherm_data.tshut_pmu_trip_data = &tpdata_max77663;
+
 	tegra_platform_edp_init(dalmore_soctherm_data.therm[THERM_CPU].trips,
 			&dalmore_soctherm_data.therm[THERM_CPU].num_trips);
 	tegra_add_tj_trips(dalmore_soctherm_data.therm[THERM_CPU].trips,
