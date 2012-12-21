@@ -138,7 +138,8 @@ static bool isl29028_write_data(struct i2c_client *client, u8 reg,
 {
 	u8 regval;
 	int ret = 0;
-	struct isl29028_chip *chip = i2c_get_clientdata(client);
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 
 	regval = chip->reg_cache[reg];
 	regval &= ~mask;
@@ -154,7 +155,7 @@ static bool isl29028_write_data(struct i2c_client *client, u8 reg,
 	return true;
 }
 
-static bool isl29018_set_proxim_period(struct i2c_client *client,
+static bool isl29028_set_proxim_period(struct i2c_client *client,
 		bool is_enable,	int period)
 {
 	int prox_period[] = {0, 12, 50, 75, 100, 200, 400, 800};
@@ -190,7 +191,7 @@ static bool isl29018_set_proxim_period(struct i2c_client *client,
 	return st;
 }
 
-static bool isl29018_set_proxim_persist(struct i2c_client *client,
+static bool isl29028_set_proxim_persist(struct i2c_client *client,
 		bool is_enable,	int persist)
 {
 	int prox_perstant[] = {1, 4, 8, 16};
@@ -225,7 +226,7 @@ static bool isl29018_set_proxim_persist(struct i2c_client *client,
 	return st;
 }
 
-static bool isl29018_set_als_persist(struct i2c_client *client, bool is_enable,
+static bool isl29028_set_als_persist(struct i2c_client *client, bool is_enable,
 			int persist)
 {
 	int prox_perstant[] = {1, 4, 8, 16};
@@ -260,19 +261,19 @@ static bool isl29018_set_als_persist(struct i2c_client *client, bool is_enable,
 	return st;
 }
 
-static bool isl29018_set_proxim_high_threshold(struct i2c_client *client, u8 th)
+static bool isl29028_set_proxim_high_threshold(struct i2c_client *client, u8 th)
 {
 	return isl29028_write_data(client, ISL29028_REG_ADD_PROX_HIGH_THRES,
 		th, 0xFF, 0);
 }
 
-static bool isl29018_set_proxim_low_threshold(struct i2c_client *client, u8 th)
+static bool isl29028_set_proxim_low_threshold(struct i2c_client *client, u8 th)
 {
 	return isl29028_write_data(client, ISL29028_REG_ADD_PROX_LOW_THRES,
 		th, 0xFF, 0);
 }
 
-static bool isl29018_set_irals_high_threshold(struct i2c_client *client,
+static bool isl29028_set_irals_high_threshold(struct i2c_client *client,
 				u32 als)
 {
 	bool st;
@@ -286,7 +287,7 @@ static bool isl29018_set_irals_high_threshold(struct i2c_client *client,
 	return st;
 }
 
-static bool isl29018_set_irals_low_threshold(struct i2c_client *client, u32 als)
+static bool isl29028_set_irals_low_threshold(struct i2c_client *client, u32 als)
 {
 	bool st;
 	st = isl29028_write_data(client,
@@ -300,10 +301,11 @@ static bool isl29018_set_irals_low_threshold(struct i2c_client *client, u32 als)
 	return st;
 }
 
-static bool isl29018_set_als_ir_mode(struct i2c_client *client, bool is_enable,
+static bool isl29028_set_als_ir_mode(struct i2c_client *client, bool is_enable,
 	bool is_als)
 {
-	struct isl29028_chip *chip = i2c_get_clientdata(client);
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct isl29028_chip *chip = iio_priv(indio_dev);
 	bool st;
 	if (is_enable) {
 		if (is_als) {
@@ -320,10 +322,10 @@ static bool isl29018_set_als_ir_mode(struct i2c_client *client, bool is_enable,
 					CONFIGURE_ALS_RANGE_MASK,
 					CONFIGURE_ALS_RANGE_SH);
 			if (st)
-				st = isl29018_set_irals_high_threshold(client,
+				st = isl29028_set_irals_high_threshold(client,
 					chip->als_high_thres);
 			if (st)
-				st = isl29018_set_irals_low_threshold(client,
+				st = isl29028_set_irals_low_threshold(client,
 					chip->als_low_thres);
 		} else {
 			dev_dbg(&client->dev, "Enabling IR mode\n");
@@ -333,10 +335,10 @@ static bool isl29018_set_als_ir_mode(struct i2c_client *client, bool is_enable,
 				CONFIGURE_ALS_IR_MODE_MASK,
 				CONFIGURE_ALS_IR_MODE_SH);
 			if (st)
-				st = isl29018_set_irals_high_threshold(client,
+				st = isl29028_set_irals_high_threshold(client,
 					chip->ir_high_thres);
 			if (st)
-				st = isl29018_set_irals_low_threshold(client,
+				st = isl29028_set_irals_low_threshold(client,
 					chip->ir_low_thres);
 		}
 		if (st)
@@ -418,7 +420,7 @@ static ssize_t store_prox_period(struct device *dev,
 		return -EINVAL;
 
 	mutex_lock(&chip->lock);
-	st = isl29018_set_proxim_period(client, chip->is_prox_enable,
+	st = isl29028_set_proxim_period(client, chip->is_prox_enable,
 				(int)lval);
 	if (st)
 		chip->prox_period = (int)lval;
@@ -462,11 +464,17 @@ static ssize_t store_prox_enable(struct device *dev,
 	}
 
 	mutex_lock(&chip->lock);
+
+	if (lval == chip->is_prox_enable) {
+		mutex_unlock(&chip->lock);
+		return count;
+	}
+
 	if (lval == 1)
-		st = isl29018_set_proxim_period(client, true,
+		st = isl29028_set_proxim_period(client, true,
 							chip->prox_period);
 	else
-		st = isl29018_set_proxim_period(client, false,
+		st = isl29028_set_proxim_period(client, false,
 							chip->prox_period);
 	if (st)
 		chip->is_prox_enable = (lval) ? true : false;
@@ -508,12 +516,18 @@ static ssize_t store_als_ir_mode(struct device *dev,
 	}
 
 	mutex_lock(&chip->lock);
+
+	if (lval == chip->als_ir_mode) {
+		mutex_unlock(&chip->lock);
+		return count;
+	}
+
 	if (lval == 0)
-		st = isl29018_set_als_ir_mode(client, false, false);
+		st = isl29028_set_als_ir_mode(client, false, false);
 	else if (lval == 1)
-		st = isl29018_set_als_ir_mode(client, true, true);
+		st = isl29028_set_als_ir_mode(client, true, true);
 	else
-		st = isl29018_set_als_ir_mode(client, true, false);
+		st = isl29028_set_als_ir_mode(client, true, false);
 	if (st)
 		chip->als_ir_mode = (int)lval;
 	else
@@ -554,7 +568,7 @@ static ssize_t store_proxim_low_threshold(struct device *dev,
 	}
 
 	mutex_lock(&chip->lock);
-	st = isl29018_set_proxim_low_threshold(client, (u8)lval);
+	st = isl29028_set_proxim_low_threshold(client, (u8)lval);
 	if (st)
 		chip->prox_low_thres = (int)lval;
 	else
@@ -595,7 +609,7 @@ static ssize_t store_proxim_high_threshold(struct device *dev,
 	}
 
 	mutex_lock(&chip->lock);
-	st = isl29018_set_proxim_high_threshold(client, (u8)lval);
+	st = isl29028_set_proxim_high_threshold(client, (u8)lval);
 	if (st)
 		chip->prox_high_thres = (int)lval;
 	else
@@ -637,7 +651,7 @@ static ssize_t store_als_low_threshold(struct device *dev,
 
 	mutex_lock(&chip->lock);
 	if (chip->als_ir_mode == MODE_ALS) {
-		st = isl29018_set_irals_low_threshold(client, (int)lval);
+		st = isl29028_set_irals_low_threshold(client, (int)lval);
 		if (st)
 			chip->als_low_thres = (int)lval;
 		else
@@ -680,7 +694,7 @@ static ssize_t store_als_high_threshold(struct device *dev,
 
 	mutex_lock(&chip->lock);
 	if (chip->als_ir_mode == MODE_ALS) {
-		st = isl29018_set_irals_high_threshold(client, (int)lval);
+		st = isl29028_set_irals_high_threshold(client, (int)lval);
 		if (st)
 			chip->als_high_thres = (int)lval;
 		else
@@ -723,7 +737,7 @@ static ssize_t store_ir_low_threshold(struct device *dev,
 
 	mutex_lock(&chip->lock);
 	if (chip->als_ir_mode == MODE_IR) {
-		st = isl29018_set_irals_low_threshold(client, (int)lval);
+		st = isl29028_set_irals_low_threshold(client, (int)lval);
 		if (st)
 			chip->ir_low_thres = (int)lval;
 		else
@@ -766,7 +780,7 @@ static ssize_t store_ir_high_threshold(struct device *dev,
 
 	mutex_lock(&chip->lock);
 	if (chip->als_ir_mode == MODE_IR) {
-		st = isl29018_set_irals_high_threshold(client, (int)lval);
+		st = isl29028_set_irals_high_threshold(client, (int)lval);
 		if (st)
 			chip->ir_high_thres = (int)lval;
 		else
@@ -945,7 +959,7 @@ static ssize_t show_wait_proxim_int(struct device *dev,
 	}
 
 	mutex_lock(&chip->lock);
-	st = isl29018_set_proxim_persist(client, true, chip->prox_persist);
+	st = isl29028_set_proxim_persist(client, true, chip->prox_persist);
 	if (!st) {
 		dev_err(dev, "%s() Error in configuration\n", __func__);
 		mutex_unlock(&chip->lock);
@@ -957,7 +971,7 @@ static ssize_t show_wait_proxim_int(struct device *dev,
 	wait_for_completion(&chip->prox_completion);
 	mutex_lock(&chip->lock);
 	chip->is_proxim_int_waiting =  false;
-	isl29018_set_proxim_persist(client, false, chip->prox_persist);
+	isl29028_set_proxim_persist(client, false, chip->prox_persist);
 	mutex_unlock(&chip->lock);
 	return sprintf(buf, "done\n");
 }
@@ -979,7 +993,7 @@ static ssize_t show_wait_als_ir_int(struct device *dev,
 
 	mutex_lock(&chip->lock);
 
-	st = isl29018_set_als_persist(client, true, chip->als_persist);
+	st = isl29028_set_als_persist(client, true, chip->als_persist);
 	if (!st) {
 		dev_err(dev, "%s() Error in als ir int configuration\n",
 					 __func__);
@@ -992,7 +1006,7 @@ static ssize_t show_wait_als_ir_int(struct device *dev,
 	wait_for_completion(&chip->als_completion);
 	mutex_lock(&chip->lock);
 	chip->is_als_int_waiting =  false;
-	st = isl29018_set_als_persist(client, false, chip->als_persist);
+	st = isl29028_set_als_persist(client, false, chip->als_persist);
 	mutex_unlock(&chip->lock);
 	return sprintf(buf, "done\n");
 }
