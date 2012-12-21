@@ -133,6 +133,7 @@ struct isl29028_chip {
 	struct completion	prox_completion;
 	struct completion	als_completion;
 	u8			reg_cache[ISL29028_MAX_REGS];
+	int			shutdown_complete;
 };
 
 static bool isl29028_write_data(struct i2c_client *client, u8 reg,
@@ -142,6 +143,9 @@ static bool isl29028_write_data(struct i2c_client *client, u8 reg,
 	int ret = 0;
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
 	struct isl29028_chip *chip = iio_priv(indio_dev);
+
+	if (chip && chip->shutdown_complete)
+		return -ENODEV;
 
 	regval = chip->reg_cache[reg];
 	regval &= ~mask;
@@ -363,6 +367,11 @@ static bool isl29028_read_als_ir(struct i2c_client *client, int *als_ir)
 {
 	s32 lsb;
 	s32 msb;
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct isl29028_chip *chip = iio_priv(indio_dev);
+
+	if (chip && chip->shutdown_complete)
+		return -ENODEV;
 
 	lsb = i2c_smbus_read_byte_data(client, ISL29028_REG_ADD_ALSIR_L);
 	if (lsb < 0) {
@@ -384,6 +393,11 @@ static bool isl29028_read_als_ir(struct i2c_client *client, int *als_ir)
 static bool isl29028_read_proxim(struct i2c_client *client, int *prox)
 {
 	s32 data;
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct isl29028_chip *chip = iio_priv(indio_dev);
+
+	if (chip && chip->shutdown_complete)
+		return -ENODEV;
 
 	data = i2c_smbus_read_byte_data(client, ISL29028_REG_ADD_PROX_DATA);
 	if (data < 0) {
@@ -1142,6 +1156,7 @@ static int isl29028_chip_init(struct i2c_client *client)
 	chip->als_persist = 1;
 	chip->is_proxim_int_waiting = false;
 	chip->is_als_int_waiting = false;
+	chip->shutdown_complete = 0;
 
 	/* if regulator is not available, then proceed with i2c write or
 	 * if regulator is turned on then proceed with i2c write
@@ -1171,6 +1186,9 @@ static irqreturn_t threshold_isr(int irq, void *irq_data)
 	struct isl29028_chip *chip = (struct isl29028_chip *)irq_data;
 	s32 int_reg;
 	struct i2c_client *client = chip->client;
+
+	if (chip && chip->shutdown_complete)
+		return -ENODEV;
 
 	int_reg = i2c_smbus_read_byte_data(client, ISL29028_REG_ADD_INTERRUPT);
 	if (int_reg < 0) {
@@ -1290,6 +1308,22 @@ static int __devexit isl29028_remove(struct i2c_client *client)
 	return 0;
 }
 
+static void isl29028_shutdown(struct i2c_client *client)
+{
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct isl29028_chip *chip = iio_priv(indio_dev);
+
+	mutex_lock(&chip->lock);
+	if (chip->irq > 0)
+		free_irq(chip->irq, chip);
+	if (chip->isl_reg)
+		regulator_put(chip->isl_reg);
+	chip->shutdown_complete = 1;
+	mutex_unlock(&chip->lock);
+	iio_device_unregister(indio_dev);
+	iio_free_device(indio_dev);
+}
+
 static const struct i2c_device_id isl29028_id[] = {
 	{"isl29028", 0},
 	{}
@@ -1356,6 +1390,7 @@ static struct i2c_driver isl29028_driver = {
 	.probe	 = isl29028_probe,
 	.remove  = __devexit_p(isl29028_remove),
 	.id_table = isl29028_id,
+	.shutdown = isl29028_shutdown,
 };
 
 static int __init isl29028_init(void)
