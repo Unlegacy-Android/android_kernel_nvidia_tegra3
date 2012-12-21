@@ -28,7 +28,10 @@
 #include "t20/t20.h"
 #include "t30/t30.h"
 #include "t114.h"
+#include "gr2d/gr2d_t114.h"
 #include "gr3d/gr3d_t114.h"
+#include "gr3d/scale3d_actmon.h"
+#include "gr3d/gr3d_t30.h"
 #include "gr3d/scale3d.h"
 #include "host1x/host1x02_hardware.h"
 #include "msenc/msenc.h"
@@ -98,9 +101,10 @@ static struct host1x_device_info host1x02_info = {
 	.client_managed	= NVSYNCPTS_CLIENT_MANAGED,
 };
 
-static struct nvhost_device_data tegra_host1x02_info = {
+struct nvhost_device_data t11_host1x_info = {
 	.clocks		= { {"host1x", 136000000} },
 	NVHOST_MODULE_NO_POWERGATE_IDS,
+	.private_data	= &host1x02_info,
 };
 
 static struct platform_device tegra_host1x02_device = {
@@ -109,11 +113,11 @@ static struct platform_device tegra_host1x02_device = {
 	.resource	= tegra_host1x02_resources,
 	.num_resources	= ARRAY_SIZE(tegra_host1x02_resources),
 	.dev		= {
-		.platform_data = &tegra_host1x02_info,
+		.platform_data = &t11_host1x_info,
 	},
 };
 
-static struct nvhost_device_data tegra_gr3d03_info = {
+struct nvhost_device_data t11_gr3d_info = {
 	.version	= 3,
 	.index		= 1,
 	.syncpts	= BIT(NVSYNCPT_3D),
@@ -128,17 +132,28 @@ static struct nvhost_device_data tegra_gr3d03_info = {
 	.powergate_delay = 250,
 	.powerup_reset	= true,
 	.moduleid	= NVHOST_MODULE_NONE,
+	.busy		= nvhost_scale3d_actmon_notify_busy,
+	.idle		= nvhost_scale3d_actmon_notify_idle,
+	.suspend_ndev	= nvhost_scale3d_suspend,
+	.init		= nvhost_gr3d_t114_init,
+	.deinit		= nvhost_gr3d_t114_deinit,
+	.scaling_init	= nvhost_scale3d_actmon_init,
+	.scaling_deinit	= nvhost_scale3d_actmon_deinit,
+	.prepare_poweroff = nvhost_gr3d_t114_prepare_power_off,
+	.finalize_poweron = nvhost_gr3d_t114_finalize_power_on,
+	.alloc_hwctx_handler = nvhost_gr3d_t114_ctxhandler_init,
+	.read_reg	= nvhost_gr3d_t30_read_reg,
 };
 
 static struct platform_device tegra_gr3d03_device = {
-	.name		= "gr3d03",
+	.name		= "gr3d",
 	.id		= -1,
 	.dev		= {
-		.platform_data = &tegra_gr3d03_info,
+		.platform_data = &t11_gr3d_info,
 	},
 };
 
-static struct nvhost_device_data tegra_gr2d03_info = {
+struct nvhost_device_data t11_gr2d_info = {
 	.version	= 2,
 	.index		= 2,
 	.syncpts	= BIT(NVSYNCPT_2D_0) | BIT(NVSYNCPT_2D_1),
@@ -154,13 +169,14 @@ static struct nvhost_device_data tegra_gr2d03_info = {
 	.powerup_reset	= true,
 	.moduleid	= NVHOST_MODULE_NONE,
 	.serialize	= true,
+	.finalize_poweron = nvhost_gr2d_t114_finalize_poweron,
 };
 
 static struct platform_device tegra_gr2d03_device = {
-	.name		= "gr2d02",
+	.name		= "gr2d",
 	.id		= -1,
 	.dev		= {
-		.platform_data = &tegra_gr2d03_info,
+		.platform_data = &t11_gr2d_info,
 	},
 };
 
@@ -173,7 +189,7 @@ static struct resource isp_resources[] = {
 	}
 };
 
-static struct nvhost_device_data tegra_isp01_info = {
+struct nvhost_device_data t11_isp_info = {
 	.index		= 3,
 	.syncpts	= BIT(NVSYNCPT_VI_ISP_2) | BIT(NVSYNCPT_VI_ISP_3) |
 			  BIT(NVSYNCPT_VI_ISP_4),
@@ -190,7 +206,7 @@ static struct platform_device tegra_isp01_device = {
 	.resource	= isp_resources,
 	.num_resources	= ARRAY_SIZE(isp_resources),
 	.dev		= {
-		.platform_data = &tegra_isp01_info,
+		.platform_data = &t11_isp_info,
 	},
 };
 
@@ -203,7 +219,7 @@ static struct resource vi_resources[] = {
 	},
 };
 
-static struct nvhost_device_data tegra_vi01_info = {
+struct nvhost_device_data t11_vi_info = {
 	.index		= 4,
 	.syncpts	= BIT(NVSYNCPT_CSI_VI_0) | BIT(NVSYNCPT_CSI_VI_1) |
 			  BIT(NVSYNCPT_VI_ISP_0) | BIT(NVSYNCPT_VI_ISP_1) |
@@ -224,7 +240,7 @@ static struct platform_device tegra_vi01_device = {
 	.num_resources	= ARRAY_SIZE(vi_resources),
 	.id		= -1,
 	.dev		= {
-		.platform_data = &tegra_vi01_info,
+		.platform_data = &t11_vi_info,
 	},
 };
 
@@ -237,7 +253,7 @@ static struct resource msenc_resources[] = {
 	},
 };
 
-static struct nvhost_device_data tegra_msenc02_info = {
+struct nvhost_device_data t11_msenc_info = {
 	.version	= NVHOST_ENCODE_MSENC_VER(2, 0),
 	.index		= 5,
 	.syncpts	= BIT(NVSYNCPT_MSENC),
@@ -258,7 +274,7 @@ static struct platform_device tegra_msenc02_device = {
 	.resource	= msenc_resources,
 	.num_resources	= ARRAY_SIZE(msenc_resources),
 	.dev		= {
-		.platform_data = &tegra_msenc02_info,
+		.platform_data = &t11_msenc_info,
 	},
 };
 
@@ -271,7 +287,7 @@ static struct resource tsec_resources[] = {
 	},
 };
 
-static struct nvhost_device_data tegra_tsec01_info = {
+struct nvhost_device_data t11_tsec_info = {
 	.version	= NVHOST_ENCODE_TSEC_VER(1, 0),
 	.index		= 7,
 	.syncpts	= BIT(NVSYNCPT_TSEC),
@@ -291,7 +307,7 @@ static struct platform_device tegra_tsec01_device = {
 	.resource	= tsec_resources,
 	.num_resources	= ARRAY_SIZE(tsec_resources),
 	.dev		= {
-		.platform_data = &tegra_tsec01_info,
+		.platform_data = &t11_tsec_info,
 	},
 };
 
@@ -309,10 +325,6 @@ struct platform_device *tegra11_register_host1x_devices(void)
 	int index = 0;
 	struct platform_device *pdev;
 
-	struct nvhost_device_data *pdata =
-		(struct nvhost_device_data *)tegra_host1x02_device.dev.platform_data;
-	pdata->private_data = &host1x02_info;
-
 	/* register host1x device first */
 	platform_device_register(&tegra_host1x02_device);
 	tegra_host1x02_device.dev.parent = NULL;
@@ -321,13 +333,7 @@ struct platform_device *tegra11_register_host1x_devices(void)
 	for (index = 0; index < ARRAY_SIZE(t11_devices); index++) {
 		pdev = t11_devices[index];
 		pdev->dev.parent = &tegra_host1x02_device.dev;
-		if (pdev == &tegra_gr3d03_device) {
-			const char *real_name = pdev->name;
-			pdev->name = "gr3d";
-			platform_device_register(pdev);
-			pdev->name = real_name;
-		} else
-			platform_device_register(pdev);
+		platform_device_register(pdev);
 	}
 
 	return &tegra_host1x02_device;

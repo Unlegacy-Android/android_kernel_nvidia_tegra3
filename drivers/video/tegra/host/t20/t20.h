@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Chip support for T20
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -25,5 +25,12 @@ struct nvhost_chip_support;
 
 int nvhost_init_t20_support(struct nvhost_master *,
 	struct nvhost_chip_support *);
+
+extern struct nvhost_device_data t20_host1x_info;
+extern struct nvhost_device_data t20_gr3d_info;
+extern struct nvhost_device_data t20_gr2d_info;
+extern struct nvhost_device_data t20_isp_info;
+extern struct nvhost_device_data t20_vi_info;
+extern struct nvhost_device_data t20_mpe_info;
 
 #endif /* _NVHOST_T20_H_ */

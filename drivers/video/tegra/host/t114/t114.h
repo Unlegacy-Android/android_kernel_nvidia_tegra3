@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Chip support for T114
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,5 +38,13 @@ int nvhost_init_t114_channel_support(struct nvhost_master *,
 		struct nvhost_chip_support *);
 int nvhost_init_t114_support(struct nvhost_master *host,
 		struct nvhost_chip_support *);
+
+extern struct nvhost_device_data t11_host1x_info;
+extern struct nvhost_device_data t11_gr3d_info;
+extern struct nvhost_device_data t11_gr2d_info;
+extern struct nvhost_device_data t11_isp_info;
+extern struct nvhost_device_data t11_vi_info;
+extern struct nvhost_device_data t11_msenc_info;
+extern struct nvhost_device_data t11_tsec_info;
 
 #endif
