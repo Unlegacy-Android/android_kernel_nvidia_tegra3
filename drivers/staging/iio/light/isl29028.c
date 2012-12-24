@@ -1297,11 +1297,61 @@ static const struct i2c_device_id isl29028_id[] = {
 
 MODULE_DEVICE_TABLE(i2c, isl29028_id);
 
+#ifdef CONFIG_PM
+static int isl29028_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct isl29028_chip *chip = iio_priv(indio_dev);
+
+	dev_dbg(&client->dev, "%s()\n", __func__);
+	mutex_lock(&chip->lock);
+	/* if regulator is available and regulator is enabled by isl29028
+	 * then disable it
+	 */
+	if (chip->isl_reg && (chip->is_prox_enable || chip->als_ir_mode))
+		regulator_disable(chip->isl_reg);
+	mutex_unlock(&chip->lock);
+	return 0;
+}
+
+static int isl29028_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct isl29028_chip *chip = iio_priv(indio_dev);
+
+	dev_dbg(&client->dev, "%s()\n", __func__);
+	mutex_lock(&chip->lock);
+	if (chip->isl_reg && (chip->is_prox_enable || chip->als_ir_mode))
+		regulator_enable(chip->isl_reg);
+	switch (chip->als_ir_mode) {
+	case MODE_ALS:
+		isl29028_set_als_ir_mode(client, true, true);
+		break;
+	case MODE_IR:
+		isl29028_set_als_ir_mode(client, true, false);
+	}
+	if (chip->is_prox_enable)
+		isl29028_set_proxim_period(client, true, chip->prox_period);
+	mutex_unlock(&chip->lock);
+	return 0;
+}
+
+static SIMPLE_DEV_PM_OPS(isl29028_pm_ops, isl29028_suspend, isl29028_resume);
+#define ISL29028_PM_OPS (&isl29028_pm_ops)
+#else
+#define ISL29028_PM_OPS NULL
+#endif
+
 static struct i2c_driver isl29028_driver = {
 	.class	= I2C_CLASS_HWMON,
 	.driver  = {
 		.name = "isl29028",
 		.owner = THIS_MODULE,
+#ifdef CONFIG_PM
+		.pm = ISL29028_PM_OPS,
+#endif
 	},
 	.probe	 = isl29028_probe,
 	.remove  = __devexit_p(isl29028_remove),
