@@ -76,10 +76,20 @@ static struct balanced_throttle tj_throttle = {
 	},
 };
 
+static struct balanced_throttle tj_heavy_throttle = {
+	.throt_tab_size = 1,
+	.throt_tab = {
+		{ 204000, 1000 },
+	},
+};
+
 static int __init roth_throttle_init(void)
 {
-	if (machine_is_roth())
+	if (machine_is_roth()) {
 		balanced_throttle_register(&tj_throttle, "tegra-balanced");
+		balanced_throttle_register(&tj_heavy_throttle, "tegra-heavy");
+	}
+
 	return 0;
 }
 module_init(roth_throttle_init);
@@ -95,7 +105,7 @@ static struct nct1008_platform_data roth_nct1008_pdata = {
 
 	.passive_delay = 2000,
 
-	.num_trips = 1,
+	.num_trips = 2,
 	.trips = {
 		/* Thermal Throttling */
 		[0] = {
@@ -104,6 +114,13 @@ static struct nct1008_platform_data roth_nct1008_pdata = {
 			.trip_type = THERMAL_TRIP_PASSIVE,
 			.state = THERMAL_NO_LIMIT,
 			.hysteresis = 0,
+		},
+		[1] = {
+			.cdev_type = "tegra-heavy",
+			.trip_temp = 89000, /* shutdown_ext_limit - 2C */
+			.trip_type = THERMAL_TRIP_PASSIVE,
+			.state = 1,
+			.hysteresis = 6000,
 		},
 	},
 };
