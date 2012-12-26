@@ -29,6 +29,7 @@
 #include <linux/slab.h>
 #include <linux/completion.h>
 #include <linux/interrupt.h>
+#include <linux/regulator/consumer.h>
 #include "../iio.h"
 #include "../sysfs.h"
 
@@ -105,6 +106,7 @@ enum {
 struct isl29028_chip {
 	struct i2c_client	*client;
 	struct mutex		lock;
+	struct regulator	*isl_reg;
 	int			irq;
 
 	int			prox_period;
@@ -451,7 +453,7 @@ static ssize_t store_prox_enable(struct device *dev,
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct isl29028_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
-	bool st;
+	bool st = true;
 	unsigned long lval;
 
 	dev_vdbg(dev, "%s()\n", __func__);
@@ -470,12 +472,28 @@ static ssize_t store_prox_enable(struct device *dev,
 		return count;
 	}
 
-	if (lval == 1)
-		st = isl29028_set_proxim_period(client, true,
+	if (lval) {
+		switch (chip->als_ir_mode) {
+		case MODE_NONE:
+			if (chip->isl_reg)
+				regulator_enable(chip->isl_reg);
+		case MODE_ALS:
+		case MODE_IR:
+			st = isl29028_set_proxim_period(client, true,
 							chip->prox_period);
-	else
-		st = isl29028_set_proxim_period(client, false,
+		}
+	} else {
+		switch (chip->als_ir_mode) {
+		case MODE_ALS:
+		case MODE_IR:
+			st = isl29028_set_proxim_period(client, false,
 							chip->prox_period);
+			break;
+		case MODE_NONE:
+			if (chip->isl_reg)
+				regulator_disable(chip->isl_reg);
+		}
+	}
 	if (st)
 		chip->is_prox_enable = (lval) ? true : false;
 	else
@@ -503,7 +521,7 @@ static ssize_t store_als_ir_mode(struct device *dev,
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct isl29028_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
-	bool st;
+	bool st = true;
 	unsigned long lval;
 
 	dev_vdbg(dev, "%s()\n", __func__);
@@ -517,17 +535,25 @@ static ssize_t store_als_ir_mode(struct device *dev,
 
 	mutex_lock(&chip->lock);
 
-	if (lval == chip->als_ir_mode) {
+	if (lval == chip->is_prox_enable) {
 		mutex_unlock(&chip->lock);
 		return count;
 	}
 
-	if (lval == 0)
-		st = isl29028_set_als_ir_mode(client, false, false);
-	else if (lval == 1)
-		st = isl29028_set_als_ir_mode(client, true, true);
-	else
-		st = isl29028_set_als_ir_mode(client, true, false);
+	switch (lval) {
+	case MODE_NONE:
+		if (chip->is_prox_enable)
+			st = isl29028_set_als_ir_mode(client, false, false);
+		else if (chip->isl_reg)
+			regulator_disable(chip->isl_reg);
+			break;
+	case MODE_ALS:
+	case MODE_IR:
+		if (!chip->is_prox_enable && chip->isl_reg)
+			regulator_enable(chip->isl_reg);
+		st = isl29028_set_als_ir_mode(client, true, (lval == MODE_ALS));
+	}
+
 	if (st)
 		chip->als_ir_mode = (int)lval;
 	else
@@ -1117,6 +1143,12 @@ static int isl29028_chip_init(struct i2c_client *client)
 	chip->is_proxim_int_waiting = false;
 	chip->is_als_int_waiting = false;
 
+	/* if regulator is not available, then proceed with i2c write or
+	 * if regulator is turned on then proceed with i2c write
+	 */
+	if (chip->isl_reg && !regulator_is_enabled(chip->isl_reg))
+		return 0;
+
 	st = isl29028_write_data(client, ISL29028_REG_ADD_TEST1_MODE,
 					0x0, 0xFF, 0);
 	if (st)
@@ -1178,9 +1210,16 @@ static int __devinit isl29028_probe(struct i2c_client *client,
 {
 	struct isl29028_chip *chip;
 	struct iio_dev *indio_dev;
+	struct regulator *isl_reg = regulator_get(&client->dev, "vdd");
 	int err;
 
 	dev_dbg(&client->dev, "%s() called\n", __func__);
+
+	if (IS_ERR_OR_NULL(isl_reg)) {
+		dev_info(&client->dev, "no regulator found," \
+			"continue without regulator\n");
+		isl_reg = NULL;
+	}
 
 	indio_dev = iio_allocate_device(sizeof(*chip));
 	if (indio_dev == NULL) {
@@ -1193,6 +1232,7 @@ static int __devinit isl29028_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, indio_dev);
 	chip->client = client;
 	chip->irq = client->irq;
+	chip->isl_reg = isl_reg;
 
 	mutex_init(&chip->lock);
 
@@ -1229,6 +1269,8 @@ exit_irq:
 	if (chip->irq > 0)
 		free_irq(chip->irq, chip);
 exit_iio_free:
+	if (chip->isl_reg)
+		regulator_put(chip->isl_reg);
 	iio_free_device(indio_dev);
 exit:
 	return err;
@@ -1242,6 +1284,8 @@ static int __devexit isl29028_remove(struct i2c_client *client)
 	dev_dbg(&client->dev, "%s()\n", __func__);
 	if (chip->irq > 0)
 		free_irq(chip->irq, chip);
+	if (chip->isl_reg)
+		regulator_put(chip->isl_reg);
 	iio_device_unregister(indio_dev);
 	return 0;
 }
