@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra3_usb_phy.c
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -2916,6 +2916,7 @@ static int ulpi_null_phy_restore(struct tegra_usb_phy *phy)
 			pr_warn("phy restore timeout\n");
 			return 1;
 		}
+		mdelay(1);
 	}
 
 	return 0;
