@@ -25,38 +25,99 @@
 
 #include "dev.h"
 #include "bus_client.h"
+#include "vi.h"
 
 static int __devinit vi_probe(struct platform_device *dev)
 {
 	int err = 0;
+	struct vi *tegra_vi;
 	struct nvhost_device_data *pdata =
 		(struct nvhost_device_data *)dev->dev.platform_data;
 
+	dev_info(&dev->dev, "%s: ++\n", __func__);
+	tegra_vi = kzalloc(sizeof(struct vi), GFP_KERNEL);
+	if (!tegra_vi) {
+		dev_err(&dev->dev, "can't allocate memory for vi\n");
+		return -ENOMEM;
+	}
+
+	tegra_vi->ndev = dev;
+	pdata->private_data = tegra_vi;
+
+#ifdef CONFIG_TEGRA_CAMERA
+	tegra_vi->camera = tegra_camera_register(dev);
+	if (!tegra_vi->camera) {
+		dev_err(&dev->dev, "%s: can't register tegra_camera\n",
+				__func__);
+		goto camera_register_fail;
+	}
+#endif
 	pdata->pdev = dev;
 	platform_set_drvdata(dev, pdata);
-
 	err = nvhost_client_device_get_resources(dev);
-	if (err)
-		return err;
-
+	if (err) {
+		goto camera_register_fail;
+	}
 	return nvhost_client_device_init(dev);
+
+camera_register_fail:
+	kfree(tegra_vi);
+	return err;
 }
 
 static int __exit vi_remove(struct platform_device *dev)
 {
-	/* Add clean-up */
+#ifdef CONFIG_TEGRA_CAMERA
+	int err = 0;
+	struct nvhost_device_data *pdata =
+		(struct nvhost_device_data *)dev->dev.platform_data;
+	struct vi *tegra_vi = (struct vi *)pdata->private_data;
+#endif
+
+	dev_info(&dev->dev, "%s: ++\n", __func__);
+
+#ifdef CONFIG_TEGRA_CAMERA
+	err = tegra_camera_unregister(tegra_vi->camera);
+	if (err)
+		return err;
+#endif
+
 	return 0;
 }
 
 #ifdef CONFIG_PM
 static int vi_suspend(struct platform_device *dev, pm_message_t state)
 {
+#ifdef CONFIG_TEGRA_CAMERA
+	struct nvhost_device_data *pdata =
+		(struct nvhost_device_data *)dev->dev.platform_data;
+	struct vi *tegra_vi = (struct vi *)pdata->private_data;
+#endif
+
+	dev_info(&dev->dev, "%s: ++\n", __func__);
+
+#ifdef CONFIG_TEGRA_CAMERA
+	tegra_camera_suspend(tegra_vi->camera);
+#endif
+
 	return nvhost_client_device_suspend(dev);
 }
 
 static int vi_resume(struct platform_device *dev)
 {
-	dev_info(&dev->dev, "resuming\n");
+#ifdef CONFIG_TEGRA_CAMERA
+	struct nvhost_device_data *pdata =
+		(struct nvhost_device_data *)dev->dev.platform_data;
+
+	struct vi *tegra_vi = (struct vi *)pdata->private_data;
+#endif
+
+	dev_info(&dev->dev, "%s: ++\n", __func__);
+
+#ifdef CONFIG_TEGRA_CAMERA
+	tegra_camera_resume(tegra_vi->camera);
+#endif
+
 	return 0;
 }
 #endif
@@ -84,5 +145,5 @@ static void __exit vi_exit(void)
 	platform_driver_unregister(&vi_driver);
 }
 
-module_init(vi_init);
+late_initcall(vi_init);
 module_exit(vi_exit);

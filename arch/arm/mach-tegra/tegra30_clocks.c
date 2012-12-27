@@ -4374,8 +4374,8 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("uartc_dbg",	"serial8250.0",		"uartc", 55,	0x1a0,	900000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartd_dbg",	"serial8250.0",		"uartd", 65,	0x1c0,	900000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uarte_dbg",	"serial8250.0",		"uarte", 66,	0x1c4,	900000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
-	PERIPH_CLK_EX("vi",	"tegra_camera",		"vi",	20,	0x148,	470000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT,	&tegra_vi_clk_ops),
-	PERIPH_CLK("vi_sensor",	"tegra_camera",		"vi_sensor",	20,	0x1a8,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK_EX("vi",	"vi",			"vi",	20,	0x148,	470000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT,	&tegra_vi_clk_ops),
+	PERIPH_CLK("vi_sensor",	"vi",			"vi_sensor",	20,	0x1a8,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("3d",	"3d",			NULL,	24,	0x158,	600000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT | DIV_U71_IDLE | PERIPH_MANUAL_RESET),
 	PERIPH_CLK("3d2",       "3d2",			NULL,	98,	0x3b0,	600000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT | DIV_U71_IDLE | PERIPH_MANUAL_RESET),
 	PERIPH_CLK("2d",	"2d",			NULL,	21,	0x15c,	600000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT | DIV_U71_IDLE),
@@ -4396,9 +4396,9 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK_EX("dsib",	"tegradc.1",		"dsib",	82,	0xd0,	500000000, mux_plld_out0_plld2_out0,	MUX | PLLD,	&tegra_dsib_clk_ops),
 	PERIPH_CLK("dsi1-fixed", "tegradc.0",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("dsi2-fixed", "tegradc.1",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
-	PERIPH_CLK("csi",	"tegra_camera",		"csi",	52,	0,	102000000, mux_pllp_out3,		0),
-	PERIPH_CLK("isp",	"tegra_camera",		"isp",	23,	0,	150000000, mux_clk_m,			0), /* same frequency as VI */
-	PERIPH_CLK("csus",	"tegra_camera",		"csus",	92,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
+	PERIPH_CLK("csi",	"vi",			"csi",	52,	0,	102000000, mux_pllp_out3,		0),
+	PERIPH_CLK("isp",	"vi",			"isp",	23,	0,	150000000, mux_clk_m,			0), /* same frequency as VI */
+	PERIPH_CLK("csus",	"vi",			"csus",	92,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
 
 	PERIPH_CLK("tsensor",	"tegra-tsensor",	NULL,	100,	0x3b8,	216000000, mux_pllp_pllc_clkm_clk32,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("actmon",	"actmon",		NULL,	119,	0x3e8,	216000000, mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71),
@@ -4442,7 +4442,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("3d.emc",	"tegra_gr3d",		"emc",	&tegra_clk_emc, NULL, 0, 0),
 	SHARED_CLK("2d.emc",	"tegra_gr2d",		"emc",	&tegra_clk_emc, NULL, 0, 0),
 	SHARED_CLK("mpe.emc",	"tegra_mpe",		"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW),
-	SHARED_CLK("camera.emc", "tegra_camera",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW),
+	SHARED_CLK("camera.emc", "vi",			"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW),
 	SHARED_CLK("sdmmc4.emc", "sdhci-tegra.3",	"emc",	&tegra_clk_emc, NULL, 0, 0),
 	SHARED_CLK("floor.emc",	"floor.emc",		NULL,	&tegra_clk_emc, NULL, 0, 0),
 

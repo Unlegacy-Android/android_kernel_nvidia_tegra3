@@ -532,11 +532,6 @@ static struct platform_device pluto_audio_aic326x_device = {
 	},
 };
 
-static struct platform_device tegra_camera = {
-	.name = "tegra_camera",
-	.id = -1,
-};
-
 #ifdef CONFIG_MHI_NETDEV
 struct platform_device mhi_netdevice0 = {
 	.name = "mhi_net_device",
@@ -554,7 +549,6 @@ static struct platform_device *pluto_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
-	&tegra_camera,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
 	&tegra11_se_device,
 #endif

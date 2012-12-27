@@ -596,11 +596,6 @@ static struct platform_device tegra_rtc_device = {
 	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
 };
 
-static struct platform_device tegra_camera = {
-	.name = "tegra_camera",
-	.id = -1,
-};
-
 static struct tegra_asoc_platform_data enterprise_audio_pdata = {
 	.gpio_spkr_en		= -1,
 	.gpio_hp_det		= TEGRA_GPIO_HP_DET,
@@ -696,7 +691,6 @@ static struct platform_device *enterprise_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
-	&tegra_camera,
 	&tegra_spi_device4,
 	&tegra_hda_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
