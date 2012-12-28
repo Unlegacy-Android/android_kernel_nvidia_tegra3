@@ -58,7 +58,7 @@
 
 /* Make KEY_POWER to index 0 only */
 static struct gpio_keys_button roth_p2454_keys[] = {
-	[0] = GPIO_KEY(KEY_POWER, PR0, 0),
+	[0] = GPIO_KEY(KEY_POWER, PQ0, 1),
 	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
 	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PR1, 0),
 	[3] = {
@@ -93,9 +93,17 @@ int __init roth_kbc_init(void)
 	struct board_info board_info;
 
 	tegra_get_board_info(&board_info);
+
+	/* Do not register IKEY for other than A00 */
+	roth_p2454_keys_pdata.nbuttons--;
+
 	/* Rev A01 and onward have the POWER key in the KBC-COL0 */
-	if (board_info.major_revision > BOARD_FAB_A00)
-		roth_p2454_keys[0].gpio = TEGRA_GPIO_PQ0;
+	if ((board_info.board_id == BOARD_P2454) &&
+		(board_info.major_revision == BOARD_FAB_A00)) {
+		roth_p2454_keys[0].gpio = TEGRA_GPIO_PR0;
+		roth_p2454_keys[0].wakeup = 0;
+		roth_p2454_keys_pdata.nbuttons++;
+	}
 
 	platform_device_register(&roth_p2454_keys_device);
 
