@@ -81,32 +81,8 @@ struct tegra_rt5640 {
 	volatile int clock_enabled;
 };
 
-void enable_clks(struct tegra30_i2s *i2s)
-{
-	tegra30_ahub_enable_clocks();
-	clk_enable(i2s->clk_i2s);
-	tegra30_ahub_enable_tx_fifo(i2s->txcif);
-	i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_TX;
-	#ifdef CONFIG_PM
-	i2s->reg_cache[TEGRA30_I2S_CTRL >> 2] = i2s->reg_ctrl;
-	#endif
-	__raw_writel(i2s->reg_ctrl, i2s->regs + TEGRA30_I2S_CTRL);
-}
-
-void disable_clks(struct tegra30_i2s *i2s)
-{
-	int dcnt = 10;
-	i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_XFER_EN_TX;
-	#ifdef CONFIG_PM
-	i2s->reg_cache[TEGRA30_I2S_CTRL >> 2] = i2s->reg_ctrl;
-	#endif
-	__raw_writel(i2s->reg_ctrl, i2s->regs + TEGRA30_I2S_CTRL);
-	while (tegra30_ahub_tx_fifo_is_enabled(i2s->id) && dcnt--)
-		udelay(100);
-	clk_disable(i2s->clk_i2s);
-	tegra30_ahub_disable_clocks();
-	tegra30_ahub_disable_tx_fifo(i2s->txcif);
-}
+void tegra_asoc_enable_clocks(void);
+void tegra_asoc_disable_clocks(void);
 
 static int tegra_rt5640_hw_params(struct snd_pcm_substream *substream,
 					struct snd_pcm_hw_params *params)
@@ -185,10 +161,10 @@ static int tegra_rt5640_hw_params(struct snd_pcm_substream *substream,
 	if(machine_is_roth()) {
 		if(initTfa == 1) {
 			i2s_tfa = i2s;
-			enable_clks(i2s);
+			tegra_asoc_enable_clocks();
 			pr_info("INIT TFA\n");
 			Tfa9887_Init(srate);
-			disable_clks(i2s);
+			tegra_asoc_disable_clocks();
 		}
 		initTfa++;
 	}
@@ -461,9 +437,9 @@ static int tegra_rt5640_event_int_spk(struct snd_soc_dapm_widget *w,
 	if(machine_is_roth()) {
 		if (SND_SOC_DAPM_EVENT_ON(event)) {
 			if(i2s_tfa) {
-				enable_clks(i2s_tfa);
+				tegra_asoc_enable_clocks();
 				Tfa9887_Powerdown(0);
-				disable_clks(i2s_tfa);
+				tegra_asoc_disable_clocks();
 			}
 		}
 		else {
@@ -474,7 +450,7 @@ static int tegra_rt5640_event_int_spk(struct snd_soc_dapm_widget *w,
 		return 0;
 
 	gpio_set_value_cansleep(pdata->gpio_spkr_en,
-				SND_SOC_DAPM_EVENT_ON(event));
+				!!SND_SOC_DAPM_EVENT_ON(event));
 
 	return 0;
 }
@@ -515,7 +491,7 @@ static int tegra_rt5640_event_int_mic(struct snd_soc_dapm_widget *w,
 		return 0;
 
 	gpio_set_value_cansleep(pdata->gpio_int_mic_en,
-				SND_SOC_DAPM_EVENT_ON(event));
+				!!SND_SOC_DAPM_EVENT_ON(event));
 
 	return 0;
 }
@@ -747,6 +723,49 @@ static struct snd_soc_card snd_soc_tegra_rt5640 = {
 	.num_dapm_routes = ARRAY_SIZE(cardhu_audio_map),
 	.fully_routed = true,
 };
+
+void tegra_asoc_enable_clocks()
+{
+	struct snd_soc_card *card = &snd_soc_tegra_rt5640;
+	struct tegra_rt5640 *machine = snd_soc_card_get_drvdata(card);
+	int reg;
+	struct tegra30_i2s *i2s = i2s_tfa;
+	if (!i2s || !machine)
+		return;
+
+	reg = i2s->reg_ctrl | TEGRA30_I2S_CTRL_XFER_EN_TX;
+	if (!(i2s->reg_ctrl & TEGRA30_I2S_CTRL_XFER_EN_TX)) {
+		tegra_asoc_utils_clk_enable(&machine->util_data);
+		clk_enable(i2s->clk_i2s);
+		tegra30_ahub_enable_clocks();
+		tegra30_ahub_enable_tx_fifo(i2s->txcif);
+		__raw_writel(reg, i2s->regs + TEGRA30_I2S_CTRL);
+	}
+}
+EXPORT_SYMBOL_GPL(tegra_asoc_enable_clocks);
+
+void tegra_asoc_disable_clocks()
+{
+	struct snd_soc_card *card = &snd_soc_tegra_rt5640;
+	struct tegra_rt5640 *machine = snd_soc_card_get_drvdata(card);
+	int dcnt = 10;
+	struct tegra30_i2s *i2s = i2s_tfa;
+	if (!i2s || !machine)
+		return;
+
+	if (!(i2s->reg_ctrl & TEGRA30_I2S_CTRL_XFER_EN_TX)) {
+		__raw_writel(i2s->reg_ctrl, i2s->regs + TEGRA30_I2S_CTRL);
+		while (!tegra30_ahub_tx_fifo_is_empty(i2s->id) && dcnt--)
+			udelay(100);
+
+		tegra30_ahub_disable_tx_fifo(i2s->txcif);
+		tegra30_ahub_disable_clocks();
+		clk_disable(i2s->clk_i2s);
+		tegra_asoc_utils_clk_disable(&machine->util_data);
+	}
+}
+EXPORT_SYMBOL_GPL(tegra_asoc_disable_clocks);
+
 
 static __devinit int tegra_rt5640_driver_probe(struct platform_device *pdev)
 {
