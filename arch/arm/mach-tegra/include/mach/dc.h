@@ -485,6 +485,7 @@ struct tegra_dc_out {
 	int				n_modes;
 
 	struct tegra_dsi_out		*dsi;
+	struct tegra_hdmi_out		*hdmi_out;
 	struct tegra_stereo_out		*stereo;
 
 	unsigned			height; /* mm */
@@ -767,4 +768,19 @@ void tegra_log_resume_time(void);
 #else
 #define tegra_log_resume_time()
 #endif
+
+/* table of electrical settings, must be in acending order. */
+struct tdms_config {
+	int pclk;
+	u32 pll0;
+	u32 pll1;
+	u32 pe_current; /* pre-emphasis */
+	u32 drive_current;
+	u32 peak_current; /* for TEGRA_11x_SOC */
+};
+
+struct tegra_hdmi_out {
+	struct tdms_config *tdms_config;
+	int n_tdms_config;
+};
 #endif
