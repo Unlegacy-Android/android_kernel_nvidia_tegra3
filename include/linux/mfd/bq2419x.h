@@ -84,6 +84,7 @@ struct bq2419x_charger_platform_data {
 	unsigned use_mains:1;
 	unsigned use_usb:1;
 	void (*update_status)(int, int);
+	int (*battery_check)(void);
 };
 struct bq2419x_platform_data {
 	struct bq2419x_regulator_platform_data *reg_pdata;

@@ -229,6 +229,7 @@ static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 	struct bq2419x_charger_platform_data *bcharger_pdata = NULL;
 	struct bq2419x_charger *charger;
 	int ret;
+	int batt_status;
 	u32 val;
 
 	chip_pdata = dev_get_platdata(pdev->dev.parent);
@@ -244,6 +245,16 @@ static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 	if (!charger) {
 		dev_err(&pdev->dev, "Memory alloc failed\n");
 		return -ENOMEM;
+	}
+
+	if (bcharger_pdata->battery_check) {
+		batt_status = bcharger_pdata->battery_check();
+		if (batt_status < 0) {
+			dev_err(&pdev->dev, "Battery not detected exiting\n");
+			return -ENODEV;
+		}
+	} else {
+		dev_err(&pdev->dev, "Battery not detected..exiting\n");
 	}
 
 	charger->chip = dev_get_drvdata(pdev->dev.parent);

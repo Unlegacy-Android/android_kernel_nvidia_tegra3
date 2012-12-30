@@ -122,6 +122,7 @@ struct bq2419x_charger_platform_data bq2419x_charger_pdata = {
 	.gpio_interrupt = TEGRA_GPIO_PJ0,
 	.gpio_status = TEGRA_GPIO_PK0,
 	.update_status = max17048_battery_status,
+	.battery_check = max17048_check_battery,
 };
 
 struct max17048_battery_model max17048_mdata = {

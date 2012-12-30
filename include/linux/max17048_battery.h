@@ -37,4 +37,5 @@ struct max17048_platform_data {
 };
 
 void max17048_battery_status(int status, int chrg_type);
+int max17048_check_battery(void);
 #endif
