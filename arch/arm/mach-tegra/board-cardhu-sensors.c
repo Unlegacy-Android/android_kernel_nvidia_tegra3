@@ -1110,9 +1110,6 @@ int __init cardhu_sensors_init(void)
 	if (err)
 		return err;
 
-	i2c_register_board_info(4, cardhu_i2c4_nct1008_board_info,
-		ARRAY_SIZE(cardhu_i2c4_nct1008_board_info));
-
 	mpuirq_init();
 	return 0;
 }
