@@ -372,8 +372,10 @@ static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci)
 	/* Enable SDHOST v3.0 support */
 	misc_ctrl = sdhci_readw(sdhci, SDHCI_VENDOR_MISC_CNTRL);
 	misc_ctrl |= SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR104_SUPPORT |
-		SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR50_SUPPORT |
-		SDHCI_VENDOR_MISC_CNTRL_ENABLE_DDR50_SUPPORT;
+		SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR50_SUPPORT;
+	/* Enable DDR mode support only for SDMMC4 */
+	if (tegra_host->instance == 3)
+		misc_ctrl |= SDHCI_VENDOR_MISC_CNTRL_ENABLE_DDR50_SUPPORT;
 	misc_ctrl |= SDHCI_VENDOR_MISC_CNTRL_INFINITE_ERASE_TIMEOUT;
 	sdhci_writew(sdhci, misc_ctrl, SDHCI_VENDOR_MISC_CNTRL);
 }
