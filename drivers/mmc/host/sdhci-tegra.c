@@ -361,12 +361,10 @@ static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci)
 	}
 
 	/* Set trim delay */
-	if (plat->trim_delay) {
-		vendor_ctrl &= ~(0x1F <<
-			SDHCI_VENDOR_CLOCK_CNTRL_TRIM_VALUE_SHIFT);
-		vendor_ctrl |= (plat->trim_delay <<
-			SDHCI_VENDOR_CLOCK_CNTRL_TRIM_VALUE_SHIFT);
-	}
+	vendor_ctrl &= ~(0x1F <<
+		SDHCI_VENDOR_CLOCK_CNTRL_TRIM_VALUE_SHIFT);
+	vendor_ctrl |= (plat->trim_delay <<
+		SDHCI_VENDOR_CLOCK_CNTRL_TRIM_VALUE_SHIFT);
 	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
 
 	/* Enable SDHOST v3.0 support */
