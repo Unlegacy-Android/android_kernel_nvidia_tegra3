@@ -4,7 +4,7 @@
  * IIO Light driver for monitoring ambient light intensity in lux and proximity
  * ir.
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation, All Rights Reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1345,6 +1345,10 @@ static int isl29028_suspend(struct device *dev)
 	 */
 	if (chip->isl_reg && (chip->is_prox_enable || chip->als_ir_mode))
 		regulator_disable(chip->isl_reg);
+	/* if regulator is still enabled, put the device into shutdown */
+	if (chip->isl_reg && regulator_is_enabled(chip->isl_reg))
+		isl29028_write_data(client, ISL29028_REG_ADD_CONFIGURE,
+					0x0, 0xFF, 0);
 	mutex_unlock(&chip->lock);
 	return 0;
 }
