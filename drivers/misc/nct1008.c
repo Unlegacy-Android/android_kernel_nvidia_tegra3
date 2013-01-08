@@ -1228,9 +1228,6 @@ MODULE_DEVICE_TABLE(i2c, nct1008_id);
 static struct i2c_driver nct1008_driver = {
 	.driver = {
 		.name	= "nct1008_nct72",
-#ifdef CONFIG_PM
-		.pm	= &nct1008_pm_ops,
-#endif
 	},
 	.probe		= nct1008_probe,
 	.remove		= __devexit_p(nct1008_remove),
