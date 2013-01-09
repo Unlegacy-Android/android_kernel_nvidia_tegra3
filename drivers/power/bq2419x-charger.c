@@ -32,7 +32,10 @@
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/slab.h>
+#include <linux/regulator/driver.h>
+#include <linux/regulator/machine.h>
 
+struct bq2419x_charger *bq_charger;
 /* input current limit */
 static const unsigned int iinlim[] = {
 	100, 150, 500, 900, 1200, 1500, 2000, 3000,
@@ -54,6 +57,9 @@ struct bq2419x_charger {
 	int			irq;
 	int status;
 	void (*update_status)(int, int);
+	struct regulator_dev	*rdev;
+	struct regulator_desc	reg_desc;
+	struct regulator_init_data	reg_init_data;
 };
 
 static enum power_supply_property bq2419x_psy_props[] = {
@@ -130,7 +136,7 @@ static int bq2419x_init(struct bq2419x_charger *charger)
 		val = current_to_reg(iinlim, ARRAY_SIZE(iinlim),
 					charger->usb_in_current_limit);
 		if (val < 0)
-			return val;
+			val = 0;
 
 		ret = regmap_write(charger->chip->regmap,
 				BQ2419X_INPUT_SRC_REG, val);
@@ -143,7 +149,7 @@ static int bq2419x_init(struct bq2419x_charger *charger)
 		val = current_to_reg(iinlim, ARRAY_SIZE(iinlim),
 					charger->ac_in_current_limit);
 		if (val < 0)
-			return val;
+			val = 0;
 
 		ret = regmap_write(charger->chip->regmap,
 				BQ2419X_INPUT_SRC_REG, val);
@@ -154,18 +160,20 @@ static int bq2419x_init(struct bq2419x_charger *charger)
 	return ret;
 }
 
-static int bq2419x_get_status(struct bq2419x_charger *charger)
+static int bq2419x_get_status(struct bq2419x_charger *charger,
+		int min_uA, int max_uA)
 {
-	int ret;
+	int ret = 0;
 	u32 val;
 
-	charger->usb_online = 0;
-	charger->ac_online = 0;
-	charger->status = 0;
 	ret = regmap_read(charger->chip->regmap, BQ2419X_SYS_STAT_REG, &val);
 	if (ret < 0)
 		dev_err(charger->dev, "error reading reg: 0x%x\n",
 				BQ2419X_SYS_STAT_REG);
+
+	if (max_uA == 0 && val != 0)
+		return 0;
+
 	if ((val & 0xc0) == 0) {
 		/* disable charging */
 		ret = bq2419x_charger_disable(charger);
@@ -178,6 +186,7 @@ static int bq2419x_get_status(struct bq2419x_charger *charger)
 	} else if ((val & 0xc0) == 0x40) {
 		charger->status = 1;
 		charger->usb_online = 1;
+		charger->usb_in_current_limit = max_uA;
 		ret = bq2419x_init(charger);
 		if (ret < 0)
 			goto error;
@@ -188,10 +197,10 @@ static int bq2419x_get_status(struct bq2419x_charger *charger)
 		if (charger->update_status)
 			charger->update_status
 				(charger->status, 2);
-
 	} else if ((val & 0xc0) == 0x80) {
 		charger->status = 1;
 		charger->ac_online = 1;
+		charger->ac_in_current_limit = max_uA;
 		ret = bq2419x_init(charger);
 		if (ret < 0)
 			goto error;
@@ -209,19 +218,38 @@ error:
 	return ret;
 }
 
-static irqreturn_t bq2419x_irq(int irq, void *data)
+static int bq2419x_enable_charger(struct regulator_dev *rdev,
+					int min_uA, int max_uA)
 {
-	struct bq2419x_charger *charger = data;
+	int ret = 0;
+	int val;
 
-	if (bq2419x_get_status(charger)) {
-		if (charger->use_mains)
-			power_supply_changed(&charger->ac);
-		if (charger->use_usb)
-			power_supply_changed(&charger->usb);
+	msleep(200);
+	bq_charger->usb_online = 0;
+	bq_charger->ac_online = 0;
+	bq_charger->status = 0;
+
+	ret = regmap_read(bq_charger->chip->regmap, BQ2419X_SYS_STAT_REG, &val);
+	if (ret < 0)
+		dev_err(bq_charger->dev, "error reading reg: 0x%x\n",
+				BQ2419X_SYS_STAT_REG);
+
+	if (max_uA == 0 && val != 0)
+		return ret;
+
+	ret = bq2419x_get_status(bq_charger, min_uA, max_uA/1000);
+	if (ret == 0) {
+		if (bq_charger->use_mains)
+			power_supply_changed(&bq_charger->ac);
+		if (bq_charger->use_usb)
+			power_supply_changed(&bq_charger->usb);
 	}
-
-	return IRQ_HANDLED;
+	return ret;
 }
+
+static struct regulator_ops bq2419x_tegra_regulator_ops = {
+	.set_current_limit = bq2419x_enable_charger,
+};
 
 static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 {
@@ -229,7 +257,6 @@ static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 	struct bq2419x_charger_platform_data *bcharger_pdata = NULL;
 	struct bq2419x_charger *charger;
 	int ret;
-	int batt_status;
 	u32 val;
 
 	chip_pdata = dev_get_platdata(pdev->dev.parent);
@@ -247,25 +274,14 @@ static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	if (bcharger_pdata->battery_check) {
-		batt_status = bcharger_pdata->battery_check();
-		if (batt_status < 0) {
-			dev_err(&pdev->dev, "Battery not detected exiting\n");
-			return -ENODEV;
-		}
-	} else {
-		dev_err(&pdev->dev, "Battery not detected..exiting\n");
-	}
-
 	charger->chip = dev_get_drvdata(pdev->dev.parent);
 	charger->dev = &pdev->dev;
-	charger->usb_in_current_limit = bcharger_pdata->usb_in_current_limit;
-	charger->ac_in_current_limit = bcharger_pdata->ac_in_current_limit;
 	charger->use_usb = bcharger_pdata->use_usb;
 	charger->use_mains = bcharger_pdata->use_mains;
 	charger->gpio_status = bcharger_pdata->gpio_status;
 	charger->gpio_interrupt = bcharger_pdata->gpio_interrupt;
 	charger->update_status = bcharger_pdata->update_status;
+	bq_charger = charger;
 	platform_set_drvdata(pdev, charger);
 
 	ret = regmap_read(charger->chip->regmap, BQ2419X_REVISION_REG, &val);
@@ -277,12 +293,10 @@ static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 
 	if ((val & BQ24190_IC_VER) == BQ24190_IC_VER)
 		dev_info(charger->dev, "chip type BQ24190 detected\n");
-	else if ((val && BQ24192_IC_VER) == BQ24192_IC_VER)
+	else if ((val & BQ24192_IC_VER) == BQ24192_IC_VER)
 		dev_info(charger->dev, "chip type BQ2419X/3 detected\n");
-	else if ((val && BQ24192i_IC_VER) == BQ24192i_IC_VER)
+	else if ((val & BQ24192i_IC_VER) == BQ24192i_IC_VER)
 		dev_info(charger->dev, "chip type BQ2419Xi detected\n");
-
-
 
 	charger->gpio_status = bcharger_pdata->gpio_status;
 	charger->gpio_interrupt = bcharger_pdata->gpio_interrupt;
@@ -297,26 +311,43 @@ static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (gpio_is_valid(charger->gpio_interrupt)) {
-		ret = gpio_request_one(charger->gpio_interrupt,
-					GPIOF_IN, "bq2419x-interrupt");
-		if (ret < 0) {
-			dev_err(charger->dev,
-				"int gpio request failed, err = %d\n", ret);
-			goto free_gpio_int;
-		}
-		charger->irq = gpio_to_irq(charger->gpio_interrupt);
-		if (charger->irq) {
-			ret = request_threaded_irq(charger->irq, NULL,
-				bq2419x_irq, IRQF_TRIGGER_FALLING,
-				dev_name(&pdev->dev), charger);
-			if (ret < 0) {
-				dev_err(charger->dev,
-					"request IRQ %d fail, err = %d\n",
-					charger->irq, ret);
-				goto free_gpio_status;
-			}
-		}
+	charger->reg_desc.name  = "vbus_charger";
+	charger->reg_desc.ops   = &bq2419x_tegra_regulator_ops;
+	charger->reg_desc.type  = REGULATOR_CURRENT;
+	charger->reg_desc.id    = bcharger_pdata->regulator_id;
+	charger->reg_desc.type  = REGULATOR_CURRENT;
+	charger->reg_desc.owner = THIS_MODULE;
+
+	charger->reg_init_data.supply_regulator		= NULL;
+	charger->reg_init_data.num_consumer_supplies	=
+				bcharger_pdata->num_consumer_supplies;
+
+	charger->reg_init_data.regulator_init		= NULL;
+	charger->reg_init_data.consumer_supplies	=
+					bcharger_pdata->consumer_supplies;
+	charger->reg_init_data.driver_data		= charger;
+	charger->reg_init_data.constraints.name		= "vbus_charger";
+	charger->reg_init_data.constraints.min_uA	= 0;
+	charger->reg_init_data.constraints.max_uA	=
+				bcharger_pdata->max_charge_current_mA * 1000;
+
+	charger->reg_init_data.constraints.valid_modes_mask =
+					REGULATOR_MODE_NORMAL |
+					REGULATOR_MODE_STANDBY;
+
+	charger->reg_init_data.constraints.valid_ops_mask =
+					REGULATOR_CHANGE_MODE |
+					REGULATOR_CHANGE_STATUS |
+					REGULATOR_CHANGE_CURRENT;
+
+	charger->rdev = regulator_register(&charger->reg_desc, charger->dev,
+					&charger->reg_init_data, charger, NULL);
+
+	if (IS_ERR(charger->rdev)) {
+		dev_err(&pdev->dev, "failed to register %s\n",
+				charger->reg_desc.name);
+		ret = PTR_ERR(charger->rdev);
+		goto free_gpio_status;
 	}
 
 	charger->ac_online = 0;
@@ -331,7 +362,7 @@ static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 		ret = power_supply_register(&pdev->dev, &charger->ac);
 		if (ret) {
 			dev_err(&pdev->dev, "failed: power supply register\n");
-			goto irq_error;
+			return ret;
 		}
 	}
 
@@ -348,32 +379,12 @@ static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = bq2419x_get_status(charger);
-	if (ret < 0) {
-		dev_err(charger->dev, "error reading status\n");
-		goto psy_error1;
-	} else {
-		if (charger->use_mains)
-			power_supply_changed(&charger->ac);
-		if (charger->use_usb)
-			power_supply_changed(&charger->usb);
-	}
-
 	return 0;
-psy_error1:
-	power_supply_unregister(&charger->usb);
 psy_error:
 	power_supply_unregister(&charger->ac);
-irq_error:
-	free_irq(charger->irq, charger);
-
 free_gpio_status:
 	if (gpio_is_valid(charger->gpio_status))
 		gpio_free(charger->gpio_status);
-
-free_gpio_int:
-	 if (gpio_is_valid(charger->gpio_interrupt))
-		gpio_free(charger->gpio_interrupt);
 
 	return ret;
 }
@@ -403,7 +414,17 @@ static struct platform_driver bq2419x_charger_driver = {
 	.remove = __devexit_p(bq2419x_charger_probe),
 };
 
-module_platform_driver(bq2419x_charger_driver);
+static int __init bq2419x_charger_init(void)
+{
+	return platform_driver_register(&bq2419x_charger_driver);
+}
+subsys_initcall(bq2419x_charger_init);
+
+static void __exit bq2419x_charger_cleanup(void)
+{
+	platform_driver_unregister(&bq2419x_charger_driver);
+}
+module_exit(bq2419x_charger_cleanup);
 
 MODULE_DESCRIPTION("bq2419x battery charger driver");
 MODULE_AUTHOR("Laxman Dewangan <ldewangan@nvidia.com>");

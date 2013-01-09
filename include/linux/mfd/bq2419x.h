@@ -79,12 +79,17 @@ struct bq2419x_regulator_platform_data {
 struct bq2419x_charger_platform_data {
 	int gpio_interrupt;
 	int gpio_status;
-	int usb_in_current_limit;
-	int ac_in_current_limit;
 	unsigned use_mains:1;
 	unsigned use_usb:1;
 	void (*update_status)(int, int);
 	int (*battery_check)(void);
+
+	int regulator_id;
+	int max_charge_volt_mV;
+	int max_charge_current_mA;
+	int charging_term_current_mA;
+	int num_consumer_supplies;
+	struct regulator_consumer_supply *consumer_supplies;
 };
 struct bq2419x_platform_data {
 	struct bq2419x_regulator_platform_data *reg_pdata;
