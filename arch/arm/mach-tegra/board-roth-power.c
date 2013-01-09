@@ -94,6 +94,11 @@ static struct i2c_board_info __initdata tps51632_boardinfo[] = {
 static struct regulator_consumer_supply bq2419x_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
 };
+
+static struct regulator_consumer_supply bq2419x_batt_supply[] = {
+	REGULATOR_SUPPLY("usb_bat_chg", "tegra-udc.0"),
+};
+
 static struct regulator_init_data bq2419x_init_data = {
 	.constraints = {
 		.name = "bq2419x_vbus",
@@ -115,14 +120,16 @@ static struct bq2419x_regulator_platform_data bq2419x_reg_pdata = {
 };
 
 struct bq2419x_charger_platform_data bq2419x_charger_pdata = {
-	.usb_in_current_limit = 400,
-	.ac_in_current_limit = 1000,
 	.use_usb = 1,
 	.use_mains = 1,
 	.gpio_interrupt = TEGRA_GPIO_PJ0,
 	.gpio_status = TEGRA_GPIO_PK0,
 	.update_status = max17048_battery_status,
 	.battery_check = max17048_check_battery,
+	.max_charge_current_mA = 3000,
+	.charging_term_current_mA = 100,
+	.consumer_supplies = bq2419x_batt_supply,
+	.num_consumer_supplies = ARRAY_SIZE(bq2419x_batt_supply),
 };
 
 struct max17048_battery_model max17048_mdata = {
