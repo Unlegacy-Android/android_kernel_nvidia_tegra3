@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host Interrupt Management
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -88,6 +88,9 @@ struct nvhost_job {
 
 	/* Maximum time to wait for this job */
 	int timeout;
+
+	/* Do debug dump after timeout */
+	bool timeout_debug_dump;
 
 	/* Null kickoff prevents submit from being sent to hardware */
 	bool null_kickoff;

@@ -3,7 +3,7 @@
  *
  * Tegra graphics host driver
  *
- * Copyright (c) 2009-2012, NVIDIA Corporation.
+ * Copyright (c) 2009-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,6 +37,8 @@
 #define NVHOST_PRIORITY_LOW 50
 #define NVHOST_PRIORITY_MEDIUM 100
 #define NVHOST_PRIORITY_HIGH 150
+
+#define NVHOST_TIMEOUT_FLAG_DISABLE_DUMP	0
 
 /* version 0 header (used with write() submit interface) */
 struct nvhost_submit_hdr {
@@ -127,6 +129,11 @@ struct nvhost_set_timeout_args {
 	__u32 timeout;
 };
 
+struct nvhost_set_timeout_ex_args {
+	__u32 timeout;
+	__u32 flags;
+};
+
 struct nvhost_set_priority_args {
 	__u32 priority;
 };
@@ -187,8 +194,10 @@ struct nvhost_submit_args {
 	_IOWR(NVHOST_IOCTL_MAGIC, 14, struct nvhost_ctrl_module_regrdwr_args)
 #define NVHOST_IOCTL_CHANNEL_SUBMIT		\
 	_IOWR(NVHOST_IOCTL_MAGIC, 15, struct nvhost_submit_args)
+#define NVHOST_IOCTL_CHANNEL_SET_TIMEOUT_EX	\
+	_IOWR(NVHOST_IOCTL_MAGIC, 18, struct nvhost_set_timeout_ex_args)
 #define NVHOST_IOCTL_CHANNEL_LAST		\
-	_IOC_NR(NVHOST_IOCTL_CHANNEL_SUBMIT)
+	_IOC_NR(NVHOST_IOCTL_CHANNEL_SET_TIMEOUT_EX)
 #define NVHOST_IOCTL_CHANNEL_MAX_ARG_SIZE sizeof(struct nvhost_submit_args)
 
 struct nvhost_ctrl_syncpt_read_args {

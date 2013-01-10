@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host Command DMA
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -144,6 +144,7 @@ static void cdma_start_timer_locked(struct nvhost_cdma *cdma,
 	cdma->timeout.syncpt_id = job->syncpt_id;
 	cdma->timeout.syncpt_val = job->syncpt_end;
 	cdma->timeout.start_ktime = ktime_get();
+	cdma->timeout.timeout_debug_dump = job->timeout_debug_dump;
 
 	schedule_delayed_work(&cdma->timeout.wq,
 			msecs_to_jiffies(job->timeout));
@@ -303,14 +304,14 @@ void nvhost_cdma_update_sync_queue(struct nvhost_cdma *cdma,
 		if (job->clientid != cdma->timeout.clientid)
 			break;
 
+		nvhost_job_dump(&dev->dev, job);
+
 		/* won't need a timeout when replayed */
 		job->timeout = 0;
 
 		syncpt_incrs = job->syncpt_end - syncpt_val;
 		dev_dbg(&dev->dev,
 			"%s: CPU incr (%d)\n", __func__, syncpt_incrs);
-
-		nvhost_job_dump(&dev->dev, job);
 
 		/* safe to use CPU to incr syncpts */
 		cdma_op().timeout_cpu_incr(cdma,

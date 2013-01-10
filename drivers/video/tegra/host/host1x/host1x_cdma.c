@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host Command DMA
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -23,6 +23,7 @@
 #include "nvhost_acm.h"
 #include "nvhost_cdma.h"
 #include "nvhost_channel.h"
+#include "debug.h"
 #include "dev.h"
 #include "chip_support.h"
 #include "nvhost_memmgr.h"
@@ -451,7 +452,9 @@ static void cdma_timeout_handler(struct work_struct *work)
 	sp = &dev->syncpt;
 	ch = cdma_to_channel(cdma);
 
-	nvhost_debug_dump(cdma_to_dev(cdma));
+	if (nvhost_debug_force_timeout_dump ||
+		cdma->timeout.timeout_debug_dump)
+		nvhost_debug_dump(cdma_to_dev(cdma));
 
 	mutex_lock(&cdma->lock);
 
