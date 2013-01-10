@@ -40,20 +40,22 @@
 static struct regulator *kai_1v8_cam3;
 static struct regulator *kai_vdd_cam3;
 
+static struct throttle_table tj_throttle_table[] = {
+	{      0, 1000 },
+	{ 640000, 1000 },
+	{ 640000, 1000 },
+	{ 640000, 1000 },
+	{ 640000, 1000 },
+	{ 640000, 1000 },
+	{ 760000, 1000 },
+	{ 760000, 1050 },
+	{1000000, 1050 },
+	{1000000, 1100 },
+};
+
 static struct balanced_throttle tj_throttle = {
-	.throt_tab_size = 10,
-	.throt_tab = {
-		{      0, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 760000, 1000 },
-		{ 760000, 1050 },
-		{1000000, 1050 },
-		{1000000, 1100 },
-	},
+	.throt_tab_size = ARRAY_SIZE(tj_throttle_table),
+	.throt_tab = tj_throttle_table,
 };
 
 static int __init kai_throttle_init(void)
