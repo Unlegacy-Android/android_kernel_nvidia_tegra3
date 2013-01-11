@@ -96,45 +96,6 @@ static struct i2c_board_info kai_i2c4_nct1008_board_info[] = {
 	}
 };
 
-#ifdef CONFIG_TEGRA_EDP_LIMITS
-static void kai_init_edp_cdev(void)
-{
-	const struct tegra_edp_limits *cpu_edp_limits;
-	int cpu_edp_limits_size;
-	int i;
-	int trip;
-	struct nct1008_platform_data *data = &kai_nct1008_pdata;
-	struct nct_trip_temp *trip_state;
-
-	/* edp capping */
-	tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
-
-	if (cpu_edp_limits_size > MAX_THROT_TABLE_SIZE)
-		BUG();
-
-	for (i = 0; i < cpu_edp_limits_size-1; i++) {
-		trip = data->num_trips;
-		trip_state = &data->trips[trip];
-
-		trip_state->cdev_type = "edp";
-		trip_state->trip_temp = cpu_edp_limits[i].temperature * 1000;
-		trip_state->trip_type = THERMAL_TRIP_ACTIVE;
-		trip_state->state = i + 1;
-		trip_state->hysteresis = 1000;
-
-		data->num_trips++;
-
-		if (data->num_trips >= NCT_MAX_TRIPS)
-			BUG();
-	}
-}
-#else
-static void kai_init_edp_cdev(void)
-{
-}
-#endif
-
-
 static int kai_nct1008_init(void)
 {
 	int ret = 0;
@@ -155,7 +116,8 @@ static int kai_nct1008_init(void)
 		gpio_free(KAI_TEMP_ALERT_GPIO);
 	}
 
-	kai_init_edp_cdev();
+	tegra_platform_edp_init(kai_nct1008_pdata.trips,
+				&kai_nct1008_pdata.num_trips);
 
 	return ret;
 }

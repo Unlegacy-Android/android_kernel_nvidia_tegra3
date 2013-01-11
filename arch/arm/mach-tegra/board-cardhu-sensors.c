@@ -768,40 +768,11 @@ static int cardhu_nct1008_init(void)
 	}
 
 	if (nct1008_port >= 0) {
-#ifdef CONFIG_TEGRA_EDP_LIMITS
-		const struct tegra_edp_limits *cpu_edp_limits;
-		int cpu_edp_limits_size;
-		int i;
-		int trip;
-		struct nct1008_platform_data *data = &cardhu_nct1008_pdata;
-		struct nct_trip_temp *trip_state;
+		tegra_platform_edp_init(cardhu_nct1008_pdata.trips,
+					&cardhu_nct1008_pdata.num_trips);
 
-		/* edp capping */
-		tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
-
-		if (cpu_edp_limits_size > MAX_THROT_TABLE_SIZE)
-			BUG();
-
-		for (i = 0; i < cpu_edp_limits_size-1; i++) {
-			trip = data->num_trips;
-			trip_state = &data->trips[trip];
-
-			trip_state->cdev_type = "edp";
-			trip_state->trip_temp =
-					cpu_edp_limits[i].temperature * 1000;
-			trip_state->trip_type = THERMAL_TRIP_ACTIVE;
-			trip_state->state = i + 1;
-			trip_state->hysteresis = 1000;
-
-			data->num_trips++;
-
-			if (data->num_trips >= NCT_MAX_TRIPS)
-				BUG();
-		}
-#endif
-
-		/* FIXME: enable irq when throttling is supported */
-		cardhu_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
+		cardhu_i2c4_nct1008_board_info[0].irq =
+						gpio_to_irq(nct1008_port);
 
 		ret = gpio_request(nct1008_port, "temp_alert");
 		if (ret < 0)
