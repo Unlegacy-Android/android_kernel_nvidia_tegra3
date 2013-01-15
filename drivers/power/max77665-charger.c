@@ -492,6 +492,12 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 	for (j = 0 ; j < charger->plat_data->num_cables; j++) {
 		struct max77665_charger_cable *cable =
 				&charger->plat_data->cables[j];
+		cable->extcon_dev =  devm_kzalloc(&pdev->dev,
+			sizeof(struct extcon_specific_cable_nb), GFP_KERNEL);
+		if (!cable->extcon_dev) {
+			dev_err(&pdev->dev, "failed to allocate memory for extcon_dev\n");
+			ret = -ENOMEM;
+		}
 
 		cable->nb.notifier_call = charger_extcon_notifier;
 		ret = extcon_register_interest(cable->extcon_dev,
