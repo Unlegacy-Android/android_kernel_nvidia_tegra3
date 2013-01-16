@@ -66,6 +66,7 @@
 #define GPIO_HP_DET     BIT(4)
 
 struct tegra30_i2s *i2s_tfa = NULL;
+struct snd_soc_codec *codec_rt;
 
 struct tegra_rt5640 {
 	struct tegra_asoc_utils_data util_data;
@@ -437,6 +438,8 @@ static int tegra_rt5640_event_int_spk(struct snd_soc_dapm_widget *w,
 	if(machine_is_roth()) {
 		if (SND_SOC_DAPM_EVENT_ON(event)) {
 			if(i2s_tfa) {
+				if (codec_rt)
+					snd_soc_update_bits(codec_rt, RT5640_PWR_DIG1, 0x0001, 0x0000);
 				tegra_asoc_enable_clocks();
 				Tfa9887_Powerdown(0);
 				tegra_asoc_disable_clocks();
@@ -445,7 +448,7 @@ static int tegra_rt5640_event_int_spk(struct snd_soc_dapm_widget *w,
 		else {
 				Tfa9887_Powerdown(1);
 		}
-	}	
+	}
 	if (!(machine->gpio_requested & GPIO_SPKR_EN))
 		return 0;
 
@@ -553,6 +556,8 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 	struct tegra_rt5640 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 	int ret;
+
+	codec_rt = codec;
 
 	if (gpio_is_valid(pdata->gpio_spkr_en)) {
 		ret = gpio_request(pdata->gpio_spkr_en, "spkr_en");
