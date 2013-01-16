@@ -198,8 +198,8 @@ unsigned long long tegra_chip_uid(void)
 		Total     64
 	*/
 
-	/* chip id is 1 for tegra 14x */
-	cid = 1;
+	/* chip id is 2 for tegra 14x */
+	cid = 2;
 
 	vendor = tegra_fuse_readl(FUSE_VENDOR_CODE) & FUSE_VENDOR_CODE_MASK;
 	fab = tegra_fuse_readl(FUSE_FAB_CODE) & FUSE_FAB_CODE_MASK;
@@ -247,14 +247,6 @@ static int tsensor_calib_offset[] = {
 	[6] = 0x25c,
 	[7] = 0x260,
 };
-
-int tegra_fuse_get_tsensor_calib(int index, u32 *calib)
-{
-	if (index < 0 || index > 7)
-		return -EINVAL;
-	*calib = tegra_fuse_readl(tsensor_calib_offset[index]);
-	return 0;
-}
 
 int tegra_fuse_get_tsensor_calib(int index, u32 *calib)
 {
