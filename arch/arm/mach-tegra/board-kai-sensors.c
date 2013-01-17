@@ -2,7 +2,7 @@
 /*
  * arch/arm/mach-tegra/board-kai-sensors.c
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -82,7 +82,8 @@ static struct nct1008_platform_data kai_nct1008_pdata = {
 			.cdev_type = "tegra-balanced",
 			.trip_temp = 80000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
-			.state = THERMAL_NO_LIMIT,
+			.upper = THERMAL_NO_LIMIT,
+			.lower = THERMAL_NO_LIMIT,
 			.hysteresis = 0,
 		},
 	},

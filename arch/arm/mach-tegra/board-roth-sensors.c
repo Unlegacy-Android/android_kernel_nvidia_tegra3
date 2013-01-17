@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-roth-sensors.c
  *
- * Copyright (c) 2012 NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2012-2013 NVIDIA CORPORATION, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -116,14 +116,16 @@ static struct nct1008_platform_data roth_nct1008_pdata = {
 			.cdev_type = "tegra-balanced",
 			.trip_temp = 84000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
-			.state = THERMAL_NO_LIMIT,
+			.upper = THERMAL_NO_LIMIT,
+			.lower = THERMAL_NO_LIMIT,
 			.hysteresis = 0,
 		},
 		[1] = {
 			.cdev_type = "tegra-heavy",
 			.trip_temp = 89000, /* shutdown_ext_limit - 2C */
 			.trip_type = THERMAL_TRIP_PASSIVE,
-			.state = 1,
+			.upper = 1,
+			.lower = 1,
 			.hysteresis = 6000,
 		},
 	},

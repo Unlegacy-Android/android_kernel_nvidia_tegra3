@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu-sensors.c
  *
- * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -727,7 +727,8 @@ static struct nct1008_platform_data cardhu_nct1008_pdata = {
 			.cdev_type = "tegra-balanced",
 			.trip_temp = 80000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
-			.state = THERMAL_NO_LIMIT,
+			.upper = THERMAL_NO_LIMIT,
+			.lower = THERMAL_NO_LIMIT,
 			.hysteresis = 0,
 		},
 	},
