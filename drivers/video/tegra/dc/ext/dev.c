@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/dev.c
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * Author: Robert Morell <rmorell@nvidia.com>
  * Some code based on fbdev extensions written by:
@@ -277,6 +277,9 @@ static int tegra_dc_ext_set_windowattr(struct tegra_dc_ext *ext,
 				flip_win->attr.pre_syncpt_val,
 				msecs_to_jiffies(500), NULL);
 	}
+
+	if (err < 0)
+		return err;
 
 #ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	timestamp_ns = timespec_to_ns(&flip_win->attr.timestamp);
