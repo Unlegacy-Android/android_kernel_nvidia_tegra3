@@ -34,6 +34,9 @@
 #include <linux/spi/rm31080a_ts.h>
 #include <linux/spi/rm31080a_ctrl.h>
 #include <../clock.h>
+
+#define CREATE_TRACE_POINTS
+#include <trace/events/touchscreen_raydium.h>
 /*=========================================================================*/
 /*DEFINITIONS */
 /*=========================================================================*/
@@ -1688,6 +1691,8 @@ static irqreturn_t rm31080_irq(int irq, void *handle)
 	if (!g_stTs.bInitFinish)
 		return IRQ_HANDLED;
 
+	trace_touchscreen_raydium_irq("Raydium_interrupt");
+
 	if (boost_cpus > 0 || boost_freq > 0)
 		queue_kthread_work(&boost_worker, &boost_work);
 
@@ -2403,7 +2408,6 @@ err_unregister_notifier_3v3:
 err_disable_regulator:
 	regulator_disable(ts->regulator_3v3);
 	regulator_disable(ts->regulator_1v8);
-err_put_regulator_1v8:
 	devm_regulator_put(ts->regulator_1v8);
 err_put_regulator_3v3:
 	devm_regulator_put(ts->regulator_3v3);
@@ -2486,7 +2490,6 @@ static int __devinit rm31080_spi_probe(struct spi_device *spi)
 err_unregister_notifier:
 	regulator_unregister_notifier(ts->regulator_3v3, &ts->nb_3v3);
 	regulator_unregister_notifier(ts->regulator_1v8, &ts->nb_1v8);
-err_disable_regulator:
 	regulator_disable(ts->regulator_3v3);
 	regulator_disable(ts->regulator_1v8);
 	return -EINVAL;
