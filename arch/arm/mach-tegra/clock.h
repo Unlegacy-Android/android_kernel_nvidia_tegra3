@@ -6,7 +6,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (C) 2010-2012, NVIDIA Corporation.
+ * Copyright (C) 2010-2013, NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -280,20 +280,11 @@ int clk_set_parent_locked(struct clk *c, struct clk *parent);
 long clk_round_rate_locked(struct clk *c, unsigned long rate);
 int tegra_clk_shared_bus_update(struct clk *c);
 void tegra3_set_cpu_skipper_delay(int delay);
-int tegra_emc_set_rate(unsigned long rate);
-long tegra_emc_round_rate(unsigned long rate);
-struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value);
-bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
-		unsigned long *parent_rate, unsigned long *backup_rate);
-void tegra_emc_timing_invalidate(void);
 unsigned long tegra_clk_measure_input_freq(void);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-static inline int tegra_emc_backup(unsigned long rate)
-{ return 0; }
 static inline bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 { return true; }
 #else
-int tegra_emc_backup(unsigned long rate);
 bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p);
 #endif
 
