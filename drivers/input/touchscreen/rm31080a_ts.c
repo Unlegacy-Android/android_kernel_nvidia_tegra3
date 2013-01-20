@@ -28,8 +28,6 @@
 #include <linux/uaccess.h>	/* copy_to_user(), */
 #include <linux/miscdevice.h>
 #include <linux/regulator/consumer.h>
-#include <linux/pm_qos.h>	/* pm qos for CPU boosting */
-#include <linux/sysfs.h>	/* sysfs for pm qos attributes */
 
 #include <linux/spi/rm31080a_ts.h>
 #include <linux/spi/rm31080a_ctrl.h>
@@ -51,6 +49,9 @@
 #define ENABLE_SMOOTH_LEVEL
 /*#define ENABLE_SUPPORT_4_7*/  /* for 4.7 inch display  */
 #define ENABLE_NEW_INPUT_DEV
+
+/* undef to disable CPU boost while leaving idle mode */
+#define NV_ENABLE_CPU_BOOST
 
 #define MAX_SPI_FREQ_HZ      50000000
 #define TS_PEN_UP_TIMEOUT    msecs_to_jiffies(50)
@@ -77,6 +78,16 @@
 #ifdef ENABLE_SMOOTH_LEVEL
 #define RM_SMOOTH_LEVEL_NORMAL    0
 #define RM_SMOOTH_LEVEL_MAX       4
+#endif
+
+#ifdef NV_ENABLE_CPU_BOOST
+/* disable CPU boosting if autoscan mode is disabled */
+#ifdef ENABLE_AUTO_SCAN
+#include <linux/pm_qos.h>	/* pm qos for CPU boosting */
+#include <linux/sysfs.h>	/* sysfs for pm qos attributes */
+#else
+#undef NV_ENABLE_CPU_BOOST
+#endif
 #endif
 
 #ifdef ENABLE_WORK_QUEUE
@@ -168,6 +179,7 @@ struct rm_cmd_slow_scan g_stCmdSlowScan[RM_SLOW_SCAN_LEVEL_COUNT];
 /*========================================================================= */
 /*LOCAL VARIABLES DECLARATION */
 /*========================================================================= */
+#ifdef NV_ENABLE_CPU_BOOST
 static int boost_inited;
 
 /* Minimum active CPUs, e.g. 1 for at least CPU0 */
@@ -208,6 +220,7 @@ static void boost_cpu(struct kthread_work *w);
 static struct task_struct *boost_kthread;
 static DEFINE_KTHREAD_WORKER(boost_worker);
 static DEFINE_KTHREAD_WORK(boost_work, &boost_cpu);
+#endif
 
 /*========================================================================= */
 /*FUNCTION DECLARATION */
@@ -1580,6 +1593,7 @@ static void rm31080_input_close(struct input_dev *input)
 		__rm31080_disable(ts);
 }
 
+#ifdef NV_ENABLE_CPU_BOOST
 ssize_t sysfs_boost_cpu_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
@@ -1684,6 +1698,7 @@ static void boost_cpu(struct kthread_work *w)
 		pm_qos_update_request_timeout(&freq_req, boost_freq,
 				boost_time);
 }
+#endif
 
 /*=========================================================================*/
 static irqreturn_t rm31080_irq(int irq, void *handle)
@@ -1694,8 +1709,13 @@ static irqreturn_t rm31080_irq(int irq, void *handle)
 
 	trace_touchscreen_raydium_irq("Raydium_interrupt");
 
-	if (boost_cpus > 0 || boost_freq > 0)
+#ifdef NV_ENABLE_CPU_BOOST
+	if ((boost_cpus > 0 || boost_freq > 0) && g_stCtrl.bfPowerMode &&
+			(g_stTs.u8ScanModeState == RM_SCAN_MODE_AUTO_SCAN)) {
 		queue_kthread_work(&boost_worker, &boost_work);
+		trace_touchscreen_raydium_irq("cpu_boost_scheduled");
+	}
+#endif
 
 #ifdef ENABLE_WORK_QUEUE
 	queue_work(g_stTs.rm_workqueue, &g_stTs.rm_work);
@@ -2411,7 +2431,9 @@ static int __devexit rm31080_spi_remove(struct spi_device *spi)
 {
 	struct rm31080_ts *ts = spi_get_drvdata(spi);
 
+#ifdef NV_ENABLE_CPU_BOOST
 	boost_cpu_remove();
+#endif
 
 #ifdef ENABLE_RAW_DATA_QUEUE
 	rm31080_queue_free();
@@ -2473,7 +2495,9 @@ static int __devinit rm31080_spi_probe(struct spi_device *spi)
 	rm31080_queue_init();
 #endif
 
+#ifdef NV_ENABLE_CPU_BOOST
 	boost_cpu_init();
+#endif
 
 	/* Enable async suspend/resume to reduce LP0 latency */
 	device_enable_async_suspend(&spi->dev);
