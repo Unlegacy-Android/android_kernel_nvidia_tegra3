@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board-roth-sdhci.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -36,6 +36,7 @@
 #include "gpio-names.h"
 #include "board.h"
 #include "board-roth.h"
+#include "dvfs.h"
 
 #define ROTH_WLAN_PWR	TEGRA_GPIO_PCC5
 #define ROTH_WLAN_RST	TEGRA_GPIO_INVALID
@@ -401,6 +402,12 @@ subsys_initcall_sync(roth_wifi_prepower);
 
 int __init roth_sdhci_init(void)
 {
+	int nominal_core_mv;
+
+	nominal_core_mv = tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
+	if (nominal_core_mv > 0)
+		tegra_sdhci_platform_data0.nominal_vcore_uV = nominal_core_mv *
+			1000;
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);
