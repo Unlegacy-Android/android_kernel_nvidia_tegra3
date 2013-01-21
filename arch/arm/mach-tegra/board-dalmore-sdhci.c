@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board-dalmore-sdhci.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2013 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -148,6 +148,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.tap_delay = 0x2,
 	.trim_delay = 0x2,
 	.ddr_clk_limit = 41000000,
+	.max_clk_limit = 82000000,
 	.uhs_mask = MMC_UHS_MASK_SDR104 |
 		MMC_UHS_MASK_DDR50,
 };
@@ -159,6 +160,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.tap_delay = 0x3,
 	.trim_delay = 0x3,
 	.ddr_clk_limit = 41000000,
+	.max_clk_limit = 82000000,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
