@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-roth-power.c
  *
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -214,6 +214,7 @@ static struct regulator_consumer_supply palmas_smps3_supply[] = {
 
 static struct regulator_consumer_supply palmas_smps45_supply[] = {
 	REGULATOR_SUPPLY("vdd_core", NULL),
+	REGULATOR_SUPPLY("vdd_core", "sdhci-tegra.0"),
 };
 
 #define palmas_smps457_supply palmas_smps45_supply
