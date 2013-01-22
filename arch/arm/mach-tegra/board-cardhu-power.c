@@ -716,6 +716,11 @@ static struct regulator_consumer_supply fixed_reg_en_vddio_vid_oc_supply[] = {
 	REGULATOR_SUPPLY("vdd_hdmi_con", NULL),
 };
 
+/* Battery powered rail*/
+static struct regulator_consumer_supply fixed_reg_en_battery_supply[] = {
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.1"),
+};
+
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_"#_name
 #define FIXED_REG_OD(_id, _var, _name, _in_supply, _always_on,		\
@@ -835,6 +840,8 @@ FIXED_REG_OD(16, en_usb3_vbus_oc_a03,	en_usb3_vbus_oc,	FIXED_SUPPLY(en_5v0), 		0
 /* E1198/E1291 specific */
 FIXED_REG_OD(17, en_vddio_vid_oc,	en_vddio_vid_oc,	FIXED_SUPPLY(en_5v0), 		0,      0,      TEGRA_GPIO_PT0,		true,	0, 5000, true);
 
+/* Always ON */
+FIXED_REG(22, en_battery,	en_battery,	NULL, 	1,      1,      -1,	true,	1, 5000);
 /*
  * Creating the fixed/gpio-switch regulator device tables for different boards
  */
@@ -853,7 +860,8 @@ FIXED_REG_OD(17, en_vddio_vid_oc,	en_vddio_vid_oc,	FIXED_SUPPLY(en_5v0), 		0,   
 	ADD_FIXED_REG(en_3v3_emmc),		\
 	ADD_FIXED_REG(en_vdd_sdmmc1),		\
 	ADD_FIXED_REG(en_3v3_pex_hvdd),		\
-	ADD_FIXED_REG(en_1v8_cam),
+	ADD_FIXED_REG(en_1v8_cam),		\
+	ADD_FIXED_REG(en_battery),
 
 #define COMMON_FIXED_REG_E1291_A04		\
 	ADD_FIXED_REG(en_5v_cp),		\
@@ -868,7 +876,8 @@ FIXED_REG_OD(17, en_vddio_vid_oc,	en_vddio_vid_oc,	FIXED_SUPPLY(en_5v0), 		0,   
 	ADD_FIXED_REG(en_3v3_emmc),		\
 	ADD_FIXED_REG(en_vdd_sdmmc1),		\
 	ADD_FIXED_REG(en_3v3_pex_hvdd),		\
-	ADD_FIXED_REG(en_1v8_cam),
+	ADD_FIXED_REG(en_1v8_cam),		\
+	ADD_FIXED_REG(en_battery),
 
 #define PM269_FIXED_REG				\
 	ADD_FIXED_REG(en_5v_cp),		\
