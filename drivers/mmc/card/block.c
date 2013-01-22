@@ -1394,8 +1394,14 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 		ret = blk_end_request(req, -EIO, blk_rq_cur_bytes(req));
  start_new_req:
 	if (rqc) {
-		mmc_blk_rw_rq_prep(mq->mqrq_cur, card, 0, mq);
-		mmc_start_req(card->host, &mq->mqrq_cur->mmc_active, NULL);
+		if (mmc_card_removed(card)) {
+			rqc->cmd_flags |= REQ_QUIET;
+			blk_end_request_all(rqc, -EIO);
+		} else {
+			mmc_blk_rw_rq_prep(mq->mqrq_cur, card, 0, mq);
+			mmc_start_req(card->host,
+				      &mq->mqrq_cur->mmc_active, NULL);
+		}
 	}
 
 	return 0;
