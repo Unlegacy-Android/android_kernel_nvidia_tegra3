@@ -35,6 +35,7 @@
 #include <media/imx091.h>
 #include <media/imx132.h>
 #include <media/ad5816.h>
+#include <media/ov5640.h>
 #include <asm/mach-types.h>
 
 #include "gpio-names.h"
@@ -674,6 +675,97 @@ static struct ad5816_platform_data pluto_ad5816_pdata = {
 	.power_off	= pluto_focuser_power_off,
 };
 
+static struct regulator *dvdd_1v8;
+static struct regulator *avdd_cam2;
+static struct regulator *vdd_af1;
+static int pluto_ov5640_power_on(struct device *dev)
+{
+	if (avdd_cam2 == NULL) {
+		avdd_cam2 = regulator_get(dev, "avdd_cam2");
+		if (WARN_ON(IS_ERR(avdd_cam2))) {
+			pr_err("%s: couldn't get regulator avdd_cam2: %ld\n",
+				__func__, PTR_ERR(avdd_cam2));
+			avdd_cam2 = NULL;
+			goto avdd_cam2_fail;
+		}
+	}
+	if (dvdd_1v8 == NULL) {
+		dvdd_1v8 = regulator_get(dev, "vdd_1v8_cam12");
+		if (WARN_ON(IS_ERR(dvdd_1v8))) {
+			pr_err("%s: couldn't get regulator vdd_1v8_cam: %ld\n",
+				__func__, PTR_ERR(dvdd_1v8));
+			dvdd_1v8 = NULL;
+			goto dvdd_1v8_fail;
+		}
+	}
+
+	if (vdd_af1 == NULL) {
+		vdd_af1 = regulator_get(dev, "vdd_af_cam1");
+		if (WARN_ON(IS_ERR(vdd_af1))) {
+			pr_err("%s: couldn't get regulator vdd_af_cam1: %ld\n",
+				__func__, PTR_ERR(vdd_af1));
+			vdd_af1 = NULL;
+			goto vdd_af1_fail;
+		}
+	}
+
+	/* power up sequence */
+	gpio_set_value(CAM2_POWER_DWN_GPIO, 1);
+	gpio_set_value(CAM_RSTN, 0);
+	mdelay(1);
+
+	regulator_enable(vdd_af1);
+	regulator_enable(dvdd_1v8);
+	regulator_enable(avdd_cam2);
+
+	tegra_pinmux_config_table(&pbb0_enable, 1);
+
+	mdelay(5);
+	gpio_set_value(CAM2_POWER_DWN_GPIO, 0);
+	mdelay(1);
+	gpio_set_value(CAM_RSTN, 1);
+
+	mdelay(20);
+
+	return 0;
+
+vdd_af1_fail:
+	regulator_disable(dvdd_1v8);
+dvdd_1v8_fail:
+	regulator_disable(avdd_cam2);
+avdd_cam2_fail:
+	return -ENODEV;
+}
+
+static int pluto_ov5640_power_off(struct device *dev)
+{
+	gpio_set_value(CAM_RSTN, 0);
+
+	tegra_pinmux_config_table(&pbb0_disable, 1);
+
+	if (avdd_cam2)
+		regulator_disable(avdd_cam2);
+	if (dvdd_1v8)
+		regulator_disable(dvdd_1v8);
+	if (vdd_af1)
+		regulator_disable(vdd_af1);
+	gpio_set_value(CAM2_POWER_DWN_GPIO, 1);
+
+	return 0;
+}
+
+struct ov5640_platform_data pluto_ov5640_data = {
+	.power_on = pluto_ov5640_power_on,
+	.power_off = pluto_ov5640_power_off,
+};
+
+static struct i2c_board_info pluto_board_info_ov5640[] = {
+	{
+		I2C_BOARD_INFO("ov5640", 0x3c),
+		.platform_data = &pluto_ov5640_data,
+	}
+};
+
 static struct i2c_board_info pluto_i2c_board_info_e1625[] = {
 	{
 		I2C_BOARD_INFO("imx091", 0x10),
@@ -689,6 +781,58 @@ static struct i2c_board_info pluto_i2c_board_info_e1625[] = {
 	},
 };
 
+/* Detect ov5640 adapter by toggling the CAM_GPIO1 and read it back
+ * from CAM_GPIO2.
+ * On the ov5640 adapter board (E1633) for pluto, pin 5 & 6 of connector J9
+ * should be shorted.
+ */
+static int ov5640_installed(void)
+{
+	int val;
+	int ret;
+
+	ret = gpio_request(CAM_GPIO1, "camera_gpio1");
+	if (ret < 0) {
+		pr_err("%s, gpio_request failed for CAM_GPIO1\n", __func__);
+		return 0;
+	}
+
+	ret = gpio_request(CAM_GPIO2, "camera_gpio2");
+	if (ret < 0) {
+		pr_err("%s, gpio_request failed for CAM_GPIO2\n", __func__);
+		gpio_free(CAM_GPIO1);
+		return 0;
+	}
+
+	gpio_direction_output(CAM_GPIO1, 1);
+	gpio_direction_input(CAM_GPIO2);
+
+	val = gpio_get_value(CAM_GPIO1);
+	ret = gpio_get_value(CAM_GPIO2);
+	pr_info("%s round 1: %d vs %d\n", __func__, val, ret);
+	if (ret != val) {
+		gpio_free(CAM_GPIO1);
+		gpio_free(CAM_GPIO2);
+		return 0;
+	}
+
+	/* toggle CAM_GPIO1 and read back from detect pin */
+	val ^= 1;
+	gpio_set_value(CAM_GPIO1, val & 1);
+	ret = gpio_get_value(CAM_GPIO2);
+	/* resume CAM_GPIO1 state */
+	gpio_set_value(CAM_GPIO1, (~val) & 1);
+
+	gpio_free(CAM_GPIO2);
+	gpio_free(CAM_GPIO1);
+
+	pr_info("%s round 2: %d vs %d\n", __func__, val, ret);
+	if (ret != val)
+		return 0;
+
+	return 1;
+}
+
 static int pluto_camera_init(void)
 {
 	pr_debug("%s: ++\n", __func__);
@@ -696,8 +840,13 @@ static int pluto_camera_init(void)
 	tegra_pinmux_config_table(&mclk_disable, 1);
 	tegra_pinmux_config_table(&pbb0_disable, 1);
 
-	i2c_register_board_info(2, pluto_i2c_board_info_e1625,
-		ARRAY_SIZE(pluto_i2c_board_info_e1625));
+	if (ov5640_installed()) {
+		pr_info("%s ov5640 installed.\n", __func__);
+		i2c_register_board_info(2, pluto_board_info_ov5640,
+			ARRAY_SIZE(pluto_board_info_ov5640));
+	} else
+		i2c_register_board_info(2, pluto_i2c_board_info_e1625,
+			ARRAY_SIZE(pluto_i2c_board_info_e1625));
 
 	return 0;
 }
