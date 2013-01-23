@@ -960,7 +960,7 @@ static int tegra_aic326x_event_int_spk(struct snd_soc_dapm_widget *w,
 		return 0;
 
 	gpio_set_value_cansleep(pdata->gpio_spkr_en,
-				SND_SOC_DAPM_EVENT_ON(event));
+				!!SND_SOC_DAPM_EVENT_ON(event));
 
 	return 0;
 }
@@ -1004,7 +1004,7 @@ static int tegra_aic326x_event_dmic(struct snd_soc_dapm_widget *w,
 		return 0;
 
 	gpio_set_value_cansleep(pdata->gpio_int_mic_en,
-				SND_SOC_DAPM_EVENT_ON(event));
+				!!SND_SOC_DAPM_EVENT_ON(event));
 
 	return 0;
 }

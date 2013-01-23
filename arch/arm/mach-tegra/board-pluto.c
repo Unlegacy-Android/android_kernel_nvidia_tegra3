@@ -85,6 +85,7 @@
 #include "pm.h"
 #include "common.h"
 
+
 #ifdef CONFIG_BT_BLUESLEEP
 static struct rfkill_gpio_platform_data pluto_bt_rfkill_pdata = {
 	.name           = "bt_rfkill",
@@ -293,9 +294,10 @@ static struct aic3262_gpio_setup aic3262_gpio[] = {
 		.in = 0,
 		.value = AIC3262_GPIO2_FUNC_ADC_MOD_CLK_OUTPUT,
 	},
-	/* GPIO 1 */
+	/* GPI1 */
 	{
-		.used = 0,
+		.used = 1,
+		.in = 1,
 	},
 	/* GPI2 */
 	{
@@ -308,8 +310,9 @@ static struct aic3262_gpio_setup aic3262_gpio[] = {
 	},
 	/* GPO1 */
 	{
-		.used = 0,
-		.value = AIC3262_GPO1_FUNC_DISABLED,
+		.used = 1,
+		.in = 0,
+		.value = AIC3262_GPO1_FUNC_MSO_OUTPUT_FOR_SPI,
 	},
 };
 static struct aic3xxx_pdata aic3262_codec_pdata = {
@@ -349,7 +352,6 @@ static void pluto_i2c_init(void)
 	i2c_register_board_info(0, &pluto_codec_a2220_info, 1);
 	i2c_register_board_info(0, &cs42l73_board_info, 1);
 	pluto_i2c_bus3_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PW2);
-	i2c_register_board_info(0, pluto_i2c_bus3_board_info, 1);
 	i2c_register_board_info(0, &pluto_codec_aic326x_info, 1);
 }
 
@@ -531,6 +533,25 @@ static struct platform_device pluto_audio_aic326x_device = {
 		.platform_data  = &pluto_aic3262_pdata,
 	},
 };
+
+
+static struct tegra_spi_device_controller_data dev_bdata = {
+	.rx_clk_tap_delay = 0,
+	.tx_clk_tap_delay = 0,
+};
+static struct spi_board_info aic326x_spi_board_info[] = {
+	{
+		.modalias = "tlv320aic3xxx",
+		.bus_num = 3,
+		.chip_select = 0,
+		.max_speed_hz = 4*1000*1000,
+		.mode = SPI_MODE_1,
+		.controller_data = &dev_bdata,
+		.platform_data = &aic3262_codec_pdata,
+	},
+};
+
+
 
 #ifdef CONFIG_MHI_NETDEV
 struct platform_device mhi_netdevice0 = {
@@ -1002,6 +1023,8 @@ static void pluto_audio_init(void)
 
 	tegra_get_board_info(&board_info);
 
+	spi_register_board_info(aic326x_spi_board_info,
+					ARRAY_SIZE(aic326x_spi_board_info));
 }
 
 static struct platform_device *pluto_spi_devices[] __initdata = {
