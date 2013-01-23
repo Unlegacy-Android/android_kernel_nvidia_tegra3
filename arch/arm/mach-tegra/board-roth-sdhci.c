@@ -335,8 +335,11 @@ static int roth_wifi_power(int on)
 	}
 	gpio_set_value(ROTH_WLAN_PWR, on);
 	mdelay(100);
-	gpio_set_value(ROTH_WLAN_RST, on);
-	mdelay(200);
+	if (gpio_is_valid(ROTH_WLAN_RST)) {
+		gpio_set_value(ROTH_WLAN_RST, on);
+		mdelay(200);
+	}
+
 	if (sd_dpd) {
 		mutex_lock(&sd_dpd->delay_lock);
 		tegra_io_dpd_enable(sd_dpd);
@@ -365,9 +368,12 @@ static int __init roth_wifi_init(void)
 	rc = gpio_request(ROTH_WLAN_PWR, "wlan_power");
 	if (rc)
 		pr_err("WLAN_PWR gpio request failed:%d\n", rc);
-	rc = gpio_request(ROTH_WLAN_RST, "wlan_rst");
-	if (rc)
-		pr_err("WLAN_RST gpio request failed:%d\n", rc);
+	if (gpio_is_valid(ROTH_WLAN_RST)) {
+		rc = gpio_request(ROTH_WLAN_RST, "wlan_rst");
+		if (rc)
+			pr_err("WLAN_RST gpio request failed:%d\n", rc);
+	}
+
 	rc = gpio_request(ROTH_WLAN_WOW, "bcmsdh_sdmmc");
 	if (rc)
 		pr_err("WLAN_WOW gpio request failed:%d\n", rc);
@@ -375,9 +381,13 @@ static int __init roth_wifi_init(void)
 	rc = gpio_direction_output(ROTH_WLAN_PWR, 0);
 	if (rc)
 		pr_err("WLAN_PWR gpio direction configuration failed:%d\n", rc);
-	gpio_direction_output(ROTH_WLAN_RST, 0);
-	if (rc)
-		pr_err("WLAN_RST gpio direction configuration failed:%d\n", rc);
+
+	if (gpio_is_valid(ROTH_WLAN_RST)) {
+		gpio_direction_output(ROTH_WLAN_RST, 0);
+		if (rc)
+			pr_err("WLAN_RST direction_output failed:%d\n", rc);
+	}
+
 	rc = gpio_direction_input(ROTH_WLAN_WOW);
 	if (rc)
 		pr_err("WLAN_WOW gpio direction configuration failed:%d\n", rc);
