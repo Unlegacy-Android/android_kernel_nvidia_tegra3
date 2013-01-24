@@ -83,7 +83,7 @@
 #include "wdt-recovery.h"
 #include "common.h"
 
-#ifdef CONFIG_BT_BLUESLEEP
+#if defined(CONFIG_BT_BLUESLEEP) || defined(CONFIG_BT_BLUESLEEP_MODULE)
 static struct rfkill_gpio_platform_data cardhu_bt_rfkill_pdata[] = {
 	{
 		.name           = "bt_rfkill",
@@ -781,7 +781,7 @@ static struct platform_device *cardhu_devices[] __initdata = {
 	&spdif_dit_device,
 	&bluetooth_dit_device,
 	&baseband_dit_device,
-#ifdef CONFIG_BT_BLUESLEEP
+#if defined(CONFIG_BT_BLUESLEEP) || defined(CONFIG_BT_BLUESLEEP_MODULE)
 	&cardhu_bt_rfkill_device,
 #endif
 	&tegra_pcm_device,
@@ -1372,7 +1372,7 @@ static void __init tegra_cardhu_init(void)
 	cardhu_panel_init();
 	cardhu_pmon_init();
 	cardhu_sensors_init();
-#ifdef CONFIG_BT_BLUESLEEP
+#if defined(CONFIG_BT_BLUESLEEP) || defined(CONFIG_BT_BLUESLEEP_MODULE)
 	cardhu_setup_bluesleep();
 #elif defined CONFIG_BLUEDROID_PM
 	cardhu_setup_bluedroid_pm();
