@@ -54,7 +54,6 @@ struct bq2419x_charger {
 	int			ac_in_current_limit;
 	unsigned		use_mains:1;
 	unsigned		use_usb:1;
-	int			irq;
 	int status;
 	void (*update_status)(int, int);
 	struct regulator_dev	*rdev;
@@ -160,64 +159,6 @@ static int bq2419x_init(struct bq2419x_charger *charger)
 	return ret;
 }
 
-static int bq2419x_get_status(struct bq2419x_charger *charger,
-		int min_uA, int max_uA)
-{
-	int ret = 0;
-	u32 val;
-
-	ret = regmap_read(charger->chip->regmap, BQ2419X_SYS_STAT_REG, &val);
-	if (ret < 0)
-		dev_err(charger->dev, "error reading reg: 0x%x\n",
-				BQ2419X_SYS_STAT_REG);
-
-	if (max_uA == 0 && val != 0)
-		return 0;
-
-	if ((val & 0xc0) == 0) {
-		/* disable charging */
-		ret = bq2419x_charger_disable(charger);
-		if (ret < 0)
-			goto error;
-		charger->status = 0;
-		if (charger->update_status)
-			charger->update_status
-				(charger->status, 0);
-	} else if ((val & 0xc0) == 0x40) {
-		charger->status = 1;
-		charger->usb_online = 1;
-		charger->usb_in_current_limit = max_uA;
-		ret = bq2419x_init(charger);
-		if (ret < 0)
-			goto error;
-		/* enable charging */
-		ret = bq2419x_charger_enable(charger);
-		if (ret < 0)
-			goto error;
-		if (charger->update_status)
-			charger->update_status
-				(charger->status, 2);
-	} else if ((val & 0xc0) == 0x80) {
-		charger->status = 1;
-		charger->ac_online = 1;
-		charger->ac_in_current_limit = max_uA;
-		ret = bq2419x_init(charger);
-		if (ret < 0)
-			goto error;
-		/* enable charging */
-		ret = bq2419x_charger_enable(charger);
-		if (ret < 0)
-			goto error;
-		if (charger->update_status)
-			charger->update_status
-				(charger->status, 1);
-	}
-	return 0;
-error:
-	dev_err(charger->dev, "Charger get status failed, err = %d\n", ret);
-	return ret;
-}
-
 static int bq2419x_enable_charger(struct regulator_dev *rdev,
 					int min_uA, int max_uA)
 {
@@ -237,13 +178,46 @@ static int bq2419x_enable_charger(struct regulator_dev *rdev,
 	if (max_uA == 0 && val != 0)
 		return ret;
 
-	ret = bq2419x_get_status(bq_charger, min_uA, max_uA/1000);
+	if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_UNKNOWN) {
+		bq_charger->status = 0;
+		bq_charger->usb_online = 1;
+		bq_charger->usb_in_current_limit = 500;
+		ret = bq2419x_init(bq_charger);
+		if (ret < 0)
+			goto error;
+		if (bq_charger->update_status)
+			bq_charger->update_status
+				(bq_charger->status, 0);
+	} else if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_USB) {
+		bq_charger->status = 1;
+		bq_charger->usb_online = 1;
+		bq_charger->usb_in_current_limit = max_uA;
+		ret = bq2419x_init(bq_charger);
+		if (ret < 0)
+			goto error;
+		if (bq_charger->update_status)
+			bq_charger->update_status
+				(bq_charger->status, 2);
+	} else if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_AC) {
+		bq_charger->status = 1;
+		bq_charger->ac_online = 1;
+		bq_charger->ac_in_current_limit = max_uA;
+		ret = bq2419x_init(bq_charger);
+		if (ret < 0)
+			goto error;
+		if (bq_charger->update_status)
+			bq_charger->update_status
+				(bq_charger->status, 1);
+	}
 	if (ret == 0) {
 		if (bq_charger->use_mains)
 			power_supply_changed(&bq_charger->ac);
 		if (bq_charger->use_usb)
 			power_supply_changed(&bq_charger->usb);
 	}
+	return 0;
+error:
+	dev_err(bq_charger->dev, "Charger enable failed, err = %d\n", ret);
 	return ret;
 }
 
@@ -379,7 +353,15 @@ static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 		}
 	}
 
+	/* enable charging */
+	ret = bq2419x_charger_enable(charger);
+	if (ret < 0)
+		goto psy_error1;
+
 	return 0;
+
+psy_error1:
+	power_supply_unregister(&charger->usb);
 psy_error:
 	power_supply_unregister(&charger->ac);
 free_gpio_status:
@@ -393,15 +375,12 @@ static int __devexit bq2419x_charger_remove(struct platform_device *pdev)
 {
 	struct bq2419x_charger *charger = platform_get_drvdata(pdev);
 
-	free_irq(charger->irq, charger);
 	if (charger->use_mains)
 		power_supply_unregister(&charger->usb);
 	if (charger->use_usb)
 		power_supply_unregister(&charger->ac);
 	if (gpio_is_valid(charger->gpio_status))
 		gpio_free(charger->gpio_status);
-	 if (gpio_is_valid(charger->gpio_interrupt))
-		gpio_free(charger->gpio_interrupt);
 	return 0;
 }
 

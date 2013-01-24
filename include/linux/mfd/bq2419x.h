@@ -57,6 +57,11 @@ struct regmap;
 #define BQ2419X_WD_MASK			0x30
 #define BQ2419X_WD_DISABLE		0x0
 
+#define BQ2419x_VBUS_STAT		0xc0
+#define BQ2419x_VBUS_UNKNOWN		0x00
+#define BQ2419x_VBUS_USB		0x40
+#define BQ2419x_VBUS_AC			0x80
+
 #define BQ2419X_MAX_REGS		(BQ2419X_REVISION_REG + 1)
 
 /* bq2419x chip information */
