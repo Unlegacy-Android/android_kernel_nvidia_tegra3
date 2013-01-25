@@ -432,7 +432,7 @@ ENTRY(tegra3_lp1_reset)
 	str	r4, [r0, #CLK_RESET_CCLK_BURST]
 #endif
 
-#ifdef CONFIG_TEGRA_LP1_950
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
 lp1_voltset:
 	/* Restore the Core voltage to high on LP1 resume */
 	/* Reset(Enable/Disable) the DVC-I2C Controller*/
@@ -690,7 +690,7 @@ tegra11_sdram_pad_address:
 	.word	TEGRA_EMC1_BASE + EMC_XM2VTTGENPADCTRL2			@0x30
 #endif
 
-#ifdef CONFIG_TEGRA_LP1_950
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
 	.globl lp1_register_pmuslave_addr
 	.globl lp1_register_i2c_base_addr
 	.globl lp1_register_core_lowvolt
@@ -749,7 +749,7 @@ tegra3_cpu_clk32k:
 lp1_clocks_prepare:
 	/* Prepare to set the Core to the lowest voltage if supported.
 	 * Start by setting the I2C clocks to make the I2C transfer */
-#ifdef CONFIG_TEGRA_LP1_950
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
 	/* Set up the PWR I2C GPIOs with the right masks*/
 
 	/* Reset(Set/Clr) the DVC-I2C Controller*/
