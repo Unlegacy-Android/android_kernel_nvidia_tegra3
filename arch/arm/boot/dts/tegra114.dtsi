@@ -31,36 +31,43 @@
 		#size-cells = <1>;
 
 		ranges = <0x54000000 0x54000000 0x01000000>;
+		status = "disabled";
 
 		vi {
 			compatible = "nvidia,tegra114-vi";
 			reg = <0x54080000 0x00040000>;
+			status = "disabled";
 		};
 
 		epp {
 			compatible = "nvidia,tegra114-epp";
 			reg = <0x540c0000 0x00040000>;
+			status = "disabled";
 		};
 
 		isp {
 			compatible = "nvidia,tegra114-isp";
 			reg = <0x54100000 0x00040000>;
+			status = "disabled";
 		};
 
 		gr2d {
 			compatible = "nvidia,tegra114-gr2d";
 			reg = <0x54140000 0x00040000>;
+			status = "disabled";
 		};
 
 		gr3d {
 			compatible = "nvidia,tegra114-gr3d";
 			reg = <0x54180000 0x00040000>;
+			status = "disabled";
 		};
 
 		dc@54200000 {
 			compatible = "nvidia,tegra114-dc";
 			reg = <0x54200000 0x00040000>;
 			interrupts = <0 73 0x04>;
+			status = "disabled";
 
 			rgb {
 				status = "disabled";
@@ -71,6 +78,7 @@
 			compatible = "nvidia,tegra114-dc";
 			reg = <0x54240000 0x00040000>;
 			interrupts = <0 74 0x04>;
+			status = "disabled";
 
 			rgb {
 				status = "disabled";
@@ -100,11 +108,13 @@
 		msenc {
 			compatible = "nvidia,tegra114-msenc";
 			reg = <0x544c0000 0x00040000>;
+			status = "disabled";
 		};
 
 		tsec {
 			compatible = "nvidia,tegra114-tsec";
 			reg = <0x54500000 0x00040000>;
+			status = "disabled";
 		};
 	};
 
@@ -121,6 +131,7 @@
 		compatible = "nvidia,tegra114-pinmux";
 		reg = <0x70000868 0xd4    /* Pad control registers */
 		       0x70003000 0x3e4>; /* Mux registers */
+		status = "disabled";
 	};
 
 	timer {
@@ -128,6 +139,7 @@
 		interrupts = <1 13 0xf04
 			      1 14 0xf04>;
 		clock-frequency = <12000000>;
+		status = "disabled";
 	};
 
 	gpio: gpio@6000d000 {
@@ -145,7 +157,7 @@
 		gpio-controller;
 		#interrupt-cells = <2>;
 		interrupt-controller;
-		status = "disable";
+		status = "disabled";
 	};
 
 	i2c1: i2c@7000c000 {
@@ -156,7 +168,7 @@
 		interrupts = <0 38 0x04>;
 		scl-gpios = <&gpio 20 0>; /* gpio PC4 */
 		sda-gpios = <&gpio 21 0>; /* gpio PC5 */
-		status = "disable";
+		status = "disabled";
 	};
 
 	i2c2: i2c@7000c400 {
@@ -167,7 +179,7 @@
 		interrupts = <0 84 0x04>;
 		scl-gpios = <&gpio 157 0>; /* gpio PT5 */
 		sda-gpios = <&gpio 158 0>; /* gpio PT6 */
-		status = "disable";
+		status = "disabled";
 	};
 
 	i2c3: i2c@7000c500 {
@@ -178,7 +190,7 @@
 		interrupts = <0 92 0x04>;
 		scl-gpios = <&gpio 217 0>; /* gpio PBB1 */
 		sda-gpios = <&gpio 218 0>; /* gpio PBB2 */
-		status = "disable";
+		status = "disabled";
 	};
 
 	i2c4: i2c@7000c700 {
@@ -189,7 +201,7 @@
 		interrupts = <0 120 0x04>;
 		scl-gpios = <&gpio 172 0>; /* gpio PV4 */
 		sda-gpios = <&gpio 173 0>; /* gpio PV5 */
-		status = "disable";
+		status = "disabled";
 	};
 
 	i2c5: i2c@7000d000 {
@@ -200,37 +212,37 @@
 		interrupts = <0 53 0x04>;
 		scl-gpios = <&gpio 206 0>; /* gpio PZ6 */
 		sda-gpios = <&gpio 207 0>; /* gpio PZ7 */
-		status = "disable";
+		status = "disabled";
 	};
 
 	sdhci@78000600 {
 		compatible = "nvidia,tegra114-sdhci", "nvidia,tegra20-sdhci";
 		reg = <0x78000600 0x200>;
 		interrupts = < 0 31 0x04 >;
-		status = "disable";
+		status = "disabled";
 	};
 	sdhci@78000400 {
 		compatible = "nvidia,tegra114-sdhci", "nvidia,tegra20-sdhci";
 		reg = <0x78000400 0x200>;
 		interrupts = < 0 19 0x04 >;
-		status = "disable";
+		status = "disabled";
 	};
 	sdhci@78000200 {
 		compatible = "nvidia,tegra114-sdhci", "nvidia,tegra20-sdhci";
 		reg = <0x78000200 0x200>;
 		interrupts = < 0 15 0x04 >;
-		status = "disable";
+		status = "disabled";
 	};
 	sdhci@78000000 {
 		compatible = "nvidia,tegra114-sdhci", "nvidia,tegra20-sdhci";
 		reg = <0x78000000 0x200>;
 		interrupts = < 0 14 0x04 >;
-		status = "disable";
+		status = "disabled";
 	};
 
 	camera {
 		compatible = "nvidia,tegra114-camera", "nvidia,tegra20-camera";
 		reg = <0x0 0x0>;
-		status = "disable";
+		status = "disabled";
 	};
 };
