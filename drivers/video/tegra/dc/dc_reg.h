@@ -110,6 +110,8 @@
 #define  WINDOW_A_SELECT		(1 << 4)
 #define  WINDOW_B_SELECT		(1 << 5)
 #define  WINDOW_C_SELECT		(1 << 6)
+#define  WINDOW_D_SELECT		(1 << 7)
+#define  WINDOW_H_SELECT		(1 << 8)
 
 #define DC_CMD_REG_ACT_CONTROL			0x043
 
@@ -379,7 +381,9 @@
 #define DC_DISP_CURSOR_START_ADDR_NS		0x43f
 #define   CURSOR_START_ADDR_MASK	(((1 << 22) - 1) << 10)
 #define   CURSOR_START_ADDR(_addr)	((_addr) >> 10)
-#define	  CURSOR_SIZE_64		(1 << 24)
+#define   CURSOR_SIZE_64		(0x1 << 24)
+#define   CURSOR_SIZE_128		(0x2 << 24)
+#define   CURSOR_SIZE_256		(0x3 << 24)
 
 #define DC_DISP_CURSOR_POSITION			0x440
 #define   CURSOR_POSITION(_x, _y)		\
@@ -674,4 +678,8 @@
 #define  NUM_AGG_PRI_LVLS		4
 #define  SD_AGG_PRI_LVL(x)		((x) >> 3)
 #define  SD_GET_AGG(x)			((x) & 0x7)
+
+#define DC_DISP_BLEND_CURSOR_CONTROL		0x4f1
+#define  CURSOR_MODE_SELECT(x)		(((x) & 0x1) << 24)
+
 #endif
