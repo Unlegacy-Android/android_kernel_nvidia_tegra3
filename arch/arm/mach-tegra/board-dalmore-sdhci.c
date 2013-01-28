@@ -33,6 +33,7 @@
 #include<mach/gpio-tegra.h>
 #include <mach/io_dpd.h>
 
+#include "tegra-board-id.h"
 #include "gpio-names.h"
 #include "board.h"
 #include "board-dalmore.h"
@@ -149,8 +150,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.trim_delay = 0x2,
 	.ddr_clk_limit = 41000000,
 	.max_clk_limit = 82000000,
-	.uhs_mask = MMC_UHS_MASK_SDR104 |
-		MMC_UHS_MASK_DDR50,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
@@ -387,6 +386,15 @@ subsys_initcall_sync(dalmore_wifi_prepower);
 
 int __init dalmore_sdhci_init(void)
 {
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_E1611) {
+		tegra_sdhci_platform_data2.uhs_mask = MMC_UHS_MASK_SDR104 |
+				MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50;
+		tegra_sdhci_platform_data0.uhs_mask = MMC_UHS_MASK_SDR104 |
+				MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50;
+	}
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);
