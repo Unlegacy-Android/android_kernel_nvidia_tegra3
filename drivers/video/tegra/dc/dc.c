@@ -2648,6 +2648,9 @@ static int tegra_dc_resume(struct platform_device *ndev)
 	mutex_lock(&dc->lock);
 	dc->suspended = false;
 
+	/* To pan the fb on resume */
+	tegra_fb_pan_display_reset(dc->fb);
+
 	if (dc->enabled) {
 		dc->enabled = false;
 		_tegra_dc_set_default_videomode(dc);
