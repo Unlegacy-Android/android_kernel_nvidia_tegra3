@@ -22,6 +22,7 @@
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <linux/input.h>
+#include <linux/io.h>
 #include <mach/io.h>
 #include <mach/iomap.h>
 #include <mach/kbc.h>
@@ -33,9 +34,27 @@
 #include "board.h"
 #include "board-dalmore.h"
 #include "devices.h"
+#include "wakeups-t11x.h"
 
 #define DALMORE_ROW_COUNT	3
 #define DALMORE_COL_COUNT	3
+
+static int dalmore_wakeup_key(void)
+{
+	int wakeup_key;
+	u64 status = readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_WAKE_STATUS)
+		| (u64)readl(IO_ADDRESS(TEGRA_PMC_BASE)
+		+ PMC_WAKE2_STATUS) << 32;
+
+	if (status & ((u64)1 << TEGRA_WAKE_GPIO_PQ0))
+		wakeup_key = KEY_POWER;
+	else if (status & ((u64)1 << TEGRA_WAKE_GPIO_PS0))
+		wakeup_key = SW_LID;
+	else
+		wakeup_key = KEY_RESERVED;
+
+	return wakeup_key;
+}
 
 static const u32 kbd_keymap[] = {
 	KEY(0, 0, KEY_POWER),
@@ -104,11 +123,34 @@ static struct gpio_keys_button dalmore_int_keys[] = {
 				MAX77663_IRQ_ONOFF_EN0_1SEC, 0, 3000),
 };
 
+static struct gpio_keys_button dalmore_e1611_1000_keys[] = {
+	[0] = {
+		.code = SW_LID,
+		.gpio = TEGRA_GPIO_HALL,
+		.irq = -1,
+		.type = EV_SW,
+		.desc = "Hall Effect Sensor",
+		.active_low = 1,
+		.wakeup = 1,
+		.debounce_interval = 100,
+	},
+};
+
 static struct gpio_keys_button dalmore_e1611_1001_keys[] = {
 	[0] = GPIO_KEY(KEY_POWER, PQ0, 1),
 	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
 	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PR1, 0),
 	[3] = GPIO_KEY(KEY_HOME, PI5, 0),
+	[4] = {
+		.code = SW_LID,
+		.gpio = TEGRA_GPIO_HALL,
+		.irq = -1,
+		.type = EV_SW,
+		.desc = "Hall Effect Sensor",
+		.active_low = 1,
+		.wakeup = 1,
+		.debounce_interval = 100,
+	},
 };
 
 static struct gpio_keys_platform_data dalmore_int_keys_pdata = {
@@ -116,9 +158,16 @@ static struct gpio_keys_platform_data dalmore_int_keys_pdata = {
 	.nbuttons	= ARRAY_SIZE(dalmore_int_keys),
 };
 
+static struct gpio_keys_platform_data dalmore_e1611_1000_keys_pdata = {
+	.buttons	= dalmore_e1611_1000_keys,
+	.nbuttons	= ARRAY_SIZE(dalmore_e1611_1000_keys),
+	.wakeup_key	= dalmore_wakeup_key,
+};
+
 static struct gpio_keys_platform_data dalmore_e1611_1001_keys_pdata = {
 	.buttons	= dalmore_e1611_1001_keys,
 	.nbuttons	= ARRAY_SIZE(dalmore_e1611_1001_keys),
+	.wakeup_key	= dalmore_wakeup_key,
 };
 
 static struct platform_device dalmore_int_keys_device = {
@@ -126,6 +175,14 @@ static struct platform_device dalmore_int_keys_device = {
 	.id	= 0,
 	.dev	= {
 		.platform_data  = &dalmore_int_keys_pdata,
+	},
+};
+
+static struct platform_device dalmore_e1611_1000_keys_device = {
+	.name	= "gpio-keys",
+	.id	= 0,
+	.dev	= {
+		.platform_data  = &dalmore_e1611_1000_keys_pdata,
 	},
 };
 
@@ -170,6 +227,7 @@ int __init dalmore_kbc_init(void)
 
 	if ((board_info.board_id == BOARD_E1611) && (board_info.sku == 1000)) {
 		dalmore_register_kbc();
+		platform_device_register(&dalmore_e1611_1000_keys_device);
 	} else {
 		int ret;
 
