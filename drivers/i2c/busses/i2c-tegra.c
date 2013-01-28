@@ -41,9 +41,6 @@
 
 #include <mach/clk.h>
 #include <mach/pinmux.h>
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-#include <linux/earlysuspend.h>
-#endif
 
 #define TEGRA_I2C_TIMEOUT			(msecs_to_jiffies(1000))
 #define TEGRA_I2C_RETRIES			3
@@ -231,17 +228,7 @@ struct tegra_i2c_dev {
 	int (*arb_recovery)(int scl_gpio, int sda_gpio);
 	struct tegra_i2c_chipdata *chipdata;
 	struct tegra_i2c_bus busses[1];
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-	struct early_suspend early_suspend;
-#endif
-
 };
-
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-#define EARLY_SUSPEND_LEVEL_MAX		EARLY_SUSPEND_LEVEL_DISABLE_FB
-static void tegra_i2c_early_suspend(struct early_suspend *es);
-static void tegra_i2c_early_resume(struct early_suspend *es);
-#endif
 
 static void dvc_writel(struct tegra_i2c_dev *i2c_dev, u32 val, unsigned long reg)
 {
@@ -1229,16 +1216,6 @@ static int __devinit tegra_i2c_probe(struct platform_device *pdev)
 	i2c_dev->slave_addr = plat->slave_addr;
 	i2c_dev->hs_master_code = plat->hs_master_code;
 	i2c_dev->is_dvc = plat->is_dvc;
-
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-	if (i2c_dev->is_clkon_always) {
-		i2c_dev->early_suspend.level = EARLY_SUSPEND_LEVEL_MAX + 1;
-		i2c_dev->early_suspend.suspend = tegra_i2c_early_suspend;
-		i2c_dev->early_suspend.resume = tegra_i2c_early_resume;
-		register_early_suspend(&i2c_dev->early_suspend);
-	}
-#endif
-
 	init_completion(&i2c_dev->msg_complete);
 
 	if (!i2c_dev->chipdata->has_xfer_complete_interrupt)
@@ -1334,43 +1311,6 @@ static int __devexit tegra_i2c_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-static void tegra_i2c_early_suspend(struct early_suspend *es)
-{
-	struct tegra_i2c_dev *i2c_dev;
-	i2c_dev = container_of(es, struct tegra_i2c_dev, early_suspend);
-
-	rt_mutex_lock(&i2c_dev->dev_lock);
-
-	i2c_dev->is_suspended = true;
-	tegra_i2c_clock_disable(i2c_dev);
-
-	rt_mutex_unlock(&i2c_dev->dev_lock);
-}
-
-static void tegra_i2c_early_resume(struct early_suspend *es)
-{
-	struct tegra_i2c_dev *i2c_dev;
-	int ret;
-
-	i2c_dev = container_of(es, struct tegra_i2c_dev, early_suspend);
-
-	rt_mutex_lock(&i2c_dev->dev_lock);
-
-	tegra_i2c_clock_enable(i2c_dev);
-
-	ret = tegra_i2c_init(i2c_dev);
-	if (ret) {
-		rt_mutex_unlock(&i2c_dev->dev_lock);
-		return;
-	}
-
-	i2c_dev->is_suspended = false;
-
-	rt_mutex_unlock(&i2c_dev->dev_lock);
-}
-#endif
-
 #ifdef CONFIG_PM_SLEEP
 static int tegra_i2c_suspend_noirq(struct device *dev)
 {
@@ -1379,14 +1319,9 @@ static int tegra_i2c_suspend_noirq(struct device *dev)
 
 	rt_mutex_lock(&i2c_dev->dev_lock);
 
-#ifndef CONFIG_HAS_EARLYSUSPEND
+	i2c_dev->is_suspended = true;
 	if (i2c_dev->is_clkon_always)
 		tegra_i2c_clock_disable(i2c_dev);
-	i2c_dev->is_suspended = true;
-#else
-	if (!i2c_dev->is_clkon_always)
-		i2c_dev->is_suspended = true;
-#endif
 
 	rt_mutex_unlock(&i2c_dev->dev_lock);
 
@@ -1401,31 +1336,17 @@ static int tegra_i2c_resume_noirq(struct device *dev)
 
 	rt_mutex_lock(&i2c_dev->dev_lock);
 
-	(void) ret;
-
-#ifndef CONFIG_HAS_EARLYSUSPEND
 	if (i2c_dev->is_clkon_always)
 		tegra_i2c_clock_enable(i2c_dev);
 
 	ret = tegra_i2c_init(i2c_dev);
+
 	if (ret) {
 		rt_mutex_unlock(&i2c_dev->dev_lock);
 		return ret;
 	}
 
 	i2c_dev->is_suspended = false;
-#else
-	if (!i2c_dev->is_clkon_always) {
-		ret = tegra_i2c_init(i2c_dev);
-		if (ret) {
-			rt_mutex_unlock(&i2c_dev->dev_lock);
-			return ret;
-		}
-		i2c_dev->is_suspended = false;
-	}
-#endif
-
-
 
 	rt_mutex_unlock(&i2c_dev->dev_lock);
 
