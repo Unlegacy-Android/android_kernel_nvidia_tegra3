@@ -65,6 +65,7 @@ obj-y                                   += i2c_error_recovery.o
 obj-y                                   += mc.o
 obj-$(CONFIG_TEGRA_STAT_MON)            += tegra2_statmon.o
 obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
+obj-$(CONFIG_USB_SUPPORT)               += tegra_usb_pmc.o
 obj-$(CONFIG_USB_SUPPORT)               += tegra3_usb_phy.o
 obj-$(CONFIG_USB_SUPPORT)               += tegra2_usb_phy.o
 obj-$(CONFIG_USB_SUPPORT)               += tegra11x_usb_phy.o
