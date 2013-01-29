@@ -59,6 +59,8 @@ struct bq2419x_charger {
 	struct regulator_dev	*rdev;
 	struct regulator_desc	reg_desc;
 	struct regulator_init_data	reg_init_data;
+	int			shutdown_complete;
+	struct mutex		mutex;
 };
 
 static enum power_supply_property bq2419x_psy_props[] = {
@@ -79,24 +81,33 @@ static int current_to_reg(const unsigned int *tbl,
 static int bq2419x_charger_enable(struct bq2419x_charger *charger)
 {
 	int ret;
-
+	if (bq_charger && bq_charger->shutdown_complete) {
+		mutex_unlock(&bq_charger->mutex);
+		return -ENODEV;
+	}
 	dev_info(charger->dev, "Charging enabled\n");
 	ret = regmap_update_bits(charger->chip->regmap, BQ2419X_PWR_ON_REG,
 				ENABLE_CHARGE_MASK, ENABLE_CHARGE);
 	if (ret < 0)
 		dev_err(charger->dev, "register update failed, err %d\n", ret);
+	mutex_unlock(&bq_charger->mutex);
 	return ret;
 }
 
 static int bq2419x_charger_disable(struct bq2419x_charger *charger)
 {
 	int ret;
+	if (bq_charger && bq_charger->shutdown_complete) {
+		mutex_unlock(&bq_charger->mutex);
+		return -ENODEV;
+	}
 
 	dev_info(charger->dev, "Charging disabled\n");
 	ret = regmap_update_bits(charger->chip->regmap, BQ2419X_PWR_ON_REG,
 				ENABLE_CHARGE_MASK, 0);
 	if (ret < 0)
 		dev_err(charger->dev, "register update failed, err %d\n", ret);
+	mutex_unlock(&bq_charger->mutex);
 	return ret;
 }
 
@@ -131,6 +142,11 @@ static int bq2419x_init(struct bq2419x_charger *charger)
 {
 	int val, ret = 0;
 
+	if (bq_charger && bq_charger->shutdown_complete) {
+		mutex_unlock(&bq_charger->mutex);
+		return -ENODEV;
+	}
+
 	if (charger->usb_online) {
 		val = current_to_reg(iinlim, ARRAY_SIZE(iinlim),
 					charger->usb_in_current_limit);
@@ -156,6 +172,7 @@ static int bq2419x_init(struct bq2419x_charger *charger)
 			dev_err(charger->dev, "error reading reg: 0x%x\n",
 				BQ2419X_INPUT_SRC_REG);
 	}
+	mutex_unlock(&bq_charger->mutex);
 	return ret;
 }
 
@@ -170,13 +187,21 @@ static int bq2419x_enable_charger(struct regulator_dev *rdev,
 	bq_charger->ac_online = 0;
 	bq_charger->status = 0;
 
+	mutex_lock(&bq_charger->mutex);
+	if (bq_charger && bq_charger->shutdown_complete) {
+		mutex_unlock(&bq_charger->mutex);
+		return -ENODEV;
+	}
+
 	ret = regmap_read(bq_charger->chip->regmap, BQ2419X_SYS_STAT_REG, &val);
 	if (ret < 0)
 		dev_err(bq_charger->dev, "error reading reg: 0x%x\n",
 				BQ2419X_SYS_STAT_REG);
 
-	if (max_uA == 0 && val != 0)
+	if (max_uA == 0 && val != 0) {
+		mutex_unlock(&bq_charger->mutex);
 		return ret;
+	}
 
 	if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_UNKNOWN) {
 		bq_charger->status = 0;
@@ -215,15 +240,26 @@ static int bq2419x_enable_charger(struct regulator_dev *rdev,
 		if (bq_charger->use_usb)
 			power_supply_changed(&bq_charger->usb);
 	}
+	mutex_unlock(&bq_charger->mutex);
 	return 0;
 error:
 	dev_err(bq_charger->dev, "Charger enable failed, err = %d\n", ret);
+	mutex_unlock(&bq_charger->mutex);
 	return ret;
 }
 
 static struct regulator_ops bq2419x_tegra_regulator_ops = {
 	.set_current_limit = bq2419x_enable_charger,
 };
+
+static void bq2419x_charger_shutdown(struct platform_device *pdev)
+{
+	struct bq2419x_charger *charger = platform_get_drvdata(pdev);
+
+	mutex_lock(&charger->mutex);
+	charger->shutdown_complete = 1;
+	mutex_unlock(&charger->mutex);
+}
 
 static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 {
@@ -255,15 +291,20 @@ static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 	charger->gpio_status = bcharger_pdata->gpio_status;
 	charger->gpio_interrupt = bcharger_pdata->gpio_interrupt;
 	charger->update_status = bcharger_pdata->update_status;
+	charger->shutdown_complete = 0;
 	bq_charger = charger;
 	platform_set_drvdata(pdev, charger);
+	mutex_init(&bq_charger->mutex);
 
+	mutex_lock(&bq_charger->mutex);
 	ret = regmap_read(charger->chip->regmap, BQ2419X_REVISION_REG, &val);
 	if (ret < 0) {
 		dev_err(charger->dev, "error reading reg: 0x%x, err = %d\n",
 					BQ2419X_REVISION_REG, ret);
+		mutex_unlock(&bq_charger->mutex);
 		return ret;
 	}
+	mutex_unlock(&bq_charger->mutex);
 
 	if ((val & BQ24190_IC_VER) == BQ24190_IC_VER)
 		dev_info(charger->dev, "chip type BQ24190 detected\n");
@@ -367,7 +408,7 @@ psy_error:
 free_gpio_status:
 	if (gpio_is_valid(charger->gpio_status))
 		gpio_free(charger->gpio_status);
-
+	mutex_destroy(&bq_charger->mutex);
 	return ret;
 }
 
@@ -381,6 +422,7 @@ static int __devexit bq2419x_charger_remove(struct platform_device *pdev)
 		power_supply_unregister(&charger->ac);
 	if (gpio_is_valid(charger->gpio_status))
 		gpio_free(charger->gpio_status);
+	mutex_destroy(&bq_charger->mutex);
 	return 0;
 }
 
@@ -390,6 +432,7 @@ static struct platform_driver bq2419x_charger_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = bq2419x_charger_probe,
+	.shutdown = bq2419x_charger_shutdown,
 	.remove = __devexit_p(bq2419x_charger_probe),
 };
 
