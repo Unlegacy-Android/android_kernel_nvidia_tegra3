@@ -50,6 +50,7 @@ struct tegra_sdhci_platform_data {
 	unsigned int tap_delay;
 	unsigned int trim_delay;
 	unsigned int uhs_mask;
+	unsigned int sd_detect_in_suspend;
 	struct mmc_platform_data mmc_data;
 };
 

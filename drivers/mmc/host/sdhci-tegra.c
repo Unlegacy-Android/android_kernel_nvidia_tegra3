@@ -212,6 +212,8 @@ struct sdhci_tegra {
 	unsigned int max_clk_limit;
 	/* max ddr clk supported by the platform */
 	unsigned int ddr_clk_limit;
+	/* SD Hot Plug in Suspend State */
+	unsigned int sd_detect_in_suspend;
 	struct tegra_io_dpd *dpd;
 	bool card_present;
 	bool is_rail_enabled;
@@ -1580,9 +1582,13 @@ static void tegra_sdhci_post_resume(struct sdhci_host *sdhci)
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 
-	/* Turn OFF the clocks if the card is not present */
-	if (!(tegra_host->card_present) && tegra_host->clk_enabled)
+	if (tegra_host->card_present) {
+		if (tegra_host->sd_detect_in_suspend)
+			tasklet_schedule(&sdhci->card_tasklet);
+	} else if (tegra_host->clk_enabled) {
+		/* Turn OFF the clocks if the card is not present */
 		tegra_sdhci_set_clock(sdhci, 0);
+	}
 }
 
 static void sdhci_tegra_error_stats_debugfs(struct sdhci_host *host)
@@ -1910,6 +1916,7 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_host->clk_enabled = true;
 	tegra_host->max_clk_limit = plat->max_clk_limit;
 	tegra_host->ddr_clk_limit = plat->ddr_clk_limit;
+	tegra_host->sd_detect_in_suspend = plat->sd_detect_in_suspend;
 	tegra_host->instance = pdev->id;
 	tegra_host->dpd = tegra_io_dpd_get(mmc_dev(host->mmc));
 
