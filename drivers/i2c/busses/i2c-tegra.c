@@ -936,6 +936,7 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_bus *i2c_bus,
 		} else if (i2c_dev->arb_recovery)
 			i2c_dev->arb_recovery(i2c_bus->scl_gpio,
 							i2c_bus->sda_gpio);
+		return -EAGAIN;
 	}
 
 	if (i2c_dev->msg_err == I2C_ERR_NO_ACK) {
