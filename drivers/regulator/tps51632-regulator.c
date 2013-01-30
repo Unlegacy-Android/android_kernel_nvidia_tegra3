@@ -81,6 +81,8 @@ struct tps51632_chip {
 
 	bool pwm_enabled;
 	unsigned int change_uv_per_us;
+	int shutdown_complete;
+	struct mutex mutex;
 };
 
 static int tps51632_dcdc_get_voltage_sel(struct regulator_dev *rdev)
@@ -90,13 +92,20 @@ static int tps51632_dcdc_get_voltage_sel(struct regulator_dev *rdev)
 	int ret;
 	unsigned int reg = TPS51632_VOLTAGE_SELECT_REG;
 
+	mutex_lock(&tps->mutex);
+	if (tps && tps->shutdown_complete) {
+		mutex_unlock(&tps->mutex);
+		return -ENODEV;
+	}
 	if (tps->pwm_enabled)
 		reg = TPS51632_VOLTAGE_BASE_REG;
 	ret = regmap_read(tps->regmap, reg, &data);
 	if (ret < 0) {
 		dev_err(tps->dev, "reg read failed, err %d\n", ret);
+		mutex_unlock(&tps->mutex);
 		return ret;
 	}
+	mutex_unlock(&tps->mutex);
 	return data & TPS51632_VOUT_MASK;
 }
 
@@ -108,9 +117,17 @@ static int tps51632_dcdc_set_voltage(struct regulator_dev *rdev,
 	int vsel;
 	int ret;
 
+	mutex_lock(&tps->mutex);
+	if (tps && tps->shutdown_complete) {
+		mutex_unlock(&tps->mutex);
+		return -ENODEV;
+	}
+
 	if ((max_uV < min_uV) || (max_uV < TPS51632_MIN_VOLATGE) ||
-			(min_uV > TPS51632_MAX_VOLATGE))
+			(min_uV > TPS51632_MAX_VOLATGE)) {
+		mutex_unlock(&tps->mutex);
 		return -EINVAL;
+	}
 
 	vsel = DIV_ROUND_UP(min_uV - TPS51632_MIN_VOLATGE,
 			TPS51632_VOLATGE_STEP) + 0x19;
@@ -123,6 +140,7 @@ static int tps51632_dcdc_set_voltage(struct regulator_dev *rdev,
 	ret = regmap_write(tps->regmap, reg, vsel);
 	if (ret < 0)
 		dev_err(tps->dev, "reg write failed, err %d\n", ret);
+	mutex_unlock(&tps->mutex);
 	return ret;
 }
 
@@ -158,6 +176,11 @@ static int tps51632_dcdc_set_control_mode(struct regulator_dev *rdev,
 	struct tps51632_chip *tps = rdev_get_drvdata(rdev);
 	int ret;
 
+	mutex_lock(&tps->mutex);
+	if (tps && tps->shutdown_complete) {
+		mutex_unlock(&tps->mutex);
+		return -ENODEV;
+	}
 	if (mode == REGULATOR_CONTROL_MODE_I2C)
 	     ret = regmap_update_bits(tps->regmap,
 			TPS51632_DVFS_CONTROL_REG, TPS51632_DVFS_PWMEN, 0);
@@ -165,14 +188,17 @@ static int tps51632_dcdc_set_control_mode(struct regulator_dev *rdev,
 	      ret = regmap_update_bits(tps->regmap,
 			TPS51632_DVFS_CONTROL_REG, TPS51632_DVFS_PWMEN,
 			TPS51632_DVFS_PWMEN);
-	else
+	else {
+		mutex_unlock(&tps->mutex);
 		return -EINVAL;
-
+	}
 	if (ret < 0) {
 		dev_err(tps->dev, "DVFS reg write failed, err %d\n", ret);
+		mutex_unlock(&tps->mutex);
 		return ret;
 	}
 	tps->pwm_enabled = (mode == REGULATOR_CONTROL_MODE_PWM);
+	mutex_unlock(&tps->mutex);
 	return ret;
 }
 
@@ -203,6 +229,11 @@ static int __devinit tps51632_init_dcdc(struct tps51632_chip *tps,
 	int vsel;
 	unsigned int vmax;
 
+	mutex_lock(&tps->mutex);
+	if (tps && tps->shutdown_complete) {
+		mutex_unlock(&tps->mutex);
+		return -ENODEV;
+	}
 	if (pdata->enable_pwm) {
 		control |= TPS51632_DVFS_PWMEN;
 		tps->pwm_enabled = pdata->enable_pwm;
@@ -212,6 +243,7 @@ static int __devinit tps51632_init_dcdc(struct tps51632_chip *tps,
 	ret = regmap_write(tps->regmap, TPS51632_VOLTAGE_BASE_REG, vsel);
 	if (ret < 0) {
 		dev_err(tps->dev, "BASE reg write failed, err %d\n", ret);
+		mutex_unlock(&tps->mutex);
 		return ret;
 	}
 	if (pdata->dvfs_step_20mV)
@@ -230,6 +262,7 @@ static int __devinit tps51632_init_dcdc(struct tps51632_chip *tps,
 		ret = regmap_read(tps->regmap, TPS51632_VMAX_REG, &vmax);
 		if (ret < 0) {
 			dev_err(tps->dev, "VMAX read failed, err %d\n", ret);
+			mutex_unlock(&tps->mutex);
 			return ret;
 		}
 		if (vmax & TPS51632_VMAX_LOCK)
@@ -240,6 +273,7 @@ static int __devinit tps51632_init_dcdc(struct tps51632_chip *tps,
 		ret = regmap_write(tps->regmap, TPS51632_VMAX_REG, vsel);
 		if (ret < 0) {
 			dev_err(tps->dev, "VMAX write failed, err %d\n", ret);
+			mutex_unlock(&tps->mutex);
 			return ret;
 		}
 	}
@@ -248,6 +282,7 @@ skip_vmax_config:
 	ret = regmap_write(tps->regmap, TPS51632_DVFS_CONTROL_REG, control);
 	if (ret < 0) {
 		dev_err(tps->dev, "DVFS reg write failed, err %d\n", ret);
+		mutex_unlock(&tps->mutex);
 		return ret;
 	}
 
@@ -258,6 +293,7 @@ skip_vmax_config:
 	ret = regmap_write(tps->regmap, TPS51632_SLEW_REGS, vsel);
 	if (ret < 0)
 		dev_err(tps->dev, "SLEW reg write failed, err %d\n", ret);
+	mutex_unlock(&tps->mutex);
 	return ret;
 }
 
@@ -268,6 +304,15 @@ static const struct regmap_config tps51632_regmap_config = {
 	.cache_type		= REGCACHE_RBTREE,
 };
 
+static void tps51632_shutdown(struct i2c_client *client)
+{
+	struct tps51632_chip *tps = i2c_get_clientdata(client);
+
+	mutex_lock(&tps->mutex);
+	tps->shutdown_complete = 1;
+	mutex_unlock(&tps->mutex);
+
+}
 static int __devinit tps51632_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
@@ -302,6 +347,7 @@ static int __devinit tps51632_probe(struct i2c_client *client,
 	}
 	i2c_set_clientdata(client, tps);
 
+	mutex_init(&tps->mutex);
 	ret = tps51632_init_dcdc(tps, pdata);
 	if (ret < 0) {
 		dev_err(tps->dev, "Init failed, err = %d\n", ret);
@@ -316,6 +362,7 @@ static int __devinit tps51632_probe(struct i2c_client *client,
 		return PTR_ERR(rdev);
 	}
 
+	tps->shutdown_complete = 0;
 	tps->rdev = rdev;
 	return 0;
 }
@@ -324,6 +371,7 @@ static int __devexit tps51632_remove(struct i2c_client *client)
 {
 	struct tps51632_chip *tps = i2c_get_clientdata(client);
 
+	mutex_destroy(&tps->mutex);
 	regulator_unregister(tps->rdev);
 	return 0;
 }
@@ -341,6 +389,7 @@ static struct i2c_driver tps51632_i2c_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = tps51632_probe,
+	.shutdown = tps51632_shutdown,
 	.remove = __devexit_p(tps51632_remove),
 	.id_table = tps51632_id,
 };
