@@ -1550,6 +1550,33 @@ tegra_xhci_padctl_enable_usb_vbus(struct tegra_xhci_hcd *tegra)
 	writel(reg, tegra->padctl_base + USB2_OC_MAP_0);
 }
 
+static void utmip_biaspd_workaround(struct tegra_xhci_hcd *tegra)
+{
+#define TEGRA_USB_BASE			0x7D000000
+#define UTMIP_BIAS_CFG0		0x80c
+#define   UTMIP_BIASPD			(1 << 10)
+
+	void __iomem *pad_base =  IO_ADDRESS(TEGRA_USB_BASE);
+	struct platform_device *pdev = tegra->pdev;
+	u32 reg;
+
+	/* Workaround: Clear BIASPD bit from UTMIP_BIAS_CFG0 register
+	 *
+	 * REASON: USB 2.0 phy driver will power down utmip bias circuit when
+	 * neither UTMI0 nor UTMI1 is using by USB 2.0 drivers. However, USB 3.0
+	 * controller might still need UTMI bias pad to be working.
+	 *
+	 * TODO: This is shared bit between USB2 and USB3 so check with USB 2.0
+	 * team and do it in a common place */
+	reg = ioread32(pad_base + UTMIP_BIAS_CFG0);
+	if (reg & UTMIP_BIASPD) {
+		dev_info(&pdev->dev, "%s: (WAR) powering up UTMI BIAS pad\n",
+				__func__);
+		reg &= ~UTMIP_BIASPD;
+		iowrite32(reg, pad_base + UTMIP_BIAS_CFG0);
+	}
+}
+
 /* This function assigns the USB ports to the controllers,
  * then programs the port capabilities and pad parameters
  * of ports assigned to XUSB after booted to OS.
@@ -1656,6 +1683,8 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 	reg = readl(tegra->padctl_base + HSIC_PAD1_CTL_0_0);
 	reg &= xusb_padctl->hsic_pad0_ctl1;
 	writel(reg, tegra->padctl_base + HSIC_PAD1_CTL_0_0);
+
+	utmip_biaspd_workaround(tegra);
 }
 
 /* This function read XUSB registers and stores in device context */
