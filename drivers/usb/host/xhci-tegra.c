@@ -1146,6 +1146,35 @@ static void tegra_xusb_regulator_deinit(struct tegra_xhci_hcd *tegra)
 	tegra->xusb_avdd_usb3_pll_reg = NULL;
 }
 
+static void utmipll_iddq_workaround(struct tegra_xhci_hcd *tegra)
+{
+#define TEGRA_CLK_RESET_BASE		0x60006000
+#define UTMIPLL_HW_PWRDN_CFG0			0x52c
+#define UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE	(1<<1)
+#define UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL	(1<<0)
+
+	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+	struct platform_device *pdev = tegra->pdev;
+	u32 reg;
+
+	/* Workaround: carry utmipll out of IDDQ mode
+	 *
+	 * REASON: At resume path, clock driver will put utmipll in IDDQ mode
+	 * per USB 2.0 driver's requirement. However, USB 3.0 controller need
+	 * utmipll out of IDDQ mode.
+	 *
+	 * TODO: This is shared bit between USB2 and USB3 so check with USB 2.0
+	 * team and do it in a common place */
+	reg = ioread32(clk_base + UTMIPLL_HW_PWRDN_CFG0);
+	if (reg & UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE) {
+		dev_info(&pdev->dev, "%s: (WAR) carrying UTMIPLL out of IDDQ\n",
+				__func__);
+		reg &= ~(UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE |
+				UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL);
+		iowrite32(reg, clk_base + UTMIPLL_HW_PWRDN_CFG0);
+	}
+}
+
 static int tegra_usb2_clocks_init(struct tegra_xhci_hcd *tegra)
 {
 	struct platform_device *pdev = tegra->pdev;
@@ -1173,6 +1202,9 @@ static int tegra_usb2_clocks_init(struct tegra_xhci_hcd *tegra)
 		err = PTR_ERR(tegra->utmip_clk);
 		goto err_disable_pllu;
 	}
+
+	utmipll_iddq_workaround(tegra);
+
 	/* enable utmip clock */
 	err = clk_enable(tegra->utmip_clk);
 	if (err) {
