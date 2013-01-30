@@ -399,8 +399,6 @@ static inline unsigned long st_ll_getstate(struct st_data_s *ll){ return 0; }
 #endif
 unsigned long st_ll_sleep_state(struct st_data_s *, unsigned char);
 void st_ll_wakeup(struct st_data_s *);
-int bluesleep_start(struct uart_port *);
-void bluesleep_stop(void);
 
 
 /*
@@ -454,4 +452,15 @@ struct ti_st_plat_data {
 	int (*resume)(struct platform_device *);
 };
 
+/*ST states used in st_host_wake driver*/
+#define ST_PROTO_UNREGISTERED  0
+#define ST_PROTO_REGISTERED    1
+
+void st_host_wake_notify(int, int);
+
+/*ST Voltage regulation state*/
+#define ST_VLTG_REG_DISABLE    0
+#define ST_VLTG_REG_ENABLE     1
+
+void st_vltg_regulation(int);
 #endif /* TI_WILINK_ST_H */
