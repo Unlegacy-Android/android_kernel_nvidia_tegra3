@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-dalmore.c
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -784,7 +784,7 @@ static int __init dalmore_touch_init(void)
 #ifdef CONFIG_EDP_FRAMEWORK
 static struct edp_manager battery_edp_manager = {
 	.name = "battery",
-	.imax = 2500
+	.max = 2500
 };
 
 static void __init dalmore_battery_edp_init(void)
