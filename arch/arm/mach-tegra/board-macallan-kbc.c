@@ -23,11 +23,13 @@
 #include <linux/platform_device.h>
 #include <linux/input.h>
 #include <mach/io.h>
+#include <linux/io.h>
 #include <mach/iomap.h>
 #include <mach/kbc.h>
 #include <linux/gpio.h>
 #include <linux/gpio_keys.h>
 #include <linux/mfd/palmas.h>
+#include "wakeups-t11x.h"
 
 #include "tegra-board-id.h"
 #include "board.h"
@@ -54,9 +56,26 @@ static struct gpio_keys_button macallan_e1545_keys[] = {
 	[5] = GPIO_KEY(KEY_MENU, PR0, 0), /* Todo : CAMS */
 };
 
+static int macallan_wakeup_key(void)
+{
+	int wakeup_key;
+	u64 status = readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_WAKE_STATUS)
+		| (u64)readl(IO_ADDRESS(TEGRA_PMC_BASE)
+		+ PMC_WAKE2_STATUS) << 32;
+	if (status & ((u64)1 << TEGRA_WAKE_GPIO_PQ0))
+		wakeup_key = KEY_POWER;
+	else if (status & ((u64)1 << TEGRA_WAKE_GPIO_PS0))
+		wakeup_key = SW_LID;
+	else
+		wakeup_key = KEY_RESERVED;
+
+	return wakeup_key;
+}
+
 static struct gpio_keys_platform_data macallan_e1545_keys_pdata = {
 	.buttons	= macallan_e1545_keys,
 	.nbuttons	= ARRAY_SIZE(macallan_e1545_keys),
+	.wakeup_key	= macallan_wakeup_key
 };
 
 static struct platform_device macallan_e1545_keys_device = {
