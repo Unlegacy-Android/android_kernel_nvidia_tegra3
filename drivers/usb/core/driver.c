@@ -536,8 +536,9 @@ int usb_match_one_id(struct usb_interface *interface,
 	struct usb_host_interface *intf;
 	struct usb_device *dev;
 
+	WARN_ON(interface == NULL);
 	/* proc_connectinfo in devio.c may call us with id == NULL. */
-	if (id == NULL)
+	if (id == NULL || interface == NULL)
 		return 0;
 
 	intf = interface->cur_altsetting;
