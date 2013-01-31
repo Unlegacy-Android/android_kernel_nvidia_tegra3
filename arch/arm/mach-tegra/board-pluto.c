@@ -353,6 +353,7 @@ static void pluto_i2c_init(void)
 	i2c_register_board_info(0, &pluto_codec_a2220_info, 1);
 	i2c_register_board_info(0, &cs42l73_board_info, 1);
 	pluto_i2c_bus3_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PW2);
+	i2c_register_board_info(0, pluto_i2c_bus3_board_info, 1);
 	i2c_register_board_info(0, &pluto_codec_aic326x_info, 1);
 }
 
