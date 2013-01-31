@@ -98,6 +98,10 @@ static int __init roth_throttle_init(void)
 }
 module_init(roth_throttle_init);
 
+static struct thermal_zone_params roth_nct1008_tzp = {
+	.governor_name = "pid_thermal_gov",
+};
+
 static struct nct1008_platform_data roth_nct1008_pdata = {
 	.supported_hwrev = true,
 	.ext_range = true,
@@ -129,6 +133,7 @@ static struct nct1008_platform_data roth_nct1008_pdata = {
 			.hysteresis = 6000,
 		},
 	},
+	.tzp = &roth_nct1008_tzp,
 };
 
 static struct nct1008_platform_data roth_nct1008_left_pdata = {
