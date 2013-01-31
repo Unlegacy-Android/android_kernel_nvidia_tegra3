@@ -3365,6 +3365,10 @@ void xhci_free_dev(struct usb_hcd *hcd, struct usb_device *udev)
 
 	virt_dev = xhci->devs[udev->slot_id];
 
+	WARN_ON(!virt_dev);
+	if (!virt_dev)
+		return;
+
 	/* Stop any wayward timer functions (which may grab the lock) */
 	for (i = 0; i < 31; ++i) {
 		virt_dev->eps[i].ep_state &= ~EP_HALT_PENDING;
