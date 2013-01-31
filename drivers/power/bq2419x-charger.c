@@ -81,6 +81,7 @@ static int current_to_reg(const unsigned int *tbl,
 static int bq2419x_charger_enable(struct bq2419x_charger *charger)
 {
 	int ret;
+	mutex_lock(&bq_charger->mutex);
 	if (bq_charger && bq_charger->shutdown_complete) {
 		mutex_unlock(&bq_charger->mutex);
 		return -ENODEV;
@@ -97,6 +98,7 @@ static int bq2419x_charger_enable(struct bq2419x_charger *charger)
 static int bq2419x_charger_disable(struct bq2419x_charger *charger)
 {
 	int ret;
+	mutex_lock(&bq_charger->mutex);
 	if (bq_charger && bq_charger->shutdown_complete) {
 		mutex_unlock(&bq_charger->mutex);
 		return -ENODEV;
@@ -142,6 +144,7 @@ static int bq2419x_init(struct bq2419x_charger *charger)
 {
 	int val, ret = 0;
 
+	mutex_lock(&bq_charger->mutex);
 	if (bq_charger && bq_charger->shutdown_complete) {
 		mutex_unlock(&bq_charger->mutex);
 		return -ENODEV;
