@@ -82,10 +82,7 @@
 
 #ifdef NV_ENABLE_CPU_BOOST
 /* disable CPU boosting if autoscan mode is disabled */
-#ifdef ENABLE_AUTO_SCAN
-#include <linux/pm_qos.h>	/* pm qos for CPU boosting */
-#include <linux/sysfs.h>	/* sysfs for pm qos attributes */
-#else
+#ifndef ENABLE_AUTO_SCAN
 #undef NV_ENABLE_CPU_BOOST
 #endif
 #endif
@@ -174,52 +171,6 @@ struct rm31080_queue_info g_stQ;
 
 #ifdef ENABLE_SLOW_SCAN
 struct rm_cmd_slow_scan g_stCmdSlowScan[RM_SLOW_SCAN_LEVEL_COUNT];
-#endif
-
-/*========================================================================= */
-/*LOCAL VARIABLES DECLARATION */
-/*========================================================================= */
-#ifdef NV_ENABLE_CPU_BOOST
-static int boost_inited;
-
-/* Minimum active CPUs, e.g. 1 for at least CPU0 */
-static unsigned long boost_cpus;
-/* Minimum CPU freqency required, e.g. 1224000 for 1.2G */
-static unsigned long boost_freq;
-/* Minimum CPU boost duration, e.g. 500000 for 500 ms */
-static unsigned long boost_time;
-
-/* sysfs for boost_freq & boost_time */
-static ssize_t sysfs_boost_cpu_show(struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf);
-static ssize_t sysfs_boost_cpu_store(struct kobject *kobj,
-		struct kobj_attribute *attr, const char *buf, size_t count);
-
-static struct kobject *boost_kobj;
-
-static struct kobj_attribute boost_cpus_attr =
-	__ATTR(cpus, 0640, sysfs_boost_cpu_show, sysfs_boost_cpu_store);
-static struct kobj_attribute boost_freq_attr =
-	__ATTR(freq, 0640, sysfs_boost_cpu_show, sysfs_boost_cpu_store);
-static struct kobj_attribute boost_time_attr =
-	__ATTR(time, 0640, sysfs_boost_cpu_show, sysfs_boost_cpu_store);
-
-static const struct attribute *boost_attrs[] = {
-	&boost_cpus_attr.attr,
-	&boost_freq_attr.attr,
-	&boost_time_attr.attr,
-	NULL,
-};
-
-/* Helper lock, worker & thread for pm qos request */
-static struct pm_qos_request cpus_req;
-static struct pm_qos_request freq_req;
-
-static void boost_cpu(struct kthread_work *w);
-
-static struct task_struct *boost_kthread;
-static DEFINE_KTHREAD_WORKER(boost_worker);
-static DEFINE_KTHREAD_WORK(boost_work, &boost_cpu);
 #endif
 
 /*========================================================================= */
@@ -1593,113 +1544,6 @@ static void rm31080_input_close(struct input_dev *input)
 		__rm31080_disable(ts);
 }
 
-#ifdef NV_ENABLE_CPU_BOOST
-ssize_t sysfs_boost_cpu_show(struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf)
-{
-	if (!strcmp(attr->attr.name, "cpus"))
-		return sprintf(buf, "%lu\n", boost_cpus);
-
-	if (!strcmp(attr->attr.name, "freq"))
-		return sprintf(buf, "%lu\n", boost_freq);
-
-	if (!strcmp(attr->attr.name, "time"))
-		return sprintf(buf, "%lu\n", boost_time);
-
-	return sprintf(buf, "invalid\n");
-}
-
-ssize_t sysfs_boost_cpu_store(struct kobject *kobj,
-		struct kobj_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long value;
-
-	sscanf(buf, "%lu\n", &value);
-
-	if (!strcmp(attr->attr.name, "cpus"))
-		boost_cpus = value;
-	else if (!strcmp(attr->attr.name, "freq"))
-		boost_freq = value;
-	else if (!strcmp(attr->attr.name, "time"))
-		boost_time = value;
-
-	return count;
-}
-
-static void boost_cpu_init(void)
-{
-	struct sched_param sparm = {
-		/* use the last RT priority */
-		.sched_priority = MAX_RT_PRIO - 1
-	};
-
-	boost_inited = 0;
-	boost_cpus = 0;
-	boost_freq = 0;
-	boost_time = 0;
-
-	/* Create sysfs */
-	boost_kobj = kobject_create_and_add("boost_cpu", kernel_kobj);
-	if (!boost_kobj) {
-		pr_err("CPU BOOST: error creating sysfs object\n");
-		return;
-	}
-
-	if (sysfs_create_files(boost_kobj, boost_attrs)) {
-		pr_err("CPU BOOST: error creating sysfs attributes\n");
-		kobject_del(boost_kobj);
-		return;
-	}
-
-	/* Create RT kthread */
-	boost_kthread = kthread_run(&kthread_worker_fn, &boost_worker,
-		"boost_cpu");
-	if (IS_ERR(boost_kthread)) {
-		pr_err("CPU BOOST: error creating worker thread\n");
-		sysfs_remove_files(boost_kobj, boost_attrs);
-		kobject_del(boost_kobj);
-		return;
-	}
-
-	sched_setscheduler(boost_kthread, SCHED_RR, &sparm);
-
-	/* Init pm qos */
-	pm_qos_add_request(&cpus_req, PM_QOS_MIN_ONLINE_CPUS,
-		PM_QOS_DEFAULT_VALUE);
-	pm_qos_add_request(&freq_req, PM_QOS_CPU_FREQ_MIN,
-		PM_QOS_DEFAULT_VALUE);
-
-	boost_inited = 1;
-}
-
-static void boost_cpu_remove(void)
-{
-	if (boost_inited) {
-		boost_inited = 0;
-		boost_cpus = 0;
-		boost_freq = 0;
-		boost_time = 0;
-		pm_qos_remove_request(&freq_req);
-		pm_qos_remove_request(&cpus_req);
-		kthread_stop(boost_kthread);
-		sysfs_remove_files(boost_kobj, boost_attrs);
-		kobject_del(boost_kobj);
-	}
-}
-
-/* Boost CPU frequency to decrease input event processing latency */
-static void boost_cpu(struct kthread_work *w)
-{
-	if (boost_cpus > 0)
-		pm_qos_update_request_timeout(&cpus_req, boost_cpus,
-				boost_time);
-
-	if (boost_freq > 0)
-		pm_qos_update_request_timeout(&freq_req, boost_freq,
-				boost_time);
-}
-#endif
-
 /*=========================================================================*/
 static irqreturn_t rm31080_irq(int irq, void *handle)
 {
@@ -1710,11 +1554,9 @@ static irqreturn_t rm31080_irq(int irq, void *handle)
 	trace_touchscreen_raydium_irq("Raydium_interrupt");
 
 #ifdef NV_ENABLE_CPU_BOOST
-	if ((boost_cpus > 0 || boost_freq > 0) && g_stCtrl.bfPowerMode &&
-			(g_stTs.u8ScanModeState == RM_SCAN_MODE_AUTO_SCAN)) {
-		queue_kthread_work(&boost_worker, &boost_work);
-		trace_touchscreen_raydium_irq("cpu_boost_scheduled");
-	}
+	if (g_stCtrl.bfPowerMode &&
+			(g_stTs.u8ScanModeState == RM_SCAN_MODE_AUTO_SCAN))
+		input_event(g_input_dev, EV_MSC, MSC_ACTIVITY, 1);
 #endif
 
 #ifdef ENABLE_WORK_QUEUE
@@ -2133,6 +1975,7 @@ struct rm31080_ts *rm31080_input_init(struct device *dev, unsigned int irq,
 	input_dev->hint_events_per_packet = 256U;
 
 	input_set_drvdata(input_dev, ts);
+	input_set_capability(input_dev, EV_MSC, MSC_ACTIVITY);
 
 	__set_bit(EV_ABS, input_dev->evbit);
 	__set_bit(ABS_X, input_dev->absbit);
@@ -2431,10 +2274,6 @@ static int __devexit rm31080_spi_remove(struct spi_device *spi)
 {
 	struct rm31080_ts *ts = spi_get_drvdata(spi);
 
-#ifdef NV_ENABLE_CPU_BOOST
-	boost_cpu_remove();
-#endif
-
 #ifdef ENABLE_RAW_DATA_QUEUE
 	rm31080_queue_free();
 #endif
@@ -2493,10 +2332,6 @@ static int __devinit rm31080_spi_probe(struct spi_device *spi)
 
 #ifdef ENABLE_RAW_DATA_QUEUE
 	rm31080_queue_init();
-#endif
-
-#ifdef NV_ENABLE_CPU_BOOST
-	boost_cpu_init();
 #endif
 
 	/* Enable async suspend/resume to reduce LP0 latency */
