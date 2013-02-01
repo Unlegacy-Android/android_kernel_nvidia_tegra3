@@ -641,6 +641,53 @@ static void __init roth_spi_init(void)
 		ARRAY_SIZE(roth_spi_devices));
 }
 
+static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
+	/* name         parent          rate            enabled */
+	{ "extern2",    "pll_p",        41000000,       false},
+	{ "clk_out_2",  "extern2",      40800000,       false},
+	{ NULL,         NULL,           0,              0},
+};
+
+struct rm_spi_ts_platform_data rm31080ts_roth_data = {
+	.gpio_reset = 0,
+	.config = 0,
+	.platform_id = RM_PLATFORM_D010,
+	.name_of_clock = "clk_out_2",
+};
+
+static struct tegra_spi_device_controller_data dev_cdata = {
+	.rx_clk_tap_delay = 0,
+	.tx_clk_tap_delay = 16,
+};
+
+struct spi_board_info rm31080a_roth_spi_board[1] = {
+	{
+	 .modalias = "rm_ts_spidev",
+	 .bus_num = 3,
+	 .chip_select = 2,
+	 .max_speed_hz = 12 * 1000 * 1000,
+	 .mode = SPI_MODE_0,
+	 .controller_data = &dev_cdata,
+	 .platform_data = &rm31080ts_roth_data,
+	 },
+};
+
+static int __init roth_touch_init(void)
+{
+	tegra_clk_init_from_table(touch_clk_init_table);
+	clk_enable(tegra_get_clock_by_name("clk_out_2"));
+	rm31080ts_roth_data.platform_id = RM_PLATFORM_R005;
+	mdelay(20);
+	rm31080a_roth_spi_board[0].irq =
+		gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
+	touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
+				TOUCH_GPIO_RST_RAYDIUM_SPI,
+				&rm31080ts_roth_data,
+				&rm31080a_roth_spi_board[0],
+				ARRAY_SIZE(rm31080a_roth_spi_board));
+	return 0;
+}
+
 static void __init tegra_roth_init(void)
 {
 	tegra_clk_init_from_table(roth_clk_init_table);
@@ -661,6 +708,7 @@ static void __init tegra_roth_init(void)
 	roth_suspend_init();
 	roth_emc_init();
 	roth_edp_init();
+	roth_touch_init();
 	roth_panel_init();
 	roth_kbc_init();
 	roth_pmon_init();
