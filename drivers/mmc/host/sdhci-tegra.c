@@ -106,12 +106,14 @@ static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci);
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci);
+static unsigned int tegra11_sdhost_max_clk[4] = {
+	208000000,	104000000,	208000000,	208000000 };
 #endif
 
 static unsigned int tegra_sdhost_min_freq;
 static unsigned int tegra_sdhost_std_freq;
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 static unsigned int tegra3_sdhost_max_clk[4] = {
 	208000000,	104000000,	208000000,	104000000 };
 #endif
@@ -418,8 +420,8 @@ static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci)
 	/* Set the base clock frequency */
 	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
 	vendor_ctrl &= ~(0xFF << SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT);
-	vendor_ctrl |= (tegra3_sdhost_max_clk[tegra_host->instance] / 1000000) <<
-		SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT;
+	vendor_ctrl |= (tegra11_sdhost_max_clk[tegra_host->instance] / 1000000)
+			<< SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT;
 	vendor_ctrl |= SDHCI_VENDOR_CLOCK_CNTRL_PADPIPE_CLKEN_OVERRIDE;
 	vendor_ctrl &= ~SDHCI_VENDOR_CLOCK_CNTRL_SPI_MODE_CLKEN_OVERRIDE;
 
@@ -2062,7 +2064,6 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 #ifdef CONFIG_MMC_BKOPS
 	host->mmc->caps2 |= MMC_CAP2_BKOPS;
 #endif
-
 	tegra_sdhost_min_freq = TEGRA_SDHOST_MIN_FREQ;
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	tegra_host->hw_ops = &tegra_2x_sdhci_ops;
@@ -2073,6 +2074,7 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 #else
 	tegra_host->hw_ops = &tegra_11x_sdhci_ops;
 	tegra_sdhost_std_freq = TEGRA3_SDHOST_STD_FREQ;
+	host->mmc->caps2 |= MMC_CAP2_HS200;
 #endif
 
 	if (plat->nominal_vcore_uV)
