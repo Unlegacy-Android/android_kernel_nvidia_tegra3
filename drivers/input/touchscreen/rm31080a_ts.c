@@ -1,7 +1,7 @@
 /*
  * Raydium RM31080 touchscreen driver
  *
- * Copyright (C) 2012 - 2013, Raydium Semiconductor Corporation
+ * Copyright (C) 2012 - 2013, Raydium Semiconductor Corporation.
  * Copyright (C) 2012 - 2013, NVIDIA Corporation, All Rights Reserved.
  *
  * This program is free software; you can redistribute  it and/or modify it
@@ -698,7 +698,8 @@ void rm31080_ctrl_enter_auto_mode(void)
 	/*Enable auto scan */
 	if (g_stCtrl.bfIdleMessage)
 		rm_printk("Enter Auto Scan Mode\n");
-
+	/*Set idle*/
+	rm_set_idle(1);
 	if (g_stCtrl.bSTScan)
 		rm_set_auto(1);
 	else
@@ -712,7 +713,8 @@ void rm31080_ctrl_leave_auto_mode(void)
 
 	if (g_stCtrl.bfIdleMessage)
 		rm_printk("Leave Auto Scan Mode\n");
-
+	/*leave idle*/
+	rm_set_idle(0);
 	if (g_stCtrl.bSTScan)
 		rm_set_auto(0);
 	else
