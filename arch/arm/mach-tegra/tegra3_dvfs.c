@@ -1020,7 +1020,7 @@ int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 	return 0;
 }
 
-/* Core cap object and table */
+/* Core voltage and bus cap object and tables */
 static struct kobject *cap_kobj;
 
 /* Arranged in order required for enabling/lowering the cap */
@@ -1030,90 +1030,11 @@ static struct core_dvfs_cap_table tegra3_core_cap_table[] = {
 	{ .cap_name = "cap.emc" },
 };
 
-/* cbus profiler cap */
-static DEFINE_MUTEX(cbus_cup_lock);
-static struct core_cap user_cbus_cap;
-
-static void cbus_cap_update(void)
-{
-	static struct clk *cbus_cap;
-
-	if (!cbus_cap) {
-		cbus_cap = tegra_get_clock_by_name("cap.profile.cbus");
-		if (!cbus_cap) {
-			WARN_ONCE(1, "tegra3_dvfs: cbus profiling is not supported");
-			return;
-		}
-	}
-
-	if (user_cbus_cap.refcnt)
-		clk_set_rate(cbus_cap, user_cbus_cap.level);
-	else
-		clk_set_rate(cbus_cap, clk_get_max_rate(cbus_cap));
-}
-
-static ssize_t
-cbus_cap_state_show(struct kobject *kobj, struct kobj_attribute *attr,
-		    char *buf)
-{
-	return sprintf(buf, "%d\n", user_cbus_cap.refcnt ? 1 : 0);
-}
-static ssize_t
-cbus_cap_state_store(struct kobject *kobj, struct kobj_attribute *attr,
-		     const char *buf, size_t count)
-{
-	int state;
-
-	if (sscanf(buf, "%d", &state) != 1)
-		return -1;
-
-	mutex_lock(&cbus_cup_lock);
-
-	if (state) {
-		user_cbus_cap.refcnt++;
-		if (user_cbus_cap.refcnt == 1)
-			cbus_cap_update();
-	} else if (user_cbus_cap.refcnt) {
-		user_cbus_cap.refcnt--;
-		if (user_cbus_cap.refcnt == 0)
-			cbus_cap_update();
-	}
-
-	mutex_unlock(&cbus_cup_lock);
-	return count;
-}
-
-static ssize_t
-cbus_cap_level_show(struct kobject *kobj, struct kobj_attribute *attr,
-		    char *buf)
-{
-	return sprintf(buf, "%d\n", user_cbus_cap.level);
-}
-static ssize_t
-cbus_cap_level_store(struct kobject *kobj, struct kobj_attribute *attr,
-		     const char *buf, size_t count)
-{
-	int level;
-
-	if (sscanf(buf, "%d", &level) != 1)
-		return -1;
-
-	mutex_lock(&cbus_cup_lock);
-	user_cbus_cap.level = level;
-	cbus_cap_update();
-	mutex_unlock(&cbus_cup_lock);
-	return count;
-}
-
-static struct kobj_attribute cbus_state_attribute =
-	__ATTR(cbus_cap_state, 0644, cbus_cap_state_show, cbus_cap_state_store);
-static struct kobj_attribute cbus_level_attribute =
-	__ATTR(cbus_cap_level, 0644, cbus_cap_level_show, cbus_cap_level_store);
-
-const struct attribute *cbus_cap_attributes[] = {
-	&cbus_state_attribute.attr,
-	&cbus_level_attribute.attr,
-	NULL,
+static struct core_bus_cap_table tegra3_bus_cap_table[] = {
+	{ .cap_name = "cap.profile.cbus",
+	  .refcnt_attr = {.attr = {.name = "cbus_cap_state", .mode = 0644} },
+	  .level_attr  = {.attr = {.name = "cbus_cap_level", .mode = 0644} },
+	},
 };
 
 static int __init tegra3_dvfs_init_core_cap(void)
@@ -1126,9 +1047,11 @@ static int __init tegra3_dvfs_init_core_cap(void)
 		return 0;
 	}
 
-	ret = sysfs_create_files(cap_kobj, cbus_cap_attributes);
+	ret = tegra_init_shared_bus_cap(
+		tegra3_bus_cap_table, ARRAY_SIZE(tegra3_bus_cap_table),
+		cap_kobj);
 	if (ret) {
-		pr_err("tegra3_dvfs: failed to init cbus cap interface (%d)\n",
+		pr_err("tegra3_dvfs: failed to init bus cap interface (%d)\n",
 		       ret);
 		kobject_del(cap_kobj);
 		return 0;
@@ -1139,7 +1062,7 @@ static int __init tegra3_dvfs_init_core_cap(void)
 		core_millivolts, ARRAY_SIZE(core_millivolts), cap_kobj);
 
 	if (ret) {
-		pr_err("tegra11_dvfs: failed to init core cap interface (%d)\n",
+		pr_err("tegra3_dvfs: failed to init voltage cap interface (%d)\n",
 		       ret);
 		kobject_del(cap_kobj);
 		return 0;
