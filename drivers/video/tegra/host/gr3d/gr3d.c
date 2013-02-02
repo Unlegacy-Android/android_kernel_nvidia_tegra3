@@ -167,6 +167,8 @@ struct gr3d_desc {
 	void (*suspend_ndev)(struct platform_device *);
 	void (*init)(struct platform_device *dev);
 	void (*deinit)(struct platform_device *dev);
+	void (*scaling_init)(struct platform_device *dev);
+	void (*scaling_deinit)(struct platform_device *dev);
 	int (*prepare_poweroff)(struct platform_device *dev);
 	struct nvhost_hwctx_handler *(*alloc_hwctx_handler)(u32 syncpt,
 			u32 waitbase, struct nvhost_channel *ch);
@@ -182,6 +184,8 @@ static const struct gr3d_desc gr3d[] = {
 		.suspend_ndev = NULL,
 		.init = NULL,
 		.deinit = NULL,
+		.scaling_init = NULL,
+		.scaling_deinit = NULL,
 		.prepare_poweroff = nvhost_gr3d_prepare_power_off,
 		.alloc_hwctx_handler = nvhost_gr3d_t20_ctxhandler_init,
 		.read_reg = nvhost_gr3d_t20_read_reg,
@@ -191,8 +195,10 @@ static const struct gr3d_desc gr3d[] = {
 		.busy = nvhost_scale3d_notify_busy,
 		.idle = nvhost_scale3d_notify_idle,
 		.suspend_ndev = nvhost_scale3d_suspend,
-		.init = nvhost_scale3d_init,
-		.deinit = nvhost_scale3d_deinit,
+		.init = NULL,
+		.deinit = NULL,
+		.scaling_init = nvhost_scale3d_init,
+		.scaling_deinit = nvhost_scale3d_deinit,
 		.prepare_poweroff = nvhost_gr3d_prepare_power_off,
 		.alloc_hwctx_handler = nvhost_gr3d_t30_ctxhandler_init,
 		.read_reg = nvhost_gr3d_t30_read_reg,
@@ -203,6 +209,8 @@ static const struct gr3d_desc gr3d[] = {
 		.suspend_ndev = nvhost_scale3d_suspend,
 		.init = nvhost_gr3d_t114_init,
 		.deinit = nvhost_gr3d_t114_deinit,
+		.scaling_init = nvhost_scale3d_actmon_init,
+		.scaling_deinit = nvhost_scale3d_actmon_deinit,
 		.prepare_poweroff = nvhost_gr3d_t114_prepare_power_off,
 		.finalize_poweron = nvhost_gr3d_t114_finalize_power_on,
 		.alloc_hwctx_handler = nvhost_gr3d_t114_ctxhandler_init,
@@ -238,6 +246,8 @@ static int __devinit gr3d_probe(struct platform_device *dev)
 	pdata->suspend_ndev		= gr3d[index].suspend_ndev;
 	pdata->init			= gr3d[index].init;
 	pdata->deinit			= gr3d[index].deinit;
+	pdata->scaling_init		= gr3d[index].scaling_init;
+	pdata->scaling_deinit		= gr3d[index].scaling_deinit;
 	pdata->prepare_poweroff		= gr3d[index].prepare_poweroff;
 	pdata->alloc_hwctx_handler	= gr3d[index].alloc_hwctx_handler;
 	pdata->read_reg			= gr3d[index].read_reg;
