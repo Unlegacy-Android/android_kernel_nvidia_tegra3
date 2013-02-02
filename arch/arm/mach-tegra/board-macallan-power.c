@@ -43,6 +43,7 @@
 #include "tegra-board-id.h"
 #include "board.h"
 #include "gpio-names.h"
+#include "board-common.h"
 #include "board-macallan.h"
 #include "tegra_cl_dvfs.h"
 #include "devices.h"
@@ -603,25 +604,25 @@ static struct soctherm_platform_data macallan_soctherm_data = {
 			.trips = {
 				{
 					.cdev_type = "tegra-balanced",
-					.trip_temp = 85000,
+					.trip_temp = 84000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
-                                        .cdev_type = "tegra-heavy",
-                                        .trip_temp = 95000,
-                                        .trip_type = THERMAL_TRIP_HOT,
-                                        .upper = THERMAL_NO_LIMIT,
-                                        .lower = THERMAL_NO_LIMIT,
-                                },
+					.cdev_type = "tegra-heavy",
+					.trip_temp = 94000,
+					.trip_type = THERMAL_TRIP_HOT,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
 				{
-                                        .cdev_type = "tegra-shutdown",
-                                        .trip_temp = 105000,
-                                        .trip_type = THERMAL_TRIP_CRITICAL,
-                                        .upper = THERMAL_NO_LIMIT,
-                                        .lower = THERMAL_NO_LIMIT,
-                                },
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 104000,
+					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
 			},
 		},
 		[THERM_GPU] = {
@@ -632,17 +633,22 @@ static struct soctherm_platform_data macallan_soctherm_data = {
 		},
 	},
 	.throttle = {
-                [THROTTLE_HEAVY] = {
-                        .devs = {
-                                [THROTTLE_DEV_CPU] = {
-                                        .enable = 1,
-                                },
-                        },
-                },
-        },
+		[THROTTLE_HEAVY] = {
+			.devs = {
+				[THROTTLE_DEV_CPU] = {
+					.enable = 1,
+				},
+			},
+		},
+	},
 };
 
 int __init macallan_soctherm_init(void)
 {
+	tegra_platform_edp_init(macallan_soctherm_data.therm[THERM_CPU].trips,
+			&macallan_soctherm_data.therm[THERM_CPU].num_trips);
+	tegra_add_tj_trips(macallan_soctherm_data.therm[THERM_CPU].trips,
+			&macallan_soctherm_data.therm[THERM_CPU].num_trips);
+
 	return tegra11_soctherm_init(&macallan_soctherm_data);
 }
