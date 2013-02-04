@@ -776,7 +776,7 @@ static void __init tegra_macallan_init(void)
 	tegra_wdt_recovery_init();
 #endif
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
-	/* macallan_sensors_init(); */
+	macallan_sensors_init();
 	macallan_soctherm_init();
 }
 
