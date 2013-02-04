@@ -172,6 +172,12 @@ static struct resource pluto_bluedroid_pm_resources[] = {
 		.end    = TEGRA_GPIO_PQ6,
 		.flags  = IORESOURCE_IO,
 	},
+	[5] = {
+		.name = "min_cpu_freq",
+		.start  = 102000,
+		.end    = 102000,
+		.flags  = IORESOURCE_IO,
+	},
 };
 
 static struct platform_device pluto_bluedroid_pm_device = {
