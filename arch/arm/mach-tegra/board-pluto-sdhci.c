@@ -39,7 +39,8 @@
 #define PLUTO_WLAN_PWR	TEGRA_GPIO_PCC5
 #define PLUTO_WLAN_WOW	TEGRA_GPIO_PU5
 #define PLUTO_SD_CD	TEGRA_GPIO_PV2
-
+#define WLAN_PWR_STR	"wlan_power"
+#define WLAN_WOW_STR	"bcmsdh_sdmmc"
 #if defined(CONFIG_BCMDHD_EDP_SUPPORT)
 /* Wifi power levels */
 #define ON  2401 /* 2401mW */
@@ -262,27 +263,42 @@ static int pluto_wifi_reset(int on)
 
 static int __init pluto_wifi_init(void)
 {
-	int rc;
+	int rc = 0;
 
-	rc = gpio_request(PLUTO_WLAN_PWR, "wlan_power");
-	if (rc)
-		pr_err("WLAN_PWR gpio request failed:%d\n", rc);
-	rc = gpio_request(PLUTO_WLAN_WOW, "bcmsdh_sdmmc");
-	if (rc)
-		pr_err("WLAN_WOW gpio request failed:%d\n", rc);
+	/* init wlan_pwr gpio */
+	rc = gpio_request(PLUTO_WLAN_PWR, WLAN_PWR_STR);
+	/* Due to pre powering, sometimes gpio req returns EBUSY */
+	if ((rc < 0) && (rc != -EBUSY)) {
+		pr_err("Wifi init: gpio req failed:%d\n", rc);
+		return rc;
+	}
 
+	/* Due to pre powering, sometimes gpio req returns EBUSY */
 	rc = gpio_direction_output(PLUTO_WLAN_PWR, 0);
-	if (rc)
-		pr_err("WLAN_PWR gpio direction configuration failed:%d\n", rc);
+	if ((rc < 0) && (rc != -EBUSY)) {
+		gpio_free(PLUTO_WLAN_PWR);
+		return rc;
+	}
+	/* init wlan_wow gpio */
+	rc = gpio_request(PLUTO_WLAN_WOW, WLAN_WOW_STR);
+	if (rc < 0) {
+		pr_err("wifi init: gpio req failed:%d\n", rc);
+		gpio_free(PLUTO_WLAN_PWR);
+		return rc;
+	}
+
 	rc = gpio_direction_input(PLUTO_WLAN_WOW);
-	if (rc)
-		pr_err("WLAN_WOW gpio direction configuration failed:%d\n", rc);
+	if (rc < 0) {
+		gpio_free(PLUTO_WLAN_WOW);
+		gpio_free(PLUTO_WLAN_PWR);
+		return rc;
+	}
 
 	wifi_resource[0].start = wifi_resource[0].end =
 		gpio_to_irq(PLUTO_WLAN_WOW);
 
 	platform_device_register(&pluto_wifi_device);
-	return 0;
+	return rc;
 }
 
 #ifdef CONFIG_TEGRA_PREPOWER_WIFI
