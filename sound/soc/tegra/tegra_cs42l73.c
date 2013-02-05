@@ -1463,17 +1463,18 @@ static __devinit int tegra_cs42l73_driver_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "unable to register edp client\n");
 			devm_kfree(&pdev->dev, machine->spk_edp_client);
 			machine->spk_edp_client = NULL;
+			return 0;
 		}
 		codec = card->rtd[DAI_LINK_HIFI].codec;
 		/* set codec volume to 0 dB , E0 state*/
 		snd_soc_write(codec, CS42L73_SPKDVOL, 0x0);
 		snd_soc_write(codec, CS42L73_ESLDVOL, 0x0);
-		/* request E0 */
+		/* request E1 */
 		ret = edp_update_client_request(machine->spk_edp_client,
-				TEGRA_SPK_EDP_ZERO, NULL);
+				TEGRA_SPK_EDP_1, NULL);
 		if (ret) {
 			dev_err(&pdev->dev,
-					"unable to set E0 EDP state\n");
+					"unable to set E1 EDP state\n");
 			edp_unregister_client(machine->spk_edp_client);
 			devm_kfree(&pdev->dev, machine->spk_edp_client);
 			machine->spk_edp_client = NULL;
