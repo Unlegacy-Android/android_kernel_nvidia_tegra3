@@ -198,6 +198,8 @@ static const struct regs_info palmas_regs_info[] = {
 	},
 };
 
+static unsigned int palmas_smps_ramp_delay[4] = {0, 10000, 5000, 2500};
+
 #define SMPS_CTRL_MODE_OFF		0x00
 #define SMPS_CTRL_MODE_ON		0x01
 #define SMPS_CTRL_MODE_ECO		0x02
@@ -446,6 +448,58 @@ static int palmas_set_voltage_smps_sel(struct regulator_dev *dev,
 	return 0;
 }
 
+static int palma_smps_set_voltage_smps_time_sel(struct regulator_dev *rdev,
+	unsigned int old_selector, unsigned int new_selector)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(rdev);
+	int id = rdev_get_id(rdev);
+	int old_uV, new_uV;
+	unsigned int ramp_delay = pmic->ramp_delay[id];
+
+	/* ES2.1, have the 1.5X slower slew rate than configured */
+	ramp_delay = (ramp_delay * 15)/10;
+	if (!ramp_delay)
+		return 0;
+
+	old_uV = palmas_list_voltage_smps(rdev, old_selector);
+	if (old_uV < 0)
+		return old_uV;
+
+	new_uV = palmas_list_voltage_smps(rdev, new_selector);
+	if (new_uV < 0)
+		return new_uV;
+
+	return DIV_ROUND_UP(abs(old_uV - new_uV), ramp_delay);
+}
+
+static int palmas_smps_set_ramp_delay(struct regulator_dev *rdev,
+		int ramp_delay)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(rdev);
+	int id = rdev_get_id(rdev);
+	unsigned int reg = 0;
+	unsigned int addr = palmas_regs_info[id].tstep_addr;
+	int ret;
+
+	if (ramp_delay <= 0)
+		reg = 0;
+	else if (ramp_delay < 2500)
+		reg = 3;
+	else if (ramp_delay < 5000)
+		reg = 2;
+	else
+		reg = 1;
+
+	ret = palmas_smps_write(pmic->palmas, addr, reg);
+	if (ret < 0) {
+		dev_err(pmic->palmas->dev, "TSTEP write failed: %d\n", ret);
+		return ret;
+	}
+
+	pmic->ramp_delay[id] = palmas_smps_ramp_delay[reg];
+	return ret;
+}
+
 static struct regulator_ops palmas_ops_smps = {
 	.is_enabled		= palmas_is_enabled_smps,
 	.enable			= palmas_enable_smps,
@@ -455,6 +509,8 @@ static struct regulator_ops palmas_ops_smps = {
 	.get_voltage_sel	= palmas_get_voltage_smps_sel,
 	.set_voltage_sel	= palmas_set_voltage_smps_sel,
 	.list_voltage		= palmas_list_voltage_smps,
+	.set_voltage_time_sel	= palma_smps_set_voltage_smps_time_sel,
+	.set_ramp_delay		= palmas_smps_set_ramp_delay,
 };
 
 static int palmas_is_enabled_smps10(struct regulator_dev *dev)
@@ -1186,6 +1242,8 @@ static __devinit int palmas_probe(struct platform_device *pdev)
 		pmic->smps457 = 1;
 
 	for (id = 0; id < PALMAS_REG_LDO1; id++) {
+		bool ramp_delay_support = false;
+
 		reg_data = pdata->reg_data[id];
 
 		/*
@@ -1197,19 +1255,41 @@ static __devinit int palmas_probe(struct platform_device *pdev)
 		case PALMAS_REG_SMPS3:
 			if (pmic->smps123)
 				continue;
+			if (id == PALMAS_REG_SMPS12)
+				ramp_delay_support = true;
 			break;
 		case PALMAS_REG_SMPS123:
 			if (!pmic->smps123)
 				continue;
+			ramp_delay_support = true;
 			break;
 		case PALMAS_REG_SMPS45:
 		case PALMAS_REG_SMPS7:
 			if (pmic->smps457)
 				continue;
+			if (id == PALMAS_REG_SMPS45)
+				ramp_delay_support = true;
 			break;
 		case PALMAS_REG_SMPS457:
 			if (!pmic->smps457)
 				continue;
+			ramp_delay_support = true;
+			break;
+		}
+		if ((id == PALMAS_REG_SMPS6) && (id == PALMAS_REG_SMPS8))
+				ramp_delay_support = true;
+
+		if (ramp_delay_support) {
+			addr = palmas_regs_info[id].tstep_addr;
+			ret = palmas_smps_read(pmic->palmas, addr, &reg);
+			if (ret < 0) {
+				dev_err(&pdev->dev,
+					"reading TSTEP reg failed: %d\n", ret);
+				goto err_unregister_regulator;
+			}
+			pmic->desc[id].ramp_delay =
+					palmas_smps_ramp_delay[reg & 0x3];
+			pmic->ramp_delay[id] = pmic->desc[id].ramp_delay;
 		}
 
 		/* Register the regulators */
