@@ -25,7 +25,7 @@
 #ifndef TI_WILINK_ST_H
 #define TI_WILINK_ST_H
 #include <linux/wakelock.h>
-
+#include <linux/skbuff.h>
 #include <linux/serial_core.h>
 /**
  * enum proto-type - The protocol on WiLink chips which share a
