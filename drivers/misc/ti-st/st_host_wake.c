@@ -1,6 +1,6 @@
 /*
  *  Shared Transport Host wake up driver
- *  	For protocols registered over Shared Transport
+ *  For protocols registered over Shared Transport
  *  Copyright (C) 2011-2012 Texas Instruments
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -47,63 +47,63 @@ struct st_host_wake_info {
 
 static unsigned long flags;
 static struct st_host_wake_info *bsi;
-static char  dev_id[12] ="st_host_wake";
+static char  dev_id[12] = "st_host_wake";
 
 void st_host_wake_notify(int chan_id, int reg_state)
 {
 	/* HOST_WAKE to be set after all BT channels including CHANNEL_SCO
 	 * is registered
 	 */
-	if(chan_id == CHANNEL_ACL || chan_id == CHANNEL_EVT)
+	if (chan_id == CHANNEL_ACL || chan_id == CHANNEL_EVT)
 		return;
 
 #ifndef CONFIG_ST_HOST_WAKE_GPS
-	if(chan_id == CHANNEL_GPS) {
+	if (chan_id == CHANNEL_GPS) {
 		pr_info("CONFIG_ST_HOST_WAKE_GPS not set hence reject");
 		return;
 	}
 #endif
 
 #ifndef CONFIG_ST_HOST_WAKE_FM
-	if(chan_id == CHANNEL_FM) {
+	if (chan_id == CHANNEL_FM) {
 		pr_info("CONFIG_ST_HOST_WAKE_FM not set hence reject");
 		return;
 	}
 #endif
 
 #ifndef CONFIG_ST_HOST_WAKE_NFC
-	if(chan_id == CHANNEL_NFC) {
+	if (chan_id == CHANNEL_NFC) {
 		pr_info("CONFIG_ST_HOST_WAKE_NFC not set hence reject");
 		return;
 	}
 #endif
-	switch(reg_state) {
-		case ST_PROTO_REGISTERED:
-			pr_info("Channel %d registered", chan_id);
-			bsi->supp_proto_reg++;
-			set_bit(HOST_WAKE, &flags);
-			pr_info("HOST_WAKE set");
-			break;
+	switch (reg_state) {
+	case ST_PROTO_REGISTERED:
+		pr_info("Channel %d registered", chan_id);
+		bsi->supp_proto_reg++;
+		set_bit(HOST_WAKE, &flags);
+		pr_info("HOST_WAKE set");
+		break;
 
-		case ST_PROTO_UNREGISTERED:
-			pr_info("Channel %d un-registered", chan_id);
-			bsi->supp_proto_reg--;
+	case ST_PROTO_UNREGISTERED:
+		pr_info("Channel %d un-registered", chan_id);
+		bsi->supp_proto_reg--;
 
-			if(!bsi->supp_proto_reg) {
-				pr_info("All supported protocols un-registered");
-				if(bsi && test_bit(IRQ_WAKE, &flags)) {
-					pr_info("disabling wake_irq after unregister");
-					disable_irq_wake(bsi->host_wake_irq);
-					clear_bit(IRQ_WAKE, &flags);
-				}
-
-				clear_bit(HOST_WAKE, &flags);
-				pr_info("HOST_WAKE cleared");
+		if (!bsi->supp_proto_reg) {
+			pr_info("All supported protocols un-registered");
+			if (bsi && test_bit(IRQ_WAKE, &flags)) {
+				pr_info("disabling wake_irq after unregister");
+				disable_irq_wake(bsi->host_wake_irq);
+				clear_bit(IRQ_WAKE, &flags);
 			}
-			break;
 
-		default:
-			break;
+			clear_bit(HOST_WAKE, &flags);
+			pr_info("HOST_WAKE cleared");
+		}
+		break;
+
+	default:
+		break;
 	}
 }
 EXPORT_SYMBOL(st_host_wake_notify);
@@ -112,13 +112,13 @@ void st_vltg_regulation(int state)
 {
 	pr_info("%s with state %d", __func__, state);
 
-	if(ST_VLTG_REG_ENABLE == state) {
+	if (ST_VLTG_REG_ENABLE == state) {
 		if (bsi->vdd_3v3)
 			regulator_enable(bsi->vdd_3v3);
 		if (bsi->vdd_1v8)
 			regulator_enable(bsi->vdd_1v8);
 
-	} else if(ST_VLTG_REG_DISABLE == state) {
+	} else if (ST_VLTG_REG_DISABLE == state) {
 		if (bsi->vdd_3v3)
 			regulator_disable(bsi->vdd_3v3);
 		if (bsi->vdd_1v8)
@@ -239,8 +239,7 @@ static int st_host_wake_suspend(void)
 	if (test_bit(HOST_WAKE, &flags) && (!test_bit(IRQ_WAKE, &flags))) {
 		retval = enable_irq_wake(bsi->host_wake_irq);
 		if (retval < 0) {
-			pr_err("Couldn't enable HOST_WAKE as wakeup"
-					"interrupt retval %d\n", retval);
+			pr_err("Failed to enable HOST_WAKE irq (%d)", retval);
 			goto fail;
 		}
 		set_bit(IRQ_WAKE, &flags);
@@ -269,7 +268,7 @@ static int __init st_host_wake_init(void)
 	pr_debug("%s", __func__);
 
 	retval = platform_driver_register(&st_host_wake_driver);
-	if(retval)
+	if (retval)
 		pr_err("st_host_wake_init failed");
 
 	return retval;
