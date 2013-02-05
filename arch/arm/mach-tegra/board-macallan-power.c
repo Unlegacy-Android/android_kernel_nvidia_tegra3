@@ -510,8 +510,7 @@ static struct tegra_suspend_platform_data macallan_suspend_data = {
 	.core_off_timer = 2000,
 	.corereq_high	= true,
 	.sysclkreq_high	= true,
-	.min_residency_noncpu = 600,
-	.min_residency_crail = 1000,
+	.min_residency_crail = 20000,
 };
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* board parameters for cpu dfll */
