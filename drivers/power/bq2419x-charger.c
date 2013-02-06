@@ -158,10 +158,10 @@ static int bq2419x_init(struct bq2419x_charger *charger)
 		val = current_to_reg(iinlim, ARRAY_SIZE(iinlim),
 					charger->usb_in_current_limit);
 		if (val < 0)
-			val = 0;
+			return 0;
 
-		ret = regmap_write(charger->chip->regmap,
-				BQ2419X_INPUT_SRC_REG, val);
+		ret = regmap_update_bits(charger->chip->regmap,
+			BQ2419X_INPUT_SRC_REG, BQ2419x_CONFIG_MASK, val);
 		if (ret < 0)
 			dev_err(charger->dev, "error reading reg: 0x%x\n",
 				BQ2419X_INPUT_SRC_REG);
@@ -171,10 +171,10 @@ static int bq2419x_init(struct bq2419x_charger *charger)
 		val = current_to_reg(iinlim, ARRAY_SIZE(iinlim),
 					charger->ac_in_current_limit);
 		if (val < 0)
-			val = 0;
+			return 0;
 
-		ret = regmap_write(charger->chip->regmap,
-				BQ2419X_INPUT_SRC_REG, val);
+		ret = regmap_update_bits(charger->chip->regmap,
+			BQ2419X_INPUT_SRC_REG, BQ2419x_CONFIG_MASK, val);
 		if (ret < 0)
 			dev_err(charger->dev, "error reading reg: 0x%x\n",
 				BQ2419X_INPUT_SRC_REG);
@@ -210,7 +210,7 @@ static int bq2419x_enable_charger(struct regulator_dev *rdev,
 
 	if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_UNKNOWN) {
 		bq_charger->status = 0;
-		bq_charger->usb_online = 1;
+		bq_charger->usb_online = 0;
 		bq_charger->usb_in_current_limit = 500;
 		ret = bq2419x_init(bq_charger);
 		if (ret < 0)
@@ -221,7 +221,7 @@ static int bq2419x_enable_charger(struct regulator_dev *rdev,
 	} else if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_USB) {
 		bq_charger->status = 1;
 		bq_charger->usb_online = 1;
-		bq_charger->usb_in_current_limit = max_uA;
+		bq_charger->usb_in_current_limit = max_uA/1000;
 		ret = bq2419x_init(bq_charger);
 		if (ret < 0)
 			goto error;
@@ -231,7 +231,7 @@ static int bq2419x_enable_charger(struct regulator_dev *rdev,
 	} else if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_AC) {
 		bq_charger->status = 1;
 		bq_charger->ac_online = 1;
-		bq_charger->ac_in_current_limit = max_uA;
+		bq_charger->ac_in_current_limit = max_uA/1000;
 		ret = bq2419x_init(bq_charger);
 		if (ret < 0)
 			goto error;
@@ -327,6 +327,22 @@ static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 		}
 	}
 
+	/* Configure Charge Current Control to 3A*/
+	ret = regmap_write(charger->chip->regmap, BQ2419X_CHRG_CTRL_REG, 0xC0);
+	if (ret < 0) {
+		dev_err(charger->dev, "error writing to reg: 0x%x\n",
+				BQ2419X_CHRG_CTRL_REG);
+		return ret;
+	}
+
+	/* Configure Input voltage limit reset to OTP value */
+	ret = regmap_write(charger->chip->regmap, BQ2419X_INPUT_SRC_REG, 0x32);
+	if (ret < 0) {
+		dev_err(charger->dev, "error writing to reg: 0x%x\n",
+				BQ2419X_CHRG_CTRL_REG);
+		return ret;
+	}
+
 	charger->reg_desc.name  = "vbus_charger";
 	charger->reg_desc.ops   = &bq2419x_tegra_regulator_ops;
 	charger->reg_desc.type  = REGULATOR_CURRENT;
@@ -399,7 +415,6 @@ static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 	ret = bq2419x_charger_enable(charger);
 	if (ret < 0)
 		goto psy_error1;
-
 	return 0;
 
 psy_error1:
