@@ -783,6 +783,7 @@ static int rm31080_ctrl_suspend(struct rm31080_ts *ts)
 {
 	/* handle touch suspend */
 	int error;
+	struct rm_spi_ts_platform_data *pdata;
 	/*Flow designed by Roger 20110930 */
 	/*rm31080_ts_send_signal(g_stTs.ulHalPID,RM_SIGNAL_SUSPEND); */
 	g_stTs.bInitFinish = 0;
@@ -802,7 +803,7 @@ static int rm31080_ctrl_suspend(struct rm31080_ts *ts)
 	rm31080_spi_byte_write(RM31080_REG_11, 0x06);
 
 	msleep(100);
-	/* 1.disable (3.3v) */
+	/* 1) disable (3.3v) */
 	if (ts->regulator_3v3) {
 		error = regulator_disable(ts->regulator_3v3);
 		if (error < 0)
@@ -810,7 +811,24 @@ static int rm31080_ctrl_suspend(struct rm31080_ts *ts)
 				"raydium regulator 3.3V disable failed: %d\n",
 				error);
 	}
-
+	/* handle platforms w/ and w/out regulator switches */
+	/* 2) delay for platforms w/ regulator switches */
+	usleep_range(15000, 20000);	/*msleep(15); */
+	/* 3) pull low reset */
+	pdata = g_input_dev->dev.parent->platform_data;
+	if (pdata->platform_id == RM_PLATFORM_P005)
+		gpio_set_value(pdata->gpio_reset, 0);
+	/* 4) disable clock */
+	if (ts->clk)
+		clk_disable(ts->clk);
+	/* 5) disable 1.8 */
+	if (ts->regulator_1v8 && ts->regulator_3v3) {
+		error = regulator_disable(ts->regulator_1v8);
+		if (error < 0)
+			dev_err(&g_spi->dev,
+			"raydium regulator 1.8V disable failed: %d\n",
+				error);
+	}
 	mutex_unlock(&g_stTs.mutex_scan_mode);
 	return 1;
 }
@@ -1723,43 +1741,12 @@ static int rm31080_voltage_notifier_1v8(struct notifier_block *nb,
 static int rm31080_voltage_notifier_3v3(struct notifier_block *nb,
 					unsigned long event, void *ignored)
 {
-	struct rm_spi_ts_platform_data *pdata;
 	struct rm31080_ts *ts;
-	int error;
 
-	pdata = g_input_dev->dev.parent->platform_data;
 	ts = input_get_drvdata(g_input_dev);
 
 	rm_printk("rm31080 REGULATOR EVENT:0x%x\n", (unsigned int)event);
 
-	if (event & REGULATOR_EVENT_POST_ENABLE) {
-		/* 4. sleep 5ms */
-		usleep_range(5000, 6000);
-		if (ts->clk)
-			/* 5. enable clock */
-			clk_enable(ts->clk);
-		/* 6. reset GPIO */
-		gpio_set_value(pdata->gpio_reset, 1);
-	}
-
-	if (event & REGULATOR_EVENT_DISABLE) {
-		/* 1. 3v3 power off */
-		/* 2. sleep 30ms */
-		msleep(30);
-		/* 3. pull low reset */
-		gpio_set_value(pdata->gpio_reset, 0);
-		/* 4 disable clock */
-		if (ts->clk)
-			clk_disable(ts->clk);
-		/* 5. disable 1.8 */
-		error = regulator_disable(ts->regulator_1v8);
-		if (error < 0) {
-			dev_err(&g_spi->dev,
-			"raydium regulator 1.8V disable failed: %d\n",
-				error);
-			return NOTIFY_BAD;
-		}
-	}
 	return NOTIFY_OK;
 }
 
@@ -1767,7 +1754,7 @@ static int rm31080_voltage_notifier_3v3(struct notifier_block *nb,
 static void rm31080_start(struct rm31080_ts *ts)
 {				/* handle touch resume */
 	int error;
-
+	struct rm_spi_ts_platform_data *pdata;
 	if (!g_stTs.bIsSuspended)
 		return;
 	g_stTs.bIsSuspended = false;
@@ -1783,7 +1770,19 @@ static void rm31080_start(struct rm31080_ts *ts)
 				"raydium regulator 1.8V enable failed: %d\n",
 				error);
 	}
+	/* handle all platforms w/ and w/out regulator switches */
+	/* 4. delay for platforms with load switches */
+	usleep_range(15000, 20000);
+	/* 5. enable clock */
+	if (ts->clk)
+		clk_enable(ts->clk);
+	/* 6. reset */
+	pdata = g_input_dev->dev.parent->platform_data;
+	if (pdata->platform_id == RM_PLATFORM_P005)
+		gpio_set_value(pdata->gpio_reset, 1);
 
+	/* 7. delay */
+	msleep(20);
 	rm31080_init_ts_structure_part();
 	rm31080_ts_send_signal(g_stTs.ulHalPID, RM_SIGNAL_RESUME);
 #elif defined(ENABLE_AUTO_SCAN)
@@ -2277,7 +2276,7 @@ static int __devinit rm31080_spi_probe(struct spi_device *spi)
 	gpio_set_value(pdata->gpio_reset, 0);
 	msleep(120);
 	gpio_set_value(pdata->gpio_reset, 1);
-	usleep_range(15000, 190000);
+	msleep(20);
 
 	if (spi->max_speed_hz > MAX_SPI_FREQ_HZ) {
 		dev_err(&spi->dev, "SPI CLK %d Hz?\n", spi->max_speed_hz);
