@@ -612,6 +612,11 @@ int __init roth_palmas_regulator_init(void)
 		pmic_platform.reg_init[i] = roth_reg_init[i];
 	}
 
+	/* Set SMPS12 and 3 to normal mode if it is not there. */
+	reg_idata_smps12.constraints.initial_mode = REGULATOR_MODE_NORMAL;
+	reg_idata_smps3.constraints.initial_mode = REGULATOR_MODE_NORMAL;
+	reg_idata_smps9.constraints.initial_mode = REGULATOR_MODE_NORMAL;
+
 	i2c_register_board_info(4, palma_device,
 			ARRAY_SIZE(palma_device));
 	return 0;
