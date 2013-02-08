@@ -43,7 +43,6 @@
 #include <mach/pinmux.h>
 #include <media/imx091.h>
 #include <media/ov9772.h>
-#include <media/as364x.h>
 #include <media/ad5816.h>
 #include <generated/mach-types.h>
 #include <linux/power/sbs-battery.h>
@@ -405,44 +404,6 @@ static struct ov9772_platform_data macallan_ov9772_pdata = {
 	.power_off	= macallan_ov9772_power_off,
 };
 
-static int macallan_as3648_power_on(struct as364x_power_rail *pw)
-{
-	int err = macallan_get_vcmvdd();
-
-	if (err)
-		return err;
-
-	return regulator_enable(macallan_vcmvdd);
-}
-
-static int macallan_as3648_power_off(struct as364x_power_rail *pw)
-{
-	if (!macallan_vcmvdd)
-		return -ENODEV;
-
-	return regulator_disable(macallan_vcmvdd);
-}
-
-static struct as364x_platform_data macallan_as3648_pdata = {
-	.config		= {
-		.max_total_current_mA = 1000,
-		.max_peak_current_mA = 600,
-		.vin_low_v_run_mV = 3070,
-		.strobe_type = 1,
-		},
-	.pinstate	= {
-		.mask	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PBB0),
-		.values	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PBB0)
-		},
-	.dev_name	= "torch",
-	.type		= AS3648,
-	.gpio_strobe	= CAM_FLASH_STROBE,
-	.led_mask	= 3,
-
-	.power_on_callback = macallan_as3648_power_on,
-	.power_off_callback = macallan_as3648_power_off,
-};
-
 static struct ad5816_platform_data macallan_ad5816_pdata = {
 	.cfg = 0,
 	.num = 0,
@@ -460,10 +421,6 @@ static struct i2c_board_info macallan_i2c_board_info_e1625[] = {
 	{
 		I2C_BOARD_INFO("ov9772", 0x10),
 		.platform_data = &macallan_ov9772_pdata,
-	},
-	{
-		I2C_BOARD_INFO("as3648", 0x30),
-		.platform_data = &macallan_as3648_pdata,
 	},
 	{
 		I2C_BOARD_INFO("ad5816", 0x0E),
