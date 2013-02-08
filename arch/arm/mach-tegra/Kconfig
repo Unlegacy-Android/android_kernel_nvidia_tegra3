@@ -1,4 +1,4 @@
-# Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms and conditions of the GNU General Public License,
@@ -119,7 +119,6 @@ config ARCH_TEGRA_11x_SOC
 	select ARCH_TEGRA_HAS_CL_DVFS
 	select TEGRA_DUAL_CBUS
 	select ARCH_TEGRA_4GB_MEMORY
-	select EDP_FRAMEWORK
 	select TEGRA_LATENCY_ALLOWANCE if !TEGRA_FPGA_PLATFORM
 	select TEGRA_MC_PTSA if !TEGRA_FPGA_PLATFORM
 	select SOC_BUS
@@ -322,6 +321,7 @@ config MACH_TEGRA_PLUTO
        bool "Pluto board"
        depends on ARCH_TEGRA_11x_SOC
        select MACH_HAS_SND_SOC_TEGRA_CS42L73 if SND_SOC
+       select EDP_FRAMEWORK
        select MACH_HAS_SND_SOC_TEGRA_TLV320AIC326X if SND_SOC
        help
          Support for NVIDIA PLUTO development platform

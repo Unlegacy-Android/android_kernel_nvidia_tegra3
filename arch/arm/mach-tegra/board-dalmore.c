@@ -781,47 +781,11 @@ static int __init dalmore_touch_init(void)
 	return 0;
 }
 
-#ifdef CONFIG_EDP_FRAMEWORK
-static struct edp_manager battery_edp_manager = {
-	.name = "battery",
-	.max = 9500
-};
-
-static void __init dalmore_battery_edp_init(void)
-{
-	struct edp_governor *g;
-	int r;
-
-	r = edp_register_manager(&battery_edp_manager);
-	if (r)
-		goto err_ret;
-
-	/* start with priority governor */
-	g = edp_get_governor("priority");
-	if (!g) {
-		r = -EFAULT;
-		goto err_ret;
-	}
-
-	r = edp_set_governor(&battery_edp_manager, g);
-	if (r)
-		goto err_ret;
-
-	return;
-
-err_ret:
-	pr_err("Battery EDP init failed with error %d\n", r);
-	WARN_ON(1);
-}
-#else
-static inline void dalmore_battery_edp_init(void) {}
-#endif
 static void __init tegra_dalmore_init(void)
 {
 	struct board_info board_info;
 
 	tegra_get_display_board_info(&board_info);
-	dalmore_battery_edp_init();
 	tegra_clk_init_from_table(dalmore_clk_init_table);
 	tegra_clk_vefify_parents();
 	tegra_soc_device_init("dalmore");
