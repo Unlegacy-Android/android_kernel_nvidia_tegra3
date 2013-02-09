@@ -457,7 +457,9 @@ static int palma_smps_set_voltage_smps_time_sel(struct regulator_dev *rdev,
 	unsigned int ramp_delay = pmic->ramp_delay[id];
 
 	/* ES2.1, have the 1.5X slower slew rate than configured */
-	ramp_delay = (ramp_delay * 15)/10;
+	if (palmas_is_es_version_or_less(pmic->palmas, 2, 1))
+		ramp_delay = (ramp_delay * 15)/10;
+
 	if (!ramp_delay)
 		return 0;
 
@@ -1060,20 +1062,25 @@ static void palmas_enable_ldo8_track(struct palmas *palmas)
 	}
 
 	/*
+	 * Errata ES1.0, 2,0 and 2.1
 	 * When Tracking is enbled, it need to disable Pull-Down for LDO8 and
 	 * when tracking is disabled, SW has to enabe Pull-Down.
 	 */
-	addr = PALMAS_LDO_PD_CTRL1;
-	ret = palmas_ldo_read(palmas, addr, &reg);
-	if (ret < 0) {
-		dev_err(palmas->dev, "Error in reading pulldown control reg\n");
-		return;
-	}
-	reg &= ~PALMAS_LDO_PD_CTRL1_LDO8;
-	ret = palmas_ldo_write(palmas, addr, reg);
-	if (ret < 0) {
-		dev_err(palmas->dev, "Error in setting pulldown control reg\n");
-		return;
+	if (palmas_is_es_version_or_less(palmas, 2, 1)) {
+		addr = PALMAS_LDO_PD_CTRL1;
+		ret = palmas_ldo_read(palmas, addr, &reg);
+		if (ret < 0) {
+			dev_err(palmas->dev,
+				"Error in reading pulldown control reg\n");
+			return;
+		}
+		reg &= ~PALMAS_LDO_PD_CTRL1_LDO8;
+		ret = palmas_ldo_write(palmas, addr, reg);
+		if (ret < 0) {
+			dev_err(palmas->dev,
+				"Error in setting pulldown control reg\n");
+			return;
+		}
 	}
 
 	return;
@@ -1119,20 +1126,25 @@ static void palmas_disable_ldo8_track(struct palmas *palmas)
 	}
 
 	/*
+	 * Errata ES1.0, 2,0 and 2.1
 	 * When Tracking is enbled, it need to disable Pull-Down for LDO8 and
 	 * when tracking is disabled, SW has to enabe Pull-Down.
 	 */
-	addr = PALMAS_LDO_PD_CTRL1;
-	ret = palmas_ldo_read(palmas, addr, &reg);
-	if (ret < 0) {
-		dev_err(palmas->dev, "Error in reading pulldown control reg\n");
-		return;
-	}
-	reg |= PALMAS_LDO_PD_CTRL1_LDO8;
-	ret = palmas_ldo_write(palmas, addr, reg);
-	if (ret < 0) {
-		dev_err(palmas->dev, "Error in setting pulldown control reg\n");
-		return;
+	if (palmas_is_es_version_or_less(palmas, 2, 1)) {
+		addr = PALMAS_LDO_PD_CTRL1;
+		ret = palmas_ldo_read(palmas, addr, &reg);
+		if (ret < 0) {
+			dev_err(palmas->dev,
+				"Error in reading pulldown control reg\n");
+			return;
+		}
+		reg |= PALMAS_LDO_PD_CTRL1_LDO8;
+		ret = palmas_ldo_write(palmas, addr, reg);
+		if (ret < 0) {
+			dev_err(palmas->dev,
+				"Error in setting pulldown control reg\n");
+			return;
+		}
 	}
 
 	return;
