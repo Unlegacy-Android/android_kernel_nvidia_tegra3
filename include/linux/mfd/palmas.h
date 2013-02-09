@@ -50,6 +50,11 @@ struct palmas {
 	u8 gpio_muxed;
 	u8 led_muxed;
 	u8 pwm_muxed;
+
+	int design_revision;
+	int sw_otp_version;
+	int es_minor_version;
+	int es_major_version;
 };
 
 struct palmas_reg_init {
@@ -317,6 +322,7 @@ struct palmas_pmic {
 #define PALMAS_USB_BASE						0x290
 #define PALMAS_GPADC_BASE					0x2C0
 #define PALMAS_TRIM_GPADC_BASE					0x3CD
+#define PALMAS_PAGE3_BASE					0x300
 
 /* Registers for function RTC */
 #define PALMAS_SECONDS_REG					0x0
@@ -2667,6 +2673,9 @@ struct palmas_pmic {
 #define PALMAS_GPADC_SMPS_VSEL_MONITORING_ACTIVE_PHASE_SHIFT	7
 #define PALMAS_GPADC_SMPS_VSEL_MONITORING_SMPS_VSEL_MONITORING_MASK	0x7f
 #define PALMAS_GPADC_SMPS_VSEL_MONITORING_SMPS_VSEL_MONITORING_SHIFT	0
+
+#define PALMAS_INTERNAL_DESIGNREV				0x57
+#define PALMAS_INTERNAL_DESIGNREV_DESIGNREV(val)		((val) & 0xF)
 
 /* Registers for function GPADC */
 #define PALMAS_GPADC_TRIM1					0x0
