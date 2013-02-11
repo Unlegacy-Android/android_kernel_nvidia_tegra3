@@ -3,7 +3,7 @@
  *
  * Tegra graphics host driver
  *
- * Copyright (c) 2009-2012, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2009-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -166,6 +166,9 @@ struct nvhost_device_data {
 			struct nvhost_hwctx *hwctx,
 			u32 offset,
 			u32 *value);
+
+	/* Callback when a clock is changed */
+	void (*update_clk)(struct platform_device *dev);
 };
 
 struct nvhost_devfreq_ext_stat {

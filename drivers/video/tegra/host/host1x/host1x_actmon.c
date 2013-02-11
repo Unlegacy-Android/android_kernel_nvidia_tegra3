@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host Actmon support
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -86,7 +86,6 @@ static void host1x_actmon_update_sample_period_safe(struct nvhost_master *host)
 		| host1x_sync_actmon_status_status_source_f(
 		host1x_sync_actmon_status_status_source_usec_v()),
 		sync_regs + host1x_sync_actmon_status_r());
-
 }
 
 static int host1x_actmon_init(struct nvhost_master *host)
@@ -221,12 +220,46 @@ static int host1x_actmon_below_wmark_count(struct nvhost_master *host)
 
 static void host1x_actmon_update_sample_period(struct nvhost_master *host)
 {
+	void __iomem *sync_regs = host->sync_aperture;
+	long old_clks_per_sample;
+	long ratio, avg;
+	u32 val;
+	unsigned long timeout = jiffies + msecs_to_jiffies(25);
+
 	/* No sense to update actmon if actmon is inactive */
 	if (actmon_status.init != ACTMON_READY)
 		return;
 
 	nvhost_module_busy(host->dev);
+
+	/* Disable actmon */
+	val = readl(sync_regs + host1x_sync_actmon_ctrl_r());
+	val &= ~host1x_sync_actmon_ctrl_enb_m();
+	val &= ~host1x_sync_actmon_ctrl_enb_periodic_m();
+	writel(val, sync_regs + host1x_sync_actmon_ctrl_r());
+
+	/* Calculate ratio between old and new clks_per_sample */
+	old_clks_per_sample = actmon_status.clks_per_sample;
 	host1x_actmon_update_sample_period_safe(host);
+	ratio = (actmon_status.clks_per_sample * 1000) / old_clks_per_sample;
+
+	/* Scale the avg to match new clock */
+	avg = readl(sync_regs + host1x_sync_actmon_avg_count_r());
+	avg *= ratio;
+	avg /= 1000;
+	writel(avg, sync_regs + host1x_sync_actmon_init_avg_r());
+
+	/* Wait for actmon to be disabled */
+	do {
+		val = readl(sync_regs + host1x_sync_actmon_status_r());
+	} while (!time_after(jiffies, timeout) &&
+			val & host1x_sync_actmon_status_gr3d_mon_act_f(1));
+
+	/* Re-enable actmon - this will latch the init value to avg reg */
+	val |= host1x_sync_actmon_ctrl_enb_m();
+	val |= host1x_sync_actmon_ctrl_enb_periodic_m();
+	writel(val, sync_regs + host1x_sync_actmon_ctrl_r());
+
 	nvhost_module_idle(host->dev);
 }
 
