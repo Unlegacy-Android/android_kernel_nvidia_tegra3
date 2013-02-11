@@ -73,6 +73,7 @@
 #include <mach/tegra_fiq_debugger.h>
 #include <mach/tegra-bb-power.h>
 #include <mach/tegra_usb_modem_power.h>
+#include <mach/hardware.h>
 
 #include "board.h"
 #include "board-common.h"
@@ -1100,7 +1101,6 @@ struct spi_clk_parent spi_parent_clk_pluto[] = {
 };
 
 static struct tegra_spi_platform_data pluto_spi_pdata = {
-	.is_dma_based           = false,
 	.max_dma_buffer         = 16 * 1024,
         .is_clkon_always        = false,
         .max_rate               = 25000000,
@@ -1127,6 +1127,8 @@ static void __init pluto_spi_init(void)
         }
         pluto_spi_pdata.parent_clk_list = spi_parent_clk_pluto;
         pluto_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk_pluto);
+	pluto_spi_pdata.is_dma_based = (tegra_revision == TEGRA_REVISION_A01)
+						? false : true ;
 	tegra11_spi_device4.dev.platform_data = &pluto_spi_pdata;
         platform_add_devices(pluto_spi_devices,
                                 ARRAY_SIZE(pluto_spi_devices));

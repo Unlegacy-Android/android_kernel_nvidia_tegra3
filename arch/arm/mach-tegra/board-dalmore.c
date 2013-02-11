@@ -67,6 +67,7 @@
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_fiq_debugger.h>
 #include <mach/tegra_usb_modem_power.h>
+#include <mach/hardware.h>
 
 #include "board-touch-raydium.h"
 #include "board.h"
@@ -697,7 +698,6 @@ struct spi_clk_parent spi_parent_clk_dalmore[] = {
 };
 
 static struct tegra_spi_platform_data dalmore_spi_pdata = {
-	.is_dma_based           = false,
 	.max_dma_buffer         = 16 * 1024,
         .is_clkon_always        = false,
         .max_rate               = 25000000,
@@ -724,6 +724,8 @@ static void __init dalmore_spi_init(void)
         }
         dalmore_spi_pdata.parent_clk_list = spi_parent_clk_dalmore;
         dalmore_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk_dalmore);
+	dalmore_spi_pdata.is_dma_based = (tegra_revision == TEGRA_REVISION_A01)
+							? false : true ;
 	tegra11_spi_device4.dev.platform_data = &dalmore_spi_pdata;
         platform_add_devices(dalmore_spi_devices,
                                 ARRAY_SIZE(dalmore_spi_devices));
