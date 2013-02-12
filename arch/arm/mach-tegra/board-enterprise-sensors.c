@@ -141,7 +141,8 @@ static void enterprise_nct1008_init(void)
 	}
 
 	tegra_platform_edp_init(enterprise_nct1008_pdata.trips,
-				&enterprise_nct1008_pdata.num_trips);
+				&enterprise_nct1008_pdata.num_trips,
+				0); /* edp temperature margin */
 
 	enterprise_i2c4_nct1008_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PH7);
 	i2c_register_board_info(4, enterprise_i2c4_nct1008_board_info,

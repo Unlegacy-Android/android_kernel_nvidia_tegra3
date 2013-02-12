@@ -703,7 +703,8 @@ static struct soctherm_platform_data macallan_soctherm_data = {
 int __init macallan_soctherm_init(void)
 {
 	tegra_platform_edp_init(macallan_soctherm_data.therm[THERM_CPU].trips,
-			&macallan_soctherm_data.therm[THERM_CPU].num_trips);
+			&macallan_soctherm_data.therm[THERM_CPU].num_trips,
+			8000); /* edp temperature margin */
 	tegra_add_tj_trips(macallan_soctherm_data.therm[THERM_CPU].trips,
 			&macallan_soctherm_data.therm[THERM_CPU].num_trips);
 

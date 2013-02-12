@@ -778,7 +778,8 @@ static int cardhu_nct1008_init(void)
 
 	if (nct1008_port >= 0) {
 		tegra_platform_edp_init(cardhu_nct1008_pdata.trips,
-					&cardhu_nct1008_pdata.num_trips);
+					&cardhu_nct1008_pdata.num_trips,
+					0); /* edp temperature margin */
 
 		cardhu_i2c4_nct1008_board_info[0].irq =
 						gpio_to_irq(nct1008_port);
