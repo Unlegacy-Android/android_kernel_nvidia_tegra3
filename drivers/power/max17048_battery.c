@@ -2,7 +2,7 @@
  *  max17048_battery.c
  *  fuel-gauge systems for lithium-ion (Li+) batteries
  *
- *  Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved
+ *  Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved
  *  Chandler Zhang <chazhang@nvidia.com>
  *  Syed Rafiuddin <srafiuddin@nvidia.com>
  *
@@ -438,7 +438,8 @@ static int max17048_load_model_data(struct max17048_chip *chip)
 
 static int max17048_initialize(struct max17048_chip *chip)
 {
-	uint8_t ret, config;
+	uint8_t ret;
+	uint8_t config = 0;
 	struct i2c_client *client = chip->client;
 	struct max17048_battery_model *mdata = chip->pdata->model_data;
 
@@ -459,7 +460,8 @@ static int max17048_initialize(struct max17048_chip *chip)
 		config = 32 - (mdata->alert_threshold * 2);
 	else if (mdata->bits == 18)
 		config = 32 - mdata->alert_threshold;
-
+	else
+		dev_info(&client->dev, "Alert bit not set!");
 	config = mdata->one_percent_alerts | config;
 
 	ret = max17048_write_word(client, MAX17048_CONFIG,
