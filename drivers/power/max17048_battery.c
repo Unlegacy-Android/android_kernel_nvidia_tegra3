@@ -639,7 +639,9 @@ static int max17048_resume(struct i2c_client *client)
 		dev_err(&client->dev, "failed in exiting hibernate mode\n");
 		return ret;
 	}
-	schedule_work(&chip->work);
+
+	schedule_delayed_work(&chip->work, MAX17048_DELAY);
+
 	return 0;
 }
 
