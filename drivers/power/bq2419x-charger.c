@@ -97,25 +97,6 @@ static int bq2419x_charger_enable(struct bq2419x_charger *charger)
 	return ret;
 }
 
-static int bq2419x_charger_disable(struct bq2419x_charger *charger)
-{
-	int ret;
-
-	mutex_lock(&charger->mutex);
-	if (charger && charger->shutdown_complete) {
-		mutex_unlock(&charger->mutex);
-		return -ENODEV;
-	}
-	mutex_unlock(&charger->mutex);
-
-	dev_info(charger->dev, "Charging disabled\n");
-	ret = regmap_update_bits(charger->chip->regmap, BQ2419X_PWR_ON_REG,
-				ENABLE_CHARGE_MASK, 0);
-	if (ret < 0)
-		dev_err(charger->dev, "register update failed, err %d\n", ret);
-	return ret;
-}
-
 static int bq2419x_ac_get_property(struct power_supply *psy,
 	enum power_supply_property psp, union power_supply_propval *val)
 {
