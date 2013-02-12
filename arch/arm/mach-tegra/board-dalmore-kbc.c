@@ -166,6 +166,7 @@ int __init dalmore_kbc_init(void)
 	if (board_info.board_id == BOARD_E1613) {
 		platform_device_register(&dalmore_int_keys_device);
 		dalmore_register_kbc();
+		return 0;
 	}
 
 	if ((board_info.board_id == BOARD_E1611) && (board_info.sku == 1000)) {
