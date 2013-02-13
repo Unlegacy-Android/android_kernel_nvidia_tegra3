@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-dalmore-sdhci.c
  *
- * Copyright (c) 2010, Google, Inc.
+ * Copyright (C) 2010 Google, Inc.
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
@@ -37,7 +37,7 @@
 #include "gpio-names.h"
 #include "board.h"
 #include "board-dalmore.h"
-
+#include "dvfs.h"
 
 #define DALMORE_WLAN_PWR	TEGRA_GPIO_PCC5
 #define DALMORE_WLAN_RST	TEGRA_GPIO_PX7
@@ -389,6 +389,16 @@ subsys_initcall_sync(dalmore_wifi_prepower);
 
 int __init dalmore_sdhci_init(void)
 {
+	int nominal_core_mv;
+
+	nominal_core_mv =
+		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
+	if (nominal_core_mv) {
+		tegra_sdhci_platform_data0.nominal_vcore_uV = nominal_core_mv *
+			1000;
+		tegra_sdhci_platform_data3.nominal_vcore_uV = nominal_core_mv *
+			1000;
+	}
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);
