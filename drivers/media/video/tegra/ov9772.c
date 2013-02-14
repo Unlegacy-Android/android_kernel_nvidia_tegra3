@@ -1,7 +1,7 @@
 /*
  * ov9772.c - ov9772 sensor driver
  *
- *  * Copyright (c) 2012 NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA Corporation.  All rights reserved.
  *
  * Contributors:
  *	Phil Breczinski <pbreczinski@nvidia.com>
@@ -143,6 +143,7 @@
 #include <media/ov9772.h>
 
 #define OV9772_ID			0x9772
+#define OV9772_ID_ADDRESS	0x0000
 #define OV9772_SENSOR_TYPE		NVC_IMAGER_TYPE_RAW
 #define OV9772_STARTUP_DELAY_MS		50
 #define OV9772_RES_CHG_WAIT_TIME_MS	100
@@ -1123,6 +1124,7 @@ ov9772_poweron_skip:
 static int ov9772_pm_wr(struct ov9772_info *info, int pwr)
 {
 	int err = 0;
+	u16 val;
 
 	if ((info->pdata->cfg & (NVC_CFG_OFF2STDBY | NVC_CFG_BOOT_INIT)) &&
 			(pwr == NVC_PWR_OFF ||
@@ -1147,6 +1149,8 @@ static int ov9772_pm_wr(struct ov9772_info *info, int pwr)
 	case NVC_PWR_COMM:
 	case NVC_PWR_ON:
 		err = ov9772_power_on(info, false);
+		if (err > 0)
+			err = ov9772_i2c_rd16(info, OV9772_ID_ADDRESS, &val);
 		break;
 
 	default:
