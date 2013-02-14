@@ -826,7 +826,7 @@ static void __init tegra_dalmore_init(void)
 	dalmore_edp_init();
 	dalmore_touch_init();
 	if (board_info.board_id == BOARD_E1582)
-		roth_panel_init();
+		roth_panel_init(board_info.board_id);
 	else
 		dalmore_panel_init();
 	dalmore_kbc_init();
