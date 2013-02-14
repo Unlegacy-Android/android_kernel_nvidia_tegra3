@@ -37,6 +37,7 @@
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
+#include <mach/hardware.h>
 #include <mach/edp.h>
 #include <mach/gpio-tegra.h>
 
@@ -559,6 +560,8 @@ static struct tegra_cl_dvfs_platform_data macallan_cl_dvfs_data = {
 static int __init macallan_cl_dvfs_init(void)
 {
 	fill_reg_map();
+	if (tegra_revision < TEGRA_REVISION_A02)
+		macallan_cl_dvfs_data.out_quiet_then_disable = true;
 	tegra_cl_dvfs_device.dev.platform_data = &macallan_cl_dvfs_data;
 	platform_device_register(&tegra_cl_dvfs_device);
 
