@@ -455,6 +455,7 @@ struct tegra_udc {
 	unsigned remote_wakeup:1;
 	unsigned selfpowered:1;
 	bool has_hostpc;
+	bool fence_read;
 };
 
 

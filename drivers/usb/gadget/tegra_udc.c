@@ -38,6 +38,7 @@
 #include <linux/err.h>
 #include <linux/io.h>
 #include <linux/pm_qos.h>
+#include <linux/platform_data/tegra_usb.h>
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
@@ -1980,7 +1981,8 @@ static int process_ep_req(struct tegra_udc *udc, int pipe,
 
 	for (j = 0; j < curr_req->dtd_count; j++) {
 		/* Fence read for coherency of AHB master intiated writes */
-		readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
+		if (udc->fence_read)
+			readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
 
 		dma_sync_single_for_cpu(udc->gadget.dev.parent, curr_td->td_dma,
 				sizeof(struct ep_td_struct), DMA_FROM_DEVICE);
@@ -2331,7 +2333,8 @@ static irqreturn_t tegra_udc_irq(int irq, void *_udc)
 		goto done;
 
 	/* Fence read for coherency of AHB master intiated writes */
-	readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
+	if (udc->fence_read)
+		readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
 
 	irq_src = udc_readl(udc, USB_STS_REG_OFFSET) &
 				udc_readl(udc, USB_INTR_REG_OFFSET);
@@ -2631,6 +2634,7 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 {
 	struct tegra_udc *udc;
 	struct resource *res;
+	struct tegra_usb_platform_data *pdata;
 	int err = -ENODEV;
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
@@ -2688,6 +2692,15 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 			udc->irq, err);
 		err = 0;
 	}
+	/*Disable fence read if H/W support is disabled*/
+	pdata = dev_get_platdata(&pdev->dev);
+	if (pdata) {
+		if (pdata->unaligned_dma_buf_supported)
+			udc->fence_read = false;
+		else
+			udc->fence_read = true;
+	} else
+		dev_err(&pdev->dev, "failed to get platform_data\n");
 
 	udc->phy = tegra_usb_phy_open(pdev);
 	if (IS_ERR(udc->phy)) {
