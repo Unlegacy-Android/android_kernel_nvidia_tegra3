@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board-roth-kbc.c
  * Keys configuration for Nvidia tegra3 roth platform.
  *
- * Copyright (C) 2012 NVIDIA, Inc.
+ * Copyright (C) 2012-2013 NVIDIA, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -71,31 +71,13 @@ static struct gpio_keys_button roth_p2454_keys[] = {
 		.desc = "Hall Effect Sensor",
 		.active_low = 1,
 		.wakeup = 1,
-		.debounce_interval = 100,
+		.debounce_interval = 0,
 	},
 };
-
-static int roth_wakeup_key(void)
-{
-	int wakeup_key;
-	u64 status = readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_WAKE_STATUS)
-		| (u64)readl(IO_ADDRESS(TEGRA_PMC_BASE)
-		+ PMC_WAKE2_STATUS) << 32;
-
-	if (status & ((u64)1 << TEGRA_WAKE_GPIO_PQ0))
-		wakeup_key = KEY_POWER;
-	else if (status & ((u64)1 << TEGRA_WAKE_GPIO_PS0))
-		wakeup_key = SW_LID;
-	else
-		wakeup_key = KEY_RESERVED;
-
-	return wakeup_key;
-}
 
 static struct gpio_keys_platform_data roth_p2454_keys_pdata = {
 	.buttons	= roth_p2454_keys,
 	.nbuttons	= ARRAY_SIZE(roth_p2454_keys),
-	.wakeup_key	= roth_wakeup_key,
 };
 
 static struct platform_device roth_p2454_keys_device = {
