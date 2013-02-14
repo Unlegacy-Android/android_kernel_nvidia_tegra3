@@ -332,7 +332,7 @@ static int dsi_p_wuxga_10_1_enable(struct device *dev)
 	gpio_set_value(gpio_lcd_rst, 0);
 	msleep(150);
 	gpio_set_value(gpio_lcd_rst, 1);
-	msleep(1500);
+	msleep(150);
 #endif
 
 	return 0;
