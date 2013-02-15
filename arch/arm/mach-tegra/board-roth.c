@@ -46,6 +46,7 @@
 #include <linux/i2c/at24.h>
 #include <linux/of_platform.h>
 #include <asm/hardware/gic.h>
+#include <mach/hardware.h>
 
 #include <mach/clk.h>
 #include <mach/iomap.h>
@@ -619,7 +620,6 @@ struct spi_clk_parent spi_parent_clk_roth[] = {
 };
 
 static struct tegra_spi_platform_data roth_spi_pdata = {
-	.is_dma_based           = false,
 	.max_dma_buffer         = 16 * 1024,
 	.is_clkon_always        = false,
 	.max_rate               = 25000000,
@@ -642,6 +642,8 @@ static void __init roth_spi_init(void)
 	}
 	roth_spi_pdata.parent_clk_list = spi_parent_clk_roth;
 	roth_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk_roth);
+	roth_spi_pdata.is_dma_based = (tegra_revision == TEGRA_REVISION_A01) ?
+					false : true;
 	tegra11_spi_device4.dev.platform_data = &roth_spi_pdata;
 	platform_add_devices(roth_spi_devices,
 		ARRAY_SIZE(roth_spi_devices));
