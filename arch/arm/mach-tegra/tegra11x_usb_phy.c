@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11x_usb_phy.c
  *
- * Copyright (C) 2012-2013 NVIDIA Corporation
+ * Copyright (c) 2012-2013 NVIDIA Corporation. All rights reserved.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -619,6 +619,12 @@ static int _usb_phy_init(struct tegra_usb_phy *phy)
 	val |= USB_PORT_SUSPEND_EN;
 	writel(val, base + USB_IF_SPARE);
 
+	if (phy->pdata->unaligned_dma_buf_supported == true) {
+		val = readl(base + USB_NEW_CONTROL);
+		val |= USB_COHRENCY_EN;
+		val |= USB_MEM_ALLIGNMENT_MUX_EN;
+		writel(val, base + USB_NEW_CONTROL);
+	}
 	val =  readl(base + TEGRA_STREAM_DISABLE);
 #if !defined(CONFIG_TEGRA_SILICON_PLATFORM)
 	val |= TEGRA_STREAM_DISABLE_OFFSET;
@@ -1301,8 +1307,8 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 		DBG("USB_USBMODE[0x%x] USB_USBCMD[0x%x]\n",
 			readl(base + USB_USBMODE), readl(base + USB_USBCMD));
 	}
-
-	usb_phy_fence_read(phy);
+	if (!phy->pdata->unaligned_dma_buf_supported)
+		usb_phy_fence_read(phy);
 	/* check if it is pmc wake event */
 	if (utmi_phy_pmc_wake_detected(phy))
 		remote_wakeup = phy->pmc_remote_wakeup;
@@ -2288,7 +2294,8 @@ static void uhsic_phy_close(struct tegra_usb_phy *phy)
 static int uhsic_phy_irq(struct tegra_usb_phy *phy)
 {
 	/* check if there is any remote wake event */
-	usb_phy_fence_read(phy);
+	if (!phy->pdata->unaligned_dma_buf_supported)
+		usb_phy_fence_read(phy);
 	if (uhsic_phy_remotewake_detected(phy))
 		DBG("%s: uhsic remote wake detected\n", __func__);
 	return IRQ_HANDLED;
