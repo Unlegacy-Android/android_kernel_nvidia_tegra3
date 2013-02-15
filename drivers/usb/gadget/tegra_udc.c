@@ -1798,7 +1798,8 @@ static void setup_received_irq(struct tegra_udc *udc,
 		return;
 
 	case USB_REQ_SET_ADDRESS:
-		udc->connect_type = CONNECT_TYPE_SDP;
+		if (udc->connect_type != CONNECT_TYPE_CDP)
+			udc->connect_type = CONNECT_TYPE_SDP;
 		tegra_vbus_draw(&udc->gadget,
 				USB_CHARGING_SDP_CURRENT_LIMIT_UA/1000);
 		/* Status phase from udc */
