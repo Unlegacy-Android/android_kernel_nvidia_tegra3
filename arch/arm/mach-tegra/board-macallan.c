@@ -607,6 +607,7 @@ struct rm_spi_ts_platform_data rm31080ts_macallan_data = {
 	.config = 0,
 	.platform_id = RM_PLATFORM_D010,
 	.name_of_clock = "clk_out_2",
+	.name_of_clock_con = "extern2",
 };
 
 static struct tegra_spi_device_controller_data dev_cdata = {
@@ -632,7 +633,6 @@ static int __init macallan_touch_init(void)
 
 	tegra_get_display_board_info(&board_info);
 	tegra_clk_init_from_table(touch_clk_init_table);
-	clk_enable(tegra_get_clock_by_name("clk_out_2"));
 	if (board_info.board_id == BOARD_E1582)
 		rm31080ts_macallan_data.platform_id = RM_PLATFORM_P005;
 	else
