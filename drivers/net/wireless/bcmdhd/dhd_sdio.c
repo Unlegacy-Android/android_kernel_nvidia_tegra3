@@ -7341,11 +7341,134 @@ err:
 	return bcmerror;
 }
 
+#ifdef NV_BCM943341_WBFGN_MULTI_MODULE_SUPPORT
+enum {
+	BCM943341_INVALID = 0,
+	BCM943341_WBFGN_2,
+	BCM943341_WBFGN_3,
+	BCM943341_WBFGN_4,
+};
+
+static uint16
+dhdsdio_read_boardrev_cis(struct dhd_bus *bus)
+{
+	osl_t *osh;
+	void *sdh;
+	uint8 *cis_fn0 = NULL;
+	uint16 boardrev = 0;
+	int idx = 0;
+	int err = 0;
+
+	osh = bus->dhd->osh;
+	sdh = bus->sdh;
+
+	DHD_TRACE(("%s: Enter\n", __func__));
+
+	cis_fn0 = MALLOC(osh, SBSDIO_CIS_SIZE_LIMIT);
+	if (!cis_fn0) {
+		DHD_ERROR(("%s: cis_fn0 alloc failed\n", __func__));
+		goto cleanup;
+	}
+
+	bzero(cis_fn0, SBSDIO_CIS_SIZE_LIMIT);
+
+	err = bcmsdh_cis_read(sdh, 0, cis_fn0, SBSDIO_CIS_SIZE_LIMIT);
+
+	if (err) {
+		DHD_ERROR(("%s: : cis_fn0 read failed, err: %d\n", __func__,
+									 err));
+		goto cleanup;
+	}
+
+	idx = 0;
+	while (idx < SBSDIO_CIS_SIZE_LIMIT) {
+		uint8 tuple = cis_fn0[idx++];
+
+		/* read tuple type */
+		if (tuple == 0x0) {
+			/* CISTPL_NULL */
+			continue;
+		} else if (tuple == 0xff) {
+			/* CISTPL_END */
+			DHD_INFO(("CISTPL_END\n"));
+			break;
+		} else {
+			int offset = cis_fn0[idx++];
+			uint8 type = cis_fn0[idx];
+
+			if (tuple == 0x80) {
+				/* Vendor Unique Tuple */
+				if (type == 0x00) {
+					/* sromrev */
+					DHD_INFO(("sromrev: 0x%02x\n",
+							cis_fn0[idx+1]));
+				} else if (type == 0x02) {
+					/* boardrev */
+					boardrev = *((uint16 *)&cis_fn0[idx+1]);
+					DHD_INFO(("boardrev: 0x%04x\n",
+								boardrev));
+				} else if (type == 0x1b) {
+					/* boardtype */
+					DHD_INFO(("boardtype: 0x%04x\n",
+						*((uint16 *)&cis_fn0[idx+1])));
+				} else if (type == 0x19) {
+					/* mac address */
+					DHD_INFO(("mac address\n"));
+				} else {
+					DHD_INFO(("Unk Unique Tuple:0x%02x\n",
+									type));
+				}
+			}
+			idx += offset;
+			continue;
+		}
+	}
+
+cleanup:
+
+	if (cis_fn0)
+		MFREE(osh, cis_fn0, SBSDIO_CIS_SIZE_LIMIT);
+
+	return boardrev;
+}
+
+static int
+dhdsdio_boardrev_bcm943341wbfgn(struct dhd_bus *bus)
+{
+	int boardrev;
+
+	DHD_TRACE(("%s: Enter\n", __func__));
+
+	switch (dhd_bus_chiprev_id(bus->dhd)) {
+	case 0x0: /* a0/a1 */
+		if (dhdsdio_read_boardrev_cis(bus) == 0x1303) {
+			DHD_ERROR(("%s: BCM943341_WBFGN_3\n", __func__));
+			boardrev = BCM943341_WBFGN_3;
+		} else {
+			DHD_ERROR(("%s: BCM943341_WBFGN_2\n", __func__));
+			boardrev = BCM943341_WBFGN_2;
+		}
+		break;
+	case 0x2: /* b0 */
+		DHD_ERROR(("%s: BCM943341_WBFGN_4\n", __func__));
+		boardrev = BCM943341_WBFGN_4;
+		break;
+	default:
+		DHD_ERROR(("%s: Unknown board\n", __func__));
+		boardrev = BCM943341_INVALID;
+		break;
+	}
+
+	return boardrev;
+}
+#endif /* NV_BCM943341_WBFGN_MULTI_MODULE_SUPPORT */
+
 static int
 _dhdsdio_download_firmware(struct dhd_bus *bus)
 {
 	int bcmerror = -1;
 	char *p;
+	int boardrev;
 
 	bool embed = FALSE;	/* download embedded firmware */
 	bool dlok = FALSE;	/* download firmware succeeded */
@@ -7358,6 +7481,52 @@ _dhdsdio_download_firmware(struct dhd_bus *bus)
 		return 0;
 #endif
 	}
+
+#ifdef NV_BCM943341_WBFGN_MULTI_MODULE_SUPPORT
+	if (dhd_bus_chip_id(bus->dhd) == BCM43341_CHIP_ID) {
+		boardrev = dhdsdio_boardrev_bcm943341wbfgn(bus);
+		char *ptr = strstr(bus->nv_path, "nvram");
+		DHD_ERROR(("nvram path: %s\n", ptr));
+		if (ptr) {
+			switch (boardrev) {
+			case BCM943341_WBFGN_2:
+				strcpy(ptr, "nvram.txt");
+				break;
+			case BCM943341_WBFGN_3:
+				strcpy(ptr, "nvram_43341_rev3.txt");
+				break;
+			case BCM943341_WBFGN_4:
+				strcpy(ptr, "nvram_43341_rev4.txt");
+				break;
+			default:
+				DHD_ERROR(("%s:Unknown bcm943341_wbfgn board\n",
+								__func__));
+				break;
+			}
+		} else {
+			DHD_ERROR(("%s: Invalid nv_path for bcm943341\n",
+								__func__));
+			goto err;
+		}
+
+		char *ptr_fw = strstr(bus->fw_path, "fw_bcmdhd");
+		if (ptr_fw == NULL) {
+			DHD_ERROR(("%s: Invalid fw_path for bcm943341: %s\n",
+						__func__, bus->fw_path));
+			goto err;
+		} else if (boardrev == BCM943341_WBFGN_2
+					 || boardrev == BCM943341_WBFGN_3) {
+			strcpy(ptr_fw, "fw_bcmdhd_a0.bin");
+		} else if (boardrev == BCM943341_WBFGN_4) {
+			strcpy(ptr_fw, "fw_bcmdhd.bin");
+		}
+
+		DHD_ERROR(("%s: Modified nv_path for bcm943341_wbfgn_x: %s\n",
+						__func__, bus->nv_path));
+		DHD_ERROR(("%s: Modified fw_path for bcm943341_wbfgn_x: %s\n",
+						__func__, bus->fw_path));
+	}
+#endif /* NV_BCM943341_WBFGN_MULTI_MODULE_SUPPORT */
 
 	/* Keep arm in reset */
 	if (dhdsdio_download_state(bus, TRUE)) {
