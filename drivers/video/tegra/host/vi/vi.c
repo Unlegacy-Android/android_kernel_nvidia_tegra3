@@ -20,6 +20,7 @@
 
 #include <linux/export.h>
 #include <linux/resource.h>
+#include <linux/pm_runtime.h>
 
 #include <mach/iomap.h>
 
@@ -58,7 +59,16 @@ static int __devinit vi_probe(struct platform_device *dev)
 	if (err) {
 		goto camera_register_fail;
 	}
-	return nvhost_client_device_init(dev);
+
+	err = nvhost_client_device_init(dev);
+	if (err)
+		goto camera_register_fail;
+
+	pm_runtime_use_autosuspend(&dev->dev);
+	pm_runtime_set_autosuspend_delay(&dev->dev, 100);
+	pm_runtime_enable(&dev->dev);
+
+	return 0;
 
 camera_register_fail:
 	kfree(tegra_vi);
