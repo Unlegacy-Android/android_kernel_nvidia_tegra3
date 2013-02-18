@@ -571,6 +571,11 @@ static int dsi_p_wuxga_10_1_check_fb(struct device *dev, struct fb_info *info)
 	return info->device == &disp_device->dev;
 }
 
+static int dsi_p_wuxga_10_1_display_init(struct device *dev)
+{
+	return atomic_read(&display_ready);
+}
+
 static struct platform_pwm_backlight_data dsi_p_wuxga_10_1_bl_data = {
 	.pwm_id		= 1,
 	.max_brightness	= 255,
@@ -579,6 +584,7 @@ static struct platform_pwm_backlight_data dsi_p_wuxga_10_1_bl_data = {
 	.notify		= dsi_p_wuxga_10_1_bl_notify,
 	/* Only toggle backlight on fb blank notifications for disp1 */
 	.check_fb	= dsi_p_wuxga_10_1_check_fb,
+	.init = dsi_p_wuxga_10_1_display_init,
 };
 
 static struct platform_device __maybe_unused
