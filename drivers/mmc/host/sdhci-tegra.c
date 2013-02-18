@@ -423,12 +423,27 @@ static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci)
 	vendor_ctrl |= SDHCI_VENDOR_CLOCK_CNTRL_PADPIPE_CLKEN_OVERRIDE;
 	vendor_ctrl &= ~SDHCI_VENDOR_CLOCK_CNTRL_SPI_MODE_CLKEN_OVERRIDE;
 
-	/* Set tap delay */
-	if (plat->tap_delay) {
-		vendor_ctrl &= ~(0xFF <<
-			SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
-		vendor_ctrl |= (plat->tap_delay <<
-			SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
+	/*
+	 * Set tap delay
+	 * If tuning is already done and the card is powered ON across
+	 * suspend, then program the tap value obtained through tuning
+	 * as only the controller context is restored. In other cases, set
+	 * the default tap delay value.
+	 */
+	if ((tegra_host->tuning_status == TUNING_STATUS_DONE) &&
+		(sdhci->mmc->pm_flags & MMC_PM_KEEP_POWER)) {
+			vendor_ctrl &= ~(0xFF <<
+				SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
+			vendor_ctrl |=
+				(tegra_host->tuning_data.best_tap_value <<
+				SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
+	} else {
+		if (plat->tap_delay) {
+			vendor_ctrl &= ~(0xFF <<
+				SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
+			vendor_ctrl |= (plat->tap_delay <<
+				SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
+		}
 	}
 
 	/* Set trim delay */
