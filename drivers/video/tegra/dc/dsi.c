@@ -94,6 +94,9 @@ module_param(enable_read_debug, bool, 0644);
 MODULE_PARM_DESC(enable_read_debug,
 		"Enable to print read fifo and return packet type");
 
+atomic_t __maybe_unused display_ready = ATOMIC_INIT(0);
+EXPORT_SYMBOL(display_ready);
+
 /* source of video data */
 enum {
 	TEGRA_DSI_DRIVEN_BY_DC,
@@ -3374,6 +3377,7 @@ static void _tegra_dc_dsi_enable(struct tegra_dc *dc)
 		tegra_dsi_start_dc_stream(dc, dsi);
 
 	dsi->host_suspended = false;
+	atomic_set(&display_ready, 1);
 fail:
 	tegra_dc_io_end(dc);
 	mutex_unlock(&dsi->lock);
@@ -3943,6 +3947,7 @@ static int tegra_dsi_deep_sleep(struct tegra_dc *dc,
 
 	dsi->enabled = false;
 	dsi->host_suspended = true;
+	atomic_set(&display_ready, 0);
 
 	return 0;
 fail:
