@@ -125,6 +125,13 @@ switch_mm(struct mm_struct *prev, struct mm_struct *next,
 #endif
 		check_context(next);
 		cpu_switch_mm(next->pgd, next);
+#ifdef CONFIG_ARM_ERRATA_798181
+		/*
+		 * DMB required since we only send IPI to the other CPUs if
+		 * they run the same mm as the one being invalidated.
+		 */
+		dmb();
+#endif
 		if (cache_is_vivt())
 			cpumask_clear_cpu(cpu, mm_cpumask(prev));
 	}
