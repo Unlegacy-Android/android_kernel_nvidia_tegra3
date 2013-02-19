@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (C) 2011-2013 NVIDIA Corporation
+ * Copyright (C) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -62,7 +62,7 @@ static int show_channels(struct platform_device *pdev, void *data)
 	m = nvhost_get_host(pdev);
 	ch = pdata->channel;
 	if (ch) {
-		mutex_lock(&ch->reflock);
+		int locked = mutex_trylock(&ch->reflock);
 		if (ch->refcount) {
 			mutex_lock(&ch->cdma.lock);
 			nvhost_get_chip_ops()->debug.show_channel_fifo(
@@ -71,7 +71,8 @@ static int show_channels(struct platform_device *pdev, void *data)
 				m, ch, o, pdata->index);
 			mutex_unlock(&ch->cdma.lock);
 		}
-		mutex_unlock(&ch->reflock);
+		if (locked)
+			mutex_unlock(&ch->reflock);
 	}
 
 	return 0;
