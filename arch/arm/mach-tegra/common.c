@@ -34,6 +34,7 @@
 #include <linux/persistent_ram.h>
 #include <linux/dma-mapping.h>
 #include <linux/sys_soc.h>
+#include <linux/export.h>
 
 #include <trace/events/nvsecurity.h>
 
@@ -141,6 +142,10 @@ static int board_panel_type;
 static enum power_supply_type pow_supply_type = POWER_SUPPLY_TYPE_MAINS;
 static int pwr_i2c_clk = 400;
 static u8 power_config;
+
+atomic_t __maybe_unused sd_brightness = ATOMIC_INIT(255);
+EXPORT_SYMBOL(sd_brightness);
+
 /*
  * Storage for debug-macro.S's state.
  *

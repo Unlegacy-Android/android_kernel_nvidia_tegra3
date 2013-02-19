@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-panel.h
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -37,7 +37,7 @@ struct tegra_panel {
 
 };
 
-static __maybe_unused atomic_t sd_brightness = ATOMIC_INIT(255);
+extern atomic_t sd_brightness;
 extern struct tegra_panel dsi_l_720p_5;
 extern struct tegra_panel dsi_j_720p_4_7;
 extern struct tegra_panel dsi_s_1080p_5;
