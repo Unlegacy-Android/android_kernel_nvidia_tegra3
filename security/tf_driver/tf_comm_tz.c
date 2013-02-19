@@ -2,7 +2,7 @@
  * Copyright (c) 2011 Trusted Logic S.A.
  * All Rights Reserved.
  *
- * Copyright (C) 2011-2012 NVIDIA Corporation.
+ * Copyright (C) 2011-2013 NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -138,24 +138,6 @@ static inline int tf_smc_init(u32 shared_page_descriptor)
 
 	return generic_smc.reg0;
 }
-
-
-/*
- * Calls the reset irq SMC.
- */
-static inline void tf_smc_reset_irq(void)
-{
-	struct tf_generic_smc generic_smc;
-
-	generic_smc.reg0 = TF_SMC_RESET_IRQ;
-	generic_smc.reg1 = 0;
-	generic_smc.reg2 = 0;
-	generic_smc.reg3 = 0;
-	generic_smc.reg4 = 0;
-
-	tf_smc_generic_call(&generic_smc);
-}
-
 
 /*
  * Calls the WAKE_UP SMC.
@@ -718,7 +700,14 @@ static irqreturn_t tf_soft_int_handler(int irq, void *dev_id)
 		/* interrupt not issued by the Trusted Foundations Software */
 		return IRQ_NONE;
 
-	tf_smc_reset_irq();
+	/*
+	 * This "reply" from N-world to S-world is not required
+	 * in the new design of S-interrupt processing.
+	 * Moreover, the call
+	 * tf_smc_reset_irq() -> tf_smc_generic_call() ->
+	 * sched_setaffinity(0, &local_cpu_mask)
+	 * can break the atomic behavior of Linux scheduler.
+	 */
 
 	/* signal N_SM_EVENT */
 	wake_up(&comm->wait_queue);

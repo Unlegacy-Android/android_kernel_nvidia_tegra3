@@ -2,7 +2,7 @@
  * Copyright (c) 2011 Trusted Logic S.A.
  * All Rights Reserved.
  *
- * Copyright (C) 2011-2012 NVIDIA Corporation.
+ * Copyright (C) 2011-2013 NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -123,10 +123,15 @@ MODULE_PARM_DESC(device_major_number,
 	"device driver");
 
 #ifdef CONFIG_TF_TRUSTZONE
-/**
- * The softint interrupt line used by the Secure World.
+/*
+ * This software interrupt line is used by the S-World interrupt system
+ * to inform N-World that it must schedule S-World as soon as it is possible.
  */
-static int soft_interrupt = -1;
+static int soft_interrupt = 191;    /*-1;*/
+/*
+ * Interrupt line #191 is not used by the hardware of Tegra3 and Tegra4.
+ * The same signaling interrupt must be specified in S-World (GIC driver)
+ */
 
 module_param(soft_interrupt, int, 0000);
 MODULE_PARM_DESC(soft_interrupt,

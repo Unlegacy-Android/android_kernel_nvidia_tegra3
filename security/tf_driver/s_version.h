@@ -1,6 +1,8 @@
-/*
+/**
  * Copyright (c) 2011 Trusted Logic S.A.
  * All Rights Reserved.
+ *
+ * Copyright (C) 2011-2013 NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -59,7 +61,7 @@
 #elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define S_VERSION_OS "A"          /* "A" for all Android */
 #define S_VERSION_PLATFORM "C"
-#define S_VERSION_MAIN  "02.05"
+#define S_VERSION_MAIN  "02.06"
 #define S_VERSION_ENG 0
 #define S_VERSION_PATCH 0
 
