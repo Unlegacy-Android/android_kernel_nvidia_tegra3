@@ -1,8 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pluto-sdhci.c
  *
- * Copyright (C) 2012 NVIDIA Corporation.
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -40,6 +39,14 @@
 #define PLUTO_WLAN_PWR	TEGRA_GPIO_PCC5
 #define PLUTO_WLAN_WOW	TEGRA_GPIO_PU5
 #define PLUTO_SD_CD	TEGRA_GPIO_PV2
+
+#if defined(CONFIG_BCMDHD_EDP_SUPPORT)
+/* Wifi power levels */
+#define ON  2401 /* 2401mW */
+#define OFF 0
+static unsigned int wifi_states[] = {ON, OFF};
+#endif
+
 static void (*wifi_status_cb)(int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
 static int pluto_wifi_status_register(void (*callback)(int , void *), void *);
@@ -52,6 +59,16 @@ static struct wifi_platform_data pluto_wifi_control = {
 	.set_power	= pluto_wifi_power,
 	.set_reset	= pluto_wifi_reset,
 	.set_carddetect	= pluto_wifi_set_carddetect,
+#if defined(CONFIG_BCMDHD_EDP_SUPPORT)
+	/* set the wifi edp client information here */
+	.client_info    = {
+		.name       = "wifi_edp_client",
+		.states     = wifi_states,
+		.num_states = ARRAY_SIZE(wifi_states),
+		.e0_index   = 0,
+		.priority   = EDP_MAX_PRIO,
+	},
+#endif
 };
 
 static struct resource wifi_resource[] = {
