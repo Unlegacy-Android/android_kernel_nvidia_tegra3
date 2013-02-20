@@ -2,6 +2,7 @@
  * Linux cfg80211 driver - Android related functions
  *
  * Copyright (C) 1999-2012, Broadcom Corporation
+ * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -769,15 +770,48 @@ int wifi_get_irq_number(unsigned long *irq_flags_ptr)
 #endif
 }
 
+#if defined(WIFIEDP)
+static int wifi_request_edp_state(struct edp_client *pinfo, int new_state)
+{
+	int approved = 0;
+	DHD_TRACE(("%s edp_state = %d\n", __func__, new_state));
+
+	if ((!pinfo) || (new_state < EDP_STATE_ON) || (new_state > EDP_STATE_OFF)) {
+		DHD_ERROR(("Error while moving to a different power state\n"));
+		return -EINVAL;
+	}
+
+	approved = edp_update_client_request(pinfo, new_state, NULL);
+
+	if (approved < 0)
+		DHD_ERROR(("Error in moving to requested power state\n"));
+
+	return approved;
+}
+#endif
+
 int wifi_set_power(int on, unsigned long msec)
 {
+	struct edp_client *pinfo = NULL;
 	DHD_ERROR(("%s = %d\n", __FUNCTION__, on));
-	if (wifi_control_data && wifi_control_data->set_power) {
-		wifi_control_data->set_power(on);
+	if (wifi_control_data) {
+#if defined(WIFIEDP)
+		/* Move to EDP_ON/OFF state depending on wifi power state */
+		pinfo = &(wifi_control_data->client_info);
+		if (wifi_request_edp_state(pinfo, on ? EDP_STATE_ON : EDP_STATE_OFF)) {
+			DHD_ERROR(("transit to edp state failed(%d)\n", on));
+			return -EACCES;
+		}
+#endif
+		if (wifi_control_data->set_power)
+			wifi_control_data->set_power(on);
+
+		if (msec)
+			msleep(msec);
+		return 0;
 	}
-	if (msec)
-		msleep(msec);
-	return 0;
+
+	return -EINVAL;
 }
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35))
@@ -815,6 +849,25 @@ static int wifi_set_carddetect(int on)
 	return 0;
 }
 
+#if defined(WIFIEDP)
+static int wifi_register_edp_client(struct edp_client *pinfo)
+{
+	struct edp_manager *pbatman = edp_get_manager("battery");
+	DHD_TRACE(("%s\n", __func__));
+	if (!pbatman || !pinfo) {
+		DHD_ERROR(("%s:edp registration failed\n", __func__));
+		return -EINVAL;
+	}
+
+	if (edp_register_client(pbatman, pinfo)) {
+		DHD_ERROR(("Error registering the client\n"));
+		return -EPERM;
+	}
+
+	return 0;
+}
+#endif
+
 static int wifi_probe(struct platform_device *pdev)
 {
 	struct wifi_platform_data *wifi_ctrl =
@@ -825,12 +878,32 @@ static int wifi_probe(struct platform_device *pdev)
 		wifi_irqres = platform_get_resource_byname(pdev,
 			IORESOURCE_IRQ, "bcm4329_wlan_irq");
 	wifi_control_data = wifi_ctrl;
+#if defined(WIFIEDP)
+	wifi_register_edp_client(&(wifi_ctrl->client_info));
+#endif
 	wifi_set_power(1, 0);	/* Power On */
 	wifi_set_carddetect(1);	/* CardDetect (0->1) */
 
 	up(&wifi_control_sem);
 	return 0;
 }
+
+#if defined(WIFIEDP)
+static int wifi_unregister_edp_client(struct edp_client *pinfo)
+{
+	DHD_ERROR(("%s\n", __func__));
+	if (!pinfo) {
+		DHD_ERROR(("## %s Invalid arguments\n", __func__));
+		return -EINVAL;
+	}
+
+	if (!edp_unregister_client(pinfo)) {
+		DHD_ERROR(("Deregistration to edp failed!\n"));
+		return -EPERM;
+	}
+	return 0;
+}
+#endif
 
 static int wifi_remove(struct platform_device *pdev)
 {
@@ -842,7 +915,9 @@ static int wifi_remove(struct platform_device *pdev)
 
 	wifi_set_power(0, WIFI_TURNOFF_DELAY);	/* Power Off */
 	wifi_set_carddetect(0);	/* CardDetect (1->0) */
-
+#if defined(WIFIEDP)
+	wifi_unregister_edp_client(&(wifi_ctrl->client_info));
+#endif
 	up(&wifi_control_sem);
 	return 0;
 }
