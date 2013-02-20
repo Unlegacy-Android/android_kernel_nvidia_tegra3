@@ -2079,6 +2079,10 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 
 	if (plat->nominal_vcore_uV)
 		tegra_host->nominal_vcore_uV = plat->nominal_vcore_uV;
+	host->edp_support = plat->edp_support ? true : false;
+	if (host->edp_support)
+		for (rc = 0; rc < SD_EDP_NUM_STATES; rc++)
+			host->edp_states[rc] = plat->edp_states[rc];
 
 	rc = sdhci_add_host(host);
 
