@@ -358,7 +358,7 @@ static struct regulator_init_data *roth_reg_data[PALMAS_NUM_REGS] = {
 
 PALMAS_REG_INIT(smps12, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps123, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps3, 0, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps3, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REG_INIT(smps45, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REG_INIT(smps457, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REG_INIT(smps6, 0, 0, 0, 0, 0);
@@ -599,7 +599,7 @@ int __init roth_palmas_regulator_init(void)
 
 	/* Set SMPS12 and 3 to normal mode if it is not there. */
 	reg_idata_smps12.constraints.initial_mode = REGULATOR_MODE_NORMAL;
-	reg_idata_smps3.constraints.initial_mode = REGULATOR_MODE_NORMAL;
+	reg_idata_smps3.constraints.sleep_mode = REGULATOR_MODE_NORMAL;
 	reg_idata_smps9.constraints.initial_mode = REGULATOR_MODE_NORMAL;
 
 	i2c_register_board_info(4, palma_device,
