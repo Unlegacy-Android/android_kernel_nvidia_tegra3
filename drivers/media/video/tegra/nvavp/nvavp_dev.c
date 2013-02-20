@@ -88,7 +88,7 @@
 
 #define IS_VIDEO_CHANNEL_ID(channel_id)	(channel_id == NVAVP_VIDEO_CHANNEL ? 1: 0)
 
-#define SCLK_BOOST_RATE		80000000
+#define SCLK_BOOST_RATE		40000000
 
 static bool boost_sclk;
 
