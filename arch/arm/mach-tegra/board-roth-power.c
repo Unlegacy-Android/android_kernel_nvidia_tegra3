@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-roth-power.c
  *
- * Copyright (C) 2012-2013 NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -374,7 +374,7 @@ PALMAS_REG_INIT(ldo5, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldo6, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldo7, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldo8, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo9, 0, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo9, 1, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldoln, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldousb, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(regen1, 0, 0, 0, 0, 0);
