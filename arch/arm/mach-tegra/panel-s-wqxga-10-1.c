@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/panel-s-wqxga-10-1.c
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -93,9 +93,9 @@ static tegra_dc_bl_output dsi_s_wqxga_10_1_bl_output_measured = {
 
 static struct tegra_dsi_cmd dsi_s_wqxga_10_1_init_cmd[] = {
 	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_EXIT_SLEEP_MODE, 0x0),
-	DSI_DLY_MS(2000),
+	DSI_DLY_MS(120),
 	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_SET_DISPLAY_ON, 0x0),
-	DSI_DLY_MS(100),
+	DSI_DLY_MS(20),
 };
 
 static struct tegra_dsi_out dsi_s_wqxga_10_1_pdata = {
@@ -247,14 +247,14 @@ static int dsi_s_wqxga_10_1_enable(struct device *dev)
 		}
 	}
 
-	msleep(100);
+	msleep(20);
 #if DSI_PANEL_RESET
 	gpio_direction_output(DSI_PANEL_RST_GPIO, 1);
 	usleep_range(1000, 5000);
 	gpio_set_value(DSI_PANEL_RST_GPIO, 0);
-	msleep(150);
+	usleep_range(1000, 5000);
 	gpio_set_value(DSI_PANEL_RST_GPIO, 1);
-	msleep(1500);
+	msleep(20);
 #endif
 
 	return 0;
