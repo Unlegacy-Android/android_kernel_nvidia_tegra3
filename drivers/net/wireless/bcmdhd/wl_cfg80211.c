@@ -1210,6 +1210,7 @@ wl_cfg80211_del_virtual_iface(struct wiphy *wiphy, struct net_device *dev)
 			if (wl_get_drv_status(wl, DISCONNECTING, dev) &&
 				(wl_get_mode_by_netdev(wl, dev) != WL_MODE_AP)) {
 				WL_ERR(("Wait for Link Down event for GC !\n"));
+				INIT_COMPLETION(wl->iface_disable);
 				wait_for_completion_timeout
 					(&wl->iface_disable, msecs_to_jiffies(500));
 			}
@@ -1226,6 +1227,7 @@ wl_cfg80211_del_virtual_iface(struct wiphy *wiphy, struct net_device *dev)
 				 */
 				if (ret == 0) {
 					WL_ERR(("Wait for Link Down event for GO !!!\n"));
+					INIT_COMPLETION(wl->iface_disable);
 					wait_for_completion_timeout(&wl->iface_disable,
 						msecs_to_jiffies(500));
 				} else {
