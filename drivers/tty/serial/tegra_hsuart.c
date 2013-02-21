@@ -144,6 +144,9 @@ static void set_rts(struct tegra_uart_port *t, bool active);
 static void tegra_start_rx(struct uart_port *u);
 static void tegra_stop_rx(struct uart_port *u);
 
+static u8 irda_loop;
+static struct dentry *irda_test_dir;
+
 static inline u8 uart_readb(struct tegra_uart_port *t, unsigned long reg)
 {
 	u8 val = readb(t->uport.membase + (reg << t->uport.regshift));
@@ -251,7 +254,7 @@ static void tegra_start_next_tx(struct tegra_uart_port *t)
 		t->tx_in_progress);
 
 	if (count == 0) {
-		if (t->is_irda) {
+		if (t->is_irda && !irda_loop) {
 			do {
 				lsr = uart_readb(t, UART_LSR);
 				if (lsr & UART_LSR_TEMT)
@@ -262,7 +265,7 @@ static void tegra_start_next_tx(struct tegra_uart_port *t)
 		goto out;
 	}
 
-	if (t->is_irda) {
+	if (t->is_irda && !irda_loop) {
 		if (t->rx_in_progress)
 			tegra_stop_rx(u);
 	}
@@ -1802,6 +1805,7 @@ static struct platform_driver tegra_uart_platform_driver __refdata= {
 static int __init tegra_uart_init(void)
 {
 	int ret;
+	struct dentry *d;
 
 	ret = uart_register_driver(&tegra_uart_driver);
 	if (unlikely(ret)) {
@@ -1817,6 +1821,19 @@ static int __init tegra_uart_init(void)
 		return ret;
 	}
 
+	irda_test_dir = debugfs_create_dir("tegra_irda", NULL);
+	if (!irda_test_dir) {
+		pr_err("Error in debugfs creation\n");
+		return PTR_ERR(irda_test_dir);
+	}
+
+	d = debugfs_create_u8("irda_loop", S_IWUSR | S_IRUGO, irda_test_dir,
+								&irda_loop);
+	if (!d) {
+		pr_err("Error in debugfs entry creation\n");
+		return PTR_ERR(d);
+	}
+
 	pr_info("Initialized tegra uart driver\n");
 	return 0;
 }
@@ -1826,6 +1843,7 @@ static void __exit tegra_uart_exit(void)
 	pr_info("Unloading tegra uart driver\n");
 	platform_driver_unregister(&tegra_uart_platform_driver);
 	uart_unregister_driver(&tegra_uart_driver);
+	debugfs_remove_recursive(irda_test_dir);
 }
 
 module_init(tegra_uart_init);
