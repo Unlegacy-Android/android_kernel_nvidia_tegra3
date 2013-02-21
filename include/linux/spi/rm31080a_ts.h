@@ -1,3 +1,15 @@
+/*
+ * Raydium RM31080 touchscreen header
+ *
+ * Copyright (C) 2012-2013, Raydium Semiconductor Corporation.
+ * Copyright (C) 2012-2013, NVIDIA Corporation.  All Rights Reserved.
+ *
+ * This program is free software; you can redistribute  it and/or modify it
+ * under  the terms of  the GNU General  Public License as published by the
+ * Free Software Foundation;  either version 2 of the  License, or (at your
+ * option) any later version.
+ *
+ */
 #ifndef _RM31080A_TS_H_
 #define _RM31080A_TS_H_
 
@@ -42,6 +54,7 @@
 	#define RM_VARIABLE_PLATFORM_ID			0x01
 #define RM_IOCTL_SET_SLOWSCAN_PARA			0x1012
 #define RM_IOCTL_GET_SACN_MODE				0x1013
+#define RM_IOCTL_CHECK_INIT_STATUS			0x1014
 
 #define RM_INPUT_RESOLUTION_X					4096
 #define RM_INPUT_RESOLUTION_Y					4096
