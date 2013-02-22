@@ -2051,6 +2051,7 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_host->hw_ops = &tegra_11x_sdhci_ops;
 	tegra_sdhost_std_freq = TEGRA3_SDHOST_STD_FREQ;
 	host->mmc->caps2 |= MMC_CAP2_HS200;
+	host->mmc->caps2 |= MMC_CAP2_CACHE_CTRL;
 #endif
 
 	if (plat->nominal_vcore_uV)
