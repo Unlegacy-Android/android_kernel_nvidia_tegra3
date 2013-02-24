@@ -97,6 +97,15 @@ static const struct resource pwron_resource[] = {
 	},
 };
 
+static const struct resource wdt_resource[] = {
+	{
+		.name = "WDT",
+		.start = PALMAS_WDT_IRQ,
+		.end = PALMAS_WDT_IRQ,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
 enum palmas_ids {
 	PALMAS_PMIC_ID,
 	PALMAS_GPIO_ID,
@@ -127,6 +136,8 @@ static const struct mfd_cell palmas_children[] = {
 	},
 	{
 		.name = "palmas-wdt",
+		.num_resources = ARRAY_SIZE(wdt_resource),
+		.resources = wdt_resource,
 		.id = PALMAS_WDT_ID,
 	},
 	{
