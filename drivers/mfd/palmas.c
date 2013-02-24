@@ -64,6 +64,21 @@ static const struct resource usb_resource[] = {
 	},
 };
 
+static const struct resource palma_extcon_resource[] = {
+	{
+		.name = "VBUS-IRQ",
+		.start = PALMAS_VBUS_IRQ,
+		.end = PALMAS_VBUS_IRQ,
+		.flags = IORESOURCE_IRQ,
+	},
+	{
+		.name = "ID-IRQ",
+		.start = PALMAS_ID_IRQ,
+		.end = PALMAS_ID_IRQ,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
 static const struct resource rtc_resource[] = {
 	{
 		.name = "RTC_ALARM",
@@ -94,6 +109,7 @@ enum palmas_ids {
 	PALMAS_CLK_ID,
 	PALMAS_PWM_ID,
 	PALMAS_USB_ID,
+	PALMAS_EXTCON_ID,
 };
 
 static const struct mfd_cell palmas_children[] = {
@@ -148,6 +164,12 @@ static const struct mfd_cell palmas_children[] = {
 		.num_resources = ARRAY_SIZE(usb_resource),
 		.resources = usb_resource,
 		.id = PALMAS_USB_ID,
+	},
+	{
+		.name = "palmas-extcon",
+		.num_resources = ARRAY_SIZE(palma_extcon_resource),
+		.resources = palma_extcon_resource,
+		.id = PALMAS_EXTCON_ID,
 	}
 };
 
