@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2013 NVIDIA Corp.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -22,6 +22,7 @@
 #include <mach/hardware.h>
 #include <linux/sysfs.h>
 #include <linux/kobject.h>
+#include <linux/platform_device.h>
 
 #include "apbio.h"
 
