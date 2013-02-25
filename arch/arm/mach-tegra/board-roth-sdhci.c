@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board-roth-sdhci.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2012-2013 NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -175,6 +175,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.max_clk_limit = 156000000,
 	.mmc_data = {
 		.built_in = 1,
+		.ocr_mask = MMC_OCR_1V8_MASK,
 	}
 };
 
