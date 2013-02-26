@@ -521,7 +521,7 @@ struct tegra_iovmm_area *tegra_iovmm_create_vm(
 	return &b->vm_area;
 }
 
-void tegra_iovmm_vm_insert_pfn(struct tegra_iovmm_area *vm,
+int tegra_iovmm_vm_insert_pfn(struct tegra_iovmm_area *vm,
 	tegra_iovmm_addr_t vaddr, unsigned long pfn)
 {
 	struct tegra_iovmm_domain *domain = vm->domain;
@@ -532,6 +532,7 @@ void tegra_iovmm_vm_insert_pfn(struct tegra_iovmm_area *vm,
 	BUG_ON(vm->ops);
 
 	domain->dev->ops->map_pfn(domain, vm, vaddr, pfn);
+	return 0;
 }
 
 void tegra_iovmm_zap_vm(struct tegra_iovmm_area *vm)
