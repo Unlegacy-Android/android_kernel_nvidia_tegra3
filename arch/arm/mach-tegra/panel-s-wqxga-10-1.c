@@ -26,6 +26,7 @@
 #include <linux/max8831_backlight.h>
 #include <linux/leds.h>
 #include <linux/ioport.h>
+#include <generated/mach-types.h>
 #include "board.h"
 #include "board-panel.h"
 #include "devices.h"
@@ -130,6 +131,7 @@ static int dalmore_dsi_regulator_get(struct device *dev)
 
 	if (reg_requested)
 		return 0;
+
 	dvdd_lcd_1v8 = regulator_get(dev, "dvdd_lcd");
 	if (IS_ERR_OR_NULL(dvdd_lcd_1v8)) {
 		pr_err("dvdd_lcd regulator get failed\n");
@@ -137,6 +139,7 @@ static int dalmore_dsi_regulator_get(struct device *dev)
 		dvdd_lcd_1v8 = NULL;
 		goto fail;
 	}
+
 	avdd_lcd_3v3 = regulator_get(dev, "avdd_lcd");
 	if (IS_ERR_OR_NULL(avdd_lcd_3v3)) {
 		pr_err("avdd_lcd regulator get failed\n");
@@ -192,16 +195,75 @@ fail:
 	return err;
 }
 
+static int macallan_dsi_regulator_get(struct device *dev)
+{
+	int err = 0;
+
+	if (reg_requested)
+		return 0;
+
+	avdd_lcd_3v3 = regulator_get(dev, "avdd_lcd");
+	if (IS_ERR_OR_NULL(avdd_lcd_3v3)) {
+		pr_err("avdd_lcd regulator get failed\n");
+		err = PTR_ERR(avdd_lcd_3v3);
+		avdd_lcd_3v3 = NULL;
+		goto fail;
+	}
+
+	vdd_lcd_bl_en = regulator_get(dev, "vdd_lcd_bl_en");
+	if (IS_ERR_OR_NULL(vdd_lcd_bl_en)) {
+		pr_err("vdd_lcd_bl_en regulator get failed\n");
+		err = PTR_ERR(vdd_lcd_bl_en);
+		vdd_lcd_bl_en = NULL;
+		goto fail;
+	}
+	reg_requested = true;
+	return 0;
+fail:
+	return err;
+}
+
+static int macallan_dsi_gpio_get(void)
+{
+	int err = 0;
+
+	if (gpio_requested)
+		return 0;
+
+	err = gpio_request(DSI_PANEL_RST_GPIO, "panel rst");
+	if (err < 0) {
+		pr_err("panel reset gpio request failed\n");
+		goto fail;
+	}
+
+	/* free pwm GPIO */
+	err = gpio_request(DSI_PANEL_BL_PWM, "panel pwm");
+	if (err < 0) {
+		pr_err("panel pwm gpio request failed\n");
+		goto fail;
+	}
+	gpio_free(DSI_PANEL_BL_PWM);
+	gpio_requested = true;
+	return 0;
+fail:
+	return err;
+}
 static int dsi_s_wqxga_10_1_enable(struct device *dev)
 {
 	int err = 0;
 
-	err = dalmore_dsi_regulator_get(dev);
+	if (machine_is_dalmore())
+		err = dalmore_dsi_regulator_get(dev);
+	else if (machine_is_macallan())
+		err = macallan_dsi_regulator_get(dev);
 	if (err < 0) {
 		pr_err("dsi regulator get failed\n");
 		goto fail;
 	}
-	err = dalmore_dsi_gpio_get();
+	if (machine_is_dalmore())
+		err = dalmore_dsi_gpio_get();
+	else if (machine_is_macallan())
+		err = macallan_dsi_gpio_get();
 	if (err < 0) {
 		pr_err("dsi gpio request failed\n");
 		goto fail;
