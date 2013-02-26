@@ -42,7 +42,6 @@ struct imx132_info {
 #define IMX132_TABLE_WAIT_MS 0
 #define IMX132_TABLE_END 1
 #define IMX132_WAIT_MS 5
-#define IMX132_ID_ADDRESS 0x0000
 
 static struct imx132_reg mode_1976x1200[] = {
 	/* Stand by */
@@ -590,7 +589,6 @@ imx132_open(struct inode *inode, struct file *file)
 {
 	struct miscdevice	*miscdev = file->private_data;
 	struct imx132_info	*info;
-	u8 val;
 
 	info = container_of(miscdev, struct imx132_info, miscdev_info);
 	/* check if the device is in use */
@@ -601,11 +599,8 @@ imx132_open(struct inode *inode, struct file *file)
 
 	file->private_data = info;
 
-	if (info->pdata && info->pdata->power_on) {
+	if (info->pdata && info->pdata->power_on)
 		info->pdata->power_on(&info->power);
-		return imx132_read_reg(info->i2c_client,
-				       IMX132_ID_ADDRESS, &val);
-	}
 	else {
 		dev_err(&info->i2c_client->dev,
 			"%s:no valid power_on function.\n", __func__);
