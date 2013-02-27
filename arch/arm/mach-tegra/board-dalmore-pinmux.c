@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-dalmore-pinmux.c
  *
- * Copyright (C) 2012 NVIDIA Corporation
+ * Copyright (c) 2012-2013 NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -211,7 +211,6 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_set_nontristate[] 
 	DEFAULT_PINMUX(GMI_AD10,        GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GMI_AD11,        GMI,    NORMAL,       NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GMI_AD12,        GMI,    PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_AD13,        GMI,    NORMAL,       NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GMI_AD2,         GMI,    NORMAL,       NORMAL,    INPUT),
 	DEFAULT_PINMUX(GMI_AD3,         GMI,    NORMAL,       NORMAL,    INPUT),
 	DEFAULT_PINMUX(GMI_AD8,         GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
