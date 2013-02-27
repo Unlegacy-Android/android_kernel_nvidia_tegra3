@@ -48,6 +48,9 @@
 #include <linux/wifi_tiwlan.h>
 #endif
 #endif /* CONFIG_WIFI_CONTROL_FUNC */
+#if defined(WIFIEDP)
+#include <linux/mutex.h>
+#endif
 
 /*
  * Android private command strings, PLEASE define new private commands here
@@ -152,6 +155,11 @@ extern char iface_name[IFNAMSIZ];
  * wl_android_wifi_on
  */
 static int g_wifi_on = TRUE;
+
+#if defined(WIFIEDP)
+static int g_edp_reg = FALSE;
+static struct mutex edp_reg_mutex;
+#endif
 
 /**
  * Local (static) function definitions
@@ -796,12 +804,20 @@ int wifi_set_power(int on, unsigned long msec)
 	DHD_ERROR(("%s = %d\n", __FUNCTION__, on));
 	if (wifi_control_data) {
 #if defined(WIFIEDP)
-		/* Move to EDP_ON/OFF state depending on wifi power state */
-		pinfo = &(wifi_control_data->client_info);
-		if (wifi_request_edp_state(pinfo, on ? EDP_STATE_ON : EDP_STATE_OFF)) {
-			DHD_ERROR(("transit to edp state failed(%d)\n", on));
-			return -EACCES;
+		mutex_lock(&edp_reg_mutex);
+		if (g_edp_reg == TRUE) {
+			/* Move to EDP_ON/OFF state depending
+			 * on wifi power state
+			 */
+			pinfo = &(wifi_control_data->client_info);
+			if (wifi_request_edp_state(pinfo,
+				on ? EDP_STATE_ON : EDP_STATE_OFF)) {
+				DHD_ERROR(("edp state transit failed\n"));
+				mutex_unlock(&edp_reg_mutex);
+				return -EACCES;
+			}
 		}
+		mutex_unlock(&edp_reg_mutex);
 #endif
 		if (wifi_control_data->set_power)
 			wifi_control_data->set_power(on);
@@ -852,19 +868,35 @@ static int wifi_set_carddetect(int on)
 #if defined(WIFIEDP)
 static int wifi_register_edp_client(struct edp_client *pinfo)
 {
+	int ret = 0;
 	struct edp_manager *pbatman = edp_get_manager("battery");
 	DHD_TRACE(("%s\n", __func__));
+
 	if (!pbatman || !pinfo) {
 		DHD_ERROR(("%s:edp registration failed\n", __func__));
-		return -EINVAL;
+		ret = -EINVAL;
+		goto error;
+	}
+
+	if (!pinfo->states) {
+		DHD_ERROR(("No edp states for wifi\n"));
+		ret = -EINVAL;
+		goto error;
 	}
 
 	if (edp_register_client(pbatman, pinfo)) {
 		DHD_ERROR(("Error registering the client\n"));
-		return -EPERM;
+		ret = -EPERM;
 	}
 
-	return 0;
+error:
+	mutex_lock(&edp_reg_mutex);
+	if (ret == 0)
+		g_edp_reg = TRUE;
+	else
+		g_edp_reg = FALSE;
+	mutex_unlock(&edp_reg_mutex);
+	return ret;
 }
 #endif
 
@@ -879,6 +911,7 @@ static int wifi_probe(struct platform_device *pdev)
 			IORESOURCE_IRQ, "bcm4329_wlan_irq");
 	wifi_control_data = wifi_ctrl;
 #if defined(WIFIEDP)
+	mutex_init(&edp_reg_mutex);
 	wifi_register_edp_client(&(wifi_ctrl->client_info));
 #endif
 	wifi_set_power(1, 0);	/* Power On */
@@ -892,15 +925,26 @@ static int wifi_probe(struct platform_device *pdev)
 static int wifi_unregister_edp_client(struct edp_client *pinfo)
 {
 	DHD_ERROR(("%s\n", __func__));
+	mutex_lock(&edp_reg_mutex);
+	if (g_edp_reg == FALSE) {
+		DHD_ERROR(("Wifi edp client not registered!"));
+		mutex_unlock(&edp_reg_mutex);
+		return -EINVAL;
+	}
+	mutex_unlock(&edp_reg_mutex);
+
 	if (!pinfo) {
 		DHD_ERROR(("## %s Invalid arguments\n", __func__));
 		return -EINVAL;
 	}
 
-	if (!edp_unregister_client(pinfo)) {
+	if (!edp_unregister_client(pinfo))
 		DHD_ERROR(("Deregistration to edp failed!\n"));
-		return -EPERM;
-	}
+
+	mutex_lock(&edp_reg_mutex);
+	g_edp_reg = FALSE;
+	mutex_unlock(&edp_reg_mutex);
+
 	return 0;
 }
 #endif
