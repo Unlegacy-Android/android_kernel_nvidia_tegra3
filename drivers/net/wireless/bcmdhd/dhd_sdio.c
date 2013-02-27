@@ -7509,16 +7509,22 @@ _dhdsdio_download_firmware(struct dhd_bus *bus)
 			goto err;
 		}
 
-		char *ptr_fw = strstr(bus->fw_path, "fw_bcmdhd");
-		if (ptr_fw == NULL) {
+		if (strstr(bus->fw_path, "fw_bcmdhd_apsta")) { /* HOTSPOT mode */
+			char *ptr_fw = strstr(bus->fw_path, "fw_bcmdhd_apsta");
+			if (boardrev == BCM943341_WBFGN_2
+					|| boardrev == BCM943341_WBFGN_3) {
+				strcpy(ptr_fw, "fw_bcmdhd_apsta_a0.bin");
+			}
+		} else if (strstr(bus->fw_path, "fw_bcmdhd")) { /* STATION mode */
+			char *ptr_fw = strstr(bus->fw_path, "fw_bcmdhd");
+			if (boardrev == BCM943341_WBFGN_2
+					|| boardrev == BCM943341_WBFGN_3) {
+				strcpy(ptr_fw, "fw_bcmdhd_a0.bin");
+			}
+		} else {
 			DHD_ERROR(("%s: Invalid fw_path for bcm943341: %s\n",
-						__func__, bus->fw_path));
+				__func__, bus->fw_path));
 			goto err;
-		} else if (boardrev == BCM943341_WBFGN_2
-					 || boardrev == BCM943341_WBFGN_3) {
-			strcpy(ptr_fw, "fw_bcmdhd_a0.bin");
-		} else if (boardrev == BCM943341_WBFGN_4) {
-			strcpy(ptr_fw, "fw_bcmdhd.bin");
 		}
 
 		DHD_ERROR(("%s: Modified nv_path for bcm943341_wbfgn_x: %s\n",
