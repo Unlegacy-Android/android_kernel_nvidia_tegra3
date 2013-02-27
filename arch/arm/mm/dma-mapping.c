@@ -1756,7 +1756,8 @@ static void arm_coherent_iommu_unmap_page(struct device *dev, dma_addr_t handle,
 		return;
 
 	iommu_unmap(mapping->domain, iova, len);
-	__free_iova(mapping, iova, len);
+	if (!dma_get_attr(DMA_ATTR_SKIP_FREE_IOVA, attrs))
+		__free_iova(mapping, iova, len);
 }
 
 /**
@@ -1788,7 +1789,8 @@ static void arm_iommu_unmap_page(struct device *dev, dma_addr_t handle,
 		__dma_page_dev_to_cpu(page, offset, size, dir);
 
 	iommu_unmap(mapping->domain, iova, len);
-	__free_iova(mapping, iova, len);
+	if (!dma_get_attr(DMA_ATTR_SKIP_FREE_IOVA, attrs))
+		__free_iova(mapping, iova, len);
 }
 
 static void arm_iommu_sync_single_for_cpu(struct device *dev,
