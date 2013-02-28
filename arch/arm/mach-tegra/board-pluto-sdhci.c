@@ -176,7 +176,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.tap_delay = 0x3,
 	.trim_delay = 0x3,
 	.ddr_clk_limit = 41000000,
-	.max_clk_limit = 82000000,
+	.max_clk_limit = 156000000,
 	.uhs_mask = MMC_UHS_MASK_DDR50,
 	.edp_support = true,
 	.edp_states = {966, 0},
@@ -328,6 +328,8 @@ int __init pluto_sdhci_init(void)
 		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
 	if (nominal_core_mv > 0) {
 		tegra_sdhci_platform_data0.nominal_vcore_uV = nominal_core_mv *
+			1000;
+		tegra_sdhci_platform_data2.nominal_vcore_uV = nominal_core_mv *
 			1000;
 		tegra_sdhci_platform_data3.nominal_vcore_uV = nominal_core_mv *
 			1000;
