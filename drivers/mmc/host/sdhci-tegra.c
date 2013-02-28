@@ -1220,7 +1220,8 @@ static void calculate_high_freq_tap_value(struct sdhci_host *sdhci)
 		vmax_tap_data->full_win_begin));
 	partial_win_tap = ((vmid_tap_data->partial_win -
 		vmid_tap_data->sampling_point) +
-		(partial_win_start + vmax_tap_data->sampling_point)) / 2;
+		(partial_win_start + vmax_tap_data->sampling_point));
+	partial_win_tap >>= 1;
 	if (partial_win_tap < 0)
 		partial_win_tap = 0;
 	partial_win_quality = (vmid_tap_data->partial_win -
