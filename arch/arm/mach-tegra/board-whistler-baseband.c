@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-whistler-baseband.c
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -16,7 +16,7 @@
 
 #include <linux/kernel.h>
 #include <linux/init.h>
-#include <mach/tegra_usb_modem_power.h>
+#include <linux/platform_data/tegra_usb_modem_power.h>
 #include <mach/pinmux-tegra20.h>
 #include <mach/gpio-tegra.h>
 

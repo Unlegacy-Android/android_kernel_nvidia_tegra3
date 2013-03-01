@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-enterprise-baseband.c
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 #include <linux/platform_data/tegra_usb.h>
 
 #include <mach/pinmux-tegra30.h>
-#include <mach/tegra_usb_modem_power.h>
+#include <linux/platform_data/tegra_usb_modem_power.h>
 #include <mach/gpio-tegra.h>
 
 #include "devices.h"
