@@ -6,7 +6,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (C) 2010-2013, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -266,6 +266,7 @@ void tegra11x_init_clocks(void);
 void tegra11x_clk_init_la(void);
 void tegra_common_init_clock(void);
 void tegra_init_max_rate(struct clk *c, unsigned long max_rate);
+void tegra_clk_preset_emc_monitor(void);
 void tegra_clk_vefify_parents(void);
 void clk_init(struct clk *clk);
 struct clk *tegra_get_clock_by_name(const char *name);
