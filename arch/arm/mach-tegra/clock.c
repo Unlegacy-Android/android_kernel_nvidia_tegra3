@@ -793,7 +793,7 @@ void __init tegra_clk_preset_emc_monitor(void)
 	}
 }
 
-static void __init tegra_clk_vefify_rates(void)
+static void __init tegra_clk_verify_rates(void)
 {
 	struct clk *c;
 	unsigned long rate;
@@ -813,10 +813,10 @@ static void __init tegra_clk_vefify_rates(void)
 void __init tegra_common_init_clock(void)
 {
 	tegra_cpu_timer_init();
-	tegra_clk_vefify_rates();
+	tegra_clk_verify_rates();
 }
 
-void __init tegra_clk_vefify_parents(void)
+void __init tegra_clk_verify_parents(void)
 {
 	struct clk *c;
 	struct clk *p;

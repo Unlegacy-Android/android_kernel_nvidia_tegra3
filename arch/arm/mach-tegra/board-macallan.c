@@ -656,7 +656,7 @@ static void __init tegra_macallan_init(void)
 
 	tegra_get_display_board_info(&board_info);
 	tegra_clk_init_from_table(macallan_clk_init_table);
-	tegra_clk_vefify_parents();
+	tegra_clk_verify_parents();
 	tegra_soc_device_init("macallan");
 	tegra_enable_pinmux();
 	macallan_pinmux_init();
