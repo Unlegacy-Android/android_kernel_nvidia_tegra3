@@ -63,8 +63,6 @@ static u64 persistent_ms, last_persistent_ms;
 static struct timespec persistent_ts;
 #endif
 static u32 usec_config;
-static u32 usec_offset;
-static bool usec_suspended;
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 static u32 system_timer = (TEGRA_TMR3_BASE - TEGRA_TMR1_BASE);
@@ -117,14 +115,6 @@ static struct clock_event_device tegra_clockevent = {
 	.set_mode	= tegra_timer_set_mode,
 };
 
-static u32 notrace tegra_read_usec(void)
-{
-	u32 cyc = usec_offset;
-	if (!usec_suspended)
-		cyc += timer_readl(TIMERUS_CNTR_1US);
-	return cyc;
-}
-
 u32 notrace tegra_read_usec_raw(void)
 {
 	return timer_readl(TIMERUS_CNTR_1US);
@@ -132,7 +122,7 @@ u32 notrace tegra_read_usec_raw(void)
 
 static u32 notrace tegra_read_sched_clock(void)
 {
-	return tegra_read_usec();
+	return timer_readl(TIMERUS_CNTR_1US);
 }
 
 /*
@@ -214,19 +204,12 @@ static struct irqaction tegra_timer_irq = {
 static int tegra_timer_suspend(void)
 {
 	usec_config = timer_readl(TIMERUS_USEC_CFG);
-
-	usec_offset += timer_readl(TIMERUS_CNTR_1US);
-	usec_suspended = true;
-
 	return 0;
 }
 
 static void tegra_timer_resume(void)
 {
 	timer_writel(usec_config, TIMERUS_USEC_CFG);
-
-	usec_offset -= timer_readl(TIMERUS_CNTR_1US);
-	usec_suspended = false;
 }
 
 static struct syscore_ops tegra_timer_syscore_ops = {
