@@ -12,14 +12,6 @@ struct mmc_blk_request {
 	struct mmc_data		data;
 };
 
-enum mmc_packed_cmd {
-	MMC_PACKED_NONE = 0,
-	MMC_PACKED_WR_HDR,
-	MMC_PACKED_WRITE,
-	MMC_PACKED_READ,
-};
-
-
 struct mmc_queue_req {
 	struct request		*req;
 	struct mmc_blk_request	brq;
@@ -28,12 +20,6 @@ struct mmc_queue_req {
 	struct scatterlist	*bounce_sg;
 	unsigned int		bounce_sg_len;
 	struct mmc_async_req	mmc_active;
-	struct list_head	packed_list;
-	u32			packed_cmd_hdr[128];
-	unsigned int		packed_blocks;
-	enum mmc_packed_cmd	packed_cmd;
-	int			packed_fail_idx;
-	u8			packed_num;
 };
 
 struct mmc_queue {
