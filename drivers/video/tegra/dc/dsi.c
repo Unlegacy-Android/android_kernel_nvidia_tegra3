@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/dsi.c
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -3734,6 +3734,7 @@ static void tegra_dsi_config_phy_clk(struct tegra_dc_dsi_data *dsi,
 
 	parent_clk = clk_get_parent(dsi->dsi_clk);
 	base_clk = clk_get_parent(parent_clk);
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	if (dsi->info.dsi_instance)
 		tegra_clk_cfg_ex(base_clk,
 				TEGRA_CLK_PLLD_CSI_OUT_ENB,
@@ -3742,6 +3743,11 @@ static void tegra_dsi_config_phy_clk(struct tegra_dc_dsi_data *dsi,
 		tegra_clk_cfg_ex(base_clk,
 				TEGRA_CLK_PLLD_DSI_OUT_ENB,
 				settings);
+#else
+	tegra_clk_cfg_ex(base_clk,
+			TEGRA_CLK_PLLD_DSI_OUT_ENB,
+			settings);
+#endif
 }
 
 static int _tegra_dsi_host_suspend(struct tegra_dc *dc,
@@ -4198,6 +4204,7 @@ static long tegra_dc_dsi_setup_clk(struct tegra_dc *dc, struct clk *clk)
 	unsigned long rate;
 	struct clk *parent_clk;
 	struct clk *base_clk;
+	struct tegra_dc_dsi_data *dsi = tegra_dc_get_outdata(dc);
 
 	/* divide by 1000 to avoid overflow */
 	dc->mode.pclk /= 1000;
@@ -4213,23 +4220,18 @@ static long tegra_dc_dsi_setup_clk(struct tegra_dc *dc, struct clk *clk)
 		parent_clk = clk_get_sys(NULL,
 				dc->out->parent_clk ? : "pll_d_out0");
 		base_clk = clk_get_parent(parent_clk);
-		tegra_clk_cfg_ex(base_clk,
-				TEGRA_CLK_PLLD_DSI_OUT_ENB, 1);
 	} else {
 		if (dc->pdata->default_out->dsi->dsi_instance) {
 			parent_clk = clk_get_sys(NULL,
 				dc->out->parent_clk ? : "pll_d2_out0");
 			base_clk = clk_get_parent(parent_clk);
-			tegra_clk_cfg_ex(base_clk,
-					TEGRA_CLK_PLLD_CSI_OUT_ENB, 1);
 		} else {
 			parent_clk = clk_get_sys(NULL,
 				dc->out->parent_clk ? : "pll_d_out0");
 			base_clk = clk_get_parent(parent_clk);
-			tegra_clk_cfg_ex(base_clk,
-					TEGRA_CLK_PLLD_DSI_OUT_ENB, 1);
 		}
 	}
+	tegra_dsi_config_phy_clk(dsi, TEGRA_DSI_ENABLE);
 
 	if (rate != clk_get_rate(base_clk))
 		clk_set_rate(base_clk, rate);
