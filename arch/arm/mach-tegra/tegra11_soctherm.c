@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11_soctherm.c
  *
- * Copyright (C) 2011-2013 NVIDIA Corporation
+ * Copyright (c) 2011-2013 NVIDIA Corporation. All rights reserved
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1156,7 +1156,7 @@ static void __init soctherm_tsense_program(enum soctherm_sense sensor,
 	r = REG_SET(0, TS_CPU0_CONFIG1_TIDDQ, data->tiddq);
 	r = REG_SET(r, TS_CPU0_CONFIG1_EN, 1);
 	r = REG_SET(r, TS_CPU0_CONFIG1_TEN_COUNT, data->ten_count);
-	r = REG_SET(r, TS_CPU0_CONFIG1_TSAMPLE, data->tsample);
+	r = REG_SET(r, TS_CPU0_CONFIG1_TSAMPLE, data->tsample - 1);
 	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG1, sensor));
 }
 
@@ -1551,7 +1551,7 @@ static int regs_show(struct seq_file *s, void *data)
 		state = REG_GET(r, TS_CPU0_CONFIG1_TEN_COUNT);
 		seq_printf(s, "ten_count(%d) ", state);
 		state = REG_GET(r, TS_CPU0_CONFIG1_TSAMPLE);
-		seq_printf(s, "tsample(%d) ", state);
+		seq_printf(s, "tsample(%d) ", state + 1);
 
 		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_STATUS1, i));
 		state = REG_GET(r, TS_CPU0_STATUS1_TEMP_VALID);
