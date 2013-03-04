@@ -4,7 +4,7 @@
  * Copyright 2005 Phil Blundell
  * Copyright 2010, 2011 David Jander <david@protonic.nl>
  *
- * Copyright 2010-2013 NVIDIA Corporation
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -325,6 +325,16 @@ static struct attribute *gpio_keys_attrs[] = {
 static struct attribute_group gpio_keys_attr_group = {
 	.attrs = gpio_keys_attrs,
 };
+
+static void gpio_keys_gpio_report_wake(struct gpio_button_data *bdata)
+{
+	const struct gpio_keys_button *button = bdata->button;
+	struct input_dev *input = bdata->input;
+	unsigned int type = button->type ?: EV_KEY;
+
+	input_event(input, type, button->code, 1);
+	input_sync(input);
+}
 
 static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 {
@@ -802,12 +812,18 @@ static int gpio_keys_resume(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gpio_keys_drvdata *ddata = dev_get_drvdata(dev);
 	struct gpio_keys_platform_data *pdata = pdev->dev.platform_data;
+	int wakeup_key = KEY_RESERVED;
 	int i;
+	if (pdata->wakeup_key)
+		wakeup_key = pdata->wakeup_key();
 
 	for (i = 0; i < ddata->n_buttons; i++) {
 		struct gpio_button_data *bdata = &ddata->data[i];
 		if (bdata->button->wakeup && device_may_wakeup(dev)) {
 			disable_irq_wake(bdata->irq);
+
+			if (wakeup_key == bdata->button->code)
+				gpio_keys_gpio_report_wake(bdata);
 		}
 
 		if (gpio_is_valid(bdata->button->gpio))
