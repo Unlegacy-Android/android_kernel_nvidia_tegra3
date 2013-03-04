@@ -161,7 +161,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.trim_delay = 0x3,
 	.ddr_clk_limit = 41000000,
 	.max_clk_limit = 82000000,
-	.sd_detect_in_suspend = 1,
 	.uhs_mask = MMC_UHS_MASK_DDR50,
 };
 
