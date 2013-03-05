@@ -31,3 +31,16 @@ extern void smmu_iommu_map_linear(unsigned long start, size_t size);
 
 /* FIXME: Should be done in DMA API */
 #define dma_map_linear_at(dev, start, size, dir) tegra_iommu_map_linear(start, size)
+
+#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
+extern struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev,
+						    u64 swgids);
+#else
+static inline struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev,
+							   u64 swgids)
+{
+	return NULL;
+}
+#endif
+
+u64 tegra_smmu_fixup_swgids(struct device *dev);
