@@ -10,6 +10,14 @@ config BCMDHD
 	  If you choose to build a module, it'll be called dhd. Say M if
 	  unsure.
 
+config BCM43341
+	bool "Broadcom 43341 wireless card support"
+	depends on BCMDHD
+
+config BCM43241
+	bool "Broadcom 43241 wireless card support"
+	depends on BCMDHD
+
 config BCMDHD_FW_PATH
 	depends on BCMDHD
 	string "Firmware path"
