@@ -4,7 +4,7 @@
  *
  * Support for Tegra Security Engine hardware crypto algorithms.
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2677,11 +2677,6 @@ static int __devexit tegra_se_remove(struct platform_device *pdev)
 }
 
 #if defined(CONFIG_PM)
-static int tegra_se_resume(struct device *dev)
-{
-	return 0;
-}
-
 static int tegra_se_generate_rng_key(struct tegra_se_dev *se_dev)
 {
 	int ret = 0;
@@ -3168,7 +3163,16 @@ static int tegra_se_suspend(struct device *dev)
 	}
 
 out:
+	/* put the device into runtime suspend state - disable clock */
+	pm_runtime_put_sync(dev);
 	return err;
+}
+
+static int tegra_se_resume(struct device *dev)
+{
+	/* pair with tegra_se_suspend, no need to actually enable clock */
+	pm_runtime_get_noresume(dev);
+	return 0;
 }
 #endif
 
