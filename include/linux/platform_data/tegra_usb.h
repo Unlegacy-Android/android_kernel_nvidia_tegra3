@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -112,6 +112,7 @@ struct tegra_usb_platform_data {
 	bool has_hostpc;
 	bool builtin_host_disabled;
 	bool unaligned_dma_buf_supported;
+	bool support_pmu_vbus;
 	enum tegra_usb_phy_interface phy_intf;
 	enum tegra_usb_operation_mode op_mode;
 
@@ -134,6 +135,7 @@ struct tegra_usb_platform_data {
 struct tegra_usb_otg_data {
 	struct platform_device *ehci_device;
 	struct tegra_usb_platform_data *ehci_pdata;
+	char *extcon_dev_name;
 };
 
 #endif /* _TEGRA_USB_H_ */
