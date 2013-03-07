@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/include/mach/usb_phy.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (C) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -118,6 +118,10 @@ bool tegra_usb_phy_has_hostpc(struct tegra_usb_phy *phy);
  */
 bool tegra_usb_phy_otg_supported(struct tegra_usb_phy *phy);
 
+/**
+ * Indicates controller port supports pmu vbus
+ */
+bool tegra_support_pmu_vbus(struct tegra_usb_phy *phy);
 
 void tegra_usb_phy_memory_prefetch_on(struct tegra_usb_phy *phy);
 

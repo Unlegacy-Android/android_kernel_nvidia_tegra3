@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/usb_phy.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -610,6 +610,12 @@ bool tegra_usb_phy_otg_supported(struct tegra_usb_phy *phy)
 	return phy->pdata->port_otg;
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_otg_supported);
+
+bool tegra_support_pmu_vbus(struct tegra_usb_phy *phy)
+{
+	return phy->pdata->support_pmu_vbus;
+}
+EXPORT_SYMBOL_GPL(tegra_support_pmu_vbus);
 
 void tegra_usb_phy_memory_prefetch_on(struct tegra_usb_phy *phy)
 {
