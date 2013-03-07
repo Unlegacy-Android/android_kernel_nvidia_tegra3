@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/bandwidth.c
  *
- * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -269,11 +269,13 @@ void tegra_dc_program_bandwidth(struct tegra_dc *dc, bool use_new)
 /* bw in kByte/second. returns Hz for EMC frequency */
 static inline unsigned long tegra_dc_kbps_to_emc(unsigned long bw)
 {
-	if (bw >= (ULONG_MAX / 1000))
+	unsigned long freq = tegra_emc_bw_to_freq_req(bw);
+
+	if (freq >= (ULONG_MAX / 1000))
 		return ULONG_MAX;
-	if (WARN_ONCE((bw * 1000) < bw, "Bandwidth Overflow"))
+	if (WARN_ONCE((freq * 1000) < freq, "Bandwidth Overflow"))
 		return ULONG_MAX;
-	return tegra_emc_bw_to_freq_req(bw) * 1000;
+	return freq * 1000;
 }
 
 int tegra_dc_set_dynamic_emc(struct tegra_dc_win *windows[], int n)
