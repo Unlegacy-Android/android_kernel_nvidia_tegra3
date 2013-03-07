@@ -3,7 +3,7 @@
  *
  * OTG transceiver driver for Tegra UTMI phy
  *
- * Copyright (C) 2010-2012 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2010-2013, NVIDIA CORPORATION. All rights reserved.
  * Copyright (C) 2010 Google, Inc.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@
 #include <linux/err.h>
 #include <linux/export.h>
 #include <linux/pm_runtime.h>
+#include <linux/extcon.h>
 
 #define USB_PHY_WAKEUP		0x408
 #define  USB_ID_INT_EN		(1 << 0)
@@ -67,9 +68,39 @@ struct tegra_otg_data {
 	bool interrupt_mode;
 	bool builtin_host;
 	bool suspended;
+	bool support_pmu_vbus;
+	struct extcon_dev *edev;
 };
 
 static struct tegra_otg_data *tegra_clone;
+static struct notifier_block otg_nb;
+struct extcon_specific_cable_nb *extcondev;
+
+static int otg_notifications(struct notifier_block *nb,
+				   unsigned long event, void *unused)
+{
+	struct tegra_otg_data *tegra = tegra_clone;
+	unsigned long flags;
+	DBG("%s(%d) Begin\n", __func__, __LINE__);
+
+	spin_lock_irqsave(&tegra->lock, flags);
+
+	if (extcon_get_cable_state(tegra->edev, "USB"))
+		tegra->int_status |= USB_VBUS_STATUS ;
+	else
+		tegra->int_status &= ~USB_VBUS_STATUS;
+
+	spin_unlock_irqrestore(&tegra->lock, flags);
+	DBG("%s(%d) tegra->int_status = 0x%lx\n", __func__,
+				__LINE__, tegra->int_status);
+
+	mutex_lock(&tegra->irq_work_mutex);
+	schedule_work(&tegra->work);
+	mutex_unlock(&tegra->irq_work_mutex);
+
+	DBG("%s(%d) End\n", __func__, __LINE__);
+	return NOTIFY_DONE;
+}
 
 static inline unsigned long otg_readl(struct tegra_otg_data *tegra,
 				      unsigned int offset)
@@ -319,6 +350,9 @@ static int tegra_otg_set_peripheral(struct usb_otg *otg,
 		schedule_work(&tegra->work);
 	}
 
+	if (tegra->support_pmu_vbus)
+		otg_notifications(NULL, 0, NULL);
+
 	DBG("%s(%d) END\n", __func__, __LINE__);
 	return 0;
 }
@@ -414,6 +448,7 @@ static int tegra_otg_probe(struct platform_device *pdev)
 
 	if (pdata) {
 		tegra->builtin_host = !pdata->ehci_pdata->builtin_host_disabled;
+		tegra->support_pmu_vbus = pdata->ehci_pdata->support_pmu_vbus;
 		tegra->pdata = pdata;
 	}
 
@@ -491,6 +526,18 @@ static int tegra_otg_probe(struct platform_device *pdev)
 		}
 	}
 
+	if (tegra->support_pmu_vbus) {
+		tegra->edev = extcon_get_extcon_dev(pdata->extcon_dev_name);
+		if (!tegra->edev) {
+			dev_err(&pdev->dev, "Cannot get the extcon dev\n");
+			err = -ENODEV;
+			goto err_irq;
+		}
+
+		otg_nb.notifier_call = otg_notifications;
+		extcon_register_notifier(tegra->edev, &otg_nb);
+	}
+
 	pm_runtime_enable(tegra->phy.dev);
 
 	dev_info(&pdev->dev, "otg transceiver registered\n");
@@ -509,6 +556,8 @@ static int __exit tegra_otg_remove(struct platform_device *pdev)
 {
 	struct tegra_otg_data *tegra = platform_get_drvdata(pdev);
 
+	if (tegra->support_pmu_vbus)
+		extcon_unregister_notifier(tegra->edev, &otg_nb);
 	pm_runtime_disable(tegra->phy.dev);
 	usb_set_transceiver(NULL);
 	iounmap(tegra->regs);
@@ -567,6 +616,13 @@ static void tegra_otg_resume(struct device *dev)
 		return;
 	}
 
+	if (tegra->support_pmu_vbus) {
+		mutex_unlock(&tegra->irq_work_mutex);
+		otg_notifications(NULL, 0, NULL);
+		tegra->suspended = false;
+		return ;
+	}
+
 	/* Clear pending interrupts */
 	pm_runtime_get_sync(dev);
 	clk_prepare_enable(tegra->clk);
@@ -616,7 +672,7 @@ static int __init tegra_otg_init(void)
 {
 	return platform_driver_register(&tegra_otg_driver);
 }
-subsys_initcall(tegra_otg_init);
+fs_initcall(tegra_otg_init);
 
 static void __exit tegra_otg_exit(void)
 {
