@@ -331,8 +331,11 @@ static void gpio_keys_gpio_report_wake(struct gpio_button_data *bdata)
 	const struct gpio_keys_button *button = bdata->button;
 	struct input_dev *input = bdata->input;
 	unsigned int type = button->type ?: EV_KEY;
+	/* Report 1 for all keys except SW_LID which reports 0 as wake */
+	unsigned int report_val = !(button->type == EV_SW
+				&& button->code == SW_LID);
 
-	input_event(input, type, button->code, 1);
+	input_event(input, type, button->code, report_val);
 	input_sync(input);
 }
 
