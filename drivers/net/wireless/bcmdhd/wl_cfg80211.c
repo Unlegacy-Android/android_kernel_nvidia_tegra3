@@ -7235,7 +7235,7 @@ static s32 wl_create_event_handler(struct wl_priv *wl)
 
 	/* Do not use DHD in cfg driver */
 	wl->event_tsk.thr_pid = -1;
-	PROC_START(wl_event_handler, wl, &wl->event_tsk, 0);
+	PROC_START2(wl_event_handler, wl, &wl->event_tsk, 0, "cfg80211_event_handler");
 	if (wl->event_tsk.thr_pid < 0)
 		ret = -ENOMEM;
 	return ret;
