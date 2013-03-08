@@ -233,6 +233,28 @@ static int bq2419x_init(struct bq2419x_chip *bq2419x)
 	return ret;
 }
 
+static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
+{
+	int ret;
+
+	/* Configure Output Current Control to 3A*/
+	ret = regmap_write(bq2419x->regmap, BQ2419X_CHRG_CTRL_REG, 0xC0);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "CHRG_CTRL_REG write failed %d\n", ret);
+		return ret;
+	}
+
+	/*
+	 * Configure Input voltage limit reset to OTP value,
+	 * and charging current to 500mA.
+	 */
+	ret = regmap_write(bq2419x->regmap, BQ2419X_INPUT_SRC_REG, 0x32);
+	if (ret < 0)
+		dev_err(bq2419x->dev, "INPUT_SRC_REG write failed %d\n", ret);
+
+	return ret;
+}
+
 static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 					int min_uA, int max_uA)
 {
@@ -386,6 +408,18 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 	if (val & BQ2419x_FAULT_WATCHDOG_FAULT) {
 		dev_err(bq2419x->dev,
 			"Charging Fault: Watchdog Timer Expired\n");
+
+		ret = bq2419x_charger_init(bq2419x);
+		if (ret < 0) {
+			dev_err(bq2419x->dev, "Charger init failed: %d\n", ret);
+			return ret;
+		}
+
+		ret = bq2419x_init(bq2419x);
+		if (ret < 0) {
+			dev_err(bq2419x->dev, "bq2419x init failed: %d\n", ret);
+			return ret;
+		}
 		bq2419x_reset_wdt(bq2419x);
 	}
 
@@ -602,28 +636,6 @@ static int bq2419x_show_chip_version(struct bq2419x_chip *bq2419x)
 	else if ((val & BQ24192i_IC_VER) == BQ24192i_IC_VER)
 		dev_info(bq2419x->dev, "chip type BQ2419Xi detected\n");
 	return 0;
-}
-
-static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
-{
-	int ret;
-
-	/* Configure Output Current Control to 3A*/
-	ret = regmap_write(bq2419x->regmap, BQ2419X_CHRG_CTRL_REG, 0xC0);
-	if (ret < 0) {
-		dev_err(bq2419x->dev, "CHRG_CTRL_REG write failed %d\n", ret);
-		return ret;
-	}
-
-	/*
-	 * Configure Input voltage limit reset to OTP value,
-	 * and charging current to 500mA.
-	 */
-	ret = regmap_write(bq2419x->regmap, BQ2419X_INPUT_SRC_REG, 0x32);
-	if (ret < 0)
-		dev_err(bq2419x->dev, "INPUT_SRC_REG write failed %d\n", ret);
-
-	return ret;
 }
 
 static int bq2419x_wakealarm(struct bq2419x_chip *bq2419x)
