@@ -2733,7 +2733,8 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 	spin_lock_init(&udc->lock);
 	udc->stopped = 1;
 	udc->pdev = pdev;
-	udc->has_hostpc = tegra_usb_phy_has_hostpc(udc->phy) ? 1 : 0;
+	udc->has_hostpc = pdata->has_hostpc;
+	udc->support_pmu_vbus = pdata->support_pmu_vbus;
 	platform_set_drvdata(pdev, udc);
 
 	/* Initialize the udc structure including QH members */
@@ -2799,12 +2800,11 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 	}
 
 #ifdef CONFIG_USB_OTG_UTILS
-	if (tegra_usb_phy_otg_supported(udc->phy))
+	if (pdata->port_otg)
 		udc->transceiver = usb_get_transceiver();
 #else
 		udc->transceiver = usb_get_transceiver();
 #endif
-	udc->support_pmu_vbus = tegra_support_pmu_vbus(udc->phy) ? 1 : 0;
 
 	if (udc->transceiver) {
 		dr_controller_stop(udc);
