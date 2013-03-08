@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -369,8 +369,6 @@ static struct platform_device *p1852_devices[] __initdata = {
 	&tegra_camera,
 
 	&tegra_wdt0_device,
-	&tegra_wdt1_device,
-	&tegra_wdt2_device
 };
 
 

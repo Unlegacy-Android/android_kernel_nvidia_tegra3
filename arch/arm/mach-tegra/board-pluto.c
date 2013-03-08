@@ -582,11 +582,7 @@ static struct platform_device *pluto_devices[] __initdata = {
 	&tegra_smmu_device,
 #endif
 #if defined(CONFIG_TEGRA_WATCHDOG)
-	/* three CPU watchdog timers, user space */
 	&tegra_wdt0_device,
-	&tegra_wdt1_device,
-	&tegra_wdt2_device,
-	/* 4th used for the suspend/resume only */
 #endif
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,

@@ -686,8 +686,6 @@ static struct platform_device *enterprise_devices[] __initdata = {
 	&tegra_rtc_device,
 	&tegra_udc_device,
 	&tegra_wdt0_device,
-	&tegra_wdt1_device,
-	&tegra_wdt2_device,
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
