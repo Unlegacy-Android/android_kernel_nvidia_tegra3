@@ -350,8 +350,7 @@ static int bq2419x_reset_wdt(struct bq2419x_chip *bq2419x)
 	return ret;
 }
 
-static int bq2419x_watchdog_clear_sts(struct bq2419x_chip *bq2419x,
-			int timeout)
+static int bq2419x_fault_clear_sts(struct bq2419x_chip *bq2419x)
 {
 	int ret;
 	unsigned int reg09;
@@ -363,10 +362,58 @@ static int bq2419x_watchdog_clear_sts(struct bq2419x_chip *bq2419x,
 	}
 
 	ret = regmap_read(bq2419x->regmap, BQ2419X_FAULT_REG, &reg09);
-	if (ret < 0) {
+	if (ret < 0)
 		dev_err(bq2419x->dev, "FAULT_REG read failed: %d\n", ret);
+
+	return ret;
+}
+
+static int bq2419x_watchdog_init(struct bq2419x_chip *bq2419x,
+			int timeout)
+{
+	int ret, val;
+	unsigned int reg05;
+
+	if (!timeout) {
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_TIME_CTRL_REG,
+				BQ2419X_WD_MASK, 0);
+		if (ret < 0)
+			dev_err(bq2419x->dev,
+				"TIME_CTRL_REG read failed: %d\n", ret);
 		return ret;
 	}
+
+	if (timeout <= 60) {
+		val = BQ2419X_WD_40ms;
+		bq2419x->wdt_refresh_timeout = 25;
+	} else if (timeout <= 120) {
+		val = BQ2419X_WD_80ms;
+		bq2419x->wdt_refresh_timeout = 50;
+	} else {
+		val = BQ2419X_WD_160ms;
+		bq2419x->wdt_refresh_timeout = 125;
+	}
+
+	ret = regmap_read(bq2419x->regmap, BQ2419X_TIME_CTRL_REG, &reg05);
+	if (ret < 0) {
+		dev_err(bq2419x->dev,
+			"TIME_CTRL_REG read failed:%d\n", ret);
+		return ret;
+	}
+
+	if ((reg05 & BQ2419X_WD_MASK) != val) {
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_TIME_CTRL_REG,
+				BQ2419X_WD_MASK, val);
+		if (ret < 0) {
+			dev_err(bq2419x->dev,
+				"TIME_CTRL_REG read failed: %d\n", ret);
+			return ret;
+		}
+	}
+
+	ret = bq2419x_reset_wdt(bq2419x);
+	if (ret < 0)
+		dev_err(bq2419x->dev, "bq2419x_reset_wdt failed: %d\n", ret);
 
 	return ret;
 }
@@ -749,10 +796,16 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 			SCHED_FIFO, &bq2419x_param);
 	queue_kthread_work(&bq2419x->bq_kworker, &bq2419x->bq_wdt_work);
 
-	ret = bq2419x_watchdog_clear_sts(bq2419x,
+	ret = bq2419x_watchdog_init(bq2419x,
 			pdata->bcharger_pdata->wdt_timeout);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "BQWDT init failed %d\n", ret);
+		return ret;
+	}
+
+	bq2419x_fault_clear_sts(bq2419x);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "fault clear status failed %d\n", ret);
 		return ret;
 	}
 
