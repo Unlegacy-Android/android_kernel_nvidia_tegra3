@@ -39,6 +39,8 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include <linux/slab.h>
+#include <linux/rtc.h>
+#include <linux/alarmtimer.h>
 
 /* input current limit */
 static const unsigned int iinlim[] = {
@@ -71,6 +73,7 @@ struct bq2419x_chip {
 	unsigned			use_mains:1;
 	unsigned			use_usb:1;
 	int				status;
+	int				rtc_alarm_time;
 	void				(*update_status)(int, int);
 
 	struct regulator_dev		*chg_rdev;
@@ -84,6 +87,7 @@ struct bq2419x_chip {
 	struct kthread_worker		bq_kworker;
 	struct task_struct		*bq_kworker_task;
 	struct kthread_work		bq_wdt_work;
+	struct rtc_device		*rtc;
 	int				stop_thread;
 };
 
@@ -622,6 +626,33 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 	return ret;
 }
 
+static int bq2419x_wakealarm(struct bq2419x_chip *bq2419x)
+{
+	int ret;
+	unsigned long now;
+	struct rtc_wkalrm alm;
+
+	alm.enabled = true;
+	ret = rtc_read_time(bq2419x->rtc, &alm.time);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "RTC read time failed %d\n", ret);
+		return ret;
+	}
+	rtc_tm_to_time(&alm.time, &now);
+
+	if (bq2419x->rtc_alarm_time == 0)
+		bq2419x->rtc_alarm_time = 3600;
+	rtc_time_to_tm(now + bq2419x->rtc_alarm_time, &alm.time);
+	ret = rtc_set_alarm(bq2419x->rtc, &alm);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "RTC set alarm failed %d\n", ret);
+		alm.enabled = false;
+		return ret;
+	}
+	alm.enabled = false;
+	return 0;
+}
+
 static int __devinit bq2419x_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
@@ -652,9 +683,11 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 	bq2419x->use_usb = pdata->bcharger_pdata->use_usb;
 	bq2419x->use_mains =  pdata->bcharger_pdata->use_mains;
 	bq2419x->update_status =  pdata->bcharger_pdata->update_status;
+	bq2419x->rtc_alarm_time =  pdata->bcharger_pdata->rtc_alarm_time;
 	bq2419x->wdt_refresh_timeout = 25;
 	i2c_set_clientdata(client, bq2419x);
 	bq2419x->irq = client->irq;
+	bq2419x->rtc = alarmtimer_get_rtcdev();
 
 	ret = bq2419x_show_chip_version(bq2419x);
 	if (ret < 0) {
@@ -688,7 +721,6 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 			"VBUS regualtor init failed %d\n", ret);
 		goto scrub_psy;
 	}
-
 
 	init_kthread_worker(&bq2419x->bq_kworker);
 	bq2419x->bq_kworker_task = kthread_run(kthread_worker_fn,
@@ -727,7 +759,6 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 		goto scrub_irq;
 
 	return 0;
-
 scrub_irq:
 	free_irq(bq2419x->irq, bq2419x);
 scrub_kthread:
@@ -763,6 +794,28 @@ static int __devexit bq2419x_remove(struct i2c_client *client)
 	return 0;
 }
 
+static void bq2419x_shutdown(struct i2c_client *client)
+{
+	int ret = 0;
+	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+
+	ret = bq2419x_charger_enable(bq2419x);
+	if (ret < 0)
+		dev_err(bq2419x->dev, "Charger enable failed %d", ret);
+
+	/* Configure charging current to 500mA */
+	ret = regmap_write(bq2419x->regmap, BQ2419X_INPUT_SRC_REG, 0x32);
+	if (ret < 0)
+		dev_err(bq2419x->dev, "INPUT_SRC_REG write failed %d\n", ret);
+
+	if (!bq2419x->rtc)
+		bq2419x->rtc = alarmtimer_get_rtcdev();
+
+	ret = bq2419x_wakealarm(bq2419x);
+	if (ret < 0)
+		dev_err(bq2419x->dev, "RTC wake alarm config failed %d\n", ret);
+}
+
 static const struct i2c_device_id bq2419x_id[] = {
 	{.name = "bq2419x",},
 	{},
@@ -771,12 +824,13 @@ MODULE_DEVICE_TABLE(i2c, bq2419x_id);
 
 static struct i2c_driver bq2419x_i2c_driver = {
 	.driver = {
-		.name = "bq2419x",
-		.owner = THIS_MODULE,
+		.name	= "bq2419x",
+		.owner	= THIS_MODULE,
 	},
-	.probe = bq2419x_probe,
-	.remove = __devexit_p(bq2419x_remove),
-	.id_table = bq2419x_id,
+	.probe		= bq2419x_probe,
+	.remove		= __devexit_p(bq2419x_remove),
+	.shutdown	= bq2419x_shutdown,
+	.id_table	= bq2419x_id,
 };
 
 static int __init bq2419x_module_init(void)
