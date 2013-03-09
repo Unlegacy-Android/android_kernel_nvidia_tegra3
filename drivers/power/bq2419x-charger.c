@@ -67,6 +67,7 @@ struct bq2419x_chip {
 
 	struct power_supply		ac;
 	struct power_supply		usb;
+	struct mutex			mutex;
 	int				ac_online;
 	int				usb_online;
 	int				in_current_limit;
@@ -322,12 +323,13 @@ static struct regulator_ops bq2419x_tegra_regulator_ops = {
 	.set_current_limit = bq2419x_set_charging_current,
 };
 
-static int bq2419x_reset_wdt(struct bq2419x_chip *bq2419x)
+static int bq2419x_reset_wdt(struct bq2419x_chip *bq2419x, const char *from)
 {
 	int ret;
 	unsigned int reg01;
 
-	dev_info(bq2419x->dev, "%s() resetting BQWDT\n", __func__);
+	mutex_lock(&bq2419x->mutex);
+	dev_info(bq2419x->dev, "%s() from %s()\n", __func__, from);
 
 	/* Clear EN_HIZ */
 	ret = regmap_update_bits(bq2419x->regmap,
@@ -356,6 +358,7 @@ static int bq2419x_reset_wdt(struct bq2419x_chip *bq2419x)
 		dev_err(bq2419x->dev, "PWR_ON_REG write failed: %d\n", ret);
 		return ret;
 	}
+	mutex_unlock(&bq2419x->mutex);
 	return ret;
 }
 
@@ -420,7 +423,7 @@ static int bq2419x_watchdog_init(struct bq2419x_chip *bq2419x,
 		}
 	}
 
-	ret = bq2419x_reset_wdt(bq2419x);
+	ret = bq2419x_reset_wdt(bq2419x, "INIT");
 	if (ret < 0)
 		dev_err(bq2419x->dev, "bq2419x_reset_wdt failed: %d\n", ret);
 
@@ -437,7 +440,7 @@ static void bq2419x_work_thread(struct kthread_work *work)
 		if (bq2419x->stop_thread)
 			return;
 
-		ret = bq2419x_reset_wdt(bq2419x);
+		ret = bq2419x_reset_wdt(bq2419x, "THREAD");
 		if (ret < 0)
 			dev_err(bq2419x->dev,
 				"bq2419x_reset_wdt failed: %d\n", ret);
@@ -476,7 +479,7 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 			dev_err(bq2419x->dev, "bq2419x init failed: %d\n", ret);
 			return ret;
 		}
-		bq2419x_reset_wdt(bq2419x);
+		bq2419x_reset_wdt(bq2419x, "ISR");
 	}
 
 	if (val & BQ2419x_FAULT_BOOST_FAULT)
@@ -756,6 +759,7 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, bq2419x);
 	bq2419x->irq = client->irq;
 	bq2419x->rtc = alarmtimer_get_rtcdev();
+	mutex_init(&bq2419x->mutex);
 
 	ret = bq2419x_show_chip_version(bq2419x);
 	if (ret < 0) {
@@ -848,6 +852,7 @@ scrub_psy:
 		power_supply_unregister(&bq2419x->ac);
 scrub_chg_reg:
 	regulator_unregister(bq2419x->chg_rdev);
+	mutex_destroy(&bq2419x->mutex);
 	return ret;
 }
 
@@ -865,6 +870,7 @@ static int __devexit bq2419x_remove(struct i2c_client *client)
 	if (bq2419x->use_mains)
 		power_supply_unregister(&bq2419x->ac);
 	regulator_unregister(bq2419x->chg_rdev);
+	mutex_destroy(&bq2419x->mutex);
 	return 0;
 }
 
