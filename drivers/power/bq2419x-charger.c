@@ -328,6 +328,15 @@ static int bq2419x_reset_wdt(struct bq2419x_chip *bq2419x)
 	unsigned int reg01;
 
 	dev_info(bq2419x->dev, "%s() resetting BQWDT\n", __func__);
+
+	/* Clear EN_HIZ */
+	ret = regmap_update_bits(bq2419x->regmap,
+			BQ2419X_INPUT_SRC_REG, BQ2419X_EN_HIZ, 0);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "INPUT_SRC_REG update failed:%d\n", ret);
+		return ret;
+	}
+
 	ret = regmap_read(bq2419x->regmap, BQ2419X_PWR_ON_REG, &reg01);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "PWR_ON_REG read failed: %d\n", ret);
