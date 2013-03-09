@@ -269,6 +269,12 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 	bq_charger->ac_online = 0;
 	bq_charger->status = 0;
 
+	ret = bq2419x_charger_enable(bq_charger);
+	if (ret < 0) {
+		dev_err(bq_charger->dev, "Charger enable failed %d", ret);
+		return ret;
+	}
+
 	ret = regmap_read(bq_charger->regmap, BQ2419X_SYS_STAT_REG, &val);
 	if (ret < 0)
 		dev_err(bq_charger->dev, "error reading reg: 0x%x\n",
