@@ -64,6 +64,7 @@ struct bq2419x_chip {
 	int				irq;
 	int				gpio_otg_iusb;
 	int				wdt_refresh_timeout;
+	int				wdt_time_sec;
 
 	struct power_supply		ac;
 	struct power_supply		usb;
@@ -387,7 +388,7 @@ static int bq2419x_fault_clear_sts(struct bq2419x_chip *bq2419x)
 }
 
 static int bq2419x_watchdog_init(struct bq2419x_chip *bq2419x,
-			int timeout)
+			int timeout, const char *from)
 {
 	int ret, val;
 	unsigned int reg05;
@@ -429,7 +430,7 @@ static int bq2419x_watchdog_init(struct bq2419x_chip *bq2419x,
 		}
 	}
 
-	ret = bq2419x_reset_wdt(bq2419x, "INIT");
+	ret = bq2419x_reset_wdt(bq2419x, from);
 	if (ret < 0)
 		dev_err(bq2419x->dev, "bq2419x_reset_wdt failed: %d\n", ret);
 
@@ -473,6 +474,12 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 	if (val & BQ2419x_FAULT_WATCHDOG_FAULT) {
 		dev_err(bq2419x->dev,
 			"Charging Fault: Watchdog Timer Expired\n");
+		ret = bq2419x_watchdog_init(bq2419x, bq2419x->wdt_time_sec,
+						"ISR");
+		if (ret < 0) {
+			dev_err(bq2419x->dev, "BQWDT init failed %d\n", ret);
+			return ret;
+		}
 
 		ret = bq2419x_charger_init(bq2419x);
 		if (ret < 0) {
@@ -485,7 +492,6 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 			dev_err(bq2419x->dev, "bq2419x init failed: %d\n", ret);
 			return ret;
 		}
-		bq2419x_reset_wdt(bq2419x, "ISR");
 	}
 
 	if (val & BQ2419x_FAULT_BOOST_FAULT)
@@ -510,6 +516,12 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 	if (val & BQ2419x_FAULT_NTC_FAULT)
 		dev_err(bq2419x->dev, "Charging Fault: NTC fault %d\n",
 				val & BQ2419x_FAULT_NTC_FAULT);
+
+	ret = bq2419x_fault_clear_sts(bq2419x);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "fault clear status failed %d\n", ret);
+		return ret;
+	}
 
 	ret = regmap_read(bq2419x->regmap, BQ2419X_SYS_STAT_REG, &val);
 	if (ret < 0) {
@@ -761,6 +773,7 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 	bq2419x->use_mains =  pdata->bcharger_pdata->use_mains;
 	bq2419x->update_status =  pdata->bcharger_pdata->update_status;
 	bq2419x->rtc_alarm_time =  pdata->bcharger_pdata->rtc_alarm_time;
+	bq2419x->wdt_time_sec = pdata->bcharger_pdata->wdt_timeout;
 	bq2419x->wdt_refresh_timeout = 25;
 	i2c_set_clientdata(client, bq2419x);
 	bq2419x->irq = client->irq;
@@ -815,14 +828,13 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 			SCHED_FIFO, &bq2419x_param);
 	queue_kthread_work(&bq2419x->bq_kworker, &bq2419x->bq_wdt_work);
 
-	ret = bq2419x_watchdog_init(bq2419x,
-			pdata->bcharger_pdata->wdt_timeout);
+	ret = bq2419x_watchdog_init(bq2419x, bq2419x->wdt_time_sec, "PROBE");
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "BQWDT init failed %d\n", ret);
 		return ret;
 	}
 
-	bq2419x_fault_clear_sts(bq2419x);
+	ret = bq2419x_fault_clear_sts(bq2419x);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "fault clear status failed %d\n", ret);
 		return ret;
@@ -902,6 +914,78 @@ static void bq2419x_shutdown(struct i2c_client *client)
 		dev_err(bq2419x->dev, "RTC wake alarm config failed %d\n", ret);
 }
 
+
+#ifdef CONFIG_PM_SLEEP
+static int bq2419x_suspend(struct device *dev)
+{
+	int ret = 0;
+	struct bq2419x_chip *bq2419x = dev_get_drvdata(dev);
+
+	disable_irq(bq2419x->irq);
+	ret = bq2419x_charger_enable(bq2419x);
+	if (ret < 0)
+		dev_err(bq2419x->dev, "Charger enable failed %d", ret);
+
+	/* Configure charging current to 500mA */
+	ret = regmap_write(bq2419x->regmap, BQ2419X_INPUT_SRC_REG, 0x32);
+	if (ret < 0)
+		dev_err(bq2419x->dev, "INPUT_SRC_REG write failed %d\n", ret);
+
+	return 0;
+}
+
+static int bq2419x_resume(struct device *dev)
+{
+	int ret = 0;
+	struct bq2419x_chip *bq2419x = dev_get_drvdata(dev);
+	unsigned int val;
+
+	ret = regmap_read(bq2419x->regmap, BQ2419X_FAULT_REG, &val);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "FAULT_REG read failed %d\n", ret);
+		return ret;
+	}
+
+	if (val & BQ2419x_FAULT_WATCHDOG_FAULT) {
+		dev_err(bq2419x->dev,
+			"Charging Fault: Watchdog Timer Expired\n");
+
+		ret = bq2419x_watchdog_init(bq2419x, bq2419x->wdt_time_sec,
+						"RESUME");
+		if (ret < 0) {
+			dev_err(bq2419x->dev, "BQWDT init failed %d\n", ret);
+			return ret;
+		}
+	}
+
+	ret = bq2419x_fault_clear_sts(bq2419x);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "fault clear status failed %d\n", ret);
+		return ret;
+	}
+
+	ret = bq2419x_charger_init(bq2419x);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "Charger init failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = bq2419x_init(bq2419x);
+	if (ret < 0) {
+		dev_err(bq2419x->dev, "bq2419x init failed: %d\n", ret);
+		return ret;
+	}
+
+	enable_irq(bq2419x->irq);
+	return 0;
+};
+#endif
+
+static const struct dev_pm_ops bq2419x_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(bq2419x_suspend,
+				bq2419x_resume)
+};
+
 static const struct i2c_device_id bq2419x_id[] = {
 	{.name = "bq2419x",},
 	{},
@@ -912,6 +996,7 @@ static struct i2c_driver bq2419x_i2c_driver = {
 	.driver = {
 		.name	= "bq2419x",
 		.owner	= THIS_MODULE,
+		.pm = &bq2419x_pm_ops,
 	},
 	.probe		= bq2419x_probe,
 	.remove		= __devexit_p(bq2419x_remove),
