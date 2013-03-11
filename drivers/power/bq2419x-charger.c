@@ -343,12 +343,14 @@ static int bq2419x_reset_wdt(struct bq2419x_chip *bq2419x, const char *from)
 			BQ2419X_INPUT_SRC_REG, BQ2419X_EN_HIZ, 0);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "INPUT_SRC_REG update failed:%d\n", ret);
+		mutex_unlock(&bq2419x->mutex);
 		return ret;
 	}
 
 	ret = regmap_read(bq2419x->regmap, BQ2419X_PWR_ON_REG, &reg01);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "PWR_ON_REG read failed: %d\n", ret);
+		mutex_unlock(&bq2419x->mutex);
 		return ret;
 	}
 
@@ -358,11 +360,13 @@ static int bq2419x_reset_wdt(struct bq2419x_chip *bq2419x, const char *from)
 	ret = regmap_write(bq2419x->regmap, BQ2419X_PWR_ON_REG, reg01);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "PWR_ON_REG write failed: %d\n", ret);
+		mutex_unlock(&bq2419x->mutex);
 		return ret;
 	}
 	ret = regmap_write(bq2419x->regmap, BQ2419X_PWR_ON_REG, reg01);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "PWR_ON_REG write failed: %d\n", ret);
+		mutex_unlock(&bq2419x->mutex);
 		return ret;
 	}
 	mutex_unlock(&bq2419x->mutex);
@@ -896,6 +900,9 @@ static void bq2419x_shutdown(struct i2c_client *client)
 {
 	int ret = 0;
 	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+
+	if (bq2419x->irq)
+		disable_irq(bq2419x->irq);
 
 	ret = bq2419x_charger_enable(bq2419x);
 	if (ret < 0)
