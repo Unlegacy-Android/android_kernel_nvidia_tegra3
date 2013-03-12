@@ -132,8 +132,6 @@ static int bq2419x_vbus_enable(struct regulator_dev *rdev)
 	int ret;
 
 	dev_info(bq2419x->dev, "VBUS enabled, charging disabled\n");
-	if (gpio_is_valid(bq2419x->gpio_otg_iusb))
-		gpio_set_value(bq2419x->gpio_otg_iusb, 1);
 
 	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
 			BQ2419X_ENABLE_CHARGE_MASK, BQ2419X_ENABLE_VBUS);
@@ -154,9 +152,6 @@ static int bq2419x_vbus_disable(struct regulator_dev *rdev)
 		dev_err(bq2419x->dev, "Charger enable failed %d", ret);
 		return ret;
 	}
-
-	if (gpio_is_valid(bq2419x->gpio_otg_iusb))
-		gpio_set_value(bq2419x->gpio_otg_iusb, 0);
 
 	return ret;
 }
@@ -625,7 +620,7 @@ static int bq2419x_init_vbus_regulator(struct bq2419x_chip *bq2419x,
 
 	if (gpio_is_valid(bq2419x->gpio_otg_iusb)) {
 		ret = gpio_request_one(bq2419x->gpio_otg_iusb,
-				GPIOF_OUT_INIT_LOW, dev_name(bq2419x->dev));
+				GPIOF_OUT_INIT_HIGH, dev_name(bq2419x->dev));
 		if (ret < 0) {
 			dev_err(bq2419x->dev, "gpio request failed  %d\n", ret);
 			return ret;
@@ -1000,6 +995,9 @@ static int bq2419x_resume(struct device *dev)
 	mutex_lock(&bq2419x->mutex);
 	bq2419x->suspended = 0;
 	mutex_unlock(&bq2419x->mutex);
+	if (gpio_is_valid(bq2419x->gpio_otg_iusb))
+		gpio_set_value(bq2419x->gpio_otg_iusb, 1);
+
 	enable_irq(bq2419x->irq);
 	return 0;
 };
