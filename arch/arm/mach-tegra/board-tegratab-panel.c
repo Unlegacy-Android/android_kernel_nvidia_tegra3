@@ -482,11 +482,6 @@ int __init tegratab_panel_init(void)
 	else
 		tegra_clear_framebuffer(tegra_fb2_start, tegra_fb2_size);
 
-	res = platform_get_resource_byname(&tegratab_disp2_device,
-		IORESOURCE_MEM, "fbmem");
-	res->start = tegra_fb2_start;
-	res->end = tegra_fb2_start + tegra_fb2_size - 1;
-
 	tegratab_disp1_device.dev.parent = &phost1x->dev;
 	err = platform_device_register(&tegratab_disp1_device);
 	if (err) {
@@ -494,12 +489,9 @@ int __init tegratab_panel_init(void)
 		return err;
 	}
 
-	tegratab_disp2_device.dev.parent = &phost1x->dev;
-	err = platform_device_register(&tegratab_disp2_device);
-	if (err) {
-		pr_err("disp2 device registration failed\n");
+	err = tegra_init_hdmi(&tegratab_disp2_device, phost1x);
+	if (err)
 		return err;
-	}
 
 #ifdef CONFIG_TEGRA_NVAVP
 	nvavp_device.dev.parent = &phost1x->dev;

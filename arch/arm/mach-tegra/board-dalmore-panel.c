@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-dalmore-panel.c
  *
- * Copyright (c) 2011-2013, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -482,22 +482,6 @@ int __init dalmore_panel_init(void)
 		tegra_fb_start, tegra_bootloader_fb_start,
 			min(tegra_fb_size, tegra_bootloader_fb_size));
 
-	/*
-	 * If the bootloader fb2 is valid, copy it to the fb2, or else
-	 * clear fb2 to avoid garbage on dispaly2.
-	 */
-	if (tegra_bootloader_fb2_size)
-		tegra_move_framebuffer(tegra_fb2_start,
-			tegra_bootloader_fb2_start,
-			min(tegra_fb2_size, tegra_bootloader_fb2_size));
-	else
-		tegra_clear_framebuffer(tegra_fb2_start, tegra_fb2_size);
-
-	res = platform_get_resource_byname(&dalmore_disp2_device,
-		IORESOURCE_MEM, "fbmem");
-	res->start = tegra_fb2_start;
-	res->end = tegra_fb2_start + tegra_fb2_size - 1;
-
 	dalmore_disp1_device.dev.parent = &phost1x->dev;
 	err = platform_device_register(&dalmore_disp1_device);
 	if (err) {
@@ -505,12 +489,9 @@ int __init dalmore_panel_init(void)
 		return err;
 	}
 
-	dalmore_disp2_device.dev.parent = &phost1x->dev;
-	err = platform_device_register(&dalmore_disp2_device);
-	if (err) {
-		pr_err("disp2 device registration failed\n");
+	err = tegra_init_hdmi(&dalmore_disp2_device, phost1x);
+	if (err)
 		return err;
-	}
 
 #ifdef CONFIG_TEGRA_NVAVP
 	nvavp_device.dev.parent = &phost1x->dev;

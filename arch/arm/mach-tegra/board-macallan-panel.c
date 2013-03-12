@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-macallan-panel.c
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -470,11 +470,6 @@ int __init macallan_panel_init(void)
 	else
 		tegra_clear_framebuffer(tegra_fb2_start, tegra_fb2_size);
 
-	res = platform_get_resource_byname(&macallan_disp2_device,
-		IORESOURCE_MEM, "fbmem");
-	res->start = tegra_fb2_start;
-	res->end = tegra_fb2_start + tegra_fb2_size - 1;
-
 	macallan_disp1_device.dev.parent = &phost1x->dev;
 	err = platform_device_register(&macallan_disp1_device);
 	if (err) {
@@ -482,12 +477,9 @@ int __init macallan_panel_init(void)
 		return err;
 	}
 
-	macallan_disp2_device.dev.parent = &phost1x->dev;
-	err = platform_device_register(&macallan_disp2_device);
-	if (err) {
-		pr_err("disp2 device registration failed\n");
+	err = tegra_init_hdmi(&macallan_disp2_device, phost1x);
+	if (err)
 		return err;
-	}
 
 #ifdef CONFIG_TEGRA_NVAVP
 	nvavp_device.dev.parent = &phost1x->dev;
