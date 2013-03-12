@@ -333,14 +333,13 @@ static struct regulator_ops bq2419x_tegra_regulator_ops = {
 
 static int bq2419x_reset_wdt(struct bq2419x_chip *bq2419x, const char *from)
 {
-	int ret;
+	int ret = 0;
 	unsigned int reg01;
 
 	mutex_lock(&bq2419x->mutex);
-	if (bq2419x->suspended) {
-		mutex_unlock(&bq2419x->mutex);
-		return 0;
-	}
+	if (bq2419x->suspended)
+		goto scrub;
+
 	dev_info(bq2419x->dev, "%s() from %s()\n", __func__, from);
 
 	/* Clear EN_HIZ */
@@ -348,15 +347,13 @@ static int bq2419x_reset_wdt(struct bq2419x_chip *bq2419x, const char *from)
 			BQ2419X_INPUT_SRC_REG, BQ2419X_EN_HIZ, 0);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "INPUT_SRC_REG update failed:%d\n", ret);
-		mutex_unlock(&bq2419x->mutex);
-		return ret;
+		goto scrub;
 	}
 
 	ret = regmap_read(bq2419x->regmap, BQ2419X_PWR_ON_REG, &reg01);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "PWR_ON_REG read failed: %d\n", ret);
-		mutex_unlock(&bq2419x->mutex);
-		return ret;
+		goto scrub;
 	}
 
 	reg01 |= BIT(6);
@@ -365,15 +362,15 @@ static int bq2419x_reset_wdt(struct bq2419x_chip *bq2419x, const char *from)
 	ret = regmap_write(bq2419x->regmap, BQ2419X_PWR_ON_REG, reg01);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "PWR_ON_REG write failed: %d\n", ret);
-		mutex_unlock(&bq2419x->mutex);
-		return ret;
+		goto scrub;
 	}
 	ret = regmap_write(bq2419x->regmap, BQ2419X_PWR_ON_REG, reg01);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "PWR_ON_REG write failed: %d\n", ret);
-		mutex_unlock(&bq2419x->mutex);
-		return ret;
+		goto scrub;
 	}
+
+scrub:
 	mutex_unlock(&bq2419x->mutex);
 	return ret;
 }
@@ -943,13 +940,17 @@ static int bq2419x_suspend(struct device *dev)
 	mutex_unlock(&bq2419x->mutex);
 	disable_irq(bq2419x->irq);
 	ret = bq2419x_charger_enable(bq2419x);
-	if (ret < 0)
+	if (ret < 0) {
 		dev_err(bq2419x->dev, "Charger enable failed %d", ret);
+		return ret;
+	}
 
 	/* Configure charging current to 500mA */
 	ret = regmap_write(bq2419x->regmap, BQ2419X_INPUT_SRC_REG, 0x32);
-	if (ret < 0)
+	if (ret < 0) {
 		dev_err(bq2419x->dev, "INPUT_SRC_REG write failed %d\n", ret);
+		return ret;
+	}
 
 	return 0;
 }
