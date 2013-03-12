@@ -35,6 +35,7 @@
 #include <asm/gpio.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/reboot.h>
 
 #include <mach/gpio-tegra.h>
 #include <mach/sdhci.h>
@@ -245,6 +246,7 @@ struct sdhci_tegra {
 	/* Freq tuning information for each sampling clock freq */
 	struct tegra_tuning_data tuning_data;
 	bool is_parent_pllc;
+	struct notifier_block reboot_notify;
 };
 
 static struct clk *pll_c;
@@ -1801,6 +1803,32 @@ static struct tegra_sdhci_platform_data * __devinit sdhci_tegra_dt_parse_pdata(
 	return plat;
 }
 
+static void tegra_sdhci_rail_off(struct sdhci_tegra *tegra_host)
+{
+	if (tegra_host->is_rail_enabled) {
+		if (tegra_host->vdd_slot_reg)
+			regulator_disable(tegra_host->vdd_slot_reg);
+		if (tegra_host->vdd_io_reg)
+			regulator_disable(tegra_host->vdd_io_reg);
+		tegra_host->is_rail_enabled = false;
+	}
+}
+
+static int tegra_sdhci_reboot_notify(struct notifier_block *nb,
+				unsigned long event, void *data)
+{
+	struct sdhci_tegra *tegra_host =
+		container_of(nb, struct sdhci_tegra, reboot_notify);
+
+	switch (event) {
+	case SYS_RESTART:
+	case SYS_POWER_OFF:
+		tegra_sdhci_rail_off(tegra_host);
+		return NOTIFY_OK;
+	}
+	return NOTIFY_DONE;
+}
+
 static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *match;
@@ -2066,6 +2094,11 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	/* Enable async suspend/resume to reduce LP0 latency */
 	device_enable_async_suspend(&pdev->dev);
 
+	if (plat->power_off_rail) {
+		tegra_host->reboot_notify.notifier_call =
+			tegra_sdhci_reboot_notify;
+		register_reboot_notifier(&tegra_host->reboot_notify);
+	}
 	return 0;
 
 err_add_host:
@@ -2130,6 +2163,9 @@ static int __devexit sdhci_tegra_remove(struct platform_device *pdev)
 		pm_runtime_put_sync(&pdev->dev);
 	}
 	clk_put(pltfm_host->clk);
+
+	if (plat->power_off_rail)
+		unregister_reboot_notifier(&tegra_host->reboot_notify);
 
 	sdhci_pltfm_free(pdev);
 
