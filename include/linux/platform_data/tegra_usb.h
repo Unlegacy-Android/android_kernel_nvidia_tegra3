@@ -36,6 +36,16 @@ enum tegra_usb_phy_interface {
 };
 
 /**
+ * defines the various ID cable detection types
+ */
+enum tegra_usb_id_detection {
+	TEGRA_USB_ID = 0,
+	TEGRA_USB_PMU_ID = 1,
+	TEGRA_USB_GPIO_ID = 2,
+	TEGRA_USB_VIRTUAL_ID = 3,
+};
+
+/**
  * configuration structure for setting up utmi phy
  */
 struct tegra_utmi_config {
@@ -110,9 +120,9 @@ struct tegra_usb_host_mode_data {
 struct tegra_usb_platform_data {
 	bool port_otg;
 	bool has_hostpc;
-	bool builtin_host_disabled;
 	bool unaligned_dma_buf_supported;
 	bool support_pmu_vbus;
+	enum tegra_usb_id_detection id_det_type;
 	enum tegra_usb_phy_interface phy_intf;
 	enum tegra_usb_operation_mode op_mode;
 
@@ -136,6 +146,7 @@ struct tegra_usb_otg_data {
 	struct platform_device *ehci_device;
 	struct tegra_usb_platform_data *ehci_pdata;
 	char *extcon_dev_name;
+	int id_det_gpio;
 };
 
 #endif /* _TEGRA_USB_H_ */
