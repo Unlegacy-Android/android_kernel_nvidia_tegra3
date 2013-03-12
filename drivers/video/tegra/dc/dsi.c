@@ -2114,6 +2114,9 @@ static int tegra_dsi_init_hw(struct tegra_dc *dc,
 	dsi->status.dc_stream = DSI_DC_STREAM_DISABLE;
 	dsi->status.lp_op = DSI_LP_OP_NOT_INIT;
 
+	/* important to track dsi init latency */
+	dev_info(&dc->ndev->dev, "DSI: HW init completed\n");
+
 	return 0;
 }
 

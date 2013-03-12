@@ -1828,8 +1828,12 @@ static bool _tegra_dc_controller_enable(struct tegra_dc *dc)
 
 	tegra_dc_unpowergate_locked(dc);
 
-	if (dc->out->enable)
+	if (dc->out->enable) {
 		dc->out->enable(&dc->ndev->dev);
+
+		/* important to track dc init latency */
+		dev_info(&dc->ndev->dev, "dc out enabled\n");
+	}
 
 	tegra_dc_setup_clk(dc, dc->clk);
 	tegra_dc_clk_enable(dc);
