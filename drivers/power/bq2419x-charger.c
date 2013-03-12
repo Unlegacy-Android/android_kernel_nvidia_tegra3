@@ -91,6 +91,7 @@ struct bq2419x_chip {
 	struct kthread_work		bq_wdt_work;
 	struct rtc_device		*rtc;
 	int				stop_thread;
+	int				suspended;
 };
 
 static enum power_supply_property bq2419x_psy_props[] = {
@@ -336,6 +337,10 @@ static int bq2419x_reset_wdt(struct bq2419x_chip *bq2419x, const char *from)
 	unsigned int reg01;
 
 	mutex_lock(&bq2419x->mutex);
+	if (bq2419x->suspended) {
+		mutex_unlock(&bq2419x->mutex);
+		return 0;
+	}
 	dev_info(bq2419x->dev, "%s() from %s()\n", __func__, from);
 
 	/* Clear EN_HIZ */
@@ -783,6 +788,7 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 	bq2419x->irq = client->irq;
 	bq2419x->rtc = alarmtimer_get_rtcdev();
 	mutex_init(&bq2419x->mutex);
+	bq2419x->suspended = 0;
 
 	ret = bq2419x_show_chip_version(bq2419x);
 	if (ret < 0) {
@@ -904,6 +910,10 @@ static void bq2419x_shutdown(struct i2c_client *client)
 	if (bq2419x->irq)
 		disable_irq(bq2419x->irq);
 
+	mutex_lock(&bq2419x->mutex);
+	bq2419x->suspended = 1;
+	mutex_unlock(&bq2419x->mutex);
+
 	ret = bq2419x_charger_enable(bq2419x);
 	if (ret < 0)
 		dev_err(bq2419x->dev, "Charger enable failed %d", ret);
@@ -928,6 +938,9 @@ static int bq2419x_suspend(struct device *dev)
 	int ret = 0;
 	struct bq2419x_chip *bq2419x = dev_get_drvdata(dev);
 
+	mutex_lock(&bq2419x->mutex);
+	bq2419x->suspended = 1;
+	mutex_unlock(&bq2419x->mutex);
 	disable_irq(bq2419x->irq);
 	ret = bq2419x_charger_enable(bq2419x);
 	if (ret < 0)
@@ -983,6 +996,9 @@ static int bq2419x_resume(struct device *dev)
 		return ret;
 	}
 
+	mutex_lock(&bq2419x->mutex);
+	bq2419x->suspended = 0;
+	mutex_unlock(&bq2419x->mutex);
 	enable_irq(bq2419x->irq);
 	return 0;
 };
