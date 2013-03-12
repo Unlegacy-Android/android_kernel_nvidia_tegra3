@@ -40,6 +40,7 @@ void tegra_periph_reset_deassert(struct clk *c);
 void tegra_periph_reset_assert(struct clk *c);
 
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate);
+int tegra_dvfs_override_core_voltage(int override_mv);
 unsigned long clk_get_rate_all_locked(struct clk *c);
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC

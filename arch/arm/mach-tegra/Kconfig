@@ -127,6 +127,7 @@ config ARCH_TEGRA_11x_SOC
 	select TEGRA_ISOMGR_DEBUG
 	select TEGRA_ERRATA_1157520
 	select TEGRA_CORE_EDP_LIMITS
+	select TEGRA_VDD_CORE_OVERRIDE if TEGRA_EMC_SCALING_ENABLE
 	select TEGRA_THERMAL_THROTTLE_EXACT_FREQ
 	select ARM_ERRATA_799270
 	select ARM_ERRATA_798181
@@ -926,4 +927,13 @@ config TEGRA_USE_NCT
 	bool "Enable NCT partition access"
 	help
 	  When enabled, we can read non-volatile items from NCT partition.
+
+config TEGRA_VDD_CORE_OVERRIDE
+	bool "Enable core rail override support"
+	depends on TEGRA_SILICON_PLATFORM
+	default n
+	help
+	  When enabled, core rail can be fixed and locked at specified voltage
+	  within override range, and core modules clocks are capped at rates
+	  safe at override level.
 endif
