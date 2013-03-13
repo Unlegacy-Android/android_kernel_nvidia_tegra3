@@ -22,6 +22,7 @@
 #include <linux/irq.h>
 #include <linux/io.h>
 #include <linux/of.h>
+#include <linux/of_irq.h>
 #include <linux/syscore_ops.h>
 
 #include <asm/hardware/gic.h>
@@ -249,7 +250,15 @@ subsys_initcall(tegra_legacy_irq_syscore_init);
 #define tegra_set_wake NULL
 #endif
 
-void __init tegra_init_irq(void)
+#ifdef CONFIG_OF
+static const struct of_device_id tegra_dt_irq_match[] __initconst = {
+	{ .compatible = "arm,cortex-a9-gic", .data = gic_of_init },
+	{ .compatible = "arm,cortex-a15-gic", .data = gic_of_init },
+	{ }
+};
+#endif
+
+void __init tegra_init_irq_common(bool is_dt)
 {
 	int i;
 	void __iomem *distbase;
@@ -279,7 +288,23 @@ void __init tegra_init_irq(void)
 	gic_arch_extn.irq_set_wake = tegra_set_wake;
 	gic_arch_extn.flags = IRQCHIP_MASK_ON_SUSPEND;
 
-	tegra_gic_init();
+	tegra_gic_init(is_dt);
+
+#ifdef CONFIG_OF
+	/* If DT is passed, init the irq via DT */
+	if (is_dt)
+		of_irq_init(tegra_dt_irq_match);
+#endif
+}
+
+void __init tegra_init_irq(void)
+{
+	tegra_init_irq_common(false);
+}
+
+void __init tegra_dt_init_irq(void)
+{
+	tegra_init_irq_common(true);
 }
 
 void tegra_init_legacy_irq_cop(void)
