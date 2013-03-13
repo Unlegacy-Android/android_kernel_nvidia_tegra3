@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011-2013 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -146,6 +146,11 @@ extern unsigned long nvdumper_reserved;
 #endif
 extern bool tegra_lp0_vec_relocate;
 extern unsigned long tegra_grhost_aperture;
+#ifdef CONFIG_TEGRA_USE_NCT
+/* info for NCK(NCT for Kernel) carveout area */
+extern unsigned long tegra_nck_start;
+extern unsigned long tegra_nck_size;
+#endif
 
 extern struct sys_timer tegra_timer;
 

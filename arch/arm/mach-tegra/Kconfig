@@ -910,4 +910,9 @@ config TEGRA_ATOMICS
 	help
 	  When enabled, spin lock type of synchronzation can be done between
 	  two processors when global monitor is not available.
+
+config TEGRA_USE_NCT
+	bool "Enable NCT partition access"
+	help
+	  When enabled, we can read non-volatile items from NCT partition.
 endif
