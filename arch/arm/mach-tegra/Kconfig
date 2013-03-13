@@ -894,4 +894,11 @@ config TEGRA_PLLM_SCALED
 	  granularity of possible memory rate steps. In this case PLLC
 	  provides a backup memory clock while PLLM is re-locking to the
 	  new rate.
+
+config TEGRA_ATOMICS
+	bool "Support atomics operation"
+	depends on SMP
+	help
+	  When enabled, spin lock type of synchronzation can be done between
+	  two processors when global monitor is not available.
 endif

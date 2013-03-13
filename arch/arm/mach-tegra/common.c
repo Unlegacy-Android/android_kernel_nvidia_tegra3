@@ -60,6 +60,7 @@
 #include "devices.h"
 #include "pmc.h"
 #include "common.h"
+#include "atomics.h"
 
 #define MC_SECURITY_CFG2	0x7c
 
@@ -395,6 +396,9 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 #ifdef CONFIG_TEGRA_SOCTHERM
 	{ "soc_therm",	"pll_p",	51000000,	false },
 	{ "tsensor",	"clk_m",	500000,		false },
+#endif
+#ifdef CONFIG_TEGRA_ATOMICS
+	{ "atomics",	NULL,		0,		true},
 #endif
 	{ NULL,		NULL,		0,		0},
 };
@@ -774,6 +778,9 @@ void __init tegra11x_init_early(void)
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
 	tegra_gpio_resume_init();
+#ifdef CONFIG_TEGRA_ATOMICS
+	tegra_atomics_init();
+#endif
 
 	init_dma_coherent_pool_size(SZ_1M);
 }
