@@ -202,6 +202,11 @@ struct palmas_rtc_platform_data {
 	unsigned charging_current_ua;
 };
 
+struct palmas_gpadc_platform_data {
+	int channel0_current_uA;
+	int channel3_current_uA;
+};
+
 struct palmas_platform_data {
 	int gpio_base;
 	int irq_base;
@@ -219,6 +224,7 @@ struct palmas_platform_data {
 
 	struct palmas_pmic_platform_data *pmic_pdata;
 	struct palmas_rtc_platform_data *rtc_pdata;
+	struct palmas_gpadc_platform_data *adc_pdata;
 
 	struct palmas_clk32k_init_data  *clk32k_init_data;
 	int clk32k_init_data_size;
@@ -2700,6 +2706,7 @@ struct palmas_pmic {
 #define PALMAS_GPADC_TRIM14					0xD
 #define PALMAS_GPADC_TRIM15					0xE
 #define PALMAS_GPADC_TRIM16					0xF
+#define PALMAS_GPADC_TRIMINVALID				-1
 
 enum {
 	PALMAS_EXT_CONTROL_ENABLE1	= 0x1,
@@ -2721,6 +2728,28 @@ enum {
 	PALMAS_GPIO7,
 
 	PALMAS_GPIO_NR,
+};
+
+/* Palma GPADC Channels */
+enum {
+	PALMAS_ADC_CH_IN0,
+	PALMAS_ADC_CH_IN1,
+	PALMAS_ADC_CH_IN2,
+	PALMAS_ADC_CH_IN3,
+	PALMAS_ADC_CH_IN4,
+	PALMAS_ADC_CH_IN5,
+	PALMAS_ADC_CH_IN6,
+	PALMAS_ADC_CH_IN7,
+	PALMAS_ADC_CH_IN8,
+	PALMAS_ADC_CH_IN9,
+	PALMAS_ADC_CH_IN10,
+	PALMAS_ADC_CH_IN11,
+	PALMAS_ADC_CH_IN12,
+	PALMAS_ADC_CH_IN13,
+	PALMAS_ADC_CH_IN14,
+	PALMAS_ADC_CH_IN15,
+
+	PALMAS_ADC_CH_MAX,
 };
 
 /* Palma Sleep requestor IDs IDs */
