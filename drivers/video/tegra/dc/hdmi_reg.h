@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -372,6 +372,7 @@
 #define  DRIVE_CURRENT_24_000_mA		0x3c
 #define  DRIVE_CURRENT_24_375_mA		0x3d
 #define  DRIVE_CURRENT_24_750_mA		0x3e
+#define  DRIVE_CURRENT_25_125_mA		0x3f
 
 #define HDMI_NV_PDISP_AUDIO_DEBUG0				0x7f
 #define HDMI_NV_PDISP_AUDIO_DEBUG1				0x80
