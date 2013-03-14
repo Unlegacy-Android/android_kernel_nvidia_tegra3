@@ -34,6 +34,7 @@
 #include "gpio-names.h"
 #include "board.h"
 #include "board-macallan.h"
+#include "dvfs.h"
 
 #define MACALLAN_SD_CD	TEGRA_GPIO_PV2
 #define MACALLAN_WLAN_PWR	TEGRA_GPIO_PCC5
@@ -153,6 +154,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.tap_delay = 0x5,
 	.trim_delay = 0x3,
 	.ddr_clk_limit = 41000000,
+	.max_clk_limit = 156000000,
 	.mmc_data = {
 		.built_in = 1,
 		.ocr_mask = MMC_OCR_1V8_MASK,
@@ -278,8 +280,20 @@ subsys_initcall_sync(macallan_wifi_prepower);
 
 int __init macallan_sdhci_init(void)
 {
+	int nominal_core_mv;
+
 	if (tegra_sdhci_platform_data3.uhs_mask & MMC_MASK_HS200)
 		tegra_sdhci_platform_data3.trim_delay = 0;
+
+	nominal_core_mv =
+		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
+	if (nominal_core_mv > 0) {
+		tegra_sdhci_platform_data0.nominal_vcore_uV = nominal_core_mv *
+			1000;
+		tegra_sdhci_platform_data3.nominal_vcore_uV = nominal_core_mv *
+			1000;
+	}
+
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);
