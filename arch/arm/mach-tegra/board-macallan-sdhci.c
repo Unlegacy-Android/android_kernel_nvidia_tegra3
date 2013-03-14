@@ -151,7 +151,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.power_gpio = -1,
 	.is_8bit = 1,
 	.tap_delay = 0x5,
-	.trim_delay = 0,
+	.trim_delay = 0x3,
 	.ddr_clk_limit = 41000000,
 	.mmc_data = {
 		.built_in = 1,
@@ -264,6 +264,8 @@ static int __init macallan_wifi_init(void)
 
 int __init macallan_sdhci_init(void)
 {
+	if (tegra_sdhci_platform_data3.uhs_mask & MMC_MASK_HS200)
+		tegra_sdhci_platform_data3.trim_delay = 0;
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);

@@ -173,7 +173,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.power_gpio = -1,
 	.is_8bit = 1,
 	.tap_delay = 0x5,
-	.trim_delay = 0,
+	.trim_delay = 0x3,
 	.ddr_clk_limit = 41000000,
 	.max_clk_limit = 156000000,
 	.mmc_data = {
@@ -394,7 +394,8 @@ subsys_initcall_sync(dalmore_wifi_prepower);
 int __init dalmore_sdhci_init(void)
 {
 	int nominal_core_mv;
-
+	if (tegra_sdhci_platform_data3.uhs_mask & MMC_MASK_HS200)
+		tegra_sdhci_platform_data3.trim_delay = 0;
 	nominal_core_mv =
 		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
 	if (nominal_core_mv) {
