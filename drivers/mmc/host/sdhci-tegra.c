@@ -82,10 +82,6 @@
 #define SDHOST_LOW_VOLT_MIN	1800000
 #define SDHOST_LOW_VOLT_MAX	1800000
 
-#define TEGRA_SDHOST_MIN_FREQ	50000000
-#define TEGRA2_SDHOST_STD_FREQ	50000000
-#define TEGRA3_SDHOST_STD_FREQ	104000000
-
 #define MAX_DIVISOR_VALUE	128
 #define DEFAULT_SDHOST_FREQ	50000000
 
@@ -104,10 +100,6 @@ static unsigned int uhs_max_freq_MHz[] = {
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 static void tegra_3x_sdhci_set_card_clock(struct sdhci_host *sdhci, unsigned int clock);
 #endif
-
-static unsigned int tegra_sdhost_min_freq;
-static unsigned int tegra_sdhost_std_freq;
-
 
 struct tegra_sdhci_hw_ops {
 	/* Set the internal clk and card clk.*/
@@ -708,20 +700,8 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 		} else {
 			clk_rate = clock * 2;
 		}
-	} else 	if (sdhci->mmc->ios.timing == MMC_TIMING_UHS_SDR50) {
-		/*
-		 * In SDR50 mode, run the sdmmc controller at freq greater than
-		 * 104MHz to ensure the core voltage is at 1.2V. If the core voltage
-		 * is below 1.2V, CRC errors would occur during data transfers.
-		 */
-		clk_rate = clock * 2;
 	} else {
-		if (clock <= tegra_sdhost_min_freq)
-			clk_rate = tegra_sdhost_min_freq;
-		else if (clock <= tegra_sdhost_std_freq)
-			clk_rate = tegra_sdhost_std_freq;
-		else
-			clk_rate = clock;
+		clk_rate = clock;
 	}
 
 	if (tegra_host->max_clk_limit &&
@@ -2058,16 +2038,12 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 #ifdef CONFIG_MMC_BKOPS
 	host->mmc->caps2 |= MMC_CAP2_BKOPS;
 #endif
-	tegra_sdhost_min_freq = TEGRA_SDHOST_MIN_FREQ;
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	tegra_host->hw_ops = &tegra_2x_sdhci_ops;
-	tegra_sdhost_std_freq = TEGRA2_SDHOST_STD_FREQ;
 #elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	tegra_host->hw_ops = &tegra_3x_sdhci_ops;
-	tegra_sdhost_std_freq = TEGRA3_SDHOST_STD_FREQ;
 #else
 	tegra_host->hw_ops = &tegra_11x_sdhci_ops;
-	tegra_sdhost_std_freq = TEGRA3_SDHOST_STD_FREQ;
 	host->mmc->caps2 |= MMC_CAP2_HS200;
 	host->mmc->caps2 |= MMC_CAP2_CACHE_CTRL;
 	host->mmc->caps |= MMC_CAP_CMD23;
