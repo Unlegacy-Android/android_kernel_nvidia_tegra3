@@ -262,6 +262,20 @@ static int __init macallan_wifi_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_TEGRA_PREPOWER_WIFI
+static int __init macallan_wifi_prepower(void)
+{
+	if (!machine_is_macallan())
+		return 0;
+
+	macallan_wifi_power(1);
+
+	return 0;
+}
+
+subsys_initcall_sync(macallan_wifi_prepower);
+#endif
+
 int __init macallan_sdhci_init(void)
 {
 	if (tegra_sdhci_platform_data3.uhs_mask & MMC_MASK_HS200)
