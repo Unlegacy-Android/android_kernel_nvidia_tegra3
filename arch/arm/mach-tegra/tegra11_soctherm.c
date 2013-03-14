@@ -1479,9 +1479,9 @@ static int soctherm_init_platform_data(void)
 static int soctherm_suspend(void)
 {
 	soctherm_writel((u32)-1, INTR_DIS);
-	soctherm_clk_enable(false);
 	disable_irq(INT_THERMAL);
 	cancel_work_sync(&work);
+	soctherm_clk_enable(false);
 
 	return 0;
 }
