@@ -1372,7 +1372,7 @@ static void azx_platform_enable_clocks(struct azx *chip)
 	int i;
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	tegra_unpowergate_partition(TEGRA_POWERGATE_DISB);
 #endif
 #endif
@@ -1395,7 +1395,7 @@ static void azx_platform_disable_clocks(struct azx *chip)
 		clk_disable(chip->platform_clks[i]);
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	tegra_powergate_partition(TEGRA_POWERGATE_DISB);
 #endif
 #endif
