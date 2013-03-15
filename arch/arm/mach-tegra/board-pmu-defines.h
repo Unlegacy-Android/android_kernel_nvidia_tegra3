@@ -44,4 +44,15 @@
 		.supply_regulator = _supply_reg,			\
 	}
 
+
+#define PALMAS_PINMUX(_pin, _mux, _pud, _od)				\
+{									\
+	.pin_name = PALMAS_PIN_NAME_##_pin,				\
+	.pin_mux_option = PALMAS_PINMUX_##_mux,			\
+	.pin_pull_up_dn = PALMAS_PIN_CONFIG_##_pud,			\
+	.open_drain_state = PALMAS_PIN_CONFIG_OD_##_od,			\
+}
+
+
+
 #endif
