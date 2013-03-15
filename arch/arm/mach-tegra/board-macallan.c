@@ -699,12 +699,12 @@ static void __init macallan_ramconsole_reserve(unsigned long size)
 
 static void __init tegra_macallan_dt_init(void)
 {
-	tegra_macallan_init();
-
 #ifdef CONFIG_USE_OF
 	of_platform_populate(NULL,
 		of_default_bus_match_table, NULL, NULL);
 #endif
+
+	tegra_macallan_init();
 }
 
 static void __init tegra_macallan_reserve(void)

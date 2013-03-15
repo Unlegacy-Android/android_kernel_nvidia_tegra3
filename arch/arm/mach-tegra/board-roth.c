@@ -747,12 +747,12 @@ static void __init roth_ramconsole_reserve(unsigned long size)
 
 static void __init tegra_roth_dt_init(void)
 {
-	tegra_roth_init();
-
 #ifdef CONFIG_USE_OF
 	of_platform_populate(NULL,
 		of_default_bus_match_table, NULL, NULL);
 #endif
+
+	tegra_roth_init();
 }
 
 static void __init tegra_roth_reserve(void)

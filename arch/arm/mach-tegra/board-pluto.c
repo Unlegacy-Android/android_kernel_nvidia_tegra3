@@ -1401,12 +1401,12 @@ static void __init pluto_ramconsole_reserve(unsigned long size)
 
 static void __init tegra_pluto_dt_init(void)
 {
-	tegra_pluto_init();
-
 #ifdef CONFIG_USE_OF
 	of_platform_populate(NULL,
 		of_default_bus_match_table, NULL, NULL);
 #endif
+
+	tegra_pluto_init();
 }
 static void __init tegra_pluto_reserve(void)
 {
