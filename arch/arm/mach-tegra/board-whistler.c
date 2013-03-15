@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-whistler.c
  *
- * Copyright (c) 2010-2012 NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -449,7 +449,7 @@ static int __init whistler_touch_init(void)
 static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.port_otg = true,
 	.has_hostpc = false,
-	.builtin_host_disabled = true,
+	.id_det_type = TEGRA_USB_VIRTUAL_ID,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_DEVICE,
 	.u_data.dev = {
@@ -474,7 +474,7 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.port_otg = true,
 	.has_hostpc = false,
-	.builtin_host_disabled = true,
+	.id_det_type = TEGRA_USB_VIRTUAL_ID,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode	= TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
