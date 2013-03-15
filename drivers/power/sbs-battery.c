@@ -1,7 +1,7 @@
 /*
  * Gas Gauge driver for SBS Compliant Batteries
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -884,17 +884,18 @@ static void sbs_shutdown(struct i2c_client *client)
 }
 
 #if defined CONFIG_PM
-static int sbs_suspend(struct i2c_client *client,
-	pm_message_t state)
+static int sbs_suspend(struct device *dev)
 {
-	struct sbs_info *chip = i2c_get_clientdata(client);
+	struct i2c_client *i2c = to_i2c_client(dev);
+	struct sbs_info *chip = i2c_get_clientdata(i2c);
 	s32 ret;
 
 	if (chip->poll_time > 0)
 		cancel_delayed_work_sync(&chip->work);
 
 	/* write to manufacturer access with sleep command */
-	ret = sbs_write_word_data(client, sbs_data[REG_MANUFACTURER_DATA].addr,
+	ret = sbs_write_word_data(chip->client,
+		sbs_data[REG_MANUFACTURER_DATA].addr,
 		MANUFACTURER_ACCESS_SLEEP);
 	if (chip->is_present && ret < 0)
 		return ret;
@@ -902,9 +903,10 @@ static int sbs_suspend(struct i2c_client *client,
 	return 0;
 }
 
-static int sbs_resume(struct i2c_client *client)
+static int sbs_resume(struct device *dev)
 {
-	struct sbs_info *chip = i2c_get_clientdata(client);
+	struct i2c_client *i2c = to_i2c_client(dev);
+	struct sbs_info *chip = i2c_get_clientdata(i2c);
 
 	schedule_delayed_work(&chip->work, HZ);
 	return 0;
@@ -921,16 +923,20 @@ static const struct i2c_device_id sbs_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, sbs_id);
 
+static const struct dev_pm_ops sbs_battery_pm_ops = {
+	.suspend = sbs_suspend,
+	.resume = sbs_resume,
+};
+
 static struct i2c_driver sbs_battery_driver = {
 	.probe		= sbs_probe,
 	.remove		= __devexit_p(sbs_remove),
-	.suspend	= sbs_suspend,
-	.resume		= sbs_resume,
 	.id_table	= sbs_id,
 	.shutdown	= sbs_shutdown,
 	.driver = {
 		.name	= "sbs-battery",
 		.of_match_table = sbs_dt_ids,
+		.pm = &sbs_battery_pm_ops,
 	},
 };
 module_i2c_driver(sbs_battery_driver);
