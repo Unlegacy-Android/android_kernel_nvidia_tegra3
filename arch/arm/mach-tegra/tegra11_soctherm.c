@@ -471,7 +471,7 @@ static const struct soctherm_sensor sensor_defaults = {
 	.pdiv      = 10,
 };
 
-static const unsigned long default_soctherm_clk_rate = 136000000;
+static const unsigned long default_soctherm_clk_rate = 51000000;
 static const unsigned long default_tsensor_clk_rate = 500000;
 
 static int sensor2therm_a[TSENSE_SIZE];

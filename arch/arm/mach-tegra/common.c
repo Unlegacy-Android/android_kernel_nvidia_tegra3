@@ -398,7 +398,7 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 	{ "vi",		"pll_p",	0,		false},
 #endif
 #ifdef CONFIG_TEGRA_SOCTHERM
-	{ "soc_therm",	"pll_p",	136000000,	false },
+	{ "soc_therm",	"pll_p",	51000000,	false },
 	{ "tsensor",	"clk_m",	500000,		false },
 #endif
 	{ NULL,		NULL,		0,		0},
