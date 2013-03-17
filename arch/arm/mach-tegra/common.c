@@ -324,9 +324,12 @@ static __initdata struct tegra_clk_init_table tegra30_clk_init_table[] = {
 	{ "sbc4.sclk",	NULL,		40000000,	false},
 	{ "sbc5.sclk",	NULL,		40000000,	false},
 	{ "sbc6.sclk",	NULL,		40000000,	false},
+	{ "mselect",	"pll_p",	102000000,	true },
+	{ NULL,		NULL,		0,		0},
+};
+static __initdata struct tegra_clk_init_table tegra30_cbus_init_table[] = {
 	{ "cbus",	"pll_c",	416000000,	false },
 	{ "pll_c_out1",	"pll_c",	208000000,	false },
-	{ "mselect",	"pll_p",	102000000,	true },
 	{ NULL,		NULL,		0,		0},
 };
 #endif
@@ -386,6 +389,16 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 	{ "sbc4.sclk",	NULL,		40000000,	false},
 	{ "sbc5.sclk",	NULL,		40000000,	false},
 	{ "sbc6.sclk",	NULL,		40000000,	false},
+#ifdef CONFIG_TEGRA_PLLM_SCALED
+	{ "vi",		"pll_p",	0,		false},
+#endif
+#ifdef CONFIG_TEGRA_SOCTHERM
+	{ "soc_therm",	"pll_p",	51000000,	false },
+	{ "tsensor",	"clk_m",	500000,		false },
+#endif
+	{ NULL,		NULL,		0,		0},
+};
+static __initdata struct tegra_clk_init_table tegra11x_cbus_init_table[] = {
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	{ "c2bus",	"pll_c2",	250000000,	false },
 	{ "c3bus",	"pll_c3",	250000000,	false },
@@ -394,13 +407,6 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 	{ "cbus",	"pll_c",	250000000,	false },
 #endif
 	{ "pll_c_out1",	"pll_c",	150000000,	false },
-#ifdef CONFIG_TEGRA_PLLM_SCALED
-	{ "vi",		"pll_p",	0,		false},
-#endif
-#ifdef CONFIG_TEGRA_SOCTHERM
-	{ "soc_therm",	"pll_p",	51000000,	false },
-	{ "tsensor",	"clk_m",	500000,		false },
-#endif
 	{ NULL,		NULL,		0,		0},
 };
 #endif
@@ -731,6 +737,7 @@ void __init tegra30_init_early(void)
 	tegra3_init_dvfs();
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra30_clk_init_table);
+	tegra_clk_init_cbus_plls_from_table(tegra30_cbus_init_table);
 	tegra_init_cache(true);
 	tegra_pmc_init();
 	tegra_powergate_init();
@@ -759,6 +766,7 @@ void __init tegra11x_init_early(void)
 	tegra11x_init_dvfs();
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra11x_clk_init_table);
+	tegra_clk_init_cbus_plls_from_table(tegra11x_cbus_init_table);
 	tegra11x_clk_init_la();
 	tegra_pmc_init();
 	tegra_powergate_init();
