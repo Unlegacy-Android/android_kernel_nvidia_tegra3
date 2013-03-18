@@ -152,7 +152,7 @@ static struct nct1008_platform_data roth_nct1008_pdata = {
 
 	.passive_delay = 2000,
 
-	.num_trips = 2,
+	.num_trips = 3,
 	.trips = {
 		/* Thermal Throttling */
 		[0] = {
@@ -170,6 +170,14 @@ static struct nct1008_platform_data roth_nct1008_pdata = {
 			.upper = 1,
 			.lower = 1,
 			.hysteresis = 6000,
+		},
+		[2] = {
+			.cdev_type = "suspend_soctherm",
+			.trip_temp = 50000,
+			.trip_type = THERMAL_TRIP_ACTIVE,
+			.upper = 1,
+			.lower = 1,
+			.hysteresis = 5000,
 		},
 	},
 	.tzp = &roth_nct1008_tzp,
