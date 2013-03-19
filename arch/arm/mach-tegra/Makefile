@@ -308,7 +308,7 @@ obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-sdhci.o
 obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-panel.o
 obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-kbc.o
 obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-sensors.o
-obj-${CONFIG_MACH_TEGRATAB}            += panel-p-wuxga-10-1.o
+obj-${CONFIG_MACH_TEGRATAB}            += panel-lgd-wxga-7-0.o
 
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-memory.o

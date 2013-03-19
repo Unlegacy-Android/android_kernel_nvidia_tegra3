@@ -399,15 +399,9 @@ static struct tegra_dc_sd_settings tegratab_sd_settings = {
 static void tegratab_panel_select(void)
 {
 	struct tegra_panel *panel = NULL;
-	struct board_info board;
 
-	tegra_get_display_board_info(&board);
+	panel = &dsi_lgd_wxga_7_0;
 
-	switch (board.board_id) {
-	default:
-		panel = &dsi_p_wuxga_10_1;
-		break;
-	}
 	if (panel) {
 		if (panel->init_sd_settings)
 			panel->init_sd_settings(&sd_settings);

@@ -49,4 +49,5 @@ extern struct tegra_panel dsi_s_1080p_5;
 extern struct tegra_panel dsi_p_wuxga_10_1;
 extern struct tegra_panel dsi_a_1080p_11_6;
 extern struct tegra_panel dsi_s_wqxga_10_1;
+extern struct tegra_panel dsi_lgd_wxga_7_0;
 
