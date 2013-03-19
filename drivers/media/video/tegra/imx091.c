@@ -1124,48 +1124,6 @@ static void imx091_edp_lowest(struct imx091_info *info)
 	}
 }
 
-static void imx091_edp_register(struct imx091_info *info)
-{
-	struct edp_manager *edp_manager;
-	struct edp_client *edpc = &info->pdata->edpc_config;
-	int ret;
-
-	info->edpc = NULL;
-	if (!edpc->num_states) {
-		dev_warn(&info->i2c_client->dev,
-			"%s: NO edp states defined.\n", __func__);
-		return;
-	}
-
-	strncpy(edpc->name, "imx091", EDP_NAME_LEN - 1);
-	edpc->name[EDP_NAME_LEN - 1] = 0;
-	edpc->private_data = info;
-
-	dev_dbg(&info->i2c_client->dev, "%s: %s, e0 = %d, p %d\n",
-		__func__, edpc->name, edpc->e0_index, edpc->priority);
-	for (ret = 0; ret < edpc->num_states; ret++)
-		dev_dbg(&info->i2c_client->dev, "e%d = %d mA",
-			ret - edpc->e0_index, edpc->states[ret]);
-
-	edp_manager = edp_get_manager("battery");
-	if (!edp_manager) {
-		dev_err(&info->i2c_client->dev,
-			"unable to get edp manager: battery\n");
-		return;
-	}
-
-	ret = edp_register_client(edp_manager, edpc);
-	if (ret) {
-		dev_err(&info->i2c_client->dev,
-			"unable to register edp client\n");
-		return;
-	}
-
-	info->edpc = edpc;
-	/* set to lowest state at init */
-	imx091_edp_lowest(info);
-}
-
 static int imx091_edp_req(struct imx091_info *info, unsigned new_state)
 {
 	unsigned approved;
@@ -2759,6 +2717,61 @@ err_out:
 	return -ENOMEM;
 }
 #endif
+
+static void imx091_edp_throttle(unsigned int new_state, void *priv_data)
+{
+	struct imx091_info *info = priv_data;
+
+	imx091_gpio_pwrdn(info, 1);
+	imx091_vreg_dis_all(info);
+	imx091_gpio_able(info, 0);
+	imx091_gpio_reset(info, 0);
+	info->mode_valid = false;
+	info->bin_en = 0;
+}
+
+static void imx091_edp_register(struct imx091_info *info)
+{
+	struct edp_manager *edp_manager;
+	struct edp_client *edpc = &info->pdata->edpc_config;
+	int ret;
+
+	info->edpc = NULL;
+	if (!edpc->num_states) {
+		dev_warn(&info->i2c_client->dev,
+			"%s: NO edp states defined.\n", __func__);
+		return;
+	}
+
+	strncpy(edpc->name, "imx091", EDP_NAME_LEN - 1);
+	edpc->name[EDP_NAME_LEN - 1] = 0;
+	edpc->private_data = info;
+	edpc->throttle = imx091_edp_throttle;
+
+	dev_dbg(&info->i2c_client->dev, "%s: %s, e0 = %d, p %d\n",
+		__func__, edpc->name, edpc->e0_index, edpc->priority);
+	for (ret = 0; ret < edpc->num_states; ret++)
+		dev_dbg(&info->i2c_client->dev, "e%d = %d mA",
+			ret - edpc->e0_index, edpc->states[ret]);
+
+	edp_manager = edp_get_manager("battery");
+	if (!edp_manager) {
+		dev_err(&info->i2c_client->dev,
+			"unable to get edp manager: battery\n");
+		return;
+	}
+
+	ret = edp_register_client(edp_manager, edpc);
+	if (ret) {
+		dev_err(&info->i2c_client->dev,
+			"unable to register edp client\n");
+		return;
+	}
+
+	info->edpc = edpc;
+	/* set to lowest state at init */
+	imx091_edp_lowest(info);
+}
 
 static int imx091_probe(
 	struct i2c_client *client,
