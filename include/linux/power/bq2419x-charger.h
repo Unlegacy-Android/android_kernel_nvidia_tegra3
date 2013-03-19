@@ -110,6 +110,7 @@ struct bq2419x_charger_platform_data {
 	int rtc_alarm_time;
 	int num_consumer_supplies;
 	struct regulator_consumer_supply *consumer_supplies;
+	int chg_restart_time;
 };
 
 /*

@@ -92,6 +92,8 @@ struct bq2419x_chip {
 	struct rtc_device		*rtc;
 	int				stop_thread;
 	int				suspended;
+	int				chg_restart_timeout;
+	int				chg_restart_time;
 };
 
 static enum power_supply_property bq2419x_psy_props[] = {
@@ -448,6 +450,21 @@ static void bq2419x_work_thread(struct kthread_work *work)
 		if (bq2419x->stop_thread)
 			return;
 
+		if (bq2419x->chg_restart_timeout) {
+			mutex_lock(&bq2419x->mutex);
+			bq2419x->chg_restart_timeout--;
+			if (!bq2419x->chg_restart_timeout) {
+				ret = bq2419x_charger_enable(bq2419x);
+				if (ret < 0)
+					dev_err(bq2419x->dev,
+					"Charger enable failed %d", ret);
+			}
+			if (bq2419x->suspended)
+				bq2419x->chg_restart_timeout = 0;
+
+			mutex_unlock(&bq2419x->mutex);
+		}
+
 		ret = bq2419x_reset_wdt(bq2419x, "THREAD");
 		if (ret < 0)
 			dev_err(bq2419x->dev,
@@ -509,6 +526,8 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 	case BQ2419x_FAULT_CHRG_SAFTY:
 		dev_err(bq2419x->dev,
 			"Charging Fault: Safety timer expiration\n");
+		bq2419x->chg_restart_timeout = bq2419x->chg_restart_time /
+						bq2419x->wdt_refresh_timeout;
 		break;
 	default:
 		break;
@@ -775,12 +794,14 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 	bq2419x->update_status =  pdata->bcharger_pdata->update_status;
 	bq2419x->rtc_alarm_time =  pdata->bcharger_pdata->rtc_alarm_time;
 	bq2419x->wdt_time_sec = pdata->bcharger_pdata->wdt_timeout;
+	bq2419x->chg_restart_time = pdata->bcharger_pdata->chg_restart_time;
 	bq2419x->wdt_refresh_timeout = 25;
 	i2c_set_clientdata(client, bq2419x);
 	bq2419x->irq = client->irq;
 	bq2419x->rtc = alarmtimer_get_rtcdev();
 	mutex_init(&bq2419x->mutex);
 	bq2419x->suspended = 0;
+	bq2419x->chg_restart_timeout = 0;
 
 	ret = bq2419x_show_chip_version(bq2419x);
 	if (ret < 0) {
