@@ -252,6 +252,17 @@ static int __devinit bq2419x_charger_probe(struct platform_device *pdev)
 
 	if (!bcharger_pdata) {
 		dev_err(&pdev->dev, "No Platform data");
+
+		charger = devm_kzalloc(&pdev->dev, sizeof(*charger), GFP_KERNEL);
+		if (!charger) {
+			dev_err(&pdev->dev, "Memory alloc failed\n");
+			return -ENOMEM;
+		}
+		charger->chip = dev_get_drvdata(pdev->dev.parent);
+		ret = regmap_update_bits(charger->chip->regmap, BQ2419X_PWR_ON_REG,
+					ENABLE_CHARGE_MASK, DISABLE_CHARGE);
+		if (ret < 0)
+			dev_err(&pdev->dev, "register update failed, err %d\n", ret);
 		return -EIO;
 	}
 

@@ -45,6 +45,7 @@ struct regmap;
 #define BQ24192i_IC_VER         0x18
 #define ENABLE_CHARGE_MASK      0x30
 #define ENABLE_CHARGE           0x10
+#define DISABLE_CHARGE          0x00
 
 #define BQ2419X_REG0			0x0
 #define BQ2419X_EN_HIZ			BIT(7)
