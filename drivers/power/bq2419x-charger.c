@@ -735,11 +735,12 @@ static int bq2419x_show_chip_version(struct bq2419x_chip *bq2419x)
 	return 0;
 }
 
-static int bq2419x_wakealarm(struct bq2419x_chip *bq2419x)
+static int bq2419x_wakealarm(struct bq2419x_chip *bq2419x, int time_sec)
 {
 	int ret;
 	unsigned long now;
 	struct rtc_wkalrm alm;
+	int alarm_time = time_sec;
 
 	alm.enabled = true;
 	ret = rtc_read_time(bq2419x->rtc, &alm.time);
@@ -749,9 +750,9 @@ static int bq2419x_wakealarm(struct bq2419x_chip *bq2419x)
 	}
 	rtc_tm_to_time(&alm.time, &now);
 
-	if (bq2419x->rtc_alarm_time == 0)
-		bq2419x->rtc_alarm_time = 3600;
-	rtc_time_to_tm(now + bq2419x->rtc_alarm_time, &alm.time);
+	if (!alarm_time)
+		alarm_time = 3600;
+	rtc_time_to_tm(now + alarm_time, &alm.time);
 	ret = rtc_set_alarm(bq2419x->rtc, &alm);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "RTC set alarm failed %d\n", ret);
@@ -919,9 +920,23 @@ static void bq2419x_shutdown(struct i2c_client *client)
 {
 	int ret = 0;
 	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	int alarm_time = bq2419x->rtc_alarm_time;
 
 	if (bq2419x->irq)
 		disable_irq(bq2419x->irq);
+
+	if (!bq2419x->rtc)
+		bq2419x->rtc = alarmtimer_get_rtcdev();
+
+	if (bq2419x->in_current_limit > 500) {
+		dev_info(bq2419x->dev, "HighCurrent %dmA charger is connectd\n",
+			bq2419x->in_current_limit);
+		ret = bq2419x_reset_wdt(bq2419x, "shutdown");
+		if (ret < 0)
+			dev_err(bq2419x->dev,
+				"bq2419x_reset_wdt failed: %d\n", ret);
+		alarm_time = 20;
+	}
 
 	mutex_lock(&bq2419x->mutex);
 	bq2419x->suspended = 1;
@@ -931,19 +946,19 @@ static void bq2419x_shutdown(struct i2c_client *client)
 	if (ret < 0)
 		dev_err(bq2419x->dev, "Charger enable failed %d", ret);
 
-	/* Configure charging current to 500mA */
-	ret = regmap_write(bq2419x->regmap, BQ2419X_INPUT_SRC_REG, 0x32);
-	if (ret < 0)
-		dev_err(bq2419x->dev, "INPUT_SRC_REG write failed %d\n", ret);
+	if (bq2419x->in_current_limit <= 500) {
+		/* Configure charging current to 500mA */
+		ret = regmap_write(bq2419x->regmap,
+				BQ2419X_INPUT_SRC_REG, 0x32);
+		if (ret < 0)
+			dev_err(bq2419x->dev,
+				"INPUT_SRC_REG write failed %d\n", ret);
+	}
 
-	if (!bq2419x->rtc)
-		bq2419x->rtc = alarmtimer_get_rtcdev();
-
-	ret = bq2419x_wakealarm(bq2419x);
+	ret = bq2419x_wakealarm(bq2419x, alarm_time);
 	if (ret < 0)
 		dev_err(bq2419x->dev, "RTC wake alarm config failed %d\n", ret);
 }
-
 
 #ifdef CONFIG_PM_SLEEP
 static int bq2419x_suspend(struct device *dev)
