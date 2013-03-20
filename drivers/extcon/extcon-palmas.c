@@ -1,7 +1,7 @@
 /*
  * palmas-extcon.c -- Palmas VBUS detection in extcon framework.
  *
- * Copyright (c) 2013, NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -115,7 +115,7 @@ static int __devinit palmas_extcon_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	palma_econ->edev = edev;
-	palma_econ->edev->name = dev_name(&pdev->dev);
+	palma_econ->edev->name = pdev->name;
 	palma_econ->edev->supported_cable = palmas_excon_cable;
 
 	palma_econ->dev = &pdev->dev;
