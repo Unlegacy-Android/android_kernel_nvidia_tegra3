@@ -1939,6 +1939,10 @@ imx135_set_group_hold(struct imx135_info *info, struct imx135_ae *ae)
 	int ret;
 	int count = 0;
 	bool groupHoldEnabled = false;
+	struct imx135_hdr values;
+
+	values.coarse_time_long = ae->coarse_time;
+	values.coarse_time_short = ae->coarse_time_short;
 
 	if (ae->gain_enable)
 		count++;
@@ -1958,7 +1962,7 @@ imx135_set_group_hold(struct imx135_info *info, struct imx135_ae *ae)
 	if (ae->gain_enable)
 		imx135_set_gain(info, ae->gain, false);
 	if (ae->coarse_time_enable)
-		imx135_set_coarse_time(info, ae->coarse_time, false);
+		imx135_set_hdr_coarse_time(info, &values);
 	if (ae->frame_length_enable)
 		imx135_set_frame_length(info, ae->frame_length, false);
 

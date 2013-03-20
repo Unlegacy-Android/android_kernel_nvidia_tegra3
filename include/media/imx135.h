@@ -43,6 +43,7 @@ struct imx135_ae {
 	__u32 frame_length;
 	__u8  frame_length_enable;
 	__u32 coarse_time;
+	__u32 coarse_time_short;
 	__u8  coarse_time_enable;
 	__s32 gain;
 	__u8  gain_enable;
