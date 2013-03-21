@@ -2,13 +2,13 @@
  * BCMSDH Function Driver for the native SDIO/MMC driver in the Linux Kernel
  *
  * Copyright (C) 1999-2012, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- *
+ * 
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,12 +16,12 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- *
+ * 
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh_sdmmc_linux.c 355594 2012-09-07 10:22:02Z $
+ * $Id: bcmsdh_sdmmc_linux.c 381548 2013-01-28 17:25:38Z $
  */
 
 #include <typedefs.h>
@@ -120,19 +120,21 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 			gInstance->func[0] = &sdio_func_0;
 			if(func->device == 0x4) { /* 4318 */
 				gInstance->func[2] = NULL;
-				sd_trace(("NIC found, calling bcmsdh_probe...\n"));
+				sd_trace(("NIC found, calling bcmsdh_probe_bcmdhd...\n"));
 				ret = bcmsdh_probe_bcmdhd(&func->dev);
 			}
 		}
 
 		gInstance->func[func->num] = func;
 
-	if (func->num == 2) {
+		if (func->num == 2) {
 	#ifdef WL_CFG80211
 			wl_cfg80211_set_parent_dev(&func->dev);
 	#endif
-			sd_trace(("F2 found, calling bcmsdh_probe...\n"));
+			sd_trace(("F2 found, calling bcmsdh_probe_bcmdhd...\n"));
 			ret = bcmsdh_probe_bcmdhd(&func->dev);
+			if (ret < 0 && gInstance)
+				gInstance->func[2] = NULL;
 			if (mmc_power_save_host(func->card->host))
 				sd_err(("%s: card power save fail", __FUNCTION__));
 		}
@@ -152,10 +154,12 @@ static void bcmsdh_sdmmc_remove(struct sdio_func *func)
 		sd_info(("sdio_device: 0x%04x\n", func->device));
 		sd_info(("Function#: 0x%04x\n", func->num));
 
-		if (func->num == 2) {
-			sd_trace(("F2 found, calling bcmsdh_remove...\n"));
+		if (gInstance->func[2]) {
+			sd_trace(("F2 found, calling bcmsdh_remove_bcmdhd...\n"));
 			bcmsdh_remove_bcmdhd(&func->dev);
-		} else if (func->num == 1) {
+			gInstance->func[2] = NULL;
+		}
+		if (func->num == 1) {
 			sdio_claim_host(func);
 			sdio_disable_func(func);
 			sdio_release_host(func);

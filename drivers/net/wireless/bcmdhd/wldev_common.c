@@ -2,13 +2,13 @@
  * Common function shared by Linux WEXT, cfg80211 and p2p drivers
  *
  * Copyright (C) 1999-2012, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,7 +16,7 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -340,7 +340,6 @@ int wldev_miracast_tuning(
 {
 	int error = 0;
 	int mode = 0;
-	int ampdu_mpdu;
 	int roam_off;
 
 	if (sscanf(command, "%*s %d", &mode) != 1) {
@@ -352,7 +351,6 @@ int wldev_miracast_tuning(
 
 	if (mode == 0) {
 		/* Normal mode: restore everything to default */
-		ampdu_mpdu = -1;	/* FW default */
 #if defined(ROAM_ENABLE)
 		roam_off = 0;	/* roam enable */
 #elif defined(DISABLE_BUILTIN_ROAM)
@@ -361,28 +359,18 @@ int wldev_miracast_tuning(
 	}
 	else if (mode == 1) {
 		/* Miracast source mode */
-		ampdu_mpdu = 8;	/* for tx latency */
 #if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
 		roam_off = 1; /* roam disable */
 #endif
 	}
 	else if (mode == 2) {
 		/* Miracast sink/PC Gaming mode */
-		ampdu_mpdu = 8;	/* FW default */
 #if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
 		roam_off = 1; /* roam disable */
 #endif
 	}
 	else {
 		WLDEV_ERROR(("Unknown mode: %d\n", mode));
-		return -1;
-	}
-
-	/* Update ampdu_mpdu */
-	error = wldev_iovar_setint(dev, "ampdu_mpdu", ampdu_mpdu);
-	if (error) {
-		WLDEV_ERROR(("Failed to set ampdu_mpdu: mode:%d, error:%d\n",
-			mode, error));
 		return -1;
 	}
 
@@ -399,7 +387,7 @@ int wldev_miracast_tuning(
 }
 
 int wldev_set_country(
-	struct net_device *dev, char *country_code)
+	struct net_device *dev, char *country_code, bool notify, bool user_enforced)
 {
 	int error = -1;
 	wl_country_t cspec = {{0}, 0, {0}};
@@ -409,20 +397,26 @@ int wldev_set_country(
 	if (!country_code)
 		return error;
 
-	error = wldev_iovar_getbuf(dev, "country", &cspec, sizeof(cspec),
-		smbuf, sizeof(smbuf), NULL);
-	if (error < 0)
+	bzero(&scbval, sizeof(scb_val_t));
+	error = wldev_iovar_getbuf(dev, "country", NULL, 0, &cspec, sizeof(cspec), NULL);
+	if (error < 0) {
 		WLDEV_ERROR(("%s: get country failed = %d\n", __FUNCTION__, error));
+		return error;
+	}
 
 	if ((error < 0) ||
-	    (strncmp(country_code, smbuf, WLC_CNTRY_BUF_SZ) != 0)) {
-		bzero(&scbval, sizeof(scb_val_t));
-		error = wldev_ioctl(dev, WLC_DISASSOC, &scbval, sizeof(scb_val_t), true);
-		if (error < 0) {
-			WLDEV_ERROR(("%s: set country failed due to Disassoc error %d\n",
-				__FUNCTION__, error));
-			return error;
+	    (strncmp(country_code, cspec.ccode, WLC_CNTRY_BUF_SZ) != 0)) {
+
+		if (user_enforced) {
+			bzero(&scbval, sizeof(scb_val_t));
+			error = wldev_ioctl(dev, WLC_DISASSOC, &scbval, sizeof(scb_val_t), true);
+			if (error < 0) {
+				WLDEV_ERROR(("%s: set country failed due to Disassoc error %d\n",
+					__FUNCTION__, error));
+				return error;
+			}
 		}
+
 		cspec.rev = -1;
 		memcpy(cspec.country_abbrev, country_code, WLC_CNTRY_BUF_SZ);
 		memcpy(cspec.ccode, country_code, WLC_CNTRY_BUF_SZ);
@@ -434,7 +428,7 @@ int wldev_set_country(
 				__FUNCTION__, country_code, cspec.ccode, cspec.rev));
 			return error;
 		}
-		dhd_bus_country_set(dev, &cspec);
+		dhd_bus_country_set(dev, &cspec, notify);
 		WLDEV_ERROR(("%s: set country for %s as %s rev %d\n",
 			__FUNCTION__, country_code, cspec.ccode, cspec.rev));
 	}
