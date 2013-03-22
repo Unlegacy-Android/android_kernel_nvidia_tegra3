@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pluto-pinmux.c
  *
- * Copyright (C) 2012 NVIDIA Corporation
+ * Copyright (C) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -202,21 +202,21 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_set_nontristate[] = 
 	DEFAULT_PINMUX(GPIO_PCC2,     RSVD3,    PULL_DOWN,    NORMAL,    INPUT),
 
 	DEFAULT_PINMUX(GMI_AD1,     GMI,      NORMAL,       NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GMI_AD10,    GMI,      PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GMI_AD12,    GMI,      PULL_UP,      NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GMI_AD13,    GMI,      PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GMI_AD14,    GMI,      PULL_UP,      NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD10,    GMI,      NORMAL,       NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD12,    GMI,      NORMAL,       NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD13,    GMI,      NORMAL,       NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD14,    GMI,      NORMAL,       NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GMI_AD2,     GMI,      NORMAL,       NORMAL,    INPUT),
 	DEFAULT_PINMUX(GMI_AD3,     GMI,      NORMAL,       NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_AD8,     GMI,      PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GMI_ADV_N,   GMI,      PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_CLK,     GMI,      PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GMI_CS0_N,   GMI,      PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_CS3_N,   GMI,      PULL_UP,      NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GMI_CS4_N,   GMI,      PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_CS7_N,   GMI,      PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_IORDY,   GMI,      PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_RST_N,   GMI,      PULL_DOWN,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_AD8,     GMI,      NORMAL,       NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_ADV_N,   GMI,      NORMAL,       NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_CLK,     GMI,      NORMAL,       NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_CS0_N,   GMI,      NORMAL,       NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_CS3_N,   GMI,      NORMAL,       NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_CS4_N,   GMI,      NORMAL,       NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_CS7_N,   GMI,      NORMAL,       NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_IORDY,   GMI,      PULL_UP,       NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_RST_N,   GMI,      NORMAL,       NORMAL,    INPUT),
 
 	DEFAULT_PINMUX(SDMMC1_WP_N, SDMMC1,      PULL_UP,      NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(CLK2_REQ,    RSVD3,     NORMAL,       NORMAL,    OUTPUT),

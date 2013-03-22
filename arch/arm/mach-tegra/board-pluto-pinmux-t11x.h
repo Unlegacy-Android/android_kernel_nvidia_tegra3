@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pluto-pinmux-t11x.h
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -78,24 +78,24 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 
 
 	/* DTV pinmux */
-	DEFAULT_PINMUX(GMI_AD14,      DTV,         PULL_DOWN, TRISTATE, INPUT),
-	DEFAULT_PINMUX(GMI_AD15,      DTV,         PULL_DOWN, TRISTATE, INPUT),
-	DEFAULT_PINMUX(GMI_AD8,       DTV,         PULL_DOWN, TRISTATE, INPUT),
-	DEFAULT_PINMUX(GMI_WAIT,      DTV,         PULL_DOWN, TRISTATE, INPUT),
+	DEFAULT_PINMUX(GMI_AD14,      DTV,         NORMAL,    TRISTATE, INPUT),
+	DEFAULT_PINMUX(GMI_AD15,      DTV,         NORMAL,    TRISTATE, INPUT),
+	DEFAULT_PINMUX(GMI_AD8,       DTV,         NORMAL,    TRISTATE, INPUT),
+	DEFAULT_PINMUX(GMI_WAIT,      DTV,         NORMAL,    TRISTATE, INPUT),
 
 	/* SPI4 pinmux */
 	DEFAULT_PINMUX(GMI_AD5,       SPI4,        NORMAL,    NORMAL,   OUTPUT),
-	DEFAULT_PINMUX(GMI_AD6,       SPI4,        PULL_UP,   NORMAL,   OUTPUT),
-	DEFAULT_PINMUX(GMI_AD7,       SPI4,        PULL_UP,   NORMAL,   INPUT),
-	DEFAULT_PINMUX(GMI_CS6_N,     SPI4,        PULL_UP,   NORMAL,   OUTPUT),
-	DEFAULT_PINMUX(GMI_WR_N,      SPI4,        PULL_UP,   NORMAL,   OUTPUT),
+	DEFAULT_PINMUX(GMI_AD6,       SPI4,        NORMAL,    NORMAL,   OUTPUT),
+	DEFAULT_PINMUX(GMI_AD7,       SPI4,        NORMAL,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(GMI_CS6_N,     SPI4,        NORMAL,    NORMAL,   OUTPUT),
+	DEFAULT_PINMUX(GMI_WR_N,      SPI4,        NORMAL,    NORMAL,   OUTPUT),
 
 	/* PWM1 pinmux */
 	DEFAULT_PINMUX(GMI_AD9,       PWM1,        NORMAL,    NORMAL,   OUTPUT),
 
 	/* SOC pinmux */
-	DEFAULT_PINMUX(GMI_CS1_N,     SOC,         PULL_UP,   TRISTATE, INPUT),
-	DEFAULT_PINMUX(GMI_OE_N,      SOC,         PULL_UP,   TRISTATE, INPUT),
+	DEFAULT_PINMUX(GMI_CS1_N,     SOC,         NORMAL,    TRISTATE, INPUT),
+	DEFAULT_PINMUX(GMI_OE_N,      SOC,         NORMAL,    TRISTATE, INPUT),
 	DEFAULT_PINMUX(CLK_32K_OUT,   SOC,         PULL_UP,   TRISTATE, INPUT),
 
 	/* EXTPERIPH2 pinmux */
