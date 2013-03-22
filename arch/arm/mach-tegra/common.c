@@ -589,7 +589,7 @@ static void __init tegra_perf_init(void)
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 static void __init tegra_ramrepair_init(void)
 {
-	if (tegra_spare_fuse(10) & tegra_spare_fuse(11) & 1) {
+	if (tegra_spare_fuse(10)  | tegra_spare_fuse(11)) {
 		u32 reg;
 		reg = readl(FLOW_CTRL_RAM_REPAIR);
 		reg &= ~FLOW_CTRL_RAM_REPAIR_BYPASS_EN;
