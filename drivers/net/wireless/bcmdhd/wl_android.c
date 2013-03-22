@@ -83,6 +83,7 @@
 #endif
 #define CMD_P2P_SET_PS		"P2P_SET_PS"
 #define CMD_SET_AP_WPS_P2P_IE 		"SET_AP_WPS_P2P_IE"
+#define CMD_SETMIRACAST 	"SETMIRACAST"
 
 
 #ifdef PNO_SUPPORT
@@ -639,6 +640,9 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 			priv_cmd.total_len - skip, *(command + skip - 2) - '0');
 	}
 #endif /* WL_CFG80211 */
+	else if (strnicmp(command, CMD_SETMIRACAST, strlen(CMD_SETMIRACAST)) == 0) {
+		bytes_written = wldev_miracast_tuning(net, command, priv_cmd.total_len);
+	}
 	else {
 		DHD_ERROR(("Unknown PRIVATE command %s - ignored\n", command));
 		snprintf(command, 3, "OK");
