@@ -225,8 +225,18 @@ static int bq2419x_init(struct bq2419x_chip *bq2419x)
 	if (val < 0)
 		return 0;
 
+	val &= ~(BQ2419x_INPUT_VOLTAGE_MASK);
+	/* Configure inout voltage to 4.52 in case of NV
+	*  NV charger.
+	*/
+	if (bq2419x->in_current_limit == 2000)
+		val |= BQ2419x_NVCHARGER_INPUT_VOL_SEL;
+	else
+		val |= BQ2419x_DEFAULT_INPUT_VOL_SEL;
+
 	ret = regmap_update_bits(bq2419x->regmap,
-			BQ2419X_INPUT_SRC_REG, BQ2419x_CONFIG_MASK, val);
+			BQ2419X_INPUT_SRC_REG, BQ2419x_CONFIG_MASK |
+			BQ2419x_INPUT_VOLTAGE_MASK, val);
 	if (ret < 0)
 		dev_err(bq2419x->dev, "error reading reg: 0x%x\n",
 			BQ2419X_INPUT_SRC_REG);
