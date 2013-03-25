@@ -148,6 +148,20 @@ static unsigned long tegra_dc_find_max_bandwidth(struct tegra_dc_win *wins[],
 		max_bw = wins[0]->new_bandwidth + wins[1]->new_bandwidth +
 			 wins[2]->new_bandwidth;
 
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	/*
+	 * Assuming 35% margin: i.e. if we calculate we need 150MBps, we
+	 * will request 428MBps from EMC.
+	 */
+	max_bw = (max_bw * 100) / 35;
+#elif defined(CONFIG_ARCH_TEGRA_2x_SOC)
+	/*
+	 * Assuming 60% efficiency: i.e. if we calculate we need 70MBps, we
+	 * will request 117MBps from EMC.
+	 */
+	max_bw = max_bw + (17 * max_bw / 25);
+#endif
+
 	return max_bw;
 }
 
@@ -192,19 +206,6 @@ static unsigned long tegra_dc_calc_win_bandwidth(struct tegra_dc *dc,
 		dfixed_trunc(w->w) / w->out_w * (WIN_IS_TILED(w) ?
 		tiled_windows_bw_multiplier : 1);
 
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	/*
-	 * Assuming 35% margin: i.e. if we calculate we need 150MBps, we
-	 * will request 428MBps from EMC.
-	 */
-	ret = (ret * 100) / 35;
-#elif defined(CONFIG_ARCH_TEGRA_2x_SOC)
-	/*
-	 * Assuming 60% efficiency: i.e. if we calculate we need 70MBps, we
-	 * will request 117MBps from EMC.
-	 */
-	ret = ret + (17 * ret / 25);
-#endif
 	return ret;
 }
 
