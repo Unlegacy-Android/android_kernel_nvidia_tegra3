@@ -31,13 +31,11 @@
 
 #define DEFAULT_SYNC_RATE 60000 /* 60 Hz */
 
-static unsigned short target_frame_time;
-static unsigned short last_frame_time;
+static unsigned int target_frame_time;
 static ktime_t last_flip;
 static spinlock_t lock;
 
-#define EMA_PERIOD 16
-#define EMA_SHIFT   4
+#define EMA_PERIOD  8
 
 static int frame_time_sum_init = 1;
 static long frame_time_sum; /* used for fps EMA */
@@ -64,30 +62,26 @@ static void throughput_flip_callback(void)
 	if (last_flip.tv64 != 0) {
 		timediff = (long) ktime_us_delta(now, last_flip);
 
-		if (timediff > (long) USHRT_MAX)
-			last_frame_time = USHRT_MAX;
-		else
-			last_frame_time = (unsigned short) timediff;
-
-		if (last_frame_time == 0) {
+		if (timediff <= 0) {
 			pr_warn("%s: flips %lld nsec apart\n",
 				__func__, now.tv64 - last_flip.tv64);
 			return;
 		}
 
 		throughput_hint =
-			((int) target_frame_time * 1000) / last_frame_time;
+			((int) target_frame_time * 1000) / timediff;
 
 		/* only deliver throughput hints when a single app is active */
 		if (throughput_active_app_count == 1 && !work_pending(&work))
 			schedule_work(&work);
 
 		if (frame_time_sum_init) {
-			frame_time_sum = last_frame_time * EMA_PERIOD;
+			frame_time_sum = timediff * EMA_PERIOD;
 			frame_time_sum_init = 0;
 		} else {
-			int t = frame_time_sum * (EMA_PERIOD - 1);
-			frame_time_sum = (t >> EMA_SHIFT) + last_frame_time;
+			int t = (frame_time_sum / EMA_PERIOD) *
+				(EMA_PERIOD - 1);
+			frame_time_sum = t + timediff;
 		}
 	}
 
@@ -105,7 +99,7 @@ static void reset_target_frame_time(void)
 			sync_rate = DEFAULT_SYNC_RATE;
 	}
 
-	target_frame_time = (unsigned short) (1000000000 / sync_rate);
+	target_frame_time = (unsigned int) (1000000000 / sync_rate);
 
 	pr_debug("%s: panel sync rate %d, target frame time %u\n",
 		__func__, sync_rate, target_frame_time);
@@ -117,7 +111,6 @@ static int throughput_open(struct inode *inode, struct file *file)
 
 	throughput_active_app_count++;
 	frame_time_sum_init = 1;
-	frame_time_sum = 0;
 
 	spin_unlock(&lock);
 
@@ -133,7 +126,6 @@ static int throughput_release(struct inode *inode, struct file *file)
 
 	throughput_active_app_count--;
 	frame_time_sum_init = 1;
-	frame_time_sum = 0;
 
 	if (throughput_active_app_count == 1)
 		reset_target_frame_time();
@@ -157,14 +149,8 @@ static int throughput_set_target_fps(unsigned long arg)
 
 	if (arg == 0)
 		reset_target_frame_time();
-	else {
-		unsigned long frame_time = (1000000 / arg);
-
-		if (frame_time > USHRT_MAX)
-			frame_time = USHRT_MAX;
-
-		target_frame_time = (unsigned short) frame_time;
-	}
+	else
+		target_frame_time = (unsigned int) (1000000 / arg);
 
 	return 0;
 }
@@ -211,8 +197,24 @@ static struct miscdevice throughput_miscdev = {
 
 static int fps_show(struct seq_file *s, void *unused)
 {
-	int frame_time_avg = frame_time_sum >> EMA_SHIFT;
-	int fps = frame_time_avg > 0 ? 1000000 / frame_time_avg : 0;
+	int frame_time_avg;
+	int fps;
+	ktime_t now;
+	long timediff;
+
+	fps = 0;
+	if (frame_time_sum_init)
+		goto DONE;
+
+	now = ktime_get();
+	timediff = (long) ktime_us_delta(now, last_flip);
+	if (timediff > 1000000)
+		goto DONE;
+
+	frame_time_avg = frame_time_sum / EMA_PERIOD;
+	fps = frame_time_avg > 0 ? 1000000 / frame_time_avg : 0;
+
+DONE:
 	seq_printf(s, "%d\n", fps);
 	return 0;
 }
