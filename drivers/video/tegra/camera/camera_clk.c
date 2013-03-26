@@ -117,16 +117,7 @@ int tegra_camera_clk_set_rate(struct tegra_camera *camera)
 			dev_dbg(camera->dev, "%s: bw=%lu\n",
 				__func__, bw);
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-			/*
-			 * Take into account iso client efficiency here until
-			 * isomgr is alive. It's 35%.
-			 */
-			clk_set_rate(clk,
-			((100*tegra_emc_bw_to_freq_req(bw)) / 35) * 1000);
-#else
 			clk_set_rate(clk, tegra_emc_bw_to_freq_req(bw) * 1000);
-#endif
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 			/*
