@@ -2,7 +2,7 @@
  * drivers/cpufreq/cpufreq_interactive.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -387,7 +387,7 @@ static void cpufreq_interactive_idle_start(void)
 		 * CPU didn't go busy; we'll recheck things upon idle exit.
 		 */
 		if (pending && pcpu->timer_idlecancel) {
-			del_timer(&pcpu->cpu_timer);
+			del_timer_sync(&pcpu->cpu_timer);
 			/*
 			 * Ensure last timer run time is after current idle
 			 * sample start time, so next idle exit will always
