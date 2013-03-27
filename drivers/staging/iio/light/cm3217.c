@@ -3,7 +3,7 @@
  * Copyright (C) 2011 Capella Microsystems Inc.
  * Author: Frank Hsieh <pengyueh@gmail.com>
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -56,7 +56,7 @@ struct cm3217_info {
 
 	int als_enable;
 	int als_enabled_before_suspend;
-	uint16_t *adc_table;
+	u32 *adc_table;
 	uint16_t cali_table[10];
 	int irq;
 	int ls_calibrate;
@@ -70,14 +70,21 @@ struct cm3217_info {
 	int current_level;
 	uint16_t current_adc;
 	int polling_delay;
+
+	struct mutex enable_lock;
+	struct mutex disable_lock;
+	struct mutex get_adc_lock;
+};
+
+static struct cm3217_platform_data cm3217_dflt_pdata = {
+	.levels = {10, 160, 225, 320, 640, 1280, 2600, 5800, 8000, 10240},
+	.golden_adc = 0,
 };
 
 struct cm3217_info *lp_info;
 
 int enable_log;
 int fLevel = -1;
-
-static struct mutex als_enable_mutex, als_disable_mutex, als_get_adc_mutex;
 
 static int lightsensor_enable(struct cm3217_info *lpi);
 static int lightsensor_disable(struct cm3217_info *lpi);
@@ -234,7 +241,7 @@ static void report_lsensor_input_event(struct cm3217_info *lpi, bool resume)
 	uint16_t adc_value = 0;
 	int level = 0, i, ret = 0;
 
-	mutex_lock(&als_get_adc_mutex);
+	mutex_lock(&lpi->get_adc_lock);
 
 	ret = get_ls_adc_value(&adc_value, resume);
 
@@ -293,7 +300,7 @@ static void report_lsensor_input_event(struct cm3217_info *lpi, bool resume)
 	input_report_abs(lpi->ls_input_dev, ABS_MISC, level);
 	input_sync(lpi->ls_input_dev);
 
-	mutex_unlock(&als_get_adc_mutex);
+	mutex_unlock(&lpi->get_adc_lock);
 }
 
 static void report_do_work(struct work_struct *work)
@@ -372,7 +379,7 @@ static int lightsensor_enable(struct cm3217_info *lpi)
 	int ret = 0;
 	uint8_t cmd = 0;
 
-	mutex_lock(&als_enable_mutex);
+	mutex_lock(&lpi->enable_lock);
 
 	D("[LS][CM3217] %s\n", __func__);
 
@@ -386,7 +393,7 @@ static int lightsensor_enable(struct cm3217_info *lpi)
 	queue_work(lpi->lp_wq, &report_work);
 	lpi->als_enable = 1;
 
-	mutex_unlock(&als_enable_mutex);
+	mutex_unlock(&lpi->enable_lock);
 
 	return ret;
 }
@@ -396,7 +403,7 @@ static int lightsensor_disable(struct cm3217_info *lpi)
 	int ret = 0;
 	char cmd = 0;
 
-	mutex_lock(&als_disable_mutex);
+	mutex_lock(&lpi->disable_lock);
 
 	D("[LS][CM3217] %s\n", __func__);
 
@@ -413,7 +420,7 @@ static int lightsensor_disable(struct cm3217_info *lpi)
 	cancel_delayed_work(&report_work);
 	lpi->als_enable = 0;
 
-	mutex_unlock(&als_disable_mutex);
+	mutex_unlock(&lpi->disable_lock);
 
 	return ret;
 }
@@ -591,7 +598,7 @@ static ssize_t ls_kadc_store(struct device *dev,
 		return -EINVAL;
 	} */
 
-	mutex_lock(&als_get_adc_mutex);
+	mutex_lock(&lpi->get_adc_lock);
 
 	if (kadc_temp != 0) {
 		lpi->als_kadc = kadc_temp;
@@ -610,7 +617,7 @@ static ssize_t ls_kadc_store(struct device *dev,
 		       __func__);
 	}
 
-	mutex_unlock(&als_get_adc_mutex);
+	mutex_unlock(&lpi->get_adc_lock);
 
 	return count;
 }
@@ -644,7 +651,7 @@ static ssize_t ls_gadc_store(struct device *dev,
 		return -EINVAL;
 	} */
 
-	mutex_lock(&als_get_adc_mutex);
+	mutex_lock(&lpi->get_adc_lock);
 
 	if (gadc_temp != 0) {
 		lpi->als_gadc = gadc_temp;
@@ -663,7 +670,7 @@ static ssize_t ls_gadc_store(struct device *dev,
 		       __func__);
 	}
 
-	mutex_unlock(&als_get_adc_mutex);
+	mutex_unlock(&lpi->get_adc_lock);
 
 	return count;
 }
@@ -710,7 +717,7 @@ static ssize_t ls_adc_table_store(struct device *dev,
 		}
 	}
 
-	mutex_lock(&als_get_adc_mutex);
+	mutex_lock(&lpi->get_adc_lock);
 
 	for (i = 0; i < 10; i++) {
 		lpi->adc_table[i] = tempdata[i];
@@ -722,7 +729,7 @@ static ssize_t ls_adc_table_store(struct device *dev,
 		printk(KERN_ERR "[LS][CM3217 error] %s: update ls table fail\n",
 		       __func__);
 
-	mutex_unlock(&als_get_adc_mutex);
+	mutex_unlock(&lpi->get_adc_lock);
 
 	D("[LS][CM3217] %s\n", __func__);
 
@@ -895,6 +902,47 @@ static int cm3217_setup(struct cm3217_info *lpi)
 	return ret;
 }
 
+static struct cm3217_platform_data *cm3217_parse_dt(struct i2c_client *client)
+{
+	struct cm3217_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+	int err;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "Can't allocate platform data\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	if (!of_find_property(np, "levels", NULL)) {
+		memcpy(pdata->levels, cm3217_dflt_pdata.levels,
+			sizeof(pdata->levels));
+	} else {
+		err = of_property_read_u32_array(np, "levels",
+				pdata->levels, CM3217_NUM_LEVELS);
+		if (err < 0) {
+			pr_err("%s: levels property read err(%d)",
+				__func__, err);
+			return ERR_PTR(err);
+		}
+	}
+
+	if (!of_find_property(np, "golden_adc", NULL)) {
+		pdata->golden_adc = cm3217_dflt_pdata.golden_adc;
+	} else {
+		err = of_property_read_u32(np, "golden_adc", &pdata->golden_adc);
+		if (err < 0) {
+			pr_err("%s: golden_adc property read err(%d)",
+				__func__, err);
+			return ERR_PTR(err);
+		}
+	}
+
+	pdata->power = NULL; /* FIXME */
+
+	return pdata;
+}
+
 static int cm3217_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -911,8 +959,17 @@ static int cm3217_probe(struct i2c_client *client,
 	/* D("[CM3217] %s: client->irq = %d\n", __func__, client->irq); */
 
 	lpi->i2c_client = client;
-	pdata = client->dev.platform_data;
-	if (!pdata) {
+	if (client->dev.of_node) {
+		pdata = cm3217_parse_dt(client);
+		if (IS_ERR(pdata)) {
+			pr_err("[CM3217 error]%s: Assign platform_data error!!\n",
+				   __func__);
+			ret = (int)pdata;
+			goto err_platform_data_null;
+		}
+	} else if (client->dev.platform_data)
+		pdata = client->dev.platform_data;
+	else {
 		pr_err("[CM3217 error]%s: Assign platform_data error!!\n",
 		       __func__);
 		ret = -EBUSY;
@@ -930,9 +987,9 @@ static int cm3217_probe(struct i2c_client *client,
 
 	lp_info = lpi;
 
-	mutex_init(&als_enable_mutex);
-	mutex_init(&als_disable_mutex);
-	mutex_init(&als_get_adc_mutex);
+	mutex_init(&lpi->enable_lock);
+	mutex_init(&lpi->disable_lock);
+	mutex_init(&lpi->get_adc_lock);
 
 	ret = lightsensor_setup(lpi);
 	if (ret < 0) {
@@ -1038,9 +1095,9 @@ err_create_ls_device:
 err_create_class:
 err_cm3217_setup:
 	destroy_workqueue(lpi->lp_wq);
-	mutex_destroy(&als_enable_mutex);
-	mutex_destroy(&als_disable_mutex);
-	mutex_destroy(&als_get_adc_mutex);
+	mutex_destroy(&lpi->enable_lock);
+	mutex_destroy(&lpi->disable_lock);
+	mutex_destroy(&lpi->get_adc_lock);
 	input_unregister_device(lpi->ls_input_dev);
 	input_free_device(lpi->ls_input_dev);
 err_create_singlethread_workqueue:
@@ -1052,32 +1109,52 @@ err_platform_data_null:
 	return ret;
 }
 
+static int __devexit cm3217_remove(struct i2c_client *client)
+{
+	struct cm3217_info *lpi = i2c_get_clientdata(client);
+
+	dev_dbg(&client->dev, "%s()\n", __func__);
+	device_unregister(lpi->ls_dev);
+	class_destroy(lpi->cm3217_class);
+	destroy_workqueue(lpi->lp_wq);
+	mutex_destroy(&lpi->enable_lock);
+	mutex_destroy(&lpi->disable_lock);
+	mutex_destroy(&lpi->get_adc_lock);
+	input_unregister_device(lpi->ls_input_dev);
+	input_free_device(lpi->ls_input_dev);
+	misc_deregister(&lightsensor_misc);
+	kfree(lpi);
+
+	return 0;
+}
+
 static const struct i2c_device_id cm3217_i2c_id[] = {
-	{CM3217_I2C_NAME, 0},
+	{"cm3217", 0},
 	{}
 };
 
-static struct i2c_driver cm3217_driver = {
-	.id_table = cm3217_i2c_id,
-	.probe = cm3217_probe,
-	.driver = {
-		.name = CM3217_I2C_NAME,
-		.owner = THIS_MODULE,
-	},
+MODULE_DEVICE_TABLE(i2c, cm3217_i2c_id);
+
+#ifdef CONFIG_OF
+static const struct of_device_id cm3217_of_match[] = {
+	{ .compatible = "capella,cm3217", },
+	{ },
 };
+MODULE_DEVICE_TABLE(of, cm3217_of_match);
+#endif
 
-static int __init cm3217_init(void)
-{
-	return i2c_add_driver(&cm3217_driver);
-}
-
-static void __exit cm3217_exit(void)
-{
-	i2c_del_driver(&cm3217_driver);
-}
-
-module_init(cm3217_init);
-module_exit(cm3217_exit);
+static struct i2c_driver cm3217_driver = {
+	.class = I2C_CLASS_HWMON,
+	.probe = cm3217_probe,
+	.remove = __devexit_p(cm3217_remove),
+	.driver = {
+		.name = "cm3217",
+		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(cm3217_of_match),
+	},
+	.id_table = cm3217_i2c_id,
+};
+module_i2c_driver(cm3217_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("CM3217 Driver");

@@ -1,6 +1,7 @@
 /* include/linux/cm3217.h
  *
  * Copyright (C) 2011 Capella Microsystems Inc.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  * Author: Frank Hsieh <pengyueh@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -47,9 +48,11 @@
 #define CM3217_ALS_IT_80ms		(6 << 5)
 #define CM3217_ALS_IT_66ms		(7 << 5)
 
+#define CM3217_NUM_LEVELS	10
+
 struct cm3217_platform_data {
-	uint16_t levels[10];
-	uint16_t golden_adc;
+	u32 levels[CM3217_NUM_LEVELS];
+	u32 golden_adc;
 	int (*power) (int, uint8_t);	/* power to the chip */
 	uint16_t ALS_slave_address;
 };
