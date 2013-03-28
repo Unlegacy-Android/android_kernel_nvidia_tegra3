@@ -74,6 +74,7 @@ struct soctherm_therm {
 
 struct soctherm_throttle_dev {
 	bool enable;
+	u8 depth; /* if this is non-zero, the values below are ignored */
 	u8 dividend;
 	u8 divisor;
 	u16 duration;
