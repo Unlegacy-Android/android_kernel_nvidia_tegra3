@@ -341,13 +341,7 @@ int wldev_miracast_tuning(
 	int error = 0;
 	int mode = 0;
 	int ampdu_mpdu;
-	int ampdu_ba_wsize;
 	int roam_off;
-#if 1
-	char smbuf[WLC_IOCTL_SMLEN];
-	struct ampdu_tid_control atc;
-	uint8 ampdu_rx_tid;
-#endif
 
 	if (sscanf(command, "%*s %d", &mode) != 1) {
 		WLDEV_ERROR(("Failed to get mode\n"));
@@ -359,10 +353,6 @@ int wldev_miracast_tuning(
 	if (mode == 0) {
 		/* Normal mode: restore everything to default */
 		ampdu_mpdu = -1;	/* FW default */
-		ampdu_ba_wsize = 32;
-#if 1
-		ampdu_rx_tid = 1;
-#endif
 #if defined(ROAM_ENABLE)
 		roam_off = 0;	/* roam enable */
 #elif defined(DISABLE_BUILTIN_ROAM)
@@ -372,23 +362,15 @@ int wldev_miracast_tuning(
 	else if (mode == 1) {
 		/* Miracast source mode */
 		ampdu_mpdu = 8;	/* for tx latency */
-		ampdu_ba_wsize = 32;
 #if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
 		roam_off = 1; /* roam disable */
-#endif
-#if 1
-		ampdu_rx_tid = 1;
 #endif
 	}
 	else if (mode == 2) {
 		/* Miracast sink/PC Gaming mode */
 		ampdu_mpdu = 8;	/* FW default */
-		ampdu_ba_wsize = 8;	/* for rx latency */
 #if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
 		roam_off = 1; /* roam disable */
-#endif
-#if 1
-		ampdu_rx_tid = 0;
 #endif
 	}
 	else {
@@ -403,34 +385,6 @@ int wldev_miracast_tuning(
 			mode, error));
 		return -1;
 	}
-
-	/* Update ampdu_ba_wsize */
-	error = wldev_iovar_setint(dev, "ampdu_ba_wsize", ampdu_ba_wsize);
-	if (error) {
-		WLDEV_ERROR(("Failed to set ampdu_ba_wsize: mode:%d, error:%d\n",
-			mode, error));
-		return -1;
-	}
-#if 1
-	/* Update ampdu_rx_tid */
-	atc.tid = 5;
-	atc.enable = ampdu_rx_tid;
-	error = wldev_iovar_setbuf(dev, "ampdu_rx_tid", &atc, sizeof(atc), smbuf, sizeof(smbuf), NULL);
-	if (error) {
-		WLDEV_ERROR(("Failed to set ampdu_rx_tid: mode:%d, error:%d\n",
-			mode, error));
-		return -1;
-	}
-
-	atc.tid = 7;
-	atc.enable = ampdu_rx_tid;
-	error = wldev_iovar_setbuf(dev, "ampdu_rx_tid", &atc, sizeof(atc), smbuf, sizeof(smbuf), NULL);
-	if (error) {
-		WLDEV_ERROR(("Failed to set ampdu_rx_tid: mode:%d, error:%d\n",
-			mode, error));
-		return -1;
-	}
-#endif
 
 #if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
 	error = wldev_iovar_setint(dev, "roam_off", roam_off);
