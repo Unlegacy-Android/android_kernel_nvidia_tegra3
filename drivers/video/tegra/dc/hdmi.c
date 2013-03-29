@@ -283,7 +283,7 @@ const struct tdms_config tdms_config[] = {
 	.pclk = INT_MAX,
 	.pll0 = SOR_PLL_ICHPMP(1) | SOR_PLL_BG_V17_S(3) |
 		SOR_PLL_VCOCAP(15) | SOR_PLL_RESISTORSEL_EXT ,
-	.pll1 = SOR_PLL_LOADADJ(3) | SOR_PLL_TMDS_TERMADJ(8)
+	.pll1 = SOR_PLL_LOADADJ(3) | SOR_PLL_TMDS_TERMADJ(7)
 		| SOR_PLL_TMDS_TERM_ENABLE,
 	.pe_current = PE_CURRENT0(PE_CURRENT_4_0_mA) |
 		PE_CURRENT1(PE_CURRENT_4_0_mA) |
