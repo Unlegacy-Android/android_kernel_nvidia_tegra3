@@ -482,9 +482,6 @@ static inline long temp_convert(int cap, int a, int b)
 #ifdef CONFIG_THERMAL
 static struct thermal_zone_device *thz[THERM_SIZE];
 #endif
-static struct workqueue_struct *workqueue;
-static struct work_struct work_thermal;
-static struct work_struct work_edp;
 
 static u32 fuse_calib_base_cp;
 static u32 fuse_calib_base_ft;
@@ -1201,7 +1198,7 @@ static void soctherm_update(void)
 }
 #endif
 
-static void soctherm_work_func(struct work_struct *work)
+static irqreturn_t soctherm_thermal_work_func(int irq, void *arg)
 {
 	u32 st, ex = 0, cp = 0, gp = 0;
 
@@ -1266,6 +1263,8 @@ static void soctherm_work_func(struct work_struct *work)
 		pr_err("soctherm: Ignored unexpected INTRs 0x%08x\n", st);
 		soctherm_writel(st, TH_INTR_STATUS);
 	}
+
+	return IRQ_HANDLED;
 }
 
 static inline void soctherm_oc_intr_enable(enum soctherm_throttle_id alarm,
@@ -1343,7 +1342,7 @@ static int soctherm_handle_alarm(enum soctherm_throttle_id alarm)
 	return rv;
 }
 
-static void soctherm_edp_work_func(struct work_struct *work)
+static irqreturn_t soctherm_edp_work_func(int irq, void *arg_data)
 {
 	u32 st, ex, oc1, oc2, oc3, oc4, oc5;
 
@@ -1381,30 +1380,28 @@ static void soctherm_edp_work_func(struct work_struct *work)
 		pr_err("soctherm: Ignored unexpected OC ALARM 0x%08x\n", st);
 		soctherm_writel(st, OC_INTR_STATUS);
 	}
+
+	return IRQ_HANDLED;
 }
 
-static irqreturn_t soctherm_isr(int irq, void *arg_data)
+static irqreturn_t soctherm_thermal_isr(int irq, void *arg)
 {
 	u32 r;
-
-	queue_work(workqueue, &work_thermal);
 
 	r = soctherm_readl(TH_INTR_STATUS);
 	soctherm_writel(r, TH_INTR_DISABLE);
 
-	return IRQ_HANDLED;
+	return IRQ_WAKE_THREAD;
 }
 
 static irqreturn_t soctherm_edp_isr(int irq, void *arg_data)
 {
 	u32 r;
 
-	queue_work(workqueue, &work_edp);
-
 	r = soctherm_readl(OC_INTR_STATUS);
 	soctherm_writel(r, OC_INTR_DISABLE);
 
-	return IRQ_HANDLED;
+	return IRQ_WAKE_THREAD;
 }
 
 static void tegra11_soctherm_throttle_program(enum soctherm_throttle_id throt)
@@ -1799,8 +1796,6 @@ static int soctherm_suspend(void)
 		soctherm_writel((u32)-1, OC_INTR_DISABLE);
 		disable_irq(INT_THERMAL);
 		disable_irq(INT_EDP);
-		cancel_work_sync(&work_thermal);
-		cancel_work_sync(&work_edp);
 		soctherm_clk_enable(false);
 		soctherm_init_platform_done = false;
 		soctherm_suspended = true;
@@ -1849,8 +1844,6 @@ static struct notifier_block soctherm_nb = {
 
 int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 {
-	int err;
-
 	register_pm_notifier(&soctherm_nb);
 
 	if (!data)
@@ -1868,18 +1861,15 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 
 	soctherm_init_platform_done = true;
 
-	/* enable interrupts */
-	workqueue = create_singlethread_workqueue("soctherm-wq");
-
-	INIT_WORK(&work_thermal, soctherm_work_func);
-	err = request_irq(INT_THERMAL, soctherm_isr, 0,
-			  "soctherm_thermal", NULL);
-	if (err < 0)
+	/* enable threaded interrupts */
+	if (request_threaded_irq(INT_THERMAL, soctherm_thermal_isr,
+				 soctherm_thermal_work_func, IRQF_ONESHOT,
+				 "soctherm_thermal", NULL) < 0)
 		return -1;
 
-	INIT_WORK(&work_edp, soctherm_edp_work_func);
-	err = request_irq(INT_EDP, soctherm_edp_isr, 0, "soctherm_edp", NULL);
-	if (err < 0)
+	if (request_threaded_irq(INT_EDP, soctherm_edp_isr,
+				 soctherm_edp_work_func, IRQF_ONESHOT,
+				 "soctherm_edp", NULL) < 0)
 		return -1;
 
 	return 0;
