@@ -739,6 +739,7 @@ bool tegra_dc_hpd(struct tegra_dc *dc)
 {
 	int sense;
 	int level;
+	int hpd;
 
 	if (WARN_ON(!dc || !dc->out))
 		return false;
@@ -753,8 +754,13 @@ bool tegra_dc_hpd(struct tegra_dc *dc)
 
 	sense = dc->out->flags & TEGRA_DC_OUT_HOTPLUG_MASK;
 
-	return (sense == TEGRA_DC_OUT_HOTPLUG_HIGH && level) ||
+	hpd = (sense == TEGRA_DC_OUT_HOTPLUG_HIGH && level) ||
 		(sense == TEGRA_DC_OUT_HOTPLUG_LOW && !level);
+
+	if (dc->out->hotplug_report)
+		dc->out->hotplug_report(hpd);
+
+	return hpd;
 }
 EXPORT_SYMBOL(tegra_dc_hpd);
 
