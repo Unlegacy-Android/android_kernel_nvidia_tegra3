@@ -154,6 +154,8 @@ static struct tegra_sdhci_hw_ops tegra_11x_sdhci_ops = {
 #define NVQUIRK_DISABLE_AUTO_CMD23		BIT(15)
 /* ENAABLE FEEDBACK IO CLOCK */
 #define NVQUIRK_EN_FEEDBACK_CLK			BIT(16)
+/* Shadow write xfer mode reg and write it alongwith CMD register */
+#define NVQUIRK_SHADOW_XFER_MODE_REG		BIT(17)
 
 struct sdhci_tegra_soc_data {
 	struct sdhci_pltfm_data *pdata;
@@ -341,6 +343,32 @@ static void tegra_sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 		writeb(gap_ctrl, host->ioaddr + SDHCI_BLOCK_GAP_CONTROL);
 	}
 #endif
+}
+
+static void tegra_sdhci_writew(struct sdhci_host *host, u16 val, int reg)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
+
+	if (soc_data->nvquirks & NVQUIRK_SHADOW_XFER_MODE_REG) {
+		switch (reg) {
+		case SDHCI_TRANSFER_MODE:
+			/*
+			 * Postpone this write, we must do it together with a
+			 * command write that is down below.
+			 */
+			pltfm_host->xfer_mode_shadow = val;
+			return;
+		case SDHCI_COMMAND:
+			writel((val << 16) | pltfm_host->xfer_mode_shadow,
+				host->ioaddr + SDHCI_TRANSFER_MODE);
+			pltfm_host->xfer_mode_shadow = 0;
+			return;
+		}
+	}
+
+	writew(val, host->ioaddr + reg);
 }
 
 static unsigned int tegra_sdhci_get_cd(struct sdhci_host *sdhci)
@@ -1286,7 +1314,7 @@ static int sdhci_tegra_run_frequency_tuning(struct sdhci_host *sdhci)
 
 	sdhci_writeb(sdhci, 0xE, SDHCI_TIMEOUT_CONTROL);
 
-	sdhci_writeb(sdhci, SDHCI_TRNS_READ, SDHCI_TRANSFER_MODE);
+	sdhci_writew(sdhci, SDHCI_TRNS_READ, SDHCI_TRANSFER_MODE);
 
 	sdhci_writel(sdhci, 0x0, SDHCI_ARGUMENT);
 
@@ -1700,6 +1728,7 @@ static struct sdhci_ops tegra_sdhci_ops = {
 	.read_l     = tegra_sdhci_readl,
 	.read_w     = tegra_sdhci_readw,
 	.write_l    = tegra_sdhci_writel,
+	.write_w    = tegra_sdhci_writew,
 	.platform_8bit_width = tegra_sdhci_8bit,
 	.set_clock		= tegra_sdhci_set_clock,
 	.suspend		= tegra_sdhci_suspend,
@@ -1743,6 +1772,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 		   NVQUIRK_ENABLE_SDR50_TUNING |
 		   NVQUIRK_ENABLE_SDR50 |
 		   NVQUIRK_ENABLE_SDR104 |
+		   NVQUIRK_SHADOW_XFER_MODE_REG |
 #endif
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 		    NVQUIRK_SET_DRIVE_STRENGTH |
