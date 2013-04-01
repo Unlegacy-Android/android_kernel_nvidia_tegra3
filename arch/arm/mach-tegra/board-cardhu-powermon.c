@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu-powermon.c
  *
- * Copyright (c) 2011, NVIDIA, All Rights Reserved.
+ * Copyright (c) 2011-2013, NVIDIA, All Rights Reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -282,7 +282,7 @@ int __init cardhu_pmon_init(void)
 			&power_mon_info[VDD_CORE_IN];
 	}
 
-	if (bi.board_id != BOARD_PM269) {
+	if (bi.board_id != BOARD_PM269 || bi.board_id != BOARD_PM315) {
 		i2c_register_board_info(0, cardhu_i2c0_ina219_board_info,
 			ARRAY_SIZE(cardhu_i2c0_ina219_board_info));
 	}
