@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-dalmore-pinmux-t11x.h
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -198,8 +198,8 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_common[] = {
 	CEC_PINMUX(HDMI_CEC, CEC, NORMAL, NORMAL, INPUT, DISABLE, DISABLE),
 
 	/* I2C4 pinmux */
-	DDC_PINMUX(DDC_SCL, I2C4, NORMAL, NORMAL, INPUT, DISABLE, HIGH),
-	DDC_PINMUX(DDC_SDA, I2C4, NORMAL, NORMAL, INPUT, DISABLE, HIGH),
+	DDC_PINMUX(DDC_SCL, I2C4, NORMAL, NORMAL, INPUT, DISABLE, NORMAL),
+	DDC_PINMUX(DDC_SDA, I2C4, NORMAL, NORMAL, INPUT, DISABLE, NORMAL),
 
 	/* USB pinmux */
 	USB_PINMUX(SPDIF_IN, USB, PULL_UP, NORMAL, INPUT, DISABLE, ENABLE),
