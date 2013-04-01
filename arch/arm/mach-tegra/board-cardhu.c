@@ -807,10 +807,10 @@ static struct platform_device *beaver_audio_devices[] __initdata = {
 
 };
 
-#define MXT_CFG_NAME            "Android_Cardhu_2012-01-31.cfg"
+#define MXT_CFG_NAME            "Android_Cardhu_2012-12-18.cfg"
 
 static struct mxt_platform_data atmel_mxt_info = {
-	.irqflags       = IRQF_TRIGGER_FALLING,
+	.irqflags       = IRQF_ONESHOT | IRQF_TRIGGER_LOW,
 	.read_chg       = &read_chg,
 	.mxt_cfg_name	= MXT_CFG_NAME,
 };
@@ -912,12 +912,12 @@ static int __init cardhu_touch_init(void)
 		tegra_get_board_info(&BoardInfo);
 		if ((BoardInfo.sku & SKU_TOUCH_MASK) == SKU_TOUCH_2000)
 			strncpy(atmel_mxt_info.mxt_cfg_name,
-				"Android_Cardhu_SKU2000_2012-01-31.cfg",
+				"Android_Cardhu_SKU2000_2012-12-18.cfg",
 				CFG_NAME_SIZE);
 
 		if (DisplayBoardInfo.board_id == BOARD_DISPLAY_E1506) {
 			strncpy(atmel_mxt_info.mxt_cfg_name,
-			"Android_Cardhu_Verbier_E1506_2012-06-06.cfg",
+			"Android_Cardhu_Verbier_E1506_2012-12-18.cfg",
 			CFG_NAME_SIZE);
 			e1506_atmel_i2c_info[0].irq = gpio_to_irq(TEGRA_GPIO_PH4);
 			i2c_register_board_info(1, e1506_atmel_i2c_info, 1);
