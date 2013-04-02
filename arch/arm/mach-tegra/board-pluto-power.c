@@ -826,20 +826,6 @@ static struct soctherm_platform_data pluto_soctherm_data = {
 				},
 			},
 		},
-		[THROTTLE_OC2] = {
-			.throt_mode = BRIEF,
-			.polarity = 0,
-			.devs = {
-				[THROTTLE_DEV_CPU] = {
-					.enable = true,
-					.depth = 50,
-				},
-				[THROTTLE_DEV_GPU] = {
-					.enable = true,
-					.depth = 50,
-				},
-			},
-		},
 		[THROTTLE_OC4] = {
 			.throt_mode = BRIEF,
 			.polarity = 1,
