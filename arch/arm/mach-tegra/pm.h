@@ -98,6 +98,9 @@ void tegra_clear_cpu_in_pd(int cpu);
 bool tegra_set_cpu_in_pd(int cpu);
 
 int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags);
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
+int tegra_is_lp1_suspend_mode(void);
+#endif
 
 #define FLOW_CTRL_CPU_PWR_CSR \
 	(IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + 0x38)
