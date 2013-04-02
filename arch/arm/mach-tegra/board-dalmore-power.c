@@ -1377,35 +1377,6 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 				},
 			},
 		},
-		[THROTTLE_OC2] = {
-			.throt_mode = BRIEF,
-			.polarity = 0,
-			.devs = {
-				[THROTTLE_DEV_CPU] = {
-					.enable = true,
-					.depth = 50,
-				},
-				[THROTTLE_DEV_GPU] = {
-					.enable = true,
-					.depth = 50,
-				},
-			},
-		},
-		[THROTTLE_OC4] = {
-			.throt_mode = BRIEF,
-			.polarity = 1,
-			.intr = true,
-			.devs = {
-				[THROTTLE_DEV_CPU] = {
-					.enable = true,
-					.depth = 50,
-				},
-				[THROTTLE_DEV_GPU] = {
-					.enable = true,
-					.depth = 50,
-				},
-			},
-		},
 	},
 	.tshut_pmu_trip_data = &tpdata_palmas,
 };
