@@ -299,6 +299,17 @@ obj-${CONFIG_MACH_MACALLAN}             += board-macallan-kbc.o
 obj-${CONFIG_MACH_MACALLAN}             += board-macallan-sensors.o
 obj-${CONFIG_MACH_MACALLAN}             += panel-p-wuxga-10-1.o
 
+obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab.o
+obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-memory.o
+obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-pinmux.o
+obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-power.o
+obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-powermon.o
+obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-sdhci.o
+obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-panel.o
+obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-kbc.o
+obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-sensors.o
+obj-${CONFIG_MACH_TEGRATAB}            += panel-p-wuxga-10-1.o
+
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-memory.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-pinmux.o

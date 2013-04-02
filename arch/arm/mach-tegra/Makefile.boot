@@ -21,3 +21,4 @@ dtb-$(CONFIG_ARCH_TEGRA_11x_SOC) += tegra114-dalmore.dtb
 dtb-$(CONFIG_ARCH_TEGRA_11x_SOC) += tegra114-macallan.dtb
 dtb-$(CONFIG_ARCH_TEGRA_11x_SOC) += tegra114-roth.dtb
 dtb-$(CONFIG_ARCH_TEGRA_11x_SOC) += tegra114-pluto.dtb
+dtb-$(CONFIG_ARCH_TEGRA_11x_SOC) += tegra114-tegratab.dtb
