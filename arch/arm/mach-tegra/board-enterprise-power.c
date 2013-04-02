@@ -844,6 +844,7 @@ static struct tegra_suspend_platform_data enterprise_suspend_data = {
 	.i2c_base_addr = TEGRA_I2C5_BASE,
 	.pmuslave_addr = 0x24,
 	.core_reg_addr = 0x5B,
+	.lp1_core_volt_low_cold = 0x1D,
 	.lp1_core_volt_low = 0x1D,
 	.lp1_core_volt_high = 0x33,
 #endif

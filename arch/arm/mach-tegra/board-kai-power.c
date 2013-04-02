@@ -602,6 +602,7 @@ static struct tegra_suspend_platform_data kai_suspend_data = {
 	.i2c_base_addr = TEGRA_I2C5_BASE,
 	.pmuslave_addr = 0x78,
 	.core_reg_addr = 0x17,
+	.lp1_core_volt_low_cold = 0x0C,
 	.lp1_core_volt_low = 0x0C,
 	.lp1_core_volt_high = 0x20,
 #endif
