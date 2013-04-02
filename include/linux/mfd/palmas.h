@@ -309,6 +309,7 @@ struct palmas_pmic {
 	unsigned int current_mode_reg[PALMAS_NUM_REGS];
 
 	int range[PALMAS_REG_SMPS10];
+	unsigned long roof_floor[PALMAS_NUM_REGS];
 };
 
 /* defines so we can store the mux settings */
