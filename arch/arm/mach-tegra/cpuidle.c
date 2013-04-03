@@ -3,7 +3,7 @@
  *
  * CPU idle driver for Tegra CPUs
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA Corporation.
  * Copyright (c) 2011 Google, Inc.
  * Author: Colin Cross <ccross@android.com>
  *         Gary King <gking@nvidia.com>
@@ -64,8 +64,6 @@ struct cpuidle_driver tegra_idle_driver = {
 	.owner = THIS_MODULE,
 };
 
-static DEFINE_PER_CPU(struct cpuidle_device *, tegra_idle_device);
-
 static int tegra_idle_enter_clock_gating(struct cpuidle_device *dev,
 	int index)
 {
@@ -98,6 +96,10 @@ static bool power_down_in_idle __read_mostly;
 static bool pd_in_idle_modifiable __read_mostly = true;
 static bool pd_disabled_by_suspend;
 static struct tegra_cpuidle_ops tegra_idle_ops;
+
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+u32 tegra_force_clkgt_at_vmin;
+#endif
 
 void tegra_pd_in_idle(bool enable)
 {
@@ -209,7 +211,6 @@ static int tegra_cpuidle_register_device(unsigned int cpu)
 		kfree(dev);
 		return -EIO;
 	}
-	per_cpu(tegra_idle_device, cpu) = dev;
 	return 0;
 }
 
@@ -324,6 +325,13 @@ static int __init tegra_cpuidle_debug_init(void)
 		&tegra_pd_debug_ops);
 	if (!d)
 		return -ENOMEM;
+
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+	d = debugfs_create_x32("force_clkgt_at_vmin", S_IRUGO | S_IWUSR,
+		dir, &tegra_force_clkgt_at_vmin);
+	if (!d)
+		return -ENOMEM;
+#endif
 
 	return 0;
 }

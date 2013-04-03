@@ -27,10 +27,12 @@
 
 #define DRV_NAME	"pid_thermal_gov"
 
-#define MAX_ERR_TEMP_DEFAULT	10000	/* in mC */
-#define MAX_ERR_GAIN_DEFAULT	1000
-#define GAIN_P_DEFAULT		1000
-#define GAIN_D_DEFAULT		0
+#define MAX_ERR_TEMP_DEFAULT		9000	/* in mC */
+#define MAX_ERR_GAIN_DEFAULT		1000
+#define GAIN_P_DEFAULT			1000
+#define GAIN_D_DEFAULT			0
+#define UP_COMPENSATION_DEFAULT		20
+#define DOWN_COMPENSATION_DEFAULT	20
 
 struct pid_thermal_gov_attribute {
 	struct attribute attr;
@@ -49,6 +51,12 @@ struct pid_thermal_governor {
 	int gain_p; /* proportional gain */
 	int gain_i; /* integral gain */
 	int gain_d; /* derivative gain */
+
+	/* max derivative output, percentage of max error */
+	unsigned long max_dout;
+
+	unsigned long up_compensation;
+	unsigned long down_compensation;
 };
 
 #define tz_to_gov(t)		\
@@ -120,6 +128,36 @@ static ssize_t max_err_gain_store(struct kobject *kobj, struct attribute *attr,
 static struct pid_thermal_gov_attribute max_err_gain_attr =
 	__ATTR(max_err_gain, 0644, max_err_gain_show, max_err_gain_store);
 
+static ssize_t max_dout_show(struct kobject *kobj,
+			     struct attribute *attr, char *buf)
+{
+	struct pid_thermal_governor *gov = kobj_to_gov(kobj);
+
+	if (!gov)
+		return -ENODEV;
+
+	return sprintf(buf, "%lu\n", gov->max_dout);
+}
+
+static ssize_t max_dout_store(struct kobject *kobj, struct attribute *attr,
+			      const char *buf, size_t count)
+{
+	struct pid_thermal_governor *gov = kobj_to_gov(kobj);
+	unsigned long val;
+
+	if (!gov)
+		return -ENODEV;
+
+	if (!sscanf(buf, "%lu\n", &val))
+		return -EINVAL;
+
+	gov->max_dout = val;
+	return count;
+}
+
+static struct pid_thermal_gov_attribute max_dout_attr =
+	__ATTR(max_dout, 0644, max_dout_show, max_dout_store);
+
 static ssize_t gain_p_show(struct kobject *kobj, struct attribute *attr,
 			   char *buf)
 {
@@ -180,11 +218,78 @@ static ssize_t gain_d_store(struct kobject *kobj, struct attribute *attr,
 static struct pid_thermal_gov_attribute gain_d_attr =
 	__ATTR(gain_d, 0644, gain_d_show, gain_d_store);
 
+static ssize_t up_compensation_show(struct kobject *kobj,
+				    struct attribute *attr, char *buf)
+{
+	struct pid_thermal_governor *gov = kobj_to_gov(kobj);
+
+	if (!gov)
+		return -ENODEV;
+
+	return sprintf(buf, "%lu\n", gov->up_compensation);
+}
+
+static ssize_t up_compensation_store(struct kobject *kobj,
+				     struct attribute *attr, const char *buf,
+				     size_t count)
+{
+	struct pid_thermal_governor *gov = kobj_to_gov(kobj);
+	unsigned long val;
+
+	if (!gov)
+		return -ENODEV;
+
+	if (!sscanf(buf, "%lu\n", &val))
+		return -EINVAL;
+
+	gov->up_compensation = val;
+	return count;
+}
+
+static struct pid_thermal_gov_attribute up_compensation_attr =
+	__ATTR(up_compensation, 0644,
+	       up_compensation_show, up_compensation_store);
+
+static ssize_t down_compensation_show(struct kobject *kobj,
+				      struct attribute *attr, char *buf)
+{
+	struct pid_thermal_governor *gov = kobj_to_gov(kobj);
+
+	if (!gov)
+		return -ENODEV;
+
+	return sprintf(buf, "%lu\n", gov->down_compensation);
+}
+
+static ssize_t down_compensation_store(struct kobject *kobj,
+				       struct attribute *attr, const char *buf,
+				       size_t count)
+{
+	struct pid_thermal_governor *gov = kobj_to_gov(kobj);
+	unsigned long val;
+
+	if (!gov)
+		return -ENODEV;
+
+	if (!sscanf(buf, "%lu\n", &val))
+		return -EINVAL;
+
+	gov->down_compensation = val;
+	return count;
+}
+
+static struct pid_thermal_gov_attribute down_compensation_attr =
+	__ATTR(down_compensation, 0644,
+	       down_compensation_show, down_compensation_store);
+
 static struct attribute *pid_thermal_gov_default_attrs[] = {
 	&max_err_temp_attr.attr,
 	&max_err_gain_attr.attr,
 	&gain_p_attr.attr,
 	&gain_d_attr.attr,
+	&max_dout_attr.attr,
+	&up_compensation_attr.attr,
+	&down_compensation_attr.attr,
 	NULL,
 };
 
@@ -246,6 +351,8 @@ static int pid_thermal_gov_start(struct thermal_zone_device *tz)
 	gov->max_err_gain = MAX_ERR_GAIN_DEFAULT;
 	gov->gain_p = GAIN_P_DEFAULT;
 	gov->gain_d = GAIN_D_DEFAULT;
+	gov->up_compensation = UP_COMPENSATION_DEFAULT;
+	gov->down_compensation = DOWN_COMPENSATION_DEFAULT;
 	tz->governor_data = gov;
 
 	return 0;
@@ -264,18 +371,16 @@ static void pid_thermal_gov_stop(struct thermal_zone_device *tz)
 
 static void pid_thermal_gov_update_passive(struct thermal_zone_device *tz,
 					   enum thermal_trip_type trip_type,
-					   unsigned long old_target,
-					   unsigned long target)
+					   unsigned long old,
+					   unsigned long new)
 {
 	if ((trip_type != THERMAL_TRIP_PASSIVE) &&
 			(trip_type != THERMAL_TRIPS_NONE))
 		return;
 
-	if ((!old_target || old_target == THERMAL_NO_TARGET) &&
-			(target && target != THERMAL_NO_TARGET))
+	if ((old == THERMAL_NO_TARGET) && (new != THERMAL_NO_TARGET))
 		tz->passive++;
-	else if ((old_target && old_target != THERMAL_NO_TARGET) &&
-			(!target || target == THERMAL_NO_TARGET))
+	else if ((old != THERMAL_NO_TARGET) && (new == THERMAL_NO_TARGET))
 		tz->passive--;
 }
 
@@ -289,10 +394,15 @@ pid_thermal_gov_get_target(struct thermal_zone_device *tz,
 	int last_temperature = tz->passive ? tz->last_temperature : trip_temp;
 	int passive_delay = tz->passive ? tz->passive_delay : MSEC_PER_SEC;
 	s64 proportional, derivative, sum_err, max_err;
-	unsigned long max_state;
+	unsigned long max_state, cur_state, target, compensation;
 
 	if (cdev->ops->get_max_state(cdev, &max_state) < 0)
 		return 0;
+
+	if (cdev->ops->get_cur_state(cdev, &cur_state) < 0)
+		return 0;
+
+	max_err = (s64)gov->max_err_temp * (s64)gov->max_err_gain;
 
 	/* Calculate proportional term */
 	proportional = (s64)tz->temperature - (s64)trip_temp;
@@ -303,28 +413,43 @@ pid_thermal_gov_get_target(struct thermal_zone_device *tz,
 	derivative *= gov->gain_d;
 	derivative *= MSEC_PER_SEC;
 	derivative = div64_s64(derivative, passive_delay);
+	if (gov->max_dout) {
+		s64 max_dout = div64_s64(max_err * gov->max_dout, 100);
+		if (derivative < 0)
+			derivative = -min_t(s64, abs64(derivative), max_dout);
+		else
+			derivative = min_t(s64, derivative, max_dout);
+	}
 
-	max_err = (s64)gov->max_err_temp * (s64)gov->max_err_gain;
-	sum_err = proportional + derivative;
-	sum_err = max_t(s64, sum_err, 0);
-	if (sum_err == 0)
-		return 0;
-
+	sum_err = max_t(s64, proportional + derivative, 0);
 	sum_err = min_t(s64, sum_err, max_err);
-	if (sum_err == max_err)
-		return max_state;
-
 	sum_err = sum_err * max_state + max_err - 1;
-	sum_err = div64_s64(sum_err, max_err);
+	target = (unsigned long)div64_s64(sum_err, max_err);
 
-	return (unsigned long)sum_err;
+	/* Apply compensation */
+	if (target == cur_state)
+		return target;
+
+	if (target > cur_state) {
+		compensation = DIV_ROUND_UP(gov->up_compensation *
+					    (target - cur_state), 100);
+		target = min(cur_state + compensation, max_state);
+	} else if (target < cur_state) {
+		compensation = DIV_ROUND_UP(gov->down_compensation *
+					    (cur_state - target), 100);
+		target = (cur_state > compensation) ?
+			 (cur_state - compensation) : 0;
+	}
+
+	return target;
 }
 
 static int pid_thermal_gov_throttle(struct thermal_zone_device *tz, int trip)
 {
 	struct thermal_instance *instance;
 	enum thermal_trip_type trip_type;
-	unsigned long trip_temp, target;
+	long trip_temp;
+	unsigned long target;
 
 	tz->ops->get_trip_type(tz, trip, &trip_type);
 	tz->ops->get_trip_temp(tz, trip, &trip_temp);
@@ -332,7 +457,9 @@ static int pid_thermal_gov_throttle(struct thermal_zone_device *tz, int trip)
 	mutex_lock(&tz->lock);
 
 	list_for_each_entry(instance, &tz->thermal_instances, tz_node) {
-		if (instance->trip != trip)
+		if ((instance->trip != trip) ||
+				((tz->temperature < trip_temp) &&
+				 (instance->target == THERMAL_NO_TARGET)))
 			continue;
 
 		target = pid_thermal_gov_get_target(tz, instance->cdev,
@@ -342,12 +469,10 @@ static int pid_thermal_gov_throttle(struct thermal_zone_device *tz, int trip)
 		else if (target < instance->lower)
 			target = instance->lower;
 
-		if (tz->temperature < trip_temp) {
-			if ((target == instance->lower) &&
-					(instance->target == instance->lower ||
-					instance->target == THERMAL_NO_TARGET))
-				target = THERMAL_NO_TARGET;
-		}
+		if ((tz->temperature < trip_temp) &&
+				(instance->target == instance->lower) &&
+				(target == instance->lower))
+			target = THERMAL_NO_TARGET;
 
 		if (instance->target == target)
 			continue;

@@ -1011,6 +1011,9 @@ static int acpi_processor_setup_cpuidle(struct acpi_processor *pr)
 		return -EINVAL;
 	}
 
+	if (!dev)
+		return -EINVAL;
+
 	dev->cpu = pr->id;
 	dev->safe_state_index = -1;
 	for (i = 0; i < CPUIDLE_STATE_MAX; i++) {
@@ -1109,6 +1112,67 @@ int acpi_processor_cst_has_changed(struct acpi_processor *pr)
 
 	return ret;
 }
+
+int acpi_processor_cst_has_changed(struct acpi_processor *pr)
+{
+	int cpu;
+	struct acpi_processor *_pr;
+
+	if (disabled_by_idle_boot_param())
+		return 0;
+
+	if (!pr)
+		return -EINVAL;
+
+	if (nocst)
+		return -ENODEV;
+
+	if (!pr->flags.power_setup_done)
+		return -ENODEV;
+
+	/*
+	 * FIXME:  Design the ACPI notification to make it once per
+	 * system instead of once per-cpu.  This condition is a hack
+	 * to make the code that updates C-States be called once.
+	 */
+
+	if (pr->id == 0 && cpuidle_get_driver() == &acpi_idle_driver) {
+
+		cpuidle_pause_and_lock();
+		/* Protect against cpu-hotplug */
+		get_online_cpus();
+
+		/* Disable all cpuidle devices */
+		for_each_online_cpu(cpu) {
+			_pr = per_cpu(processors, cpu);
+			if (!_pr || !_pr->flags.power_setup_done)
+				continue;
+			cpuidle_disable_device(&_pr->power.dev);
+		}
+
+		/* Populate Updated C-state information */
+		acpi_processor_get_power_info(pr);
+		acpi_processor_setup_cpuidle_states(pr);
+
+		/* Enable all cpuidle devices */
+		for_each_online_cpu(cpu) {
+			_pr = per_cpu(processors, cpu);
+			if (!_pr || !_pr->flags.power_setup_done)
+				continue;
+			acpi_processor_get_power_info(_pr);
+			if (_pr->flags.power) {
+				acpi_processor_setup_cpuidle_cx(_pr);
+				cpuidle_enable_device(&_pr->power.dev);
+			}
+		}
+		put_online_cpus();
+		cpuidle_resume_and_unlock();
+	}
+
+	return 0;
+}
+
+static int acpi_processor_registered;
 
 int __cpuinit acpi_processor_power_init(struct acpi_processor *pr,
 			      struct acpi_device *device)

@@ -2,7 +2,7 @@
 /*
  * arch/arm/mach-tegra/board-kai-sensors.c
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -41,16 +41,24 @@ static struct regulator *kai_1v8_cam3;
 static struct regulator *kai_vdd_cam3;
 
 static struct throttle_table tj_throttle_table[] = {
-	{      0, 1000 },
-	{ 640000, 1000 },
-	{ 640000, 1000 },
-	{ 640000, 1000 },
-	{ 640000, 1000 },
-	{ 640000, 1000 },
-	{ 760000, 1000 },
-	{ 760000, 1050 },
-	{1000000, 1050 },
-	{1000000, 1100 },
+		/* CPU_THROT_LOW cannot be used by other than CPU */
+		/* NO_CAP cannot be used by CPU */
+		/*    CPU,    CBUS,    SCLK,     EMC */
+		{ { 1000000,  NO_CAP,  NO_CAP,  NO_CAP } },
+		{ {  760000,  NO_CAP,  NO_CAP,  NO_CAP } },
+		{ {  760000,  NO_CAP,  NO_CAP,  NO_CAP } },
+		{ {  620000,  NO_CAP,  NO_CAP,  NO_CAP } },
+		{ {  620000,  NO_CAP,  NO_CAP,  NO_CAP } },
+		{ {  620000,  437000,  NO_CAP,  NO_CAP } },
+		{ {  620000,  352000,  NO_CAP,  NO_CAP } },
+		{ {  475000,  352000,  NO_CAP,  NO_CAP } },
+		{ {  475000,  352000,  NO_CAP,  NO_CAP } },
+		{ {  475000,  352000,  250000,  375000 } },
+		{ {  475000,  352000,  250000,  375000 } },
+		{ {  475000,  247000,  204000,  375000 } },
+		{ {  475000,  247000,  204000,  204000 } },
+		{ {  475000,  247000,  204000,  204000 } },
+	  { { CPU_THROT_LOW,  247000,  204000,  102000 } },
 };
 
 static struct balanced_throttle tj_throttle = {
@@ -82,7 +90,8 @@ static struct nct1008_platform_data kai_nct1008_pdata = {
 			.cdev_type = "tegra-balanced",
 			.trip_temp = 80000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
-			.state = THERMAL_NO_LIMIT,
+			.upper = THERMAL_NO_LIMIT,
+			.lower = THERMAL_NO_LIMIT,
 			.hysteresis = 0,
 		},
 	},
@@ -117,7 +126,8 @@ static int kai_nct1008_init(void)
 	}
 
 	tegra_platform_edp_init(kai_nct1008_pdata.trips,
-				&kai_nct1008_pdata.num_trips);
+				&kai_nct1008_pdata.num_trips,
+				0); /* edp temperature margin */
 
 	return ret;
 }

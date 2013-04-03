@@ -33,6 +33,7 @@
 #define RT5640_REG_RW 1
 #define RT5640_DET_EXT_MIC 0
 #define RT5639_RESET_ID 0x0008
+#define USE_ONEBIT_DEPOP 1 /* for one bit depop */
 
 #define CHECK_I2C_SHUTDOWN(r, c) { if (r && r->shutdown_complete) { \
 dev_err(c->dev, "error: i2c state is 'shutdown'\n"); \
@@ -45,7 +46,7 @@ struct rt5640_init_reg {
 };
 
 static struct rt5640_init_reg init_list[] = {
-	{RT5640_DUMMY1		, 0x3701},/*fa[12:13] = 1'b;fa[8~10]=1;fa[0]=1*/
+	{RT5640_GEN_CTRL1	, 0x3701},/*fa[12:13] = 1'b; fa[8~10]=1; fa[0]=1 */
 	{RT5640_DEPOP_M1	, 0x0019},/* 8e[4:3] = 11'b; 8e[0] = 1'b */
 	{RT5640_DEPOP_M2	, 0x3100},/* 8f[13] = 1'b */
 	{RT5640_ADDA_CLK1	, 0x1114},/* 73[2] = 1'b  */
@@ -53,6 +54,7 @@ static struct rt5640_init_reg init_list[] = {
 	{RT5640_PRIV_INDEX	, 0x003d},/* PR3d[12] = 1'b */
 	{RT5640_PRIV_DATA	, 0x3600},
 	{RT5640_CLS_D_OUT	, 0xa000},/* 8d[11] = 0'b */
+	{RT5640_CLS_D_OVCD	, 0x0328},//8c[8] = 1'b
 	{RT5640_PRIV_INDEX	, 0x001c},/* PR1c = 0D21'h */
 	{RT5640_PRIV_DATA	, 0x0D21},
 	{RT5640_PRIV_INDEX	, 0x001b},/* PR1B = 0D21'h */
@@ -67,6 +69,8 @@ static struct rt5640_init_reg init_list[] = {
 	{RT5640_PRIV_DATA	, 0xe0e0},
 	{RT5640_PRIV_INDEX	, 0x0023},/* PR23 = 1804'h */
 	{RT5640_PRIV_DATA	, 0x1804},
+	{RT5640_PRIV_INDEX	, 0x006e},/* PR6E = 1804'h */
+	{RT5640_PRIV_DATA	, 0x3219},
 	/*playback*/
 	{RT5640_STO_DAC_MIXER	, 0x1414},/*Dig inf 1 -> Sto DAC mixer -> DACL*/
 	{RT5640_OUT_L3_MIXER	, 0x01fe},/*DACL1 -> OUTMIXL*/
@@ -74,9 +78,16 @@ static struct rt5640_init_reg init_list[] = {
 	{RT5640_HP_VOL		, 0x8888},/* OUTMIX -> HPVOL */
 	{RT5640_HPO_MIXER	, 0xc000},/* HPVOL -> HPOLMIX */
 /*	{RT5640_HPO_MIXER	, 0xa000},// DAC1 -> HPOLMIX   */
+	{RT5640_CHARGE_PUMP	, 0x0f00},
+	{RT5640_PRIV_INDEX	, 0x0090},
+	{RT5640_PRIV_DATA	, 0x2000},
+	{RT5640_PRIV_INDEX	, 0x0091},
+	{RT5640_PRIV_DATA	, 0x1000},
+	{RT5640_HP_CALIB_AMP_DET, 0x0420},
 	{RT5640_SPK_L_MIXER	, 0x0036},/* DACL1 -> SPKMIXL */
 	{RT5640_SPK_R_MIXER	, 0x0036},/* DACR1 -> SPKMIXR */
 	{RT5640_SPK_VOL		, 0x8888},/* SPKMIX -> SPKVOL */
+	{RT5640_SPO_CLSD_RATIO	, 0x0001},
 	{RT5640_SPO_L_MIXER	, 0xe800},/* SPKVOLL -> SPOLMIX */
 	{RT5640_SPO_R_MIXER	, 0x2800},/* SPKVOLR -> SPORMIX */
 /*	{RT5640_SPO_L_MIXER	, 0xb800},//DAC -> SPOLMIX */
@@ -167,11 +178,12 @@ static const u16 rt5640_reg[RT5640_VENDOR_ID2 + 1] = {
 	[RT5640_DEPOP_M1] = 0x0004,
 	[RT5640_DEPOP_M2] = 0x1100,
 	[RT5640_DEPOP_M3] = 0x0646,
-	[RT5640_CHARGE_PUMP] = 0x0c00,
+	[RT5640_CHARGE_PUMP] = 0x0d00,
 	[RT5640_MICBIAS] = 0x3000,
 	[RT5640_EQ_CTRL1] = 0x2080,
-	[RT5640_DRC_AGC_1] = 0x2206,
+	[RT5640_DRC_AGC_1] = 0xe206,
 	[RT5640_DRC_AGC_2] = 0x1f00,
+	[RT5640_DRC_AGC_3] = 0x0040,
 	[RT5640_ANC_CTRL1] = 0x034b,
 	[RT5640_ANC_CTRL2] = 0x0066,
 	[RT5640_ANC_CTRL3] = 0x000b,
@@ -181,12 +193,13 @@ static const u16 rt5640_reg[RT5640_VENDOR_ID2 + 1] = {
 	[RT5640_MP3_PLUS1] = 0x0680,
 	[RT5640_MP3_PLUS2] = 0x1c17,
 	[RT5640_3D_HP] = 0x8c00,
-	[RT5640_ADJ_HPF] = 0x2a20,
-	[RT5640_HP_CALIB_AMP_DET] = 0x0400,
+	[RT5640_ADJ_HPF] = 0xaa20,
+	[RT5640_HP_CALIB_AMP_DET] = 0x0420,
 	[RT5640_SV_ZCD1] = 0x0809,
 	[RT5640_VENDOR_ID1] = 0x10ec,
 	[RT5640_VENDOR_ID2] = 0x6231,
 };
+
 
 static int rt5640_reset(struct snd_soc_codec *codec)
 {
@@ -304,6 +317,9 @@ static int rt5640_volatile_register(
 	case RT5640_DSP_CTRL3:
 	case RT5640_PGM_REG_ARR1:
 	case RT5640_PGM_REG_ARR3:
+	case RT5640_VENDOR_ID:
+	case RT5640_VENDOR_ID1:
+	case RT5640_VENDOR_ID2:
 		return 1;
 	default:
 		return 0;
@@ -424,31 +440,61 @@ static int rt5640_readable_register(
 	case RT5640_HP_CALIB2:
 	case RT5640_SV_ZCD1:
 	case RT5640_SV_ZCD2:
-	case RT5640_DUMMY1:
-	case RT5640_DUMMY2:
-	case RT5640_DUMMY3:
+	case RT5640_GEN_CTRL1:
+	case RT5640_GEN_CTRL2:
+	case RT5640_GEN_CTRL3:
 	case RT5640_VENDOR_ID:
 	case RT5640_VENDOR_ID1:
 	case RT5640_VENDOR_ID2:
+	case RT5640_DUMMY_PR3F:
 		return 1;
 	default:
 		return 0;
 	}
 }
 
+void DC_Calibrate(struct snd_soc_codec *codec)
+{
+	unsigned int sclk_src;
+
+	sclk_src = snd_soc_read(codec, RT5640_GLB_CLK) &
+		RT5640_SCLK_SRC_MASK;
+
+	snd_soc_update_bits(codec, RT5640_PWR_ANLG2,
+		RT5640_PWR_MB1, RT5640_PWR_MB1);
+	snd_soc_update_bits(codec, RT5640_DEPOP_M2,
+		RT5640_DEPOP_MASK, RT5640_DEPOP_MAN);
+	snd_soc_update_bits(codec, RT5640_DEPOP_M1,
+		RT5640_HP_CP_MASK | RT5640_HP_SG_MASK | RT5640_HP_CB_MASK,
+		RT5640_HP_CP_PU | RT5640_HP_SG_DIS | RT5640_HP_CB_PU);
+
+	snd_soc_update_bits(codec, RT5640_GLB_CLK,
+		RT5640_SCLK_SRC_MASK, 0x2 << RT5640_SCLK_SRC_SFT);
+
+	rt5640_index_write(codec, RT5640_HP_DCC_INT1, 0x9f00);
+	snd_soc_update_bits(codec, RT5640_PWR_ANLG2,
+		RT5640_PWR_MB1, 0);
+	snd_soc_update_bits(codec, RT5640_GLB_CLK,
+		RT5640_SCLK_SRC_MASK, sclk_src);
+}
+
+
 int rt5640_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 {
 	int jack_type;
 	int sclk_src;
+	int reg63, reg64;
 	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
 	mutex_lock(&rt5640->lock);
 	CHECK_I2C_SHUTDOWN(rt5640, codec)
 
 	if (jack_insert) {
+		reg63 = snd_soc_read(codec, RT5640_PWR_ANLG1);
+		reg64 = snd_soc_read(codec, RT5640_PWR_ANLG2);
 		if (SND_SOC_BIAS_OFF == codec->dapm.bias_level) {
 			snd_soc_write(codec, RT5640_PWR_ANLG1, 0x2004);
 			snd_soc_write(codec, RT5640_MICBIAS, 0x3830);
-			snd_soc_write(codec, RT5640_DUMMY1 , 0x3701);
+			snd_soc_write(codec, RT5640_GEN_CTRL1 , 0x3701);
 		}
 		sclk_src = snd_soc_read(codec, RT5640_GLB_CLK) &
 			RT5640_SCLK_SRC_MASK;
@@ -463,9 +509,9 @@ int rt5640_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			RT5640_PWR_CLK25M_MASK | RT5640_PWR_MB_MASK,
 			RT5640_MIC1_OVCD_EN | RT5640_MIC1_OVTH_600UA |
 			RT5640_PWR_MB_PU | RT5640_PWR_CLK25M_PU);
-		snd_soc_update_bits(codec, RT5640_DUMMY1,
+		snd_soc_update_bits(codec, RT5640_GEN_CTRL1,
 			0x1, 0x1);
-		msleep(150);
+		msleep(100);
 		if (snd_soc_read(codec, RT5640_IRQ_CTRL2) & 0x8)
 			jack_type = RT5640_HEADPHO_DET;
 		else
@@ -474,6 +520,8 @@ int rt5640_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			RT5640_MB1_OC_CLR, 0);
 		snd_soc_update_bits(codec, RT5640_GLB_CLK,
 			RT5640_SCLK_SRC_MASK, sclk_src);
+		snd_soc_write(codec, RT5640_PWR_ANLG1, reg63);
+		snd_soc_write(codec, RT5640_PWR_ANLG2, reg64);
 	} else {
 		snd_soc_update_bits(codec, RT5640_MICBIAS,
 			RT5640_MIC1_OVCD_MASK,
@@ -1261,23 +1309,224 @@ static int spk_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+#if USE_ONEBIT_DEPOP
+void hp_amp_power(struct snd_soc_codec *codec, int on)
+{
+	static int hp_amp_power_count;
+//	printk("one bit hp_amp_power on=%d hp_amp_power_count=%d\n",on,hp_amp_power_count);
+
+	if (on) {
+		if (hp_amp_power_count <= 0) {
+			/* depop parameters */
+			snd_soc_update_bits(codec, RT5640_DEPOP_M2,
+				RT5640_DEPOP_MASK, RT5640_DEPOP_MAN);
+			snd_soc_update_bits(codec, RT5640_DEPOP_M1,
+				RT5640_HP_CP_MASK | RT5640_HP_SG_MASK | RT5640_HP_CB_MASK,
+				RT5640_HP_CP_PU | RT5640_HP_SG_DIS | RT5640_HP_CB_PU);
+			/* headphone amp power on */
+			snd_soc_update_bits(codec, RT5640_PWR_ANLG1,
+				RT5640_PWR_FV1 | RT5640_PWR_FV2, 0);
+			msleep(5);
+			snd_soc_update_bits(codec, RT5640_PWR_VOL,
+				RT5640_PWR_HV_L | RT5640_PWR_HV_R,
+				RT5640_PWR_HV_L | RT5640_PWR_HV_R);
+			snd_soc_update_bits(codec, RT5640_PWR_ANLG1,
+				RT5640_PWR_HP_L | RT5640_PWR_HP_R | RT5640_PWR_HA,
+				RT5640_PWR_HP_L | RT5640_PWR_HP_R | RT5640_PWR_HA);
+			snd_soc_update_bits(codec, RT5640_PWR_ANLG1,
+				RT5640_PWR_FV1 | RT5640_PWR_FV2 ,
+				RT5640_PWR_FV1 | RT5640_PWR_FV2 );
+		}
+		hp_amp_power_count++;
+	} else {
+		hp_amp_power_count--;
+		if (hp_amp_power_count <= 0) {
+			snd_soc_update_bits(codec, RT5640_DEPOP_M1,
+				RT5640_HP_CB_MASK, RT5640_HP_CB_PD);
+			msleep(30);
+			snd_soc_update_bits(codec, RT5640_PWR_ANLG1,
+				RT5640_PWR_HP_L | RT5640_PWR_HP_R | RT5640_PWR_HA,
+				0);
+			snd_soc_write(codec, RT5640_DEPOP_M2, 0x3100);
+		}
+	}
+}
+
+static void rt5640_pmu_depop(struct snd_soc_codec *codec)
+{
+	hp_amp_power(codec, 1);
+	/* headphone unmute sequence */
+	snd_soc_update_bits(codec, RT5640_DEPOP_M2,
+		RT5640_DEPOP_MASK | RT5640_DIG_DP_MASK,
+		RT5640_DEPOP_AUTO | RT5640_DIG_DP_EN);
+	snd_soc_update_bits(codec, RT5640_CHARGE_PUMP,
+		RT5640_PM_HP_MASK, RT5640_PM_HP_HV);
+	snd_soc_update_bits(codec, RT5640_DEPOP_M3,
+		RT5640_CP_FQ1_MASK | RT5640_CP_FQ2_MASK | RT5640_CP_FQ3_MASK,
+		(RT5640_CP_FQ_192_KHZ << RT5640_CP_FQ1_SFT) |
+		(RT5640_CP_FQ_24_KHZ << RT5640_CP_FQ2_SFT) |
+		(RT5640_CP_FQ_192_KHZ << RT5640_CP_FQ3_SFT));
+	rt5640_index_write(codec, RT5640_MAMP_INT_REG2, 0x1c00);
+	snd_soc_update_bits(codec, RT5640_DEPOP_M1,
+		RT5640_HP_CP_MASK | RT5640_HP_SG_MASK | RT5640_HP_CO_MASK,
+		RT5640_HP_CP_PU | RT5640_HP_SG_DIS | RT5640_HP_CO_EN);
+	msleep(5);
+	snd_soc_update_bits(codec, RT5640_HP_VOL,
+		RT5640_L_MUTE | RT5640_R_MUTE, 0);
+	msleep(65);
+	//snd_soc_update_bits(codec, RT5640_HP_CALIB_AMP_DET,
+	//	RT5640_HPD_PS_MASK, RT5640_HPD_PS_EN);
+}
+
+static void rt5640_pmd_depop(struct snd_soc_codec *codec)
+{
+	snd_soc_update_bits(codec, RT5640_DEPOP_M3,
+		RT5640_CP_FQ1_MASK | RT5640_CP_FQ2_MASK | RT5640_CP_FQ3_MASK,
+		(RT5640_CP_FQ_96_KHZ << RT5640_CP_FQ1_SFT) |
+		(RT5640_CP_FQ_12_KHZ << RT5640_CP_FQ2_SFT) |
+		(RT5640_CP_FQ_96_KHZ << RT5640_CP_FQ3_SFT));
+	rt5640_index_write(codec, RT5640_MAMP_INT_REG2, 0x7c00);
+	//snd_soc_update_bits(codec, RT5640_HP_CALIB_AMP_DET,
+	//	RT5640_HPD_PS_MASK, RT5640_HPD_PS_DIS);
+	snd_soc_update_bits(codec, RT5640_HP_VOL,
+		RT5640_L_MUTE | RT5640_R_MUTE,
+		RT5640_L_MUTE | RT5640_R_MUTE);
+	msleep(50);
+	hp_amp_power(codec, 0);
+}
+
+#else //seq
+void hp_amp_power(struct snd_soc_codec *codec, int on)
+{
+	static int hp_amp_power_count;
+//	printk("hp_amp_power on=%d hp_amp_power_count=%d\n",on,hp_amp_power_count);
+
+	if (on) {
+		if (hp_amp_power_count <= 0) {
+			/* depop parameters */
+			snd_soc_update_bits(codec, RT5640_DEPOP_M2,
+				RT5640_DEPOP_MASK, RT5640_DEPOP_MAN);
+			snd_soc_update_bits(codec, RT5640_DEPOP_M1,
+				RT5640_HP_CP_MASK | RT5640_HP_SG_MASK | RT5640_HP_CB_MASK,
+				RT5640_HP_CP_PU | RT5640_HP_SG_DIS | RT5640_HP_CB_PU);
+			/* headphone amp power on */
+			snd_soc_update_bits(codec, RT5640_PWR_ANLG1,
+				RT5640_PWR_FV1 | RT5640_PWR_FV2 , 0);
+			snd_soc_update_bits(codec, RT5640_PWR_VOL,
+				RT5640_PWR_HV_L | RT5640_PWR_HV_R,
+				RT5640_PWR_HV_L | RT5640_PWR_HV_R);
+			snd_soc_update_bits(codec, RT5640_PWR_ANLG1,
+				RT5640_PWR_HP_L | RT5640_PWR_HP_R | RT5640_PWR_HA | RT5640_PWR_LM,
+				RT5640_PWR_HP_L | RT5640_PWR_HP_R | RT5640_PWR_HA | RT5640_PWR_LM);
+			msleep(50);
+			snd_soc_update_bits(codec, RT5640_PWR_ANLG1,
+				RT5640_PWR_FV1 | RT5640_PWR_FV2,
+				RT5640_PWR_FV1 | RT5640_PWR_FV2);
+			snd_soc_update_bits(codec, RT5640_CHARGE_PUMP,
+				RT5640_PM_HP_MASK, RT5640_PM_HP_HV);
+			snd_soc_update_bits(codec, RT5640_DEPOP_M1,
+				RT5640_HP_CO_MASK | RT5640_HP_SG_MASK,
+				RT5640_HP_CO_EN | RT5640_HP_SG_EN);
+		}
+		hp_amp_power_count++;
+	} else {
+		hp_amp_power_count--;
+		if (hp_amp_power_count <= 0) {
+			snd_soc_update_bits(codec, RT5640_DEPOP_M1,
+				RT5640_HP_SG_MASK | RT5640_HP_L_SMT_MASK |
+				RT5640_HP_R_SMT_MASK, RT5640_HP_SG_DIS |
+				RT5640_HP_L_SMT_DIS | RT5640_HP_R_SMT_DIS);
+			/* headphone amp power down */
+			snd_soc_update_bits(codec, RT5640_DEPOP_M1,
+				RT5640_SMT_TRIG_MASK | RT5640_HP_CD_PD_MASK |
+				RT5640_HP_CO_MASK | RT5640_HP_CP_MASK |
+				RT5640_HP_SG_MASK | RT5640_HP_CB_MASK,
+				RT5640_SMT_TRIG_DIS | RT5640_HP_CD_PD_EN |
+				RT5640_HP_CO_DIS | RT5640_HP_CP_PD |
+				RT5640_HP_SG_EN | RT5640_HP_CB_PD);
+			snd_soc_update_bits(codec, RT5640_PWR_ANLG1,
+				RT5640_PWR_HP_L | RT5640_PWR_HP_R | RT5640_PWR_HA | RT5640_PWR_LM,
+				0);
+		}
+	}
+}
+
+static void rt5640_pmu_depop(struct snd_soc_codec *codec)
+{
+	hp_amp_power(codec, 1);
+	/* headphone unmute sequence */
+	snd_soc_update_bits(codec, RT5640_DEPOP_M3,
+		RT5640_CP_FQ1_MASK | RT5640_CP_FQ2_MASK | RT5640_CP_FQ3_MASK,
+		(RT5640_CP_FQ_192_KHZ << RT5640_CP_FQ1_SFT) |
+		(RT5640_CP_FQ_12_KHZ << RT5640_CP_FQ2_SFT) |
+		(RT5640_CP_FQ_192_KHZ << RT5640_CP_FQ3_SFT));
+	rt5640_index_write(codec, RT5640_MAMP_INT_REG2, 0xfc00);
+	snd_soc_update_bits(codec, RT5640_DEPOP_M1,
+		RT5640_SMT_TRIG_MASK, RT5640_SMT_TRIG_EN);
+	snd_soc_update_bits(codec, RT5640_DEPOP_M1,
+		RT5640_RSTN_MASK, RT5640_RSTN_EN);
+	snd_soc_update_bits(codec, RT5640_DEPOP_M1,
+		RT5640_RSTN_MASK | RT5640_HP_L_SMT_MASK | RT5640_HP_R_SMT_MASK,
+		RT5640_RSTN_DIS | RT5640_HP_L_SMT_EN | RT5640_HP_R_SMT_EN);
+	snd_soc_update_bits(codec, RT5640_HP_VOL,
+		RT5640_L_MUTE | RT5640_R_MUTE, 0);
+	msleep(100);
+	snd_soc_update_bits(codec, RT5640_DEPOP_M1,
+		RT5640_HP_SG_MASK | RT5640_HP_L_SMT_MASK |
+		RT5640_HP_R_SMT_MASK, RT5640_HP_SG_DIS |
+		RT5640_HP_L_SMT_DIS | RT5640_HP_R_SMT_DIS);
+	msleep(20);
+}
+
+static void rt5640_pmd_depop(struct snd_soc_codec *codec)
+{
+	/* headphone mute sequence */
+	snd_soc_update_bits(codec, RT5640_DEPOP_M3,
+		RT5640_CP_FQ1_MASK | RT5640_CP_FQ2_MASK | RT5640_CP_FQ3_MASK,
+		(RT5640_CP_FQ_96_KHZ << RT5640_CP_FQ1_SFT) |
+		(RT5640_CP_FQ_12_KHZ << RT5640_CP_FQ2_SFT) |
+		(RT5640_CP_FQ_96_KHZ << RT5640_CP_FQ3_SFT));
+	rt5640_index_write(codec, RT5640_MAMP_INT_REG2, 0xfc00);
+	snd_soc_update_bits(codec, RT5640_DEPOP_M1,
+		RT5640_HP_SG_MASK, RT5640_HP_SG_EN);
+	snd_soc_update_bits(codec, RT5640_DEPOP_M1,
+		RT5640_RSTP_MASK, RT5640_RSTP_EN);
+	snd_soc_update_bits(codec, RT5640_DEPOP_M1,
+		RT5640_RSTP_MASK | RT5640_HP_L_SMT_MASK |
+		RT5640_HP_R_SMT_MASK, RT5640_RSTP_DIS |
+		RT5640_HP_L_SMT_EN | RT5640_HP_R_SMT_EN);
+	msleep(90);
+	snd_soc_update_bits(codec, RT5640_HP_VOL,
+		RT5640_L_MUTE | RT5640_R_MUTE, RT5640_L_MUTE | RT5640_R_MUTE);
+	msleep(30);
+
+	hp_amp_power(codec, 0);
+}
+#endif
+
 static int hp_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
+	struct snd_soc_codec *codec = w->codec;
+
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		pr_info("hp_event --SND_SOC_DAPM_POST_PMU\n");
+		rt5640_pmu_depop(codec);
 		break;
 
 	case SND_SOC_DAPM_PRE_PMD:
-		pr_info("hp_event --SND_SOC_DAPM_POST_PMD\n");
+		pr_info("hp_event --SND_SOC_DAPM_PRE_PMD\n");
+		rt5640_pmd_depop(codec);
 		break;
 
 	default:
 		return 0;
 	}
+
 	return 0;
 }
+
 
 static int rt5640_set_dmic1_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
@@ -2004,7 +2253,7 @@ static int rt5640_hw_params(struct snd_pcm_substream *substream,
 		mutex_unlock(&rt5640->lock);
 		return -EINVAL;
 	}
-	bclk_ms = frame_size > 32 ? 1 : 0;
+	bclk_ms = frame_size >= 32 ? 1 : 0;
 	rt5640->bclk[dai->id] = rt5640->lrck[dai->id] * (32 << bclk_ms);
 
 	dev_dbg(dai->dev, "bclk is %dHz and lrck is %dHz\n",
@@ -2429,10 +2678,11 @@ static int rt5640_set_bias_level(struct snd_soc_codec *codec,
 				RT5640_PWR_BG | RT5640_PWR_VREF2,
 				RT5640_PWR_VREF1 | RT5640_PWR_MB |
 				RT5640_PWR_BG | RT5640_PWR_VREF2);
-			msleep(10);
+			msleep(5);
 			snd_soc_update_bits(codec, RT5640_PWR_ANLG1,
 				RT5640_PWR_FV1 | RT5640_PWR_FV2,
 				RT5640_PWR_FV1 | RT5640_PWR_FV2);
+			snd_soc_write(codec, RT5640_GEN_CTRL1, 0x3701);
 			codec->cache_only = false;
 			codec->cache_sync = 1;
 			snd_soc_cache_sync(codec);
@@ -2451,6 +2701,9 @@ static int rt5640_set_bias_level(struct snd_soc_codec *codec,
 		snd_soc_update_bits(codec, RT5640_MONO_OUT,
 			RT5640_L_MUTE, RT5640_L_MUTE);
 #endif
+		snd_soc_write(codec, RT5640_DEPOP_M1, 0x0004);
+		snd_soc_write(codec, RT5640_DEPOP_M2, 0x1100);
+		snd_soc_write(codec, RT5640_GEN_CTRL1, 0x3700);
 		snd_soc_write(codec, RT5640_PWR_DIG1, 0x0000);
 		snd_soc_write(codec, RT5640_PWR_DIG2, 0x0000);
 		snd_soc_write(codec, RT5640_PWR_VOL, 0x0000);
@@ -2499,7 +2752,7 @@ static int rt5640_probe(struct snd_soc_codec *codec)
 		RT5640_PWR_BG | RT5640_PWR_VREF2,
 		RT5640_PWR_VREF1 | RT5640_PWR_MB |
 		RT5640_PWR_BG | RT5640_PWR_VREF2);
-	msleep(100);
+	msleep(10);
 	snd_soc_update_bits(codec, RT5640_PWR_ANLG1,
 		RT5640_PWR_FV1 | RT5640_PWR_FV2,
 		RT5640_PWR_FV1 | RT5640_PWR_FV2);
@@ -2525,6 +2778,8 @@ static int rt5640_probe(struct snd_soc_codec *codec)
 #if defined(CONFIG_SND_SOC_RT5642_MODULE) || defined(CONFIG_SND_SOC_RT5642)
 	rt5640_register_dsp(codec);
 #endif
+
+	DC_Calibrate(codec);
 
 	codec->dapm.bias_level = SND_SOC_BIAS_STANDBY;
 

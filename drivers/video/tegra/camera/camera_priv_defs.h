@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/camera/camera_priv_defs.h
  *
- * Copyright (C) 2013 Nvidia Corp
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -53,19 +53,25 @@ enum {
 	CAMERA_ISP_CLK,
 	CAMERA_CSUS_CLK,
 	CAMERA_CSI_CLK,
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	CAMERA_CILAB_CLK,
 	CAMERA_CILCD_CLK,
 	CAMERA_CILE_CLK,
 	CAMERA_PLL_D2_CLK,
 #endif
+	CAMERA_SCLK,
 	CAMERA_CLK_MAX,
+};
+
+struct clock {
+	struct clk *clk;
+	bool on;
 };
 
 struct tegra_camera {
 	struct device *dev;
 	struct miscdevice misc_dev;
-	struct clk *clk[CAMERA_CLK_MAX];
+	struct clock clock[CAMERA_CLK_MAX];
 	struct regulator *reg;
 	struct tegra_camera_clk_info info;
 	struct mutex tegra_camera_lock;
@@ -76,9 +82,18 @@ struct tegra_camera {
 #endif
 };
 
-struct camera_clk {
+/*
+ * index: clock enum value
+ * name:  clock name
+ * init:  default clock state when camera is opened.
+ * freq:  initial clock frequency to set when camera is opened. If it is 0,
+ *        then no need to set clock freq.
+ */
+struct clock_data {
 	int index;
 	char *name;
+	bool init;
+	unsigned long freq;
 };
 
 struct tegra_camera *tegra_camera_register(struct platform_device *ndev);

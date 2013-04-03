@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-dalmore-sensors.c
  *
- * Copyright (c) 2012 NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2012-2013 NVIDIA CORPORATION, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -65,25 +65,64 @@ static struct nvc_gpio_pdata imx091_gpio_pdata[] = {
 static struct board_info board_info;
 
 static struct throttle_table tj_throttle_table[] = {
-	{      0, 1000 },
-	{  51000, 1000 },
-	{ 102000, 1000 },
-	{ 204000, 1000 },
-	{ 252000, 1000 },
-	{ 288000, 1000 },
-	{ 372000, 1000 },
-	{ 468000, 1000 },
-	{ 510000, 1000 },
-	{ 612000, 1000 },
-	{ 714000, 1050 },
-	{ 816000, 1050 },
-	{ 918000, 1050 },
-	{1020000, 1100 },
-	{1122000, 1100 },
-	{1224000, 1100 },
-	{1326000, 1100 },
-	{1428000, 1100 },
-	{1530000, 1100 },
+	/* CPU_THROT_LOW cannot be used by other than CPU */
+	/*      CPU,  C2BUS,  C3BUS,   SCLK,    EMC   */
+	{ { 1810500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1785000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1759500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1734000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1708500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1683000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1657500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1632000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1606500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1581000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1555500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1530000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1504500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1479000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1453500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1428000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1402500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1377000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1351500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1326000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1300500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1275000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1249500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1224000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1198500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1173000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1147500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1122000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1096500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1071000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1045500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1020000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  994500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  969000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  943500, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  918000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  892500, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  867000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  841500, 564000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  816000, 564000, NO_CAP, NO_CAP, 792000 } },
+	{ {  790500, 564000, NO_CAP, 372000, 792000 } },
+	{ {  765000, 564000, 468000, 372000, 792000 } },
+	{ {  739500, 528000, 468000, 372000, 792000 } },
+	{ {  714000, 528000, 468000, 336000, 792000 } },
+	{ {  688500, 528000, 420000, 336000, 792000 } },
+	{ {  663000, 492000, 420000, 336000, 792000 } },
+	{ {  637500, 492000, 420000, 336000, 408000 } },
+	{ {  612000, 492000, 420000, 300000, 408000 } },
+	{ {  586500, 492000, 360000, 336000, 408000 } },
+	{ {  561000, 420000, 420000, 300000, 408000 } },
+	{ {  535500, 420000, 360000, 228000, 408000 } },
+	{ {  510000, 420000, 288000, 228000, 408000 } },
+	{ {  484500, 324000, 288000, 228000, 408000 } },
+	{ {  459000, 324000, 288000, 228000, 408000 } },
+	{ {  433500, 324000, 288000, 228000, 408000 } },
+	{ {  408000, 324000, 288000, 228000, 408000 } },
 };
 
 static struct balanced_throttle tj_throttle = {
@@ -102,22 +141,19 @@ module_init(dalmore_throttle_init);
 static struct nct1008_platform_data dalmore_nct1008_pdata = {
 	.supported_hwrev = true,
 	.ext_range = true,
-	.conv_rate = 0x08,
-	.offset = 0,
-	.shutdown_ext_limit = 85, /* C */
+	.conv_rate = 0x06, /* 4Hz conversion rate */
+	.shutdown_ext_limit = 105, /* C */
 	.shutdown_local_limit = 120, /* C */
-
-	.passive_delay = 2000,
 
 	.num_trips = 1,
 	.trips = {
-		/* Thermal Throttling */
-		[0] = {
-			.cdev_type = "tegra-balanced",
-			.trip_temp = 75000,
-			.trip_type = THERMAL_TRIP_PASSIVE,
-			.state = THERMAL_NO_LIMIT,
-			.hysteresis = 0,
+		{
+			.cdev_type = "suspend_soctherm",
+			.trip_temp = 50000,
+			.trip_type = THERMAL_TRIP_ACTIVE,
+			.upper = 1,
+			.lower = 1,
+			.hysteresis = 5000,
 		},
 	},
 };
@@ -285,7 +321,7 @@ static struct nvc_imager_cap imx091_cap = {
 	.initial_clock_rate_khz	= 6000,
 	.clock_profiles[0] = {
 		.external_clock_khz	= 24000,
-		.clock_multiplier	= 10416667, /* value / 1,000,000 */
+		.clock_multiplier	= 850000, /* value / 1,000,000 */
 	},
 	.clock_profiles[1] = {
 		.external_clock_khz	= 0,
@@ -485,21 +521,6 @@ static int dalmore_camera_init(void)
 	return 0;
 }
 
-/* MPU board file definition	*/
-static struct mpu_platform_data mpu9150_gyro_data = {
-	.int_config	= 0x10,
-	.level_shifter	= 0,
-	/* Located in board_[platformname].h */
-	.orientation	= MPU_GYRO_ORIENTATION,
-	.sec_slave_type	= SECONDARY_SLAVE_TYPE_COMPASS,
-	.sec_slave_id	= COMPASS_ID_AK8975,
-	.secondary_i2c_addr	= MPU_COMPASS_ADDR,
-	.secondary_read_reg	= 0x06,
-	.secondary_orientation	= MPU_COMPASS_ORIENTATION,
-	.key		= {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
-			   0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
-};
-
 #define TEGRA_CAMERA_GPIO(_gpio, _label, _value)		\
 	{							\
 		.gpio = _gpio,					\
@@ -513,10 +534,44 @@ static struct i2c_board_info dalmore_i2c_board_info_cm3218[] = {
 	},
 };
 
+/* MPU board file definition	*/
+static struct mpu_platform_data mpu9150_gyro_data = {
+	.int_config	= 0x10,
+	.level_shifter	= 0,
+	/* Located in board_[platformname].h */
+	.orientation	= MPU_GYRO_ORIENTATION,
+	.sec_slave_type	= SECONDARY_SLAVE_TYPE_NONE,
+	.key		= {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
+			   0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
+};
+
+static struct mpu_platform_data mpu_compass_data = {
+	.orientation	= MPU_COMPASS_ORIENTATION,
+	.config		= NVI_CONFIG_BOOT_MPU,
+};
+
+static struct mpu_platform_data bmp180_pdata = {
+	.config		= NVI_CONFIG_BOOT_MPU,
+};
+
 static struct i2c_board_info __initdata inv_mpu9150_i2c2_board_info[] = {
 	{
 		I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
 		.platform_data = &mpu9150_gyro_data,
+	},
+	{
+		/* The actual BMP180 address is 0x77 but because this conflicts
+		 * with another device, this address is hacked so Linux will
+		 * call the driver.  The conflict is technically okay since the
+		 * BMP180 is behind the MPU.  Also, the BMP180 driver uses a
+		 * hard-coded address of 0x77 since it can't be changed anyway.
+		 */
+		I2C_BOARD_INFO("bmp180", 0x78),
+		.platform_data = &bmp180_pdata,
+	},
+	{
+		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
+		.platform_data = &mpu_compass_data,
 	},
 };
 
@@ -573,8 +628,6 @@ static int dalmore_nct1008_init(void)
 			board_info.board_id);
 	}
 
-	tegra_platform_edp_init(dalmore_nct1008_pdata.trips,
-				&dalmore_nct1008_pdata.num_trips);
 	tegra_add_cdev_trips(dalmore_nct1008_pdata.trips,
 				&dalmore_nct1008_pdata.num_trips);
 
@@ -607,81 +660,116 @@ static struct i2c_board_info __initdata bq20z45_pdata[] = {
 };
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
-static int tegra_skin_match(struct thermal_zone_device *thz, void *data)
-{
-	return strcmp((char *)data, thz->type) == 0;
-}
+static struct thermal_trip_info skin_trips[] = {
+	{
+		.cdev_type = "skin-balanced",
+		.trip_temp = 45000,
+		.trip_type = THERMAL_TRIP_PASSIVE,
+		.upper = THERMAL_NO_LIMIT,
+		.lower = THERMAL_NO_LIMIT,
+		.hysteresis = 0,
+	},
+};
 
-static int tegra_skin_get_temp(void *data, long *temp)
-{
-	struct thermal_zone_device *thz;
-
-	thz = thermal_zone_device_find(data, tegra_skin_match);
-
-	if (!thz || thz->ops->get_temp(thz, temp))
-		*temp = 25000;
-
-	return 0;
-}
+static struct therm_est_subdevice skin_devs[] = {
+	{
+		.dev_data = "nct_ext",
+		.coeffs = {
+			2, 1, 1, 1,
+			1, 1, 1, 1,
+			1, 1, 1, 0,
+			1, 1, 0, 0,
+			0, 0, -1, -7
+		},
+	},
+	{
+		.dev_data = "nct_int",
+		.coeffs = {
+			-11, -7, -5, -3,
+			-3, -2, -1, 0,
+			0, 0, 1, 1,
+			1, 2, 2, 3,
+			4, 6, 11, 18
+		},
+	},
+};
 
 static struct therm_est_data skin_data = {
-	.cdev_type = "skin-balanced",
+	.num_trips = ARRAY_SIZE(skin_trips),
+	.trips = skin_trips,
 	.toffset = 9793,
 	.polling_period = 1100,
-	.ndevs = 2,
-	.tc1 = 5,
+	.passive_delay = 15000,
+	.tc1 = 10,
 	.tc2 = 1,
-	.devs = {
-			{
-				.dev_data = "nct_ext",
-				.get_temp = tegra_skin_get_temp,
-				.coeffs = {
-					2, 1, 1, 1,
-					1, 1, 1, 1,
-					1, 1, 1, 0,
-					1, 1, 0, 0,
-					0, 0, -1, -7
-				},
-			},
-			{
-				.dev_data = "nct_int",
-				.get_temp = tegra_skin_get_temp,
-				.coeffs = {
-					-11, -7, -5, -3,
-					-3, -2, -1, 0,
-					0, 0, 1, 1,
-					1, 2, 2, 3,
-					4, 6, 11, 18
-				},
-			},
-	},
-	.trip_temp = 43000,
-	.passive_delay = 5000,
+	.ndevs = ARRAY_SIZE(skin_devs),
+	.devs = skin_devs,
+};
+
+static struct throttle_table skin_throttle_table[] = {
+	/* CPU_THROT_LOW cannot be used by other than CPU */
+	/*      CPU,  C2BUS,  C3BUS,   SCLK,    EMC   */
+	{ { 1810500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1785000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1759500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1734000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1708500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1683000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1657500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1632000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1606500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1581000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1555500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1530000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1504500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1479000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1453500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1428000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1402500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1377000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1351500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1326000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1300500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1275000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1249500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1224000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1198500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1173000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1147500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1122000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1096500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1071000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1045500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1020000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  994500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  969000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  943500, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  918000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  892500, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  867000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  841500, 564000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  816000, 564000, NO_CAP, NO_CAP, 792000 } },
+	{ {  790500, 564000, NO_CAP, 372000, 792000 } },
+	{ {  765000, 564000, 468000, 372000, 792000 } },
+	{ {  739500, 528000, 468000, 372000, 792000 } },
+	{ {  714000, 528000, 468000, 336000, 792000 } },
+	{ {  688500, 528000, 420000, 336000, 792000 } },
+	{ {  663000, 492000, 420000, 336000, 792000 } },
+	{ {  637500, 492000, 420000, 336000, 408000 } },
+	{ {  612000, 492000, 420000, 300000, 408000 } },
+	{ {  586500, 492000, 360000, 336000, 408000 } },
+	{ {  561000, 420000, 420000, 300000, 408000 } },
+	{ {  535500, 420000, 360000, 228000, 408000 } },
+	{ {  510000, 420000, 288000, 228000, 408000 } },
+	{ {  484500, 324000, 288000, 228000, 408000 } },
+	{ {  459000, 324000, 288000, 228000, 408000 } },
+	{ {  433500, 324000, 288000, 228000, 408000 } },
+	{ {  408000, 324000, 288000, 228000, 408000 } },
 };
 
 static struct balanced_throttle skin_throttle = {
-	.throt_tab_size = 19,
-	.throt_tab = {
-		{      0, 1000 },
-		{  51000, 1000 },
-		{ 102000, 1000 },
-		{ 204000, 1000 },
-		{ 252000, 1000 },
-		{ 288000, 1000 },
-		{ 372000, 1000 },
-		{ 468000, 1000 },
-		{ 510000, 1000 },
-		{ 612000, 1000 },
-		{ 714000, 1050 },
-		{ 816000, 1050 },
-		{ 918000, 1050 },
-		{1020000, 1100 },
-		{1122000, 1100 },
-		{1224000, 1100 },
-		{1326000, 1100 },
-		{1428000, 1100 },
-		{1530000, 1100 },
-	},
+	.throt_tab_size = ARRAY_SIZE(skin_throttle_table),
+	.throt_tab = skin_throttle_table,
 };
 
 static int __init dalmore_skin_init(void)

@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/include/mach/pm.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -58,6 +58,7 @@ struct tegra_suspend_platform_data {
 	unsigned long core_off_timer;	/* core power off time ticks, LP0 */
 	bool corereq_high;         /* Core power request active-high */
 	bool sysclkreq_high;       /* System clock request is active-high */
+	bool sysclkreq_gpio;       /* if System clock request is set to gpio */
 	bool combined_req;         /* if core & CPU power requests are combined */
 	enum tegra_suspend_mode suspend_mode;
 	unsigned long cpu_lp2_min_residency; /* Min LP2 state residency in us */
@@ -65,7 +66,7 @@ struct tegra_suspend_platform_data {
 	/* lp_state = 0 for LP0 state, 1 for LP1 state, 2 for LP2 state */
 	void (*board_resume)(int lp_state, enum resume_stage stg);
 	unsigned int cpu_resume_boost;	/* CPU frequency resume boost in kHz */
-#ifdef CONFIG_TEGRA_LP1_950
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
 	bool lp1_lowvolt_support;
 	unsigned int i2c_base_addr;
 	unsigned int pmuslave_addr;
@@ -74,7 +75,9 @@ struct tegra_suspend_platform_data {
 	unsigned int lp1_core_volt_high;
 #endif
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
-	unsigned long min_residency_noncpu;
+	unsigned long min_residency_vmin_fmin;
+	unsigned long min_residency_ncpu_slow;
+	unsigned long min_residency_ncpu_fast;
 	unsigned long min_residency_crail;
 #endif
 };
@@ -86,16 +89,14 @@ unsigned long tegra_cpu_power_good_time(void);
 unsigned long tegra_cpu_power_off_time(void);
 unsigned long tegra_cpu_lp2_min_residency(void);
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
-unsigned long tegra_min_residency_noncpu(void);
+unsigned long tegra_min_residency_vmin_fmin(void);
+unsigned long tegra_min_residency_ncpu(void);
 unsigned long tegra_min_residency_crail(void);
 #endif
 void tegra_clear_cpu_in_pd(int cpu);
 bool tegra_set_cpu_in_pd(int cpu);
 
 int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags);
-
-#define FLOW_CTRL_CLUSTER_CONTROL \
-	(IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + 0x2c)
 
 #define FLOW_CTRL_CPU_PWR_CSR \
 	(IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + 0x38)
@@ -149,8 +150,12 @@ static inline bool is_g_cluster_present(void)
 static inline unsigned int is_lp_cluster(void)
 {
 	unsigned int reg;
-	reg = readl(FLOW_CTRL_CLUSTER_CONTROL);
-	return (reg & 1); /* 0 == G, 1 == LP*/
+	asm("mrc	p15, 0, %0, c0, c0, 5\n"
+	    "ubfx	%0, %0, #8, #4"
+	    : "=r" (reg)
+	    :
+	    : "cc","memory");
+	return reg ; /* 0 == G, 1 == LP*/
 }
 int tegra_cluster_control(unsigned int us, unsigned int flags);
 void tegra_cluster_switch_prolog(unsigned int flags);

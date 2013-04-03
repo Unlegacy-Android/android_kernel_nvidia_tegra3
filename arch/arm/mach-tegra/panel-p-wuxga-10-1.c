@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/panel-p-wuxga-10-1.c
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -26,6 +26,7 @@
 #include <linux/max8831_backlight.h>
 #include <linux/leds.h>
 #include <linux/ioport.h>
+#include <generated/mach-types.h>
 #include "board.h"
 #include "board-panel.h"
 #include "devices.h"
@@ -35,7 +36,8 @@
 #define TEGRA_DSI_GANGED_MODE	0
 
 #define DSI_PANEL_RESET		1
-#define DSI_PANEL_RST_GPIO	TEGRA_GPIO_PH3
+#define DSI_PANEL_DALMORE_RST_GPIO	TEGRA_GPIO_PH3
+#define DSI_PANEL_MACALLAN_RST_GPIO	TEGRA_GPIO_PH5
 #define DSI_PANEL_BL_PWM	TEGRA_GPIO_PH1
 
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
@@ -46,6 +48,7 @@
 
 static bool reg_requested;
 static bool gpio_requested;
+static int gpio_lcd_rst;
 static struct platform_device *disp_device;
 static struct regulator *avdd_lcd_3v3;
 static struct regulator *vdd_lcd_bl;
@@ -187,7 +190,62 @@ static int dalmore_dsi_gpio_get(void)
 	if (gpio_requested)
 		return 0;
 
-	err = gpio_request(DSI_PANEL_RST_GPIO, "panel rst");
+	gpio_lcd_rst = DSI_PANEL_DALMORE_RST_GPIO;
+	err = gpio_request(gpio_lcd_rst, "panel rst");
+	if (err < 0) {
+		pr_err("panel reset gpio request failed\n");
+		goto fail;
+	}
+
+	/* free pwm GPIO */
+	err = gpio_request(DSI_PANEL_BL_PWM, "panel pwm");
+	if (err < 0) {
+		pr_err("panel pwm gpio request failed\n");
+		goto fail;
+	}
+	gpio_free(DSI_PANEL_BL_PWM);
+	gpio_requested = true;
+	return 0;
+fail:
+	return err;
+}
+
+static int macallan_dsi_regulator_get(struct device *dev)
+{
+	int err = 0;
+
+	if (reg_requested)
+		return 0;
+	avdd_lcd_3v3 = regulator_get(dev, "avdd_lcd");
+	if (IS_ERR_OR_NULL(avdd_lcd_3v3)) {
+		pr_err("avdd_lcd regulator get failed\n");
+		err = PTR_ERR(avdd_lcd_3v3);
+		avdd_lcd_3v3 = NULL;
+		goto fail;
+	}
+
+	vdd_lcd_bl_en = regulator_get(dev, "vdd_lcd_bl_en");
+	if (IS_ERR_OR_NULL(vdd_lcd_bl_en)) {
+		pr_err("vdd_lcd_bl_en regulator get failed\n");
+		err = PTR_ERR(vdd_lcd_bl_en);
+		vdd_lcd_bl_en = NULL;
+		goto fail;
+	}
+	reg_requested = true;
+	return 0;
+fail:
+	return err;
+}
+
+static int macallan_dsi_gpio_get(void)
+{
+	int err = 0;
+
+	if (gpio_requested)
+		return 0;
+
+	gpio_lcd_rst = DSI_PANEL_MACALLAN_RST_GPIO;
+	err = gpio_request(gpio_lcd_rst, "panel rst");
 	if (err < 0) {
 		pr_err("panel reset gpio request failed\n");
 		goto fail;
@@ -210,12 +268,18 @@ static int dsi_p_wuxga_10_1_enable(struct device *dev)
 {
 	int err = 0;
 
-	err = dalmore_dsi_regulator_get(dev);
+	if (machine_is_dalmore())
+		err = dalmore_dsi_regulator_get(dev);
+	else if (machine_is_macallan())
+		err = macallan_dsi_regulator_get(dev);
 	if (err < 0) {
 		pr_err("dsi regulator get failed\n");
 		goto fail;
 	}
-	err = dalmore_dsi_gpio_get();
+	if (machine_is_dalmore())
+		err = dalmore_dsi_gpio_get();
+	else if (machine_is_macallan())
+		err = macallan_dsi_gpio_get();
 	if (err < 0) {
 		pr_err("dsi gpio request failed\n");
 		goto fail;
@@ -263,12 +327,12 @@ static int dsi_p_wuxga_10_1_enable(struct device *dev)
 
 	msleep(100);
 #if DSI_PANEL_RESET
-	gpio_direction_output(DSI_PANEL_RST_GPIO, 1);
+	gpio_direction_output(gpio_lcd_rst, 1);
 	usleep_range(1000, 5000);
-	gpio_set_value(DSI_PANEL_RST_GPIO, 0);
+	gpio_set_value(gpio_lcd_rst, 0);
 	msleep(150);
-	gpio_set_value(DSI_PANEL_RST_GPIO, 1);
-	msleep(1500);
+	gpio_set_value(gpio_lcd_rst, 1);
+	msleep(20);
 #endif
 
 	return 0;
@@ -507,6 +571,11 @@ static int dsi_p_wuxga_10_1_check_fb(struct device *dev, struct fb_info *info)
 	return info->device == &disp_device->dev;
 }
 
+static int dsi_p_wuxga_10_1_display_init(struct device *dev)
+{
+	return atomic_read(&display_ready);
+}
+
 static struct platform_pwm_backlight_data dsi_p_wuxga_10_1_bl_data = {
 	.pwm_id		= 1,
 	.max_brightness	= 255,
@@ -515,6 +584,7 @@ static struct platform_pwm_backlight_data dsi_p_wuxga_10_1_bl_data = {
 	.notify		= dsi_p_wuxga_10_1_bl_notify,
 	/* Only toggle backlight on fb blank notifications for disp1 */
 	.check_fb	= dsi_p_wuxga_10_1_check_fb,
+	.init = dsi_p_wuxga_10_1_display_init,
 };
 
 static struct platform_device __maybe_unused
@@ -545,9 +615,9 @@ static int  __init dsi_p_wuxga_10_1_register_bl_dev(void)
 }
 
 static void dsi_p_wuxga_10_1_set_disp_device(
-	struct platform_device *dalmore_display_device)
+	struct platform_device *display_device)
 {
-	disp_device = dalmore_display_device;
+	disp_device = display_device;
 }
 
 static void dsi_p_wuxga_10_1_resources_init(struct resource *

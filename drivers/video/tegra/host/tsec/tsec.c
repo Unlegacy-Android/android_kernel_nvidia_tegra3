@@ -3,7 +3,7 @@
  *
  * Tegra TSEC Module Support
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -21,6 +21,7 @@
 #include <linux/slab.h>         /* for kzalloc */
 #include <linux/firmware.h>
 #include <linux/module.h>
+#include <linux/pm_runtime.h>
 #include <mach/clk.h>
 #include <asm/byteorder.h>      /* for parsing ucode image wrt endianness */
 #include <linux/delay.h>	/* for udelay */
@@ -227,12 +228,19 @@ static int tsec_load_kfuse(struct platform_device *pdev)
 		u32 w = nvhost_device_readl(pdev, tsec_scp_ctl_pkey_r());
 
 		if (w & tsec_scp_ctl_pkey_loaded_m())
-			return 0;
+			break;
 		udelay(TSEC_IDLE_CHECK_PERIOD);
 		timeout -= check;
 	} while (timeout);
 
-	return -1;
+	val = nvhost_device_readl(pdev, tsec_tegra_ctl_r());
+	val |= tsec_tegra_ctl_tkfi_kfuse_m();
+	nvhost_device_writel(pdev, tsec_tegra_ctl_r(), val);
+
+	if (timeout)
+		return 0;
+	else
+		return -1;
 }
 
 int tsec_boot(struct platform_device *dev)
@@ -421,12 +429,18 @@ int tsec_read_ucode(struct platform_device *dev, const char *fw_name)
 	return 0;
 
 clean_up:
-	if (m->mapped)
+	if (m->mapped) {
 		mem_op().munmap(m->mem_r, m->mapped);
-	if (m->pa)
+		m->mapped = NULL;
+	}
+	if (m->pa) {
 		mem_op().unpin(nvhost_get_host(dev)->memmgr, m->mem_r, m->pa);
-	if (m->mem_r)
+		m->pa = NULL;
+	}
+	if (m->mem_r) {
 		mem_op().put(nvhost_get_host(dev)->memmgr, m->mem_r);
+		m->mem_r = NULL;
+	}
 	release_firmware(ucode_fw);
 	return err;
 }
@@ -467,9 +481,8 @@ void nvhost_tsec_init(struct platform_device *dev)
 	nvhost_module_idle(dev);
 	return;
 
- clean_up:
+clean_up:
 	dev_err(&dev->dev, "failed");
-	mem_op().unpin(nvhost_get_host(dev)->memmgr, m->mem_r, m->pa);
 }
 
 void nvhost_tsec_deinit(struct platform_device *dev)
@@ -480,9 +493,13 @@ void nvhost_tsec_deinit(struct platform_device *dev)
 
 	/* unpin, free ucode memory */
 	if (m->mem_r) {
-		mem_op().munmap(m->mem_r, m->mapped);
-		mem_op().unpin(nvhost_get_host(dev)->memmgr, m->mem_r, m->pa);
-		mem_op().put(nvhost_get_host(dev)->memmgr, m->mem_r);
+		if (m->mapped)
+			mem_op().munmap(m->mem_r, m->mapped);
+		if (m->pa)
+			mem_op().unpin(nvhost_get_host(dev)->memmgr, m->mem_r,
+				m->pa);
+		if (m->mem_r)
+			mem_op().put(nvhost_get_host(dev)->memmgr, m->mem_r);
 		m->mem_r = 0;
 	}
 }
@@ -522,6 +539,11 @@ static int __devinit tsec_probe(struct platform_device *dev)
 	udelay(10);
 	tegra_periph_reset_deassert(pdata->clk[0]);
 	clk_disable(pdata->clk[0]);
+
+	pm_runtime_use_autosuspend(&dev->dev);
+	pm_runtime_set_autosuspend_delay(&dev->dev, 100);
+	pm_runtime_enable(&dev->dev);
+
 	nvhost_module_idle(to_platform_device(dev->dev.parent));
 	return err;
 }

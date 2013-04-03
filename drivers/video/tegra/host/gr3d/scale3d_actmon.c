@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host 3D clock scaling
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -35,6 +35,7 @@
 #include <linux/clk.h>
 #include <linux/export.h>
 #include <linux/slab.h>
+#include <linux/platform_data/tegra_edp.h>
 
 #include <chip_support.h>
 #include <host1x/host1x.h>
@@ -156,7 +157,7 @@ void nvhost_scale3d_actmon_notify_busy(struct platform_device *dev)
 static int nvhost_scale3d_target(struct device *d, unsigned long *freq,
 				u32 flags)
 {
-	unsigned long hz;
+	long hz;
 	long after;
 
 	/* Inform that the clock is disabled */
@@ -190,6 +191,7 @@ static int nvhost_scale3d_target(struct device *d, unsigned long *freq,
 	hz -= (power_profile.emc_dip_slope *
 		POW2(after / 1000 - power_profile.emc_xmid) +
 		power_profile.emc_dip_offset);
+	hz = (hz < 0) ? 0 : hz;
 	nvhost_module_set_devfreq_rate(power_profile.dev,
 				clk_to_idx(power_profile.clk_3d_emc), hz);
 
@@ -237,6 +239,8 @@ static int nvhost_scale3d_get_dev_status(struct device *d,
 	power_profile.dev_stat->total_time = 0;
 	power_profile.dev_stat->busy_time = 0;
 	power_profile.last_event_type = DEVICE_UNKNOWN;
+
+	tegra_edp_notify_gpu_load(avg);
 
 	return 0;
 }

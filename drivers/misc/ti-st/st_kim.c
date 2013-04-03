@@ -527,6 +527,9 @@ long st_kim_stop(void *kim_data)
 			msecs_to_jiffies(LDISC_TIME));
 	if (!err) {		/* timeout */
 		pr_err(" timed out waiting for ldisc to be un-installed");
+		wake_unlock(&kim_gdata->core_data->st_wk_lock);
+		gpio_set_value(kim_gdata->nshutdown, GPIO_LOW);
+		mdelay(1);
 		return -ETIMEDOUT;
 	}
 
@@ -722,6 +725,8 @@ static int kim_probe(struct platform_device *pdev)
 	status = st_core_init(&kim_gdata->core_data);
 	if (status != 0) {
 		pr_err(" ST core init failed");
+		kfree(kim_gdata);
+		kim_gdata = NULL;
 		return -EIO;
 	}
 	/* refer to itself */
@@ -734,14 +739,14 @@ static int kim_probe(struct platform_device *pdev)
 	status = gpio_request(kim_gdata->nshutdown, "kim");
 	if (unlikely(status)) {
 		pr_err(" gpio %ld request failed ", kim_gdata->nshutdown);
-		return status;
+		goto fail_gpio_request;
 	}
 
 	/* Configure nShutdown GPIO as output=0 */
 	status = gpio_direction_output(kim_gdata->nshutdown, 0);
 	if (unlikely(status)) {
 		pr_err(" unable to configure gpio %ld", kim_gdata->nshutdown);
-		return status;
+		goto fail_gpio_direction;
 	}
 	/* get reference of pdev for request_firmware
 	 */
@@ -752,7 +757,7 @@ static int kim_probe(struct platform_device *pdev)
 	status = sysfs_create_group(&pdev->dev.kobj, &uim_attr_grp);
 	if (status) {
 		pr_err("failed to create sysfs entries");
-		return status;
+		goto fail_sysfs;
 	}
 
 	/* copying platform data */
@@ -765,6 +770,7 @@ static int kim_probe(struct platform_device *pdev)
 	if (IS_ERR(kim_debugfs_dir)) {
 		pr_err(" debugfs entries creation failed ");
 		kim_debugfs_dir = NULL;
+		sysfs_remove_group(&pdev->dev.kobj, &uim_attr_grp);
 		return -EIO;
 	}
 
@@ -774,6 +780,15 @@ static int kim_probe(struct platform_device *pdev)
 				kim_gdata, &list_debugfs_fops);
 	pr_info(" debugfs entries created ");
 	return 0;
+
+fail_sysfs:
+fail_gpio_direction:
+	gpio_free(pdata->nshutdown_gpio);
+fail_gpio_request:
+	wake_lock_destroy(&kim_gdata->core_data->st_wk_lock);
+	kfree(kim_gdata);
+	kim_gdata = NULL;
+	return status;
 }
 
 static int kim_remove(struct platform_device *pdev)

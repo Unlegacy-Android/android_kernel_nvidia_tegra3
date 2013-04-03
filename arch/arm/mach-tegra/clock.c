@@ -5,7 +5,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (C) 2010-2012 NVIDIA Corporation
+ * Copyright (c) 2019-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -672,6 +672,15 @@ static int tegra_clk_init_one_from_table(struct tegra_clk_init_table *table)
 		return -ENODEV;
 	}
 
+	if (table->enabled) {
+		ret = tegra_clk_prepare_enable(c);
+		if (ret) {
+			pr_warning("Unable to enable clock %s: %d\n",
+				table->name, ret);
+			return -EINVAL;
+		}
+	}
+
 	if (table->parent) {
 		p = tegra_get_clock_by_name(table->parent);
 		if (!p) {
@@ -707,16 +716,82 @@ static int tegra_clk_init_one_from_table(struct tegra_clk_init_table *table)
 		}
 	}
 
-	if (table->enabled) {
-		ret = tegra_clk_prepare_enable(c);
-		if (ret) {
-			pr_warning("Unable to enable clock %s: %d\n",
-				table->name, ret);
-			return -EINVAL;
+	return 0;
+}
+
+/*
+ * If table refer pll directly it can be scaled only if all its children are OFF
+ */
+static bool tegra_can_scale_pll_direct(struct clk *pll)
+{
+	bool can_scale = true;
+	struct clk *c;
+
+	mutex_lock(&clock_list_lock);
+
+	list_for_each_entry(c, &clocks, node) {
+		if ((clk_get_parent(c) == pll) && (c->state == ON)) {
+			WARN(1, "tegra: failed initialize %s: in use by %s\n",
+			     pll->name, c->name);
+			can_scale = false;
+			break;
 		}
 	}
+	mutex_unlock(&clock_list_lock);
+	return can_scale;
+}
 
-	return 0;
+/*
+ * If table entry refer pll as cbus parent it can be scaled as long as all its
+ * children are cbus users (that will be switched to cbus backup during scaling)
+ */
+static bool tegra_can_scale_pll_cbus(struct clk *pll)
+{
+	bool can_scale = true;
+	struct clk *c;
+
+	mutex_lock(&clock_list_lock);
+
+	list_for_each_entry(c, &clocks, node) {
+		if ((clk_get_parent(c) == pll) &&
+		    !(c->flags & PERIPH_ON_CBUS)) {
+			WARN(1, "tegra: failed initialize %s: in use by %s\n",
+			     pll->name, c->name);
+			can_scale = false;
+			break;
+		}
+	}
+	mutex_unlock(&clock_list_lock);
+	return can_scale;
+}
+
+static int tegra_clk_init_cbus_pll_one(struct tegra_clk_init_table *table)
+{
+	bool can_scale = true;
+	struct clk *pll;
+	struct clk *c = tegra_get_clock_by_name(table->name);
+	if (!c)
+		return tegra_clk_init_one_from_table(table);
+
+	if (c->flags & PERIPH_ON_CBUS) {
+		/* table entry refer pllc/c2/c3 indirectly as cbus parent */
+		pll = clk_get_parent(c);
+		can_scale = tegra_can_scale_pll_cbus(pll);
+	} else if (c->state == ON) {
+		/* table entry refer pllc/c2/c3 directly, and it is ON */
+		pll = c;
+		can_scale = tegra_can_scale_pll_direct(pll);
+	}
+
+	if (can_scale)
+		return tegra_clk_init_one_from_table(table);
+	return -EBUSY;
+}
+
+void tegra_clk_init_cbus_plls_from_table(struct tegra_clk_init_table *table)
+{
+	for (; table->name; table++)
+		tegra_clk_init_cbus_pll_one(table);
 }
 
 void tegra_clk_init_from_table(struct tegra_clk_init_table *table)
@@ -782,12 +857,41 @@ void tegra_init_max_rate(struct clk *c, unsigned long max_rate)
 	}
 }
 
+/* Use boot rate as emc monitor output until actual monitoring starts */
+void __init tegra_clk_preset_emc_monitor(void)
+{
+	struct clk *c = tegra_get_clock_by_name("mon.emc");
+
+	if (c) {
+		clk_set_rate(c, c->boot_rate);
+		clk_enable(c);
+	}
+}
+
+static void __init tegra_clk_verify_rates(void)
+{
+	struct clk *c;
+	unsigned long rate;
+
+	mutex_lock(&clock_list_lock);
+
+	list_for_each_entry(c, &clocks, node) {
+		rate = clk_get_rate(c);
+		if (rate > clk_get_max_rate(c))
+			WARN(1, "tegra: %s boot rate %lu exceeds max rate %lu\n",
+			     c->name, rate, clk_get_max_rate(c));
+		c->boot_rate = rate;
+	}
+	mutex_unlock(&clock_list_lock);
+}
+
 void __init tegra_common_init_clock(void)
 {
 	tegra_cpu_timer_init();
+	tegra_clk_verify_rates();
 }
 
-void __init tegra_clk_vefify_parents(void)
+void __init tegra_clk_verify_parents(void)
 {
 	struct clk *c;
 	struct clk *p;
@@ -1158,6 +1262,8 @@ static void clock_tree_show_one(struct seq_file *s, struct clk *c, int level)
 		state, c->refcnt, div, rate);
 	if (c->parent && !list_empty(&c->parent->shared_bus_list))
 		seq_printf(s, " (%lu%s)", c->u.shared_bus_user.rate,
+			   c->u.shared_bus_user.mode == SHARED_CEILING ? "^" :
+			   c->u.shared_bus_user.mode == SHARED_ISO_BW ? "+" :
 			   c->u.shared_bus_user.mode == SHARED_BW ? "+" : "");
 	seq_printf(s, "\n");
 
@@ -1263,10 +1369,14 @@ static int possible_parents_show(struct seq_file *s, void *data)
 {
 	struct clk *c = s->private;
 	int i;
+	bool first = true;
 
 	for (i = 0; c->inputs[i].input; i++) {
-		char *first = (i == 0) ? "" : " ";
-		seq_printf(s, "%s%s", first, c->inputs[i].input->name);
+		if (tegra_clk_is_parent_allowed(c, c->inputs[i].input)) {
+			seq_printf(s, "%s%s", first ? "" : " ",
+				   c->inputs[i].input->name);
+			first = false;
+		}
 	}
 	seq_printf(s, "\n");
 	return 0;

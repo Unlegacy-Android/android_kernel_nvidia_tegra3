@@ -22,6 +22,9 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER                     \
 	-DCUSTOM_SDIO_F2_BLKSIZE=128                                          \
 	-Idrivers/net/wireless/bcmdhd -Idrivers/net/wireless/bcmdhd/include
 
+# for supporting different type of bcm943341_wbfgn_x board.
+DHDCFLAGS += -DNV_BCM943341_WBFGN_MULTI_MODULE_SUPPORT
+
 ifeq ($(CONFIG_BCMDHD_WIFI_CONTROL_FUNC),y)
 DHDCFLAGS += -DCONFIG_WIFI_CONTROL_FUNC
 else
@@ -36,6 +39,10 @@ endif
 
 ifeq ($(CONFIG_BCMDHD_INSMOD_NO_FW_LOAD),y)
 DHDCFLAGS += -DENABLE_INSMOD_NO_FW_LOAD
+endif
+
+ifeq ($(CONFIG_BCMDHD_EDP_SUPPORT),y)
+DHDCFLAGS += -DWIFIEDP
 endif
 
 DHDOFILES = aiutils.o bcmsdh_sdmmc_linux.o dhd_linux.o siutils.o bcmutils.o   \

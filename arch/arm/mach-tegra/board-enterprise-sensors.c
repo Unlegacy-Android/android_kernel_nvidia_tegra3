@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-enterprise-sensors.c
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -58,16 +58,24 @@
 static struct board_info board_info;
 
 static struct throttle_table tj_throttle_table[] = {
-	{      0, 1000 },
-	{ 640000, 1000 },
-	{ 640000, 1000 },
-	{ 640000, 1000 },
-	{ 640000, 1000 },
-	{ 640000, 1000 },
-	{ 760000, 1000 },
-	{ 760000, 1050 },
-	{1000000, 1050 },
-	{1000000, 1100 },
+		/* CPU_THROT_LOW cannot be used by other than CPU */
+		/* NO_CAP cannot be used by CPU */
+		/*    CPU,    CBUS,    SCLK,     EMC */
+		{ { 1000000,  NO_CAP,  NO_CAP,  NO_CAP } },
+		{ {  760000,  NO_CAP,  NO_CAP,  NO_CAP } },
+		{ {  760000,  NO_CAP,  NO_CAP,  NO_CAP } },
+		{ {  620000,  NO_CAP,  NO_CAP,  NO_CAP } },
+		{ {  620000,  NO_CAP,  NO_CAP,  NO_CAP } },
+		{ {  620000,  437000,  NO_CAP,  NO_CAP } },
+		{ {  620000,  352000,  NO_CAP,  NO_CAP } },
+		{ {  475000,  352000,  NO_CAP,  NO_CAP } },
+		{ {  475000,  352000,  NO_CAP,  NO_CAP } },
+		{ {  475000,  352000,  250000,  375000 } },
+		{ {  475000,  352000,  250000,  375000 } },
+		{ {  475000,  247000,  204000,  375000 } },
+		{ {  475000,  247000,  204000,  204000 } },
+		{ {  475000,  247000,  204000,  204000 } },
+	  { { CPU_THROT_LOW,  247000,  204000,  102000 } },
 };
 
 static struct balanced_throttle tj_throttle = {
@@ -101,7 +109,8 @@ static struct nct1008_platform_data enterprise_nct1008_pdata = {
 			.cdev_type = "tegra-balanced",
 			.trip_temp = 80000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
-			.state = THERMAL_NO_LIMIT,
+			.upper = THERMAL_NO_LIMIT,
+			.lower = THERMAL_NO_LIMIT,
 			.hysteresis = 0,
 		},
 	},
@@ -132,7 +141,8 @@ static void enterprise_nct1008_init(void)
 	}
 
 	tegra_platform_edp_init(enterprise_nct1008_pdata.trips,
-				&enterprise_nct1008_pdata.num_trips);
+				&enterprise_nct1008_pdata.num_trips,
+				0); /* edp temperature margin */
 
 	enterprise_i2c4_nct1008_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PH7);
 	i2c_register_board_info(4, enterprise_i2c4_nct1008_board_info,
@@ -157,11 +167,7 @@ static struct mpu_platform_data mpu9150_gyro_data = {
 	.int_config	= 0x10,
 	.level_shifter	= 0,
 	.orientation	= MPU_GYRO_ORIENTATION,
-	.sec_slave_type	= SECONDARY_SLAVE_TYPE_COMPASS,
-	.sec_slave_id	= COMPASS_ID_AK8975,
-	.secondary_i2c_addr	= MPU_COMPASS_ADDR,
-	.secondary_read_reg	= 0x06,
-	.secondary_orientation	= MPU_COMPASS_ORIENTATION,
+	.sec_slave_type	= SECONDARY_SLAVE_TYPE_NONE,
 	.key		= {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
 			   0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
 };
@@ -189,6 +195,10 @@ static struct i2c_board_info __initdata inv_mpu9150_i2c2_board_info[] = {
 	{
 		I2C_BOARD_INFO(MPU_GYRO_NAME_TAI, MPU_GYRO_ADDR),
 		.platform_data = &mpu9150_gyro_data,
+	},
+	{
+		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
+		.platform_data = &mpu_compass_data,
 	},
 };
 

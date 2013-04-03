@@ -3,7 +3,7 @@
  *
  * Declarations for power state transition code
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -125,6 +125,7 @@
 #define TEGRA_ARM_PERIF_VIRT (TEGRA_ARM_PERIF_BASE - IO_CPU_PHYS + IO_CPU_VIRT)
 #endif
 #define TEGRA_FLOW_CTRL_VIRT (TEGRA_FLOW_CTRL_BASE - IO_PPSB_PHYS + IO_PPSB_VIRT)
+#define TEGRA_CLK_RESET_VIRT (TEGRA_CLK_RESET_BASE - IO_PPSB_PHYS + IO_PPSB_VIRT)
 
 #ifdef __ASSEMBLY__
 
@@ -132,8 +133,15 @@
 .macro exit_smp, tmp1, tmp2
 	mrc	p15, 0, \tmp1, c1, c0, 1	@ ACTLR
 	bic	\tmp1, \tmp1, #(1<<6) | (1<<0)	@ clear ACTLR.SMP | ACTLR.FW
+#ifdef CONFIG_ARM_ERRATA_799270
+	ldr	\tmp2, =TEGRA_CLK_RESET_VIRT
+	ldr	\tmp2, [\tmp2, #0x70]		@ BOND_OUT_L
+	and	\tmp2, \tmp2, #0
+	orr	\tmp1, \tmp1, \tmp2
+#endif
 	mcr	p15, 0, \tmp1, c1, c0, 1	@ ACTLR
 	isb
+	dsb
 #ifdef CONFIG_HAVE_ARM_SCU
 	cpu_id	\tmp1
 	mov	\tmp1, \tmp1, lsl #2
@@ -205,10 +213,12 @@ int tegra2_finish_sleep_cpu_secondary(unsigned long int);
 #else
 extern unsigned int tegra3_iram_start;
 extern unsigned int tegra3_iram_end;
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
 extern unsigned int lp1_register_pmuslave_addr;
 extern unsigned int lp1_register_i2c_base_addr;
 extern unsigned int lp1_register_core_lowvolt;
 extern unsigned int lp1_register_core_highvolt;
+#endif
 int tegra3_sleep_core_finish(unsigned long int);
 int tegra3_sleep_cpu_secondary_finish(unsigned long int);
 void tegra3_hotplug_shutdown(void);
@@ -242,6 +252,7 @@ static inline void *tegra_iram_end(void)
 #endif
 }
 
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
 static inline void *tegra_lp1_register_pmuslave_addr(void)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -277,5 +288,6 @@ static inline void *tegra_lp1_register_core_highvolt(void)
 	return &lp1_register_core_highvolt;
 #endif
 }
+#endif /* For CONFIG_TEGRA_LP1_LOW_COREVOLTAGE */
 #endif
 #endif

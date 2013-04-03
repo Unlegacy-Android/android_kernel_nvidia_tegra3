@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/common.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2012 NVIDIA Corporation
+ * Copyright (C) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -34,6 +34,7 @@
 #include <linux/persistent_ram.h>
 #include <linux/dma-mapping.h>
 #include <linux/sys_soc.h>
+#include <linux/export.h>
 
 #include <trace/events/nvsecurity.h>
 
@@ -59,6 +60,7 @@
 #include "devices.h"
 #include "pmc.h"
 #include "common.h"
+#include "atomics.h"
 
 #define MC_SECURITY_CFG2	0x7c
 
@@ -140,6 +142,11 @@ static int pmu_core_edp;
 static int board_panel_type;
 static enum power_supply_type pow_supply_type = POWER_SUPPLY_TYPE_MAINS;
 static int pwr_i2c_clk = 400;
+static u8 power_config;
+
+atomic_t __maybe_unused sd_brightness = ATOMIC_INIT(255);
+EXPORT_SYMBOL(sd_brightness);
+
 /*
  * Storage for debug-macro.S's state.
  *
@@ -212,6 +219,7 @@ static enum image_type board_image_type = system_image;
 static int max_cpu_current;
 static int max_core_current;
 static int emc_max_dvfs;
+static unsigned int memory_type;
 static int usb_port_owner_info;
 
 /* WARNING: There is implicit client of pllp_out3 like i2c, uart, dsi
@@ -317,9 +325,12 @@ static __initdata struct tegra_clk_init_table tegra30_clk_init_table[] = {
 	{ "sbc4.sclk",	NULL,		40000000,	false},
 	{ "sbc5.sclk",	NULL,		40000000,	false},
 	{ "sbc6.sclk",	NULL,		40000000,	false},
+	{ "mselect",	"pll_p",	102000000,	true },
+	{ NULL,		NULL,		0,		0},
+};
+static __initdata struct tegra_clk_init_table tegra30_cbus_init_table[] = {
 	{ "cbus",	"pll_c",	416000000,	false },
 	{ "pll_c_out1",	"pll_c",	208000000,	false },
-	{ "mselect",	"pll_p",	102000000,	true },
 	{ NULL,		NULL,		0,		0},
 };
 #endif
@@ -364,7 +375,12 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 	{ "csite",      NULL,           0,              true },
 #endif
 	{ "pll_u",	NULL,		480000000,	true },
-	{ "pll_re_vco",	NULL,		312000000,	false },
+	{ "pll_re_vco",	NULL,		672000000,	false },
+	{ "xusb_falcon_src",	"pll_re_vco",	224000000,	false},
+	{ "xusb_host_src",	"pll_re_vco",	112000000,	false},
+	{ "xusb_ss_src",	"pll_u_480M",	120000000,	false},
+	{ "xusb_hs_src",	"pll_u_60M",	60000000,	false},
+	{ "xusb_fs_src",	"pll_u_48M",	48000000,	false},
 	{ "sdmmc1",	"pll_p",	48000000,	false},
 	{ "sdmmc3",	"pll_p",	48000000,	false},
 	{ "sdmmc4",	"pll_p",	48000000,	false},
@@ -374,6 +390,19 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 	{ "sbc4.sclk",	NULL,		40000000,	false},
 	{ "sbc5.sclk",	NULL,		40000000,	false},
 	{ "sbc6.sclk",	NULL,		40000000,	false},
+#ifdef CONFIG_TEGRA_PLLM_SCALED
+	{ "vi",		"pll_p",	0,		false},
+#endif
+#ifdef CONFIG_TEGRA_SOCTHERM
+	{ "soc_therm",	"pll_p",	51000000,	false },
+	{ "tsensor",	"clk_m",	500000,		false },
+#endif
+#ifdef CONFIG_TEGRA_ATOMICS
+	{ "atomics",	NULL,		0,		true},
+#endif
+	{ NULL,		NULL,		0,		0},
+};
+static __initdata struct tegra_clk_init_table tegra11x_cbus_init_table[] = {
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	{ "c2bus",	"pll_c2",	250000000,	false },
 	{ "c3bus",	"pll_c3",	250000000,	false },
@@ -382,13 +411,6 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 	{ "cbus",	"pll_c",	250000000,	false },
 #endif
 	{ "pll_c_out1",	"pll_c",	150000000,	false },
-#ifdef CONFIG_TEGRA_PLLM_SCALED
-	{ "vi",		"pll_p",	0,		false},
-#endif
-#ifdef CONFIG_TEGRA_SOCTHERM
-	{ "soc_therm",	"pll_p",	136000000,	false },
-	{ "tsensor",	"clk_m",	500000,		false },
-#endif
 	{ NULL,		NULL,		0,		0},
 };
 #endif
@@ -567,7 +589,7 @@ static void __init tegra_perf_init(void)
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 static void __init tegra_ramrepair_init(void)
 {
-	if (tegra_spare_fuse(10) & tegra_spare_fuse(11) & 1) {
+	if (tegra_spare_fuse(10)  | tegra_spare_fuse(11)) {
 		u32 reg;
 		reg = readl(FLOW_CTRL_RAM_REPAIR);
 		reg &= ~FLOW_CTRL_RAM_REPAIR_BYPASS_EN;
@@ -719,6 +741,7 @@ void __init tegra30_init_early(void)
 	tegra3_init_dvfs();
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra30_clk_init_table);
+	tegra_clk_init_cbus_plls_from_table(tegra30_cbus_init_table);
 	tegra_init_cache(true);
 	tegra_pmc_init();
 	tegra_powergate_init();
@@ -747,6 +770,7 @@ void __init tegra11x_init_early(void)
 	tegra11x_init_dvfs();
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra11x_clk_init_table);
+	tegra_clk_init_cbus_plls_from_table(tegra11x_cbus_init_table);
 	tegra11x_clk_init_la();
 	tegra_pmc_init();
 	tegra_powergate_init();
@@ -754,6 +778,9 @@ void __init tegra11x_init_early(void)
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
 	tegra_gpio_resume_init();
+#ifdef CONFIG_TEGRA_ATOMICS
+	tegra_atomics_init();
+#endif
 
 	init_dma_coherent_pool_size(SZ_1M);
 }
@@ -884,6 +911,18 @@ static int __init tegra_board_panel_id(char *options)
 }
 __setup("display_panel=", tegra_board_panel_id);
 
+u8 get_power_config(void)
+{
+	return power_config;
+}
+static int __init tegra_board_power_config(char *options)
+{
+	char *p = options;
+	power_config = memparse(p, &p);
+	return 1;
+}
+__setup("power-config=", tegra_board_power_config);
+
 enum power_supply_type get_power_supply_type(void)
 {
 	return pow_supply_type;
@@ -951,6 +990,18 @@ static int __init tegra_emc_max_dvfs(char *options)
 	return 1;
 }
 __setup("emc_max_dvfs=", tegra_emc_max_dvfs);
+
+int tegra_get_memory_type(void)
+{
+	return memory_type;
+}
+static int __init tegra_memory_type(char *options)
+{
+	char *p = options;
+	memory_type = memparse(p, &p);
+	return 1;
+}
+__setup("memtype=", tegra_memory_type);
 
 static int __init tegra_debug_uartport(char *info)
 {
@@ -1596,6 +1647,11 @@ void __init tegra_ram_console_debug_init(void)
 }
 #endif
 
+int __init tegra_register_fuse(void)
+{
+	return platform_device_register(&tegra_fuse_device);
+}
+
 void __init tegra_release_bootloader_fb(void)
 {
 	/* Since bootloader fb is reserved in common.c, it is freed here. */
@@ -1662,8 +1718,11 @@ static const char * __init tegra_get_family(void)
 static const char * __init tegra_get_soc_id(void)
 {
 	int package_id = tegra_package_id();
-	return kasprintf(GFP_KERNEL, "REV=%s:SKU=0x%x:PID=0x%x",
-		tegra_revision_name[tegra_revision], tegra_sku_id, package_id);
+	struct board_info board_info;
+	tegra_get_board_info(&board_info);
+	return kasprintf(GFP_KERNEL, "REV=%s:SKU=%d:PID=0x%x",
+		tegra_revision_name[tegra_revision], board_info.sku,
+		package_id);
 }
 
 static void __init tegra_soc_info_populate(struct soc_device_attribute

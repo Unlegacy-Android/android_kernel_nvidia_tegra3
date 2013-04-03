@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board-roth-kbc.c
  * Keys configuration for Nvidia tegra3 roth platform.
  *
- * Copyright (C) 2012 NVIDIA, Inc.
+ * Copyright (C) 2012-2013 NVIDIA, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -23,6 +23,7 @@
 #include <linux/platform_device.h>
 #include <linux/input.h>
 #include <mach/io.h>
+#include <linux/io.h>
 #include <mach/iomap.h>
 #include <mach/kbc.h>
 #include <linux/gpio.h>
@@ -33,6 +34,7 @@
 #include "board.h"
 #include "board-roth.h"
 #include "devices.h"
+#include "wakeups-t11x.h"
 
 #define GPIO_KEY(_id, _gpio, _iswake)           \
 	{                                       \
@@ -69,7 +71,7 @@ static struct gpio_keys_button roth_p2454_keys[] = {
 		.desc = "Hall Effect Sensor",
 		.active_low = 1,
 		.wakeup = 1,
-		.debounce_interval = 100,
+		.debounce_interval = 0,
 	},
 };
 

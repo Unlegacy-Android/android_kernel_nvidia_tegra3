@@ -2,6 +2,7 @@
  *  linux/drivers/mmc/host/sdhci.c - Secure Digital Host Controller Interface driver
  *
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
+ *  Copyright (c) 2013, NVIDIA CORPORATION. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,12 +23,15 @@
 #include <linux/scatterlist.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pm_runtime.h>
+#include <linux/platform_device.h>
 
 #include <linux/leds.h>
 
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
+
+#include <linux/edp.h>
 
 #include "sdhci.h"
 
@@ -1297,16 +1301,19 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		 */
 		if ((host->flags & SDHCI_NEEDS_RETUNING) &&
 		    !(present_state & (SDHCI_DOING_WRITE | SDHCI_DOING_READ))) {
-			/* eMMC uses cmd21 while sd and sdio use cmd19 */
-			tuning_opcode = mmc->card->type == MMC_TYPE_MMC ?
-				MMC_SEND_TUNING_BLOCK_HS200 :
-				MMC_SEND_TUNING_BLOCK;
-			spin_unlock_irqrestore(&host->lock, flags);
-			sdhci_execute_tuning(mmc, tuning_opcode);
-			spin_lock_irqsave(&host->lock, flags);
+			if (mmc->card) {
+				/* eMMC uses cmd21 but sd and sdio use cmd19 */
+				tuning_opcode =
+					mmc->card->type == MMC_TYPE_MMC ?
+					MMC_SEND_TUNING_BLOCK_HS200 :
+					MMC_SEND_TUNING_BLOCK;
+				spin_unlock_irqrestore(&host->lock, flags);
+				sdhci_execute_tuning(mmc, tuning_opcode);
+				spin_lock_irqsave(&host->lock, flags);
 
-			/* Restore original mmc_request structure */
-			host->mrq = mrq;
+				/* Restore original mmc_request structure */
+				host->mrq = mrq;
+			}
 		}
 
 		if (mrq->sbc && !(host->flags & SDHCI_AUTO_CMD23))
@@ -1983,6 +1990,9 @@ static void sdhci_enable_preset_value(struct mmc_host *mmc, bool enable)
 int sdhci_enable(struct mmc_host *mmc)
 {
 	struct sdhci_host *host = mmc_priv(mmc);
+	unsigned int approved;
+	int ret;
+	struct platform_device *pdev = to_platform_device(mmc_dev(host->mmc));
 
 	if (!mmc->card || mmc->card->type == MMC_TYPE_SDIO)
 		return 0;
@@ -1993,12 +2003,21 @@ int sdhci_enable(struct mmc_host *mmc)
 		sdhci_set_clock(host, mmc->ios.clock);
 	}
 
+	if (host->sd_edp_client) {
+		ret = edp_update_client_request(host->sd_edp_client,
+				SD_EDP_HIGH, &approved);
+		if (ret)
+			dev_err(&pdev->dev, "Unable to set SD_EDP_HIGH state\n");
+	}
+
 	return 0;
 }
 
 int sdhci_disable(struct mmc_host *mmc)
 {
 	struct sdhci_host *host = mmc_priv(mmc);
+	int ret;
+	struct platform_device *pdev = to_platform_device(mmc_dev(host->mmc));
 
 	if (!mmc->card || mmc->card->type == MMC_TYPE_SDIO)
 		return 0;
@@ -2006,6 +2025,13 @@ int sdhci_disable(struct mmc_host *mmc)
 	sdhci_set_clock(host, 0);
 	if (host->ops->set_clock)
 		host->ops->set_clock(host, 0);
+
+	if (host->sd_edp_client) {
+		ret = edp_update_client_request(host->sd_edp_client,
+				SD_EDP_LOW, NULL);
+		if (ret)
+			dev_err(&pdev->dev, "Unable to set SD_EDP_LOW state\n");
+	}
 
 	return 0;
 }
@@ -2187,11 +2213,16 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask)
 		return;
 	}
 
-	if (intmask & SDHCI_INT_TIMEOUT)
+	if (intmask & SDHCI_INT_TIMEOUT) {
 		host->cmd->error = -ETIMEDOUT;
-	else if (intmask & (SDHCI_INT_CRC | SDHCI_INT_END_BIT |
-			SDHCI_INT_INDEX))
+		pr_err("%s: Command timeout error, intmask: %x\n",
+				mmc_hostname(host->mmc), intmask);
+	} else if (intmask & (SDHCI_INT_CRC | SDHCI_INT_END_BIT |
+			SDHCI_INT_INDEX)) {
 		host->cmd->error = -EILSEQ;
+		pr_err("%s: Command CRC or END bit error, intmask: %x\n",
+				mmc_hostname(host->mmc), intmask);
+	}
 
 	if (host->cmd->error) {
 		tasklet_schedule(&host->finish_tasklet);
@@ -2290,15 +2321,21 @@ static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
 		return;
 	}
 
-	if (intmask & SDHCI_INT_DATA_TIMEOUT)
+	if (intmask & SDHCI_INT_DATA_TIMEOUT) {
 		host->data->error = -ETIMEDOUT;
-	else if (intmask & SDHCI_INT_DATA_END_BIT)
+		pr_err("%s: Data Timeout error, intmask: %x\n",
+				mmc_hostname(host->mmc), intmask);
+	} else if (intmask & SDHCI_INT_DATA_END_BIT) {
 		host->data->error = -EILSEQ;
-	else if ((intmask & SDHCI_INT_DATA_CRC) &&
+		pr_err("%s: Data END Bit error, intmask: %x\n",
+				mmc_hostname(host->mmc), intmask);
+	} else if ((intmask & SDHCI_INT_DATA_CRC) &&
 		SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND))
-			!= MMC_BUS_TEST_R)
+			!= MMC_BUS_TEST_R) {
 		host->data->error = -EILSEQ;
-	else if (intmask & SDHCI_INT_ADMA_ERROR) {
+		pr_err("%s: Data CRC error, intmask: %x\n",
+				mmc_hostname(host->mmc), intmask);
+	} else if (intmask & SDHCI_INT_ADMA_ERROR) {
 		pr_err("%s: ADMA error\n", mmc_hostname(host->mmc));
 		sdhci_show_adma_error(host);
 		host->data->error = -EIO;
@@ -2711,6 +2748,8 @@ int sdhci_add_host(struct sdhci_host *host)
 	u32 max_current_caps;
 	unsigned int ocr_avail;
 	int ret;
+	struct edp_manager *battery_manager = NULL;
+	struct platform_device *pdev = to_platform_device(mmc_dev(host->mmc));
 
 	WARN_ON(host == NULL);
 	if (host == NULL)
@@ -3136,6 +3175,50 @@ int sdhci_add_host(struct sdhci_host *host)
 	}
 
 	sdhci_init(host, 0);
+
+	if (host->edp_support == true) {
+		battery_manager = edp_get_manager("battery");
+		if (!battery_manager)
+			dev_err(&pdev->dev, "unable to get edp manager\n");
+		else {
+			host->sd_edp_client = devm_kzalloc(&pdev->dev,
+					sizeof(struct edp_client), GFP_KERNEL);
+			if (IS_ERR_OR_NULL(host->sd_edp_client)) {
+				dev_err(&pdev->dev,
+					"could not allocate edp client\n");
+				host->sd_edp_client = NULL;
+			}
+
+			strncpy(host->sd_edp_client->name,
+				dev_name(mmc_dev(host->mmc)), EDP_NAME_LEN-1);
+			host->sd_edp_client->name[EDP_NAME_LEN-1] = '\0';
+			host->sd_edp_client->states = host->edp_states;
+			host->sd_edp_client->num_states = SD_EDP_NUM_STATES;
+			host->sd_edp_client->e0_index = SD_EDP_HIGH;
+			host->sd_edp_client->priority = EDP_MAX_PRIO + 2;
+
+			ret = edp_register_client(battery_manager,
+				host->sd_edp_client);
+			if (ret) {
+				dev_err(&pdev->dev,
+					"unable to register edp client\n");
+			} else {
+				pr_info("%s: edp client registration" \
+					" successful.\n",
+					dev_name(mmc_dev(host->mmc)));
+				ret = edp_update_client_request(
+						host->sd_edp_client,
+						SD_EDP_LOW, NULL);
+				if (ret) {
+					dev_err(&pdev->dev,
+						"Unable to set E0 EDP state\n");
+					edp_unregister_client(
+							host->sd_edp_client);
+					host->sd_edp_client = NULL;
+				}
+			}
+		}
+	}
 
 #ifdef CONFIG_MMC_DEBUG
 	sdhci_dumpregs(host);

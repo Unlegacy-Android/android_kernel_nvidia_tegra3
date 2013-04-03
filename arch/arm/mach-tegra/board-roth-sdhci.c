@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board-roth-sdhci.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (c) 2012-2013 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -36,11 +36,14 @@
 #include "gpio-names.h"
 #include "board.h"
 #include "board-roth.h"
+#include "dvfs.h"
 
 #define ROTH_WLAN_PWR	TEGRA_GPIO_PCC5
 #define ROTH_WLAN_RST	TEGRA_GPIO_INVALID
 #define ROTH_WLAN_WOW	TEGRA_GPIO_PU5
 #define ROTH_SD_CD		TEGRA_GPIO_PV2
+#define WLAN_PWR_STR	"wlan_power"
+#define WLAN_WOW_STR	"bcmsdh_sdmmc"
 
 static void (*wifi_status_cb)(int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
@@ -148,8 +151,8 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.tap_delay = 0x2,
 	.trim_delay = 0x2,
 	.ddr_clk_limit = 41000000,
-	.uhs_mask = MMC_UHS_MASK_SDR104 |
-		MMC_UHS_MASK_DDR50,
+	.max_clk_limit = 156000000,
+	.uhs_mask = MMC_UHS_MASK_DDR50,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
@@ -159,8 +162,8 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.tap_delay = 0x3,
 	.trim_delay = 0x3,
 	.ddr_clk_limit = 41000000,
-	.uhs_mask = MMC_UHS_MASK_SDR104 |
-			MMC_UHS_MASK_DDR50,
+	.max_clk_limit = 156000000,
+	.uhs_mask = MMC_UHS_MASK_DDR50,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
@@ -169,10 +172,12 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.power_gpio = -1,
 	.is_8bit = 1,
 	.tap_delay = 0x5,
-	.trim_delay = 0,
+	.trim_delay = 0xA,
 	.ddr_clk_limit = 41000000,
+	.max_clk_limit = 156000000,
 	.mmc_data = {
 		.built_in = 1,
+		.ocr_mask = MMC_OCR_1V8_MASK,
 	}
 };
 
@@ -334,8 +339,7 @@ static int roth_wifi_power(int on)
 	}
 	gpio_set_value(ROTH_WLAN_PWR, on);
 	mdelay(100);
-	gpio_set_value(ROTH_WLAN_RST, on);
-	mdelay(200);
+
 	if (sd_dpd) {
 		mutex_lock(&sd_dpd->delay_lock);
 		tegra_io_dpd_enable(sd_dpd);
@@ -359,38 +363,52 @@ static int roth_wifi_reset(int on)
 
 static int __init roth_wifi_init(void)
 {
-	int rc;
+	int rc = 0;
 
-	rc = gpio_request(ROTH_WLAN_PWR, "wlan_power");
-	if (rc)
-		pr_err("WLAN_PWR gpio request failed:%d\n", rc);
-	rc = gpio_request(ROTH_WLAN_RST, "wlan_rst");
-	if (rc)
-		pr_err("WLAN_RST gpio request failed:%d\n", rc);
-	rc = gpio_request(ROTH_WLAN_WOW, "bcmsdh_sdmmc");
-	if (rc)
-		pr_err("WLAN_WOW gpio request failed:%d\n", rc);
+	/* init wlan_pwr gpio */
+	rc = gpio_request(ROTH_WLAN_PWR, WLAN_PWR_STR);
+	/* Due to pre-init, during first time boot,
+	 * gpio request returns -EBUSY
+	 */
+	if ((rc < 0) && (rc != -EBUSY)) {
+		pr_err("gpio req failed:%d\n", rc);
+		return rc;
+	}
 
 	rc = gpio_direction_output(ROTH_WLAN_PWR, 0);
-	if (rc)
-		pr_err("WLAN_PWR gpio direction configuration failed:%d\n", rc);
-	gpio_direction_output(ROTH_WLAN_RST, 0);
-	if (rc)
-		pr_err("WLAN_RST gpio direction configuration failed:%d\n", rc);
+	if ((rc < 0) && (rc != -EBUSY)) {
+		gpio_free(ROTH_WLAN_PWR);
+		return rc;
+	}
+
+	/* init wlan_wow gpio */
+	rc = gpio_request(ROTH_WLAN_WOW, WLAN_WOW_STR);
+	if (rc) {
+		pr_err("gpio req failed:%d\n", rc);
+		gpio_free(ROTH_WLAN_PWR);
+		return rc;
+	}
+
 	rc = gpio_direction_input(ROTH_WLAN_WOW);
-	if (rc)
-		pr_err("WLAN_WOW gpio direction configuration failed:%d\n", rc);
+	if (rc) {
+		gpio_free(ROTH_WLAN_WOW);
+		gpio_free(ROTH_WLAN_PWR);
+		return rc;
+	}
 
 	wifi_resource[0].start = wifi_resource[0].end =
 		gpio_to_irq(ROTH_WLAN_WOW);
 
 	platform_device_register(&roth_wifi_device);
-	return 0;
+	return rc;
 }
 
 #ifdef CONFIG_TEGRA_PREPOWER_WIFI
 static int __init roth_wifi_prepower(void)
 {
+	if (!machine_is_roth())
+		return 0;
+
 	roth_wifi_power(1);
 
 	return 0;
@@ -401,6 +419,18 @@ subsys_initcall_sync(roth_wifi_prepower);
 
 int __init roth_sdhci_init(void)
 {
+	int nominal_core_mv;
+
+	nominal_core_mv =
+		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
+	if (nominal_core_mv > 0) {
+		tegra_sdhci_platform_data0.nominal_vcore_uV = nominal_core_mv *
+			1000;
+		tegra_sdhci_platform_data2.nominal_vcore_uV = nominal_core_mv *
+			1000;
+		tegra_sdhci_platform_data3.nominal_vcore_uV = nominal_core_mv *
+			1000;
+	}
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);

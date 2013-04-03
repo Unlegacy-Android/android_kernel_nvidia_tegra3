@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -43,11 +43,25 @@ static struct edp_manager *find_manager(const char *name)
 
 static void promote(struct work_struct *work)
 {
+	unsigned int prev_denied;
 	struct edp_manager *m = container_of(work, struct edp_manager, work);
+
 	mutex_lock(&edp_lock);
-	if (m->num_denied && m->remaining)
+
+	if (m->num_denied && m->remaining) {
+		prev_denied = m->num_denied;
 		m->gov->promote(m);
+		if (prev_denied != m->num_denied)
+			sysfs_notify(m->kobj, NULL, "denied");
+	}
+
 	mutex_unlock(&edp_lock);
+}
+
+void schedule_promotion(struct edp_manager *mgr)
+{
+	if (mgr->remaining && mgr->num_denied && mgr->gov->promote)
+		schedule_work(&mgr->work);
 }
 
 int edp_register_manager(struct edp_manager *mgr)
@@ -56,20 +70,21 @@ int edp_register_manager(struct edp_manager *mgr)
 
 	if (!mgr)
 		return -EINVAL;
-	if (!mgr->imax)
+	if (!mgr->max)
 		return -EINVAL;
 
 	mutex_lock(&edp_lock);
 	if (!find_manager(mgr->name)) {
 		list_add_tail(&mgr->link, &edp_managers);
 		mgr->registered = true;
-		mgr->remaining = mgr->imax;
+		mgr->remaining = mgr->max;
 		mgr->gov = NULL;
 		mgr->gov_data = NULL;
 		INIT_LIST_HEAD(&mgr->clients);
 		INIT_WORK(&mgr->work, promote);
 		mgr->kobj = NULL;
 		edp_manager_add_kobject(mgr);
+		manager_add_dentry(mgr);
 		r = 0;
 	}
 	mutex_unlock(&edp_lock);
@@ -83,7 +98,7 @@ int edp_set_governor_unlocked(struct edp_manager *mgr,
 {
 	int r = 0;
 
-	if (mgr ? !mgr->registered : 0)
+	if (mgr ? !mgr->registered : 1)
 		return -EINVAL;
 
 	if (mgr->gov) {
@@ -128,6 +143,7 @@ int edp_unregister_manager(struct edp_manager *mgr)
 	} else if (!list_empty(&mgr->clients)) {
 		r = -EBUSY;
 	} else {
+		manager_remove_dentry(mgr);
 		edp_manager_remove_kobject(mgr);
 		edp_set_governor_unlocked(mgr, NULL);
 		list_del(&mgr->link);
@@ -166,7 +182,7 @@ static struct edp_client *find_client(struct edp_manager *mgr,
 	return NULL;
 }
 
-static unsigned int e0_current_sum(struct edp_manager *mgr)
+unsigned int e0_current_sum(struct edp_manager *mgr)
 {
 	struct edp_client *p;
 	unsigned int sum = 0;
@@ -208,7 +224,7 @@ static void add_client(struct edp_client *new, struct list_head *head)
 	list_add_tail(&new->link, &p->link);
 }
 
-static int register_client(struct edp_manager *mgr, struct edp_client *client)
+int register_client(struct edp_manager *mgr, struct edp_client *client)
 {
 	if (!mgr || !client)
 		return -EINVAL;
@@ -219,13 +235,13 @@ static int register_client(struct edp_manager *mgr, struct edp_client *client)
 	if (client->manager || find_client(mgr, client->name))
 		return -EEXIST;
 
-	if (!states_ok(client) || client->priority < EDP_MIN_PRIO ||
-			client->priority > EDP_MAX_PRIO ||
+	if (!states_ok(client) || client->priority > EDP_MIN_PRIO ||
+			client->priority < EDP_MAX_PRIO ||
 			(client->e0_index && !client->throttle))
 		return -EINVAL;
 
 	/* make sure that we can satisfy E0 for all registered clients */
-	if (e0_current_sum(mgr) + client->states[client->e0_index] > mgr->imax)
+	if (e0_current_sum(mgr) + client->states[client->e0_index] > mgr->max)
 		return -E2BIG;
 
 	add_client(client, &mgr->clients);
@@ -238,6 +254,7 @@ static int register_client(struct edp_manager *mgr, struct edp_client *client)
 	client->ithreshold = client->states[0];
 	client->kobj = NULL;
 	edp_client_add_kobject(client);
+	client_add_dentry(client);
 
 	return 0;
 }
@@ -344,6 +361,7 @@ static int mod_request(struct edp_client *client, const unsigned int *req)
 {
 	struct edp_manager *m = client->manager;
 	unsigned int prev_remain = m->remaining;
+	unsigned int prev_denied = m->num_denied;
 
 	if (!m->gov)
 		return -ENODEV;
@@ -352,8 +370,11 @@ static int mod_request(struct edp_client *client, const unsigned int *req)
 	update_loans(client);
 
 	/* Do not block calling clients for promotions */
-	if (m->remaining > prev_remain && m->num_denied && m->gov->promote)
-		schedule_work(&m->work);
+	if (m->remaining > prev_remain)
+		schedule_promotion(m);
+
+	if (m->num_denied != prev_denied)
+		sysfs_notify(m->kobj, NULL, "denied");
 
 	return 0;
 }
@@ -383,7 +404,7 @@ static inline bool registered_client(struct edp_client *client)
 	return client ? client->manager : false;
 }
 
-static int unregister_client(struct edp_client *client)
+int unregister_client(struct edp_client *client)
 {
 	if (!registered_client(client))
 		return -EINVAL;
@@ -391,6 +412,7 @@ static int unregister_client(struct edp_client *client)
 	if (client->num_loans)
 		return -EBUSY;
 
+	client_remove_dentry(client);
 	edp_client_remove_kobject(client);
 	close_all_loans(client);
 	mod_request(client, NULL);

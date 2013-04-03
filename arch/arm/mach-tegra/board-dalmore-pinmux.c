@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-dalmore-pinmux.c
  *
- * Copyright (C) 2012 NVIDIA Corporation
+ * Copyright (c) 2012-2013 NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -23,6 +23,7 @@
 #include "board-dalmore.h"
 #include "devices.h"
 #include "gpio-names.h"
+#include "tegra-board-id.h"
 
 #include <mach/pinmux-t11.h>
 
@@ -211,7 +212,6 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_set_nontristate[] 
 	DEFAULT_PINMUX(GMI_AD10,        GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GMI_AD11,        GMI,    NORMAL,       NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GMI_AD12,        GMI,    PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_AD13,        GMI,    NORMAL,       NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GMI_AD2,         GMI,    NORMAL,       NORMAL,    INPUT),
 	DEFAULT_PINMUX(GMI_AD3,         GMI,    NORMAL,       NORMAL,    INPUT),
 	DEFAULT_PINMUX(GMI_AD8,         GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
@@ -239,9 +239,9 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_set_nontristate[] 
 	DEFAULT_PINMUX(KB_ROW8,         KBC,    PULL_UP,      NORMAL,    INPUT),
 
 	DEFAULT_PINMUX(CLK3_REQ,        RSVD3,  NORMAL,      NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_PU4,        RSVD3,  NORMAL,      NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_PU5,        RSVD3,  NORMAL,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GPIO_PU6,        RSVD3,  NORMAL,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GPIO_PU4,        PWM1,  NORMAL,      NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GPIO_PU5,        PWM2,  NORMAL,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GPIO_PU6,        PWM3,  NORMAL,      NORMAL,    INPUT),
 
 	DEFAULT_PINMUX(HDMI_INT,        RSVD,   PULL_DOWN,    NORMAL,    INPUT),
 
@@ -249,6 +249,16 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_set_nontristate[] 
 };
 
 #include "board-dalmore-pinmux-t11x.h"
+
+static __initdata struct tegra_pingroup_config dalmore_e1611_1000[] = {
+	/* io rdy Lock rotation */
+	DEFAULT_PINMUX(GMI_IORDY,	GMI,	NORMAL,	NORMAL,	INPUT),
+};
+
+static __initdata struct tegra_pingroup_config dalmore_e1611_1001[] = {
+	/* kbcol1 rdy Lock rotation */
+	DEFAULT_PINMUX(KB_COL1,       KBC,         NORMAL,   NORMAL, INPUT),
+};
 
 static void __init dalmore_gpio_init_configure(void)
 {
@@ -268,6 +278,10 @@ static void __init dalmore_gpio_init_configure(void)
 
 int __init dalmore_pinmux_init(void)
 {
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+
 	tegra_pinmux_config_table(dalmore_pinmux_set_nontristate,
 					ARRAY_SIZE(dalmore_pinmux_set_nontristate));
 	dalmore_gpio_init_configure();
@@ -277,6 +291,13 @@ int __init dalmore_pinmux_init(void)
 					ARRAY_SIZE(dalmore_drive_pinmux));
 	tegra_pinmux_config_table(unused_pins_lowpower,
 		ARRAY_SIZE(unused_pins_lowpower));
+
+	if ((board_info.board_id == BOARD_E1611) && (board_info.sku == 1000))
+		tegra_pinmux_config_table(dalmore_e1611_1000,
+			ARRAY_SIZE(dalmore_e1611_1000));
+	else if ((board_info.board_id == BOARD_E1611) && (board_info.sku == 1001))
+		tegra_pinmux_config_table(dalmore_e1611_1001,
+			ARRAY_SIZE(dalmore_e1611_1001));
 
 	return 0;
 }

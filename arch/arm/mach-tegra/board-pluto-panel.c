@@ -55,9 +55,6 @@ struct platform_device * __init pluto_host1x_init(void)
 }
 
 
-atomic_t __maybe_unused sd_brightness = ATOMIC_INIT(255);
-EXPORT_SYMBOL(sd_brightness);
-
 #ifdef CONFIG_TEGRA_DC
 
 /* hdmi pins for hotplug */
@@ -185,7 +182,7 @@ static struct tegra_dc_out pluto_disp2_out = {
 	.dcc_bus	= 3,
 	.hotplug_gpio	= pluto_hdmi_hpd,
 
-	.max_pixclock	= KHZ2PICOS(148500),
+	.max_pixclock	= KHZ2PICOS(297000),
 
 	.enable		= pluto_hdmi_enable,
 	.disable	= pluto_hdmi_disable,
@@ -295,8 +292,8 @@ static struct tegra_dc_sd_settings pluto_sd_settings = {
 	.soft_clipping_enable = true,
 	/* Low soft clipping threshold to compensate for aggressive k_limit */
 	.soft_clipping_threshold = 128,
-	.smooth_k_enable = false,
-	.smooth_k_incr = 64,
+	.smooth_k_enable = true,
+	.smooth_k_incr = 4,
 	/* Default video coefficients */
 	.coeff = {5, 9, 2},
 	.fc = {0, 0},
@@ -416,6 +413,17 @@ int __init pluto_panel_init(void)
 	__tegra_move_framebuffer(&pluto_nvmap_device,
 		tegra_fb_start, tegra_bootloader_fb_start,
 			min(tegra_fb_size, tegra_bootloader_fb_size));
+
+	/*
+	 * If the bootloader fb2 is valid, copy it to the fb2, or else
+	 * clear fb2 to avoid garbage on dispaly2.
+	 */
+	if (tegra_bootloader_fb2_size)
+		tegra_move_framebuffer(tegra_fb2_start,
+			tegra_bootloader_fb2_start,
+			min(tegra_fb2_size, tegra_bootloader_fb2_size));
+	else
+		tegra_clear_framebuffer(tegra_fb2_start, tegra_fb2_size);
 
 	res = platform_get_resource_byname(&pluto_disp2_device,
 		IORESOURCE_MEM, "fbmem");

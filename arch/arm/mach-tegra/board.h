@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011-2012 NVIDIA Corporation.
+ * Copyright (C) 2011-2013 NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -115,6 +115,7 @@ static inline void tegra_clear_framebuffer(unsigned long to, unsigned long size)
 bool is_tegra_debug_uartport_hs(void);
 int get_tegra_uart_debug_port_id(void);
 int arb_lost_recovery(int scl_gpio, int sda_gpio);
+int __init tegra_register_fuse(void);
 
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
 void __init tegra_ram_console_debug_reserve(unsigned long ram_console_size);
@@ -194,11 +195,13 @@ enum panel_type get_panel_type(void);
 int tegra_get_usb_port_owner_info(void);
 int tegra_get_modem_id(void);
 int tegra_get_commchip_id(void);
+u8 get_power_config(void);
 enum power_supply_type get_power_supply_type(void);
 enum audio_codec_type get_audio_codec_type(void);
 int get_maximum_cpu_current_supported(void);
 int get_maximum_core_current_supported(void);
 int get_emc_max_dvfs(void);
+int tegra_get_memory_type(void);
 void tegra_enable_pinmux(void);
 enum image_type get_tegra_image_type(void);
 int tegra_get_cvb_alignment_uV(void);

@@ -1,7 +1,7 @@
 /*
  * MAX77665_F.c - MAX77665_F flash/torch kernel driver
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -91,6 +91,9 @@
 #define MAX77665_F_RC_FLASH_INTSTAT		0x0E
 #define MAX77665_F_RW_FLASH_INTMASK		0x0F
 #define MAX77665_F_RO_FLASH_STATUS		0x10
+
+#define MAX77665_PMIC_CHG_CNFG_01		0xB7
+#define CHG_CNFG_01_DEFAULT_MODE		0x0C
 
 #define FIELD(x, y)			((x) << (y))
 #define FMASK(x)			FIELD(0x03, (x))
@@ -212,6 +215,7 @@ struct max77665_f_reg_cache {
 	u8 m_timing;
 	u8 boost_control;
 	u8 boost_vout_flash;
+	u8 pmic_chg_cnfg01;
 };
 
 struct max77665_f_state_regs {
@@ -415,6 +419,7 @@ static int max77665_f_edp_req(struct max77665_f_info *info,
 	unsigned *estates;
 	unsigned total_curr = 0;
 	unsigned curr_mA;
+	unsigned int curr_mW;
 	unsigned approved;
 	unsigned new_state;
 	int ret = 0;
@@ -430,12 +435,13 @@ static int max77665_f_edp_req(struct max77665_f_info *info,
 	if (mask & 2)
 		total_curr += *curr2;
 	curr_mA = GET_CURRENT_BY_INDEX(total_curr);
+	curr_mW = curr_mA * 38 / 10;
 
 	for (new_state = info->edpc->num_states - 1; new_state > 0; new_state--)
-		if (estates[new_state] >= curr_mA)
+		if (estates[new_state] >= curr_mW)
 			break;
 
-	dev_dbg(info->dev, "edp req: %d curr = %d mA\n", new_state, curr_mA);
+	dev_dbg(info->dev, "edp req: %d curr = %d mW\n", new_state, curr_mW);
 	ret = edp_update_client_request(info->edpc, new_state, &approved);
 	if (ret) {
 		dev_err(info->dev, "E state transition failed\n");
@@ -443,7 +449,8 @@ static int max77665_f_edp_req(struct max77665_f_info *info,
 	}
 
 	if (approved > new_state) { /* edp manager returned less current */
-		curr_mA = GET_INDEX_BY_CURRENT(estates[approved]);
+		curr_mA = estates[approved] * 10 / 38;
+		curr_mA = GET_INDEX_BY_CURRENT(curr_mA);
 		if (mask & 1)
 			*curr1 = curr_mA * (*curr1) / total_curr;
 		*curr2 = curr_mA - (*curr1);
@@ -686,6 +693,7 @@ update_end:
 	if (info->regs.boost_control == FIELD(BOOST_FLASH_MODE_BOTH, 0))
 		info->regs.boost_control |= FIELD(BOOST_MODE_TWOLED, 7);
 
+	info->regs.pmic_chg_cnfg01 = CHG_CNFG_01_DEFAULT_MODE;
 	info->regs.boost_vout_flash =
 		max77665_f_get_boost_volt(pcfg->boost_vout_flash_mV);
 
@@ -745,6 +753,9 @@ static int max77665_f_update_settings(struct max77665_f_info *info)
 	int err = 0;
 
 	info->regs.regs_stale = true;
+	err |= max77665_f_reg_wr(info, MAX77665_PMIC_CHG_CNFG_01,
+				info->regs.pmic_chg_cnfg01, false);
+
 	err |= max77665_f_reg_wr(info, MAX77665_F_RW_BOOST_MODE,
 				info->regs.boost_control, false);
 

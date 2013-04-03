@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -54,6 +54,9 @@ static inline unsigned int req_index(struct edp_client *c)
 extern struct mutex edp_lock;
 extern struct list_head edp_governors;
 
+int register_client(struct edp_manager *m, struct edp_client *c);
+int unregister_client(struct edp_client *c);
+
 int edp_update_client_request_unlocked(struct edp_client *client,
 		unsigned int req, int *approved);
 int edp_update_loan_threshold_unlocked(struct edp_client *client,
@@ -72,5 +75,12 @@ void edp_default_update_request(struct edp_client *client,
 void edp_default_update_loans(struct edp_client *lender);
 unsigned int edp_throttling_point(struct edp_client *c, unsigned int deficit);
 unsigned int edp_promotion_point(struct edp_client *c, unsigned int step);
+
+void manager_add_dentry(struct edp_manager *m);
+void manager_remove_dentry(struct edp_manager *m);
+void client_add_dentry(struct edp_client *c);
+void client_remove_dentry(struct edp_client *c);
+void schedule_promotion(struct edp_manager *m);
+unsigned int e0_current_sum(struct edp_manager *mgr);
 
 #endif

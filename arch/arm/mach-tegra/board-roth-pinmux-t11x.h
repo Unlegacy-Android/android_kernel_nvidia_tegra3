@@ -142,6 +142,7 @@ static __initdata struct tegra_pingroup_config roth_pinmux_common[] = {
 	DEFAULT_PINMUX(KB_ROW0,       KBC,         PULL_UP,   NORMAL, INPUT),
 	DEFAULT_PINMUX(KB_ROW1,       KBC,         PULL_UP,   NORMAL, INPUT),
 	DEFAULT_PINMUX(KB_ROW2,       KBC,         PULL_UP,   NORMAL, INPUT),
+	DEFAULT_PINMUX(KB_ROW8,       KBC,         PULL_UP,   NORMAL, INPUT),
 
 	/*Audio Codec*/
 	DEFAULT_PINMUX(DAP3_DIN,      RSVD,   NORMAL,    TRISTATE,    OUTPUT),
@@ -252,8 +253,6 @@ static struct gpio_init_pin_info init_gpio_mode_roth_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PCC2, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG0, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG1, false, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH2, false, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH3, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH4, false, 1),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH5, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH6, false, 0),
@@ -263,7 +262,7 @@ static struct gpio_init_pin_info init_gpio_mode_roth_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG4, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH0, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK1, false, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK3, true, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK3, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK4, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK2, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PI6, true, 0),
@@ -284,7 +283,6 @@ static struct gpio_init_pin_info init_gpio_mode_roth_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR5, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR6, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR7, true, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PS0, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PEE1, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU0, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU1, true, 0),

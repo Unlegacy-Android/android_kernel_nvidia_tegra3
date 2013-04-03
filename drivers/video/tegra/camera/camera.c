@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/camera/camera.c
  *
- * Copyright (C) 2013 Nvidia Corp
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -21,19 +21,20 @@
 
 #define TEGRA_CAMERA_NAME "tegra_camera"
 
-static struct camera_clk tegra_camera_clk[] = {
-	{ CAMERA_ISP_CLK, "isp"},
-	{ CAMERA_VI_CLK, "vi"},
-	{ CAMERA_VI_SENSOR_CLK, "vi_sensor"},
-	{ CAMERA_CSUS_CLK, "csus"},
-	{ CAMERA_CSI_CLK, "csi"},
-	{ CAMERA_EMC_CLK, "emc"},
+static struct clock_data clock_init[] = {
+	{ CAMERA_ISP_CLK, "isp", true, 0},
+	{ CAMERA_VI_CLK, "vi", true, 0},
+	{ CAMERA_VI_SENSOR_CLK, "vi_sensor", true, 0},
+	{ CAMERA_CSUS_CLK, "csus", true, 0},
+	{ CAMERA_CSI_CLK, "csi", true, 0},
+	{ CAMERA_EMC_CLK, "emc", true, 0},
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	{ CAMERA_CILAB_CLK, "cilab"},
-	{ CAMERA_CILCD_CLK, "cilcd"},
-	{ CAMERA_CILE_CLK, "cile"},
-	{ CAMERA_PLL_D2_CLK, "pll_d2"}
+	{ CAMERA_CILAB_CLK, "cilab", true, 0},
+	{ CAMERA_CILCD_CLK, "cilcd", true, 0},
+	{ CAMERA_CILE_CLK, "cile", true, 0},
+	{ CAMERA_PLL_D2_CLK, "pll_d2", false, 0},
 #endif
+	{ CAMERA_SCLK, "sclk", true, 80000000},
 };
 
 static long tegra_camera_ioctl(struct file *file,
@@ -120,6 +121,10 @@ static int tegra_camera_open(struct inode *inode, struct file *file)
 	ret = tegra_camera_enable_emc(camera);
 	if (ret)
 		goto enable_emc_fail;
+
+	/* read initial clock info */
+	tegra_camera_init_clk(camera, clock_init);
+
 	/* enable camera HW clock */
 	ret = tegra_camera_enable_clk(camera);
 	if (ret)
@@ -245,23 +250,17 @@ struct tegra_camera *tegra_camera_register(struct platform_device *ndev)
 	}
 
 	for (i = 0; i < CAMERA_CLK_MAX; i++) {
-		ret = tegra_camera_clk_get(ndev, tegra_camera_clk[i].name,
-				&camera->clk[tegra_camera_clk[i].index]);
+		ret = tegra_camera_clk_get(ndev, clock_init[i].name,
+				&camera->clock[clock_init[i].index].clk);
 		if (ret)
 			goto clk_get_fail;
 	}
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	/*
-	 * Dedicated bw is what VI could ask for at most.
-	 * Assume that preview has 3M@30fps and video has 8M@30fps
-	 * Total = 3M * 30fps * 2Bpp + 8M * 30fps * 1.5Bpp
-	 *       = 540MBps
-	 * This number can be changed if VI requests more than this.
-	 *
-	 */
+	/* Dedicated bw is what VI could ask for at most */
 	camera->isomgr_handle = tegra_isomgr_register(TEGRA_ISO_CLIENT_VI_0,
-					540000,	/* dedicated bw, KBps*/
+					/* dedicated bw, KBps*/
+					tegra_camera_get_max_bw(camera),
 					NULL,	/* tegra_isomgr_renegotiate */
 					NULL);	/* *priv */
 	if (!camera->isomgr_handle) {
@@ -275,7 +274,7 @@ struct tegra_camera *tegra_camera_register(struct platform_device *ndev)
 
 clk_get_fail:
 	for (; i > 0; i--)
-		clk_put(camera->clk[i-1]);
+		clk_put(camera->clock[clock_init[i].index].clk);
 	misc_deregister(&camera->misc_dev);
 misc_register_fail:
 	regulator_put(camera->reg);
@@ -287,7 +286,12 @@ regulator_fail:
 
 int tegra_camera_unregister(struct tegra_camera *camera)
 {
+	int i;
+
 	dev_info(camera->dev, "%s: ++\n", __func__);
+
+	for (i = 0; i < CAMERA_CLK_MAX; i++)
+		clk_put(camera->clock[i].clk);
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	/*

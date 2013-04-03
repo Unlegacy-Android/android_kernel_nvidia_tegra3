@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board-dalmore-sdhci.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -33,10 +33,11 @@
 #include<mach/gpio-tegra.h>
 #include <mach/io_dpd.h>
 
+#include "tegra-board-id.h"
 #include "gpio-names.h"
 #include "board.h"
 #include "board-dalmore.h"
-
+#include "dvfs.h"
 
 #define DALMORE_WLAN_PWR	TEGRA_GPIO_PCC5
 #define DALMORE_WLAN_RST	TEGRA_GPIO_PX7
@@ -148,8 +149,9 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.tap_delay = 0x2,
 	.trim_delay = 0x2,
 	.ddr_clk_limit = 41000000,
-	.uhs_mask = MMC_UHS_MASK_SDR104 |
-		MMC_UHS_MASK_DDR50,
+	.max_clk_limit = 82000000,
+	.uhs_mask = MMC_UHS_MASK_DDR50,
+	.edp_support = false,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
@@ -159,6 +161,10 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.tap_delay = 0x3,
 	.trim_delay = 0x3,
 	.ddr_clk_limit = 41000000,
+	.max_clk_limit = 82000000,
+	.uhs_mask = MMC_UHS_MASK_DDR50,
+	.edp_support = true,
+	.edp_states = {966, 0},
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
@@ -167,12 +173,15 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.power_gpio = -1,
 	.is_8bit = 1,
 	.tap_delay = 0x5,
-	.trim_delay = 0,
+	.trim_delay = 0xA,
 	.ddr_clk_limit = 41000000,
+	.max_clk_limit = 156000000,
 	.mmc_data = {
 		.built_in = 1,
 		.ocr_mask = MMC_OCR_1V8_MASK,
-	}
+	},
+	.edp_support = true,
+	.edp_states = {966, 0},
 };
 
 static struct platform_device tegra_sdhci_device0 = {
@@ -384,6 +393,15 @@ subsys_initcall_sync(dalmore_wifi_prepower);
 
 int __init dalmore_sdhci_init(void)
 {
+	int nominal_core_mv;
+	nominal_core_mv =
+		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
+	if (nominal_core_mv) {
+		tegra_sdhci_platform_data0.nominal_vcore_uV = nominal_core_mv *
+			1000;
+		tegra_sdhci_platform_data3.nominal_vcore_uV = nominal_core_mv *
+			1000;
+	}
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);

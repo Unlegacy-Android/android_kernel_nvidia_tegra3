@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/baseband-xmm-power.h
  *
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright (C) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -20,8 +20,6 @@
 #include <linux/pm.h>
 #include <linux/suspend.h>
 
-#define VENDOR_ID         0x1519
-#define PRODUCT_ID        0x0020
 #define TEGRA_EHCI_DEVICE "/sys/devices/platform/tegra-ehci.1/ehci_power"
 
 #define XMM_MODEM_VER_1121	0x1121
@@ -40,8 +38,9 @@ enum baseband_type {
 
 struct baseband_power_platform_data {
 	enum baseband_type baseband_type;
-	struct platform_device* (*hsic_register)(void);
+	struct platform_device* (*hsic_register)(struct platform_device *);
 	void (*hsic_unregister)(struct platform_device **);
+	struct platform_device *ehci_device;
 	union {
 		struct {
 			int mdm_reset;

@@ -1,7 +1,7 @@
 /*
  * imx132.c - imx132 sensor driver
  *
- * Copyright (c) 2012, NVIDIA, All Rights Reserved.
+ * Copyright (c) 2012-2013, NVIDIA Corporation. All Rights Reserved.
  *
  * Contributors:
  *      Krupal Divvela <kdivvela@nvidia.com>
@@ -41,9 +41,7 @@ struct imx132_info {
 
 #define IMX132_TABLE_WAIT_MS 0
 #define IMX132_TABLE_END 1
-
 #define IMX132_WAIT_MS 5
-
 
 static struct imx132_reg mode_1976x1200[] = {
 	/* Stand by */

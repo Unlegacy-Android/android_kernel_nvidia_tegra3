@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/timer.h
  *
- * Copyright (C) 2010-2012 NVIDIA Corporation
+ * Copyright (C) 2010-2013 NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -61,23 +61,12 @@ static inline void tegra_twd_suspend(struct tegra_twd_context *context) {}
 static inline void tegra_twd_resume(struct tegra_twd_context *context) {}
 #endif
 
-#ifdef CONFIG_ARM_ARCH_TIMER
-struct arch_timer_context {
-	s32 cntp_tval;
-	u32 cntp_ctl;
-	u32 cntfrq;
-};
-
-int arch_timer_get_state(struct arch_timer_context *);
-void arch_timer_suspend(struct arch_timer_context *);
-void arch_timer_resume(struct arch_timer_context *);
-#endif
-
 #if defined(CONFIG_ARM_ARCH_TIMER) && defined(CONFIG_PM_SLEEP)
 void tegra_tsc_suspend(void);
 void tegra_tsc_resume(void);
 void tegra_tsc_wait_for_suspend(void);
 void tegra_tsc_wait_for_resume(void);
+int tegra_cpu_timer_get_remain(s64 *time);
 #else
 static inline void tegra_tsc_suspend(void) {}
 static inline void tegra_tsc_resume(void) {}

@@ -185,6 +185,21 @@ static inline u32 tegra_dc_unmask_interrupt(struct tegra_dc *dc, u32 int_val)
 	return val;
 }
 
+static inline u32 tegra_dc_flush_interrupt(struct tegra_dc *dc, u32 int_val)
+{
+	u32 val;
+	unsigned long flag;
+
+	local_irq_save(flag);
+
+	val = tegra_dc_readl(dc, DC_CMD_INT_STATUS);
+	tegra_dc_writel(dc, (val | int_val), DC_CMD_INT_STATUS);
+
+	local_irq_restore(flag);
+
+	return val;
+}
+
 static inline u32 tegra_dc_mask_interrupt(struct tegra_dc *dc, u32 int_val)
 {
 	u32 val;
@@ -208,17 +223,20 @@ static inline unsigned long tegra_dc_clk_get_rate(struct tegra_dc *dc)
 #endif
 }
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-static inline void _tegra_dc_powergate_locked(struct tegra_dc *dc)
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+static inline void tegra_dc_powergate_locked(struct tegra_dc *dc)
 {
 	tegra_powergate_partition(dc->powergate_id);
-	dc->powered = 0;
 }
 
-static inline void _tegra_dc_unpowergate_locked(struct tegra_dc *dc)
+static inline void tegra_dc_unpowergate_locked(struct tegra_dc *dc)
 {
 	tegra_unpowergate_partition(dc->powergate_id);
-	dc->powered = 1;
+}
+
+static inline bool tegra_dc_is_powered(struct tegra_dc *dc)
+{
+	return tegra_powergate_is_powered(dc->powergate_id);
 }
 
 void tegra_dc_powergate_locked(struct tegra_dc *dc);
@@ -226,6 +244,10 @@ void tegra_dc_unpowergate_locked(struct tegra_dc *dc);
 #else
 static inline void tegra_dc_powergate_locked(struct tegra_dc *dc) { }
 static inline void tegra_dc_unpowergate_locked(struct tegra_dc *dc) { }
+static inline bool tegra_dc_is_powered(struct tegra_dc *dc)
+{
+	return true;
+}
 #endif
 
 extern struct tegra_dc_out_ops tegra_dc_rgb_ops;

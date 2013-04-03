@@ -1,6 +1,7 @@
 /* drivers/input/keyboard/synaptics_i2c_rmi.c
  *
  * Copyright (C) 2007 Google, Inc.
+ * Copyright (C) 2013, NVIDIA Corporation.  All Rights Reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -25,6 +26,9 @@
 #include <linux/synaptics_i2c_rmi.h>
 
 #define ABS_DIFF(a, b)   (((a) > (b)) ? ((a) - (b)) : ((b) - (a)))
+
+/* Enable CPU boost when entering IRQ handler */
+#define ENABLE_CPU_BOOST
 
 static struct workqueue_struct *synaptics_wq;
 
@@ -295,6 +299,11 @@ static irqreturn_t synaptics_ts_irq_handler(int irq, void *dev_id)
 	struct synaptics_ts_data *ts = dev_id;
 
 	/* printk("synaptics_ts_irq_handler\n"); */
+
+#ifdef ENABLE_CPU_BOOST
+	input_event(ts->input_dev, EV_MSC, MSC_ACTIVITY, 1);
+#endif
+
 	disable_irq_nosync(ts->client->irq);
 	queue_work(synaptics_wq, &ts->work);
 	return IRQ_HANDLED;
@@ -559,6 +568,9 @@ static int synaptics_ts_probe(
 		printk(KERN_ERR "synaptics_ts_probe: Unable to register %s input device\n", ts->input_dev->name);
 		goto err_input_register_device_failed;
 	}
+#ifdef ENABLE_CPU_BOOST
+	input_set_capability(ts->input_dev, EV_MSC, MSC_ACTIVITY);
+#endif
 	if (client->irq) {
 		ret = request_irq(client->irq, synaptics_ts_irq_handler, irqflags, client->name, ts);
 		if (ret == 0) {

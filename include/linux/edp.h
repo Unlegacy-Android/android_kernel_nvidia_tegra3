@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -20,14 +20,15 @@
 #include <linux/kernel.h>
 #include <linux/errno.h>
 #include <linux/workqueue.h>
+#include <linux/sysfs.h>
 
 #define EDP_NAME_LEN	16
-#define EDP_MIN_PRIO	0
-#define EDP_MAX_PRIO	19
+#define EDP_MIN_PRIO	19
+#define EDP_MAX_PRIO	0
 
 struct edp_manager {
 	char name[EDP_NAME_LEN];
-	unsigned int imax;
+	unsigned int max;
 
 	/* internal */
 	struct list_head link;
@@ -41,6 +42,11 @@ struct edp_manager {
 
 	/* governor internal */
 	void *gov_data;
+
+#ifdef CONFIG_DEBUG_FS
+	/* public */
+	struct dentry *dentry;
+#endif
 };
 
 /*
@@ -64,6 +70,8 @@ struct edp_client {
 	unsigned int max_borrowers;
 	int priority;
 	void *private_data;
+	struct edp_client_attribute *attrs;
+	unsigned int notify_ui;
 
 	void (*throttle)(unsigned int new_state, void *priv_data);
 	void (*notify_promotion)(unsigned int new_state, void *priv_data);
@@ -85,6 +93,20 @@ struct edp_client {
 	/* governor internal */
 	unsigned int gwt;
 	struct list_head glnk;
+
+#ifdef CONFIG_DEBUG_FS
+	/* public */
+	struct dentry *dentry;
+#endif
+};
+
+struct edp_client_attribute {
+	struct attribute attr;
+	ssize_t (*show)(struct edp_client *c,
+			struct edp_client_attribute *attr, char *buf);
+	ssize_t (*store)(struct edp_client *c,
+			struct edp_client_attribute *attr,
+			const char *buf, size_t count);
 };
 
 struct edp_governor {
@@ -104,6 +126,8 @@ struct edp_governor {
 };
 
 #ifdef CONFIG_EDP_FRAMEWORK
+extern struct dentry *edp_debugfs_dir;
+
 extern int edp_register_manager(struct edp_manager *mgr);
 extern int edp_unregister_manager(struct edp_manager *mgr);
 extern struct edp_manager *edp_get_manager(const char *name);

@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pluto-pinmux-t11x.h
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -84,11 +84,11 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	DEFAULT_PINMUX(GMI_WAIT,      DTV,         PULL_DOWN, TRISTATE, INPUT),
 
 	/* SPI4 pinmux */
-	DEFAULT_PINMUX(GMI_AD5,       SPI4,        NORMAL,    NORMAL,   INPUT),
-	DEFAULT_PINMUX(GMI_AD6,       SPI4,        PULL_UP,   NORMAL,   INPUT),
+	DEFAULT_PINMUX(GMI_AD5,       SPI4,        NORMAL,    NORMAL,   OUTPUT),
+	DEFAULT_PINMUX(GMI_AD6,       SPI4,        PULL_UP,   NORMAL,   OUTPUT),
 	DEFAULT_PINMUX(GMI_AD7,       SPI4,        PULL_UP,   NORMAL,   INPUT),
-	DEFAULT_PINMUX(GMI_CS6_N,     SPI4,        NORMAL,    NORMAL,   INPUT),
-	DEFAULT_PINMUX(GMI_WR_N,      SPI4,        NORMAL,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(GMI_CS6_N,     SPI4,        PULL_UP,   NORMAL,   OUTPUT),
+	DEFAULT_PINMUX(GMI_WR_N,      SPI4,        PULL_UP,   NORMAL,   OUTPUT),
 
 	/* PWM1 pinmux */
 	DEFAULT_PINMUX(GMI_AD9,       PWM1,        NORMAL,    NORMAL,   OUTPUT),
@@ -203,7 +203,7 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	/* OWR pinmux */
 	DEFAULT_PINMUX(OWR,           OWR,         NORMAL,    NORMAL,   INPUT),
 
-	DEFAULT_PINMUX(KB_ROW6,       RSVD2,       NORMAL,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(KB_ROW6,       DISPLAYA_ALT,       NORMAL,    NORMAL,   INPUT),
 	DEFAULT_PINMUX(GPIO_X1_AUD,   RSVD1,       NORMAL,    TRISTATE, INPUT),
 
 	/* CEC pinmux */
@@ -214,7 +214,7 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	I2C_PINMUX(DDC_SDA, I2C4, NORMAL, NORMAL, INPUT, DEFAULT, DEFAULT),
 
 	/* USB pinmux */
-	DEFAULT_PINMUX(USB_VBUS_EN0,  RSVD3,       PULL_DOWN, NORMAL, OUTPUT),
+	USB_PINMUX(USB_VBUS_EN0, RSVD3, NORMAL, NORMAL, OUTPUT, DISABLE, DISABLE),
 
 	/* nct */
 	DEFAULT_PINMUX(GPIO_X6_AUD,   SPI6,        PULL_UP,   TRISTATE, INPUT),

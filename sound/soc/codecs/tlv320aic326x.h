@@ -35,8 +35,8 @@
 #define AIC3262_VERSION "1.1"
 /* Macro to enable the inclusion of tiload kernel driver */
 #define AIC3262_TiLoad
+#define AIC3262_ASI1_MASTER
 #undef AIC3262_SYNC_MODE
-#undef AIC3262_ASI1_MASTER
 #undef AIC3262_ASI2_MASTER
 #undef AIC3262_ASI3_MASTER
 /* Macro for McBsp master / slave configuration */
@@ -124,6 +124,7 @@ struct aic3262_priv {
 	int dsp_runstate;
 	struct firmware *cur_fw;
 	int isdefault_fw;
+	int *shutdown;
 };
 
 extern struct snd_soc_dai tlv320aic3262_dai;

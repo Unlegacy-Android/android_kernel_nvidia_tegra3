@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/baseband-xmm-power.c
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -62,8 +62,10 @@ MODULE_PARM_DESC(modem_pm,
 	"baseband xmm power - modem power management (1 = pm, 0 = no pm)");
 
 static struct usb_device_id xmm_pm_ids[] = {
-	{ USB_DEVICE(VENDOR_ID, PRODUCT_ID),
-	.driver_info = 0 },
+	/* xmm modem variant 1 */
+	{ USB_DEVICE(0x1519, 0x0020), },
+	/* xmm modem variant 2 */
+	{ USB_DEVICE(0x1519, 0x0443), },
 	{}
 };
 MODULE_DEVICE_TABLE(usb, xmm_pm_ids);
@@ -279,15 +281,18 @@ static int xmm_power_on(struct platform_device *device)
 				__func__);
 			modem_power_on = true;
 			if (pdata->hsic_register)
-				data->hsic_device = pdata->hsic_register();
+				data->hsic_device = pdata->hsic_register
+					(pdata->ehci_device);
 			else
 				pr_err("%s: hsic_register is missing\n",
 					__func__);
 			register_hsic_device = false;
+			baseband_modem_power_on(pdata);
 		} else {
 			/* register usb host controller */
 			if (pdata->hsic_register)
-				data->hsic_device = pdata->hsic_register();
+				data->hsic_device = pdata->hsic_register
+					(pdata->ehci_device);
 			/* turn on modem */
 			pr_debug("%s call baseband_modem_power_on_async\n",
 								__func__);
@@ -697,7 +702,8 @@ static void xmm_power_init2_work(struct work_struct *work)
 	/* register usb host controller only once */
 	if (register_hsic_device) {
 		if (pdata->hsic_register)
-			xmm_power_drv_data.hsic_device = pdata->hsic_register();
+			xmm_power_drv_data.hsic_device = pdata->hsic_register
+				(pdata->ehci_device);
 		else
 			pr_err("%s: hsic_register is missing\n", __func__);
 		register_hsic_device = false;
@@ -776,7 +782,8 @@ static void xmm_power_work_func(struct work_struct *work)
 		/* register usb host controller */
 		pr_debug("%s: register usb host controller\n", __func__);
 		if (pdata->hsic_register)
-			data->hsic_device = pdata->hsic_register();
+			data->hsic_device = pdata->hsic_register
+				(pdata->ehci_device);
 		else
 			pr_err("%s: hsic_register is missing\n", __func__);
 		break;

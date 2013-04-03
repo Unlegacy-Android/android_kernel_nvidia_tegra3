@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/mc.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011-2012 NVIDIA Corporation
+ * Copyright (C) 2011-2013 NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -55,6 +55,13 @@ int tegra_mc_get_tiled_memory_bandwidth_multiplier(void)
 
 #include "tegra3_emc.h"
 
+# if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+/* T11x has big line buffers for rotation */
+int tegra_mc_get_tiled_memory_bandwidth_multiplier(void)
+{
+	return 1;
+}
+# else
 /*
  * If using T30/DDR3, the 2nd 16 bytes part of DDR3 atom is 2nd line and is
  * discarded in tiling mode.
@@ -71,6 +78,7 @@ int tegra_mc_get_tiled_memory_bandwidth_multiplier(void)
 	else
 		return 1;
 }
+# endif
 #endif
 
 /* API to get EMC freq to be requested, for Bandwidth.

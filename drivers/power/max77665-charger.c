@@ -1,7 +1,7 @@
 /*
  * max77665-charger.c - Battery charger driver
  *
- *  Copyright (C) 2012-2013 NVIDIA corporation
+ *  Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *  Syed Rafiuddin <srafiuddin@nvidia.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -24,6 +24,9 @@
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
+#include <linux/alarmtimer.h>
+#include <linux/timer.h>
+#include <linux/wakelock.h>
 #include <linux/mfd/max77665.h>
 #include <linux/max77665-charger.h>
 #include <linux/power/max17042_battery.h>
@@ -68,6 +71,9 @@ struct max77665_charger {
 	uint8_t usb_online;
 	uint8_t num_cables;
 	struct extcon_dev *edev;
+	struct alarm wdt_alarm;
+	struct delayed_work wdt_ack_work;
+	struct wake_lock wdt_wake_lock;
 };
 
 static enum power_supply_property max77665_ac_props[] = {
@@ -86,7 +92,7 @@ static int max77665_write_reg(struct max77665_charger *charger,
 
 	ret = max77665_write(dev->parent, MAX77665_I2C_SLAVE_PMIC, reg, value);
 	if (ret < 0)
-		return ret;
+		dev_err(charger->dev, "Failed to write to reg 0x%x\n", reg);
 	return ret;
 }
 
@@ -111,7 +117,6 @@ static int max77665_update_reg(struct max77665_charger *charger,
 {
 	int ret = 0;
 	uint8_t read_val;
-
 	struct device *dev = charger->dev;
 
 	ret = max77665_read(dev->parent, MAX77665_I2C_SLAVE_PMIC,
@@ -173,30 +178,20 @@ static int max77665_enable_write(struct max77665_charger *charger, int access)
 {
 	int ret = 0;
 
-	if (access) {
+	if (access)
 		/* enable write acces to registers */
 		ret = max77665_write_reg(charger, MAX77665_CHG_CNFG_06, 0x0c);
-		if (ret < 0) {
-			dev_err(charger->dev, "Failed to write to reg 0x%x\n",
-				MAX77665_CHG_CNFG_06);
-			return ret;
-		}
-	} else {
+	else
 		/* Disable write acces to registers */
 		ret = max77665_write_reg(charger, MAX77665_CHG_CNFG_06, 0x00);
-		if (ret < 0) {
-			dev_err(charger->dev, "Failed to write to reg 0x%x\n",
-				MAX77665_CHG_CNFG_06);
-			return ret;
-		}
-	}
-	return 0;
+	return ret;
 }
 
 static int max77665_charger_enable(struct max77665_charger *charger,
 		enum max77665_mode mode)
 {
 	int ret;
+	int flags;
 
 	ret = max77665_enable_write(charger, true);
 	if (ret < 0) {
@@ -206,20 +201,16 @@ static int max77665_charger_enable(struct max77665_charger *charger,
 
 	if (mode == CHARGER) {
 		/* enable charging */
-		ret = max77665_write_reg(charger, MAX77665_CHG_CNFG_00, 0x05);
-		if (ret < 0) {
-			dev_err(charger->dev, "Failed in wirting to register 0x%x:\n",
-					MAX77665_CHG_CNFG_00);
+		flags = CHARGER_ON_OTG_OFF_BUCK_OFF_BOOST_ON | WDTEN;
+		ret = max77665_write_reg(charger, MAX77665_CHG_CNFG_00, flags);
+		if (ret < 0)
 			return ret;
-		}
 	} else if (mode == OTG) {
 		/* enable OTG mode */
-		ret = max77665_write_reg(charger, MAX77665_CHG_CNFG_00, 0x2A);
-		if (ret < 0) {
-			dev_err(charger->dev, "Failed in writing to register 0x%x:\n",
-					 MAX77665_CHG_CNFG_00);
+		flags = CHARGER_OFF_OTG_ON_BUCK_OFF_BOOST_ON;
+		ret = max77665_write_reg(charger, MAX77665_CHG_CNFG_00, flags);
+		if (ret < 0)
 			return ret;
-		}
 	}
 
 	ret = max77665_enable_write(charger, false);
@@ -284,11 +275,8 @@ static int max77665_charger_init(struct max77665_charger *charger)
 
 		ret = max77665_write_reg(charger,
 				MAX77665_CHG_CNFG_09, ret*5);
-		if (ret < 0) {
-			dev_err(charger->dev, "Failed writing to reg:0x%x\n",
-				MAX77665_CHG_CNFG_09);
+		if (ret < 0)
 			goto error;
-		}
 	}
 error:
 	ret = max77665_enable_write(charger, false);
@@ -350,45 +338,76 @@ static int max77665_enable_charger(struct max77665_charger *charger)
 		goto error;
 	}
 
+	/* set the charging watchdog timer */
+	alarm_start(&charger->wdt_alarm, ktime_add(ktime_get_boottime(),
+			ktime_set(MAX77665_WATCHDOG_TIMER_PERIOD_S / 2, 0)));
+
 	return 0;
 error:
 	return ret;
 }
 
+static void max77665_charger_wdt_ack_work_handler(struct work_struct *w)
+{
+	struct max77665_charger *charger = container_of(to_delayed_work(w),
+			struct max77665_charger, wdt_ack_work);
+
+	if (0 > max77665_update_reg(charger, MAX77665_CHG_CNFG_06, WDTCLR))
+		dev_err(charger->dev, "fail to ack charging WDT\n");
+
+	alarm_start(&charger->wdt_alarm,
+			ktime_add(ktime_get_boottime(), ktime_set(30, 0)));
+	wake_unlock(&charger->wdt_wake_lock);
+}
+
+static enum alarmtimer_restart max77665_charger_wdt_timer(struct alarm *alarm,
+		ktime_t now)
+{
+	struct max77665_charger *charger =
+		container_of(alarm, struct max77665_charger, wdt_alarm);
+
+	wake_lock(&charger->wdt_wake_lock);
+	schedule_delayed_work(&charger->wdt_ack_work, 0);
+	return ALARMTIMER_NORESTART;
+}
+
+static void max77665_charger_disable_wdt(struct max77665_charger *charger)
+{
+	cancel_delayed_work_sync(&charger->wdt_ack_work);
+	alarm_cancel(&charger->wdt_alarm);
+}
+
 static int charger_extcon_notifier(struct notifier_block *self,
 		unsigned long event, void *ptr)
 {
+	/* Need to disable watch dog timer if cable is added */
 	return NOTIFY_DONE;
 }
 
-static irqreturn_t max77665_charger_irq_handler(int irq, void *data)
+static int max77665_display_charger_status(struct max77665_charger *charger,
+		uint32_t val)
 {
-	struct max77665_charger *charger = data;
+	int i;
+	int bits[] = { BYP_OK, DETBAT_OK, BAT_OK, CHG_OK, CHGIN_OK };
+	char *info[] = {
+		"bypass",
+		"main battery presence",
+		"battery",
+		"charger",
+		"charging input"
+	};
+
+	for (i = 0; i < ARRAY_SIZE(bits); i++)
+		dev_err(charger->dev, "%s %s OK", info[i],
+			(val & bits[i]) ? "is" : "is not");
+
+	return 0;
+}
+
+static int max77665_update_charger_status(struct max77665_charger *charger)
+{
 	int ret;
 	uint32_t read_val;
-
-	ret = max77665_read_reg(charger, MAX77665_CHG_INT_OK, &read_val);
-	if (ret < 0) {
-		dev_err(charger->dev, "failed to write to reg: 0x%x\n",
-				MAX77665_CHG_INT_OK);
-		goto error;
-	}
-
-	if (read_val & 0x40) {
-		charger->usb_online = 1;
-		power_supply_changed(&charger->usb);
-		power_supply_changed(&charger->ac);
-		ret = max77665_enable_charger(charger);
-		if (ret < 0)
-			goto error;
-	} else {
-		charger->ac_online = 0;
-		charger->usb_online = 0;
-		if (charger->plat_data->update_status)
-			charger->plat_data->update_status(false);
-		power_supply_changed(&charger->usb);
-		power_supply_changed(&charger->ac);
-	}
 
 	ret = max77665_read_reg(charger, MAX77665_CHG_INT, &read_val);
 	if (ret < 0) {
@@ -397,13 +416,24 @@ static irqreturn_t max77665_charger_irq_handler(int irq, void *data)
 		goto error;
 	}
 
-	ret = max77665_write_reg(charger, MAX77665_CHG_INT_MASK, 0x0a);
+	ret = max77665_read_reg(charger, MAX77665_CHG_INT_OK, &read_val);
 	if (ret < 0) {
-		dev_err(charger->dev, "failed to write to reg: 0x%x\n",
-				MAX77665_CHG_INT_MASK);
+		dev_err(charger->dev, "failed to reading reg: 0x%x\n",
+				MAX77665_CHG_INT_OK);
 		goto error;
 	}
+	max77665_display_charger_status(charger, read_val);
+
+	ret = max77665_write_reg(charger, MAX77665_CHG_INT_MASK, 0x0a);
 error:
+	return ret;
+}
+
+static irqreturn_t max77665_charger_irq_handler(int irq, void *data)
+{
+	struct max77665_charger *charger = data;
+	int ret;
+	ret = max77665_update_charger_status(charger);
 	return IRQ_HANDLED;
 }
 
@@ -427,11 +457,8 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 
 	/* modify OTP setting of input current limit to 100ma */
 	ret = max77665_write_reg(charger, MAX77665_CHG_CNFG_09, 0x05);
-	if (ret < 0) {
-		dev_err(charger->dev, "failed to write to reg: 0x%x\n",
-				MAX77665_CHG_CNFG_09);
+	if (ret < 0)
 		goto error;
-	}
 
 	/* check for battery presence */
 	ret = max77665_read_reg(charger, MAX77665_CHG_DTLS_01, &read_val);
@@ -455,11 +482,8 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 	}
 
 	ret = max77665_write_reg(charger, MAX77665_CHG_INT_MASK, 0x0a);
-	if (ret < 0) {
-		dev_err(charger->dev, "failed to write to reg: 0x%x\n",
-				MAX77665_CHG_INT_MASK);
+	if (ret < 0)
 		goto error;
-	}
 
 	charger->ac.name		= "ac";
 	charger->ac.type		= POWER_SUPPLY_TYPE_MAINS;
@@ -529,6 +553,13 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 		goto chrg_error;
 	}
 
+	wake_lock_init(&charger->wdt_wake_lock, WAKE_LOCK_SUSPEND,
+			"max77665-charger-wdt");
+	alarm_init(&charger->wdt_alarm, ALARM_BOOTTIME,
+			max77665_charger_wdt_timer);
+	INIT_DELAYED_WORK(&charger->wdt_ack_work,
+			max77665_charger_wdt_ack_work_handler);
+
 	return 0;
 
 chrg_error:
@@ -548,11 +579,35 @@ static int __devexit max77665_battery_remove(struct platform_device *pdev)
 
 	return 0;
 }
+#ifdef CONFIG_PM_SLEEP
+static int max77665_suspend(struct device *dev)
+{
+	return 0;
+}
+static int max77665_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct max77665_charger *charger = platform_get_drvdata(pdev);
+	int ret;
+	ret = max77665_update_charger_status(charger);
+	if (ret < 0)
+		dev_err(charger->dev, "error occured in resume\n");
+	return ret;
+}
 
+static const struct dev_pm_ops max77665_pm = {
+	.suspend = max77665_suspend,
+	.resume = max77665_resume,
+};
+#define MAX77665_PM	(&max77665_pm)
+#else
+#define MAX77665_PM	NULL
+#endif
 static struct platform_driver max77665_battery_driver = {
 	.driver = {
 		.name = "max77665-charger",
 		.owner = THIS_MODULE,
+		.pm	= MAX77665_PM,
 	},
 	.probe = max77665_battery_probe,
 	.remove = __devexit_p(max77665_battery_remove),

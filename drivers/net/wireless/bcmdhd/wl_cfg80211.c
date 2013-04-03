@@ -2705,6 +2705,14 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 			}
 		} else
 			WL_DBG(("Currently not associated!\n"));
+	} else {
+		int wait_cnt = 20;
+		while(wl_get_drv_status(wl, DISCONNECTING, dev) && wait_cnt) {
+			WL_DBG(("%s: wl_get_drv_status: DISCONNECTING, wait_cnt: %d\n",
+				__FUNCTION__, wait_cnt));
+			wait_cnt--;
+			msleep(50);
+		}
 	}
 
 	/* Clean BSSID */

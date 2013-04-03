@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-enterprise.c
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -686,8 +686,6 @@ static struct platform_device *enterprise_devices[] __initdata = {
 	&tegra_rtc_device,
 	&tegra_udc_device,
 	&tegra_wdt0_device,
-	&tegra_wdt1_device,
-	&tegra_wdt2_device,
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
@@ -823,7 +821,7 @@ static struct tegra_usb_platform_data tegra_ehci2_hsic_xmm_pdata = {
 static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.port_otg = true,
 	.has_hostpc = true,
-	.builtin_host_disabled = true,
+	.id_det_type = TEGRA_USB_VIRTUAL_ID,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_DEVICE,
 	.u_data.dev = {
@@ -849,7 +847,7 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.port_otg = true,
 	.has_hostpc = true,
-	.builtin_host_disabled = true,
+	.id_det_type = TEGRA_USB_VIRTUAL_ID,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
@@ -876,23 +874,23 @@ static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
 };
 
-struct platform_device *tegra_usb_hsic_host_register(void)
+static struct platform_device *
+tegra_usb_hsic_host_register(struct platform_device *ehci_dev)
 {
 	struct platform_device *pdev;
 	int val;
 
-	pdev = platform_device_alloc(tegra_ehci2_device.name,
-		tegra_ehci2_device.id);
+	pdev = platform_device_alloc(ehci_dev->name, ehci_dev->id);
 	if (!pdev)
 		return NULL;
 
-	val = platform_device_add_resources(pdev, tegra_ehci2_device.resource,
-		tegra_ehci2_device.num_resources);
+	val = platform_device_add_resources(pdev, ehci_dev->resource,
+						ehci_dev->num_resources);
 	if (val)
 		goto error;
 
-	pdev->dev.dma_mask =  tegra_ehci2_device.dev.dma_mask;
-	pdev->dev.coherent_dma_mask = tegra_ehci2_device.dev.coherent_dma_mask;
+	pdev->dev.dma_mask =  ehci_dev->dev.dma_mask;
+	pdev->dev.coherent_dma_mask = ehci_dev->dev.coherent_dma_mask;
 
 	val = platform_device_add_data(pdev, &tegra_ehci2_hsic_xmm_pdata,
 			sizeof(struct tegra_usb_platform_data));
@@ -1061,6 +1059,8 @@ static void enterprise_baseband_init(void)
 						&tegra_usb_hsic_host_register;
 		tegra_baseband_power_data.hsic_unregister =
 						&tegra_usb_hsic_host_unregister;
+		tegra_baseband_power_data.ehci_device =
+					&tegra_ehci2_device;
 		if ((board_info.board_id == BOARD_E1239) &&
 			(board_info.fab <= BOARD_FAB_A02)) {
 			tegra_baseband_power_data.modem.
@@ -1145,6 +1145,7 @@ static void __init tegra_enterprise_init(void)
 	tegra_release_bootloader_fb();
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	enterprise_vibrator_init();
+	tegra_register_fuse();
 }
 
 static void __init tegra_enterprise_dt_init(void)

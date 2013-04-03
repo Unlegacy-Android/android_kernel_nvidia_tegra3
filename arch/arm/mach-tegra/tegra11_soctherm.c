@@ -1,21 +1,19 @@
 /*
  * arch/arm/mach-tegra/tegra11_soctherm.c
  *
- * Copyright (C) 2011-2012 NVIDIA Corporation
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION. All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/debugfs.h>
@@ -35,20 +33,33 @@
 #include <linux/suspend.h>
 #include <linux/uaccess.h>
 #include <linux/thermal.h>
+#include <linux/platform_data/thermal_sensors.h>
 
 #include <mach/tegra_fuse.h>
 #include <mach/iomap.h>
 
+#include "tegra3_tsensor.h"
 #include "tegra11_soctherm.h"
 
 /* Min temp granularity specified as X in 2^X.
- * -1: Hi precision option: 2^-1 = 0.5C (default)
- *  0: Lo precision option: 2^0  = 1.0C (for use if therm_a/b overflows 16 bits)
+ * -1: Hi precision option: 2^-1 = 0.5C
+ *  0: Lo precision option: 2^0  = 1.0C
+ *  NB: We must use lower precision (0) due to cp_fuse corrections
+ *  (see Sec9.2 T35_Thermal_Sensing_IAS.docx)
  */
-static int soc_therm_precision = -1;
+static const int precision; /* default 0 -> low precision */
+#define LOWER_PRECISION_FOR_CONV(val)	((!precision) ? ((val)*2) : (val))
+#define LOWER_PRECISION_FOR_TEMP(val)	((!precision) ? ((val)/2) : (val))
+#define PRECISION_IS_LOWER()		((!precision))
+#define PRECISION_TO_STR()		((!precision) ? "Lo" : "Hi")
 
 #define TS_TSENSE_REGS_SIZE		0x20
 #define TS_TSENSE_REG_OFFSET(reg, ts)	((reg) + ((ts) * TS_TSENSE_REGS_SIZE))
+
+#define TS_THERM_LVL_REGS_SIZE		0x20
+#define TS_THERM_GRP_REGS_SIZE		0x04
+#define TS_THERM_REG_OFFSET(rg, lv, gr)	((rg) + ((lv) * TS_THERM_LVL_REGS_SIZE)\
+					+ ((gr) * TS_THERM_GRP_REGS_SIZE))
 
 #define CTL_LVL0_CPU0			0x0
 #define CTL_LVL0_CPU0_UP_THRESH_SHIFT	17
@@ -59,6 +70,8 @@ static int soc_therm_precision = -1;
 #define CTL_LVL0_CPU0_EN_MASK		0x1
 #define CTL_LVL0_CPU0_CPU_THROT_SHIFT	5
 #define CTL_LVL0_CPU0_CPU_THROT_MASK	0x3
+#define CTL_LVL0_CPU0_CPU_THROT_LIGHT	0x1
+#define CTL_LVL0_CPU0_CPU_THROT_HEAVY	0x2
 #define CTL_LVL0_CPU0_MEM_THROT_SHIFT	2
 #define CTL_LVL0_CPU0_MEM_THROT_MASK	0x1
 #define CTL_LVL0_CPU0_STATUS_SHIFT	0
@@ -134,6 +147,14 @@ static int soc_therm_precision = -1;
 #define TS_PDIV_PLLX_SHIFT		0
 #define TS_PDIV_PLLX_MASK		0xf
 
+#define TS_HOTSPOT_OFF			0x1c4
+#define TS_HOTSPOT_OFF_CPU_SHIFT	16
+#define TS_HOTSPOT_OFF_CPU_MASK		0xff
+#define TS_HOTSPOT_OFF_GPU_SHIFT	8
+#define TS_HOTSPOT_OFF_GPU_MASK		0xff
+#define TS_HOTSPOT_OFF_MEM_SHIFT	0
+#define TS_HOTSPOT_OFF_MEM_MASK		0xff
+
 #define TS_TEMP1			0x1c8
 #define TS_TEMP1_CPU_TEMP_SHIFT		16
 #define TS_TEMP1_CPU_TEMP_MASK		0xffff
@@ -146,26 +167,127 @@ static int soc_therm_precision = -1;
 #define TS_TEMP2_PLLX_TEMP_SHIFT	0
 #define TS_TEMP2_PLLX_TEMP_MASK		0xffff
 
+#define TH_INTR_STATUS			0x84
+#define TH_INTR_ENABLE			0x88
+#define TH_INTR_DISABLE			0x8c
+
+#define LOCK_CTL			0x90
+
+#define TH_INTR_POS_MD3_SHIFT		31
+#define TH_INTR_POS_MD3_MASK		0x1
+#define TH_INTR_POS_MU3_SHIFT		30
+#define TH_INTR_POS_MU3_MASK		0x1
+#define TH_INTR_POS_MD2_SHIFT		29
+#define TH_INTR_POS_MD2_MASK		0x1
+#define TH_INTR_POS_MU2_SHIFT		28
+#define TH_INTR_POS_MU2_MASK		0x1
+#define TH_INTR_POS_MD1_SHIFT		27
+#define TH_INTR_POS_MD1_MASK		0x1
+#define TH_INTR_POS_MU1_SHIFT		26
+#define TH_INTR_POS_MU1_MASK		0x1
+#define TH_INTR_POS_MD0_SHIFT		25
+#define TH_INTR_POS_MD0_MASK		0x1
+#define TH_INTR_POS_MU0_SHIFT		24
+#define TH_INTR_POS_MU0_MASK		0x1
+#define TH_INTR_POS_GD3_SHIFT		23
+#define TH_INTR_POS_GD3_MASK		0x1
+#define TH_INTR_POS_GU3_SHIFT		22
+#define TH_INTR_POS_GU3_MASK		0x1
+#define TH_INTR_POS_GD2_SHIFT		21
+#define TH_INTR_POS_GD2_MASK		0x1
+#define TH_INTR_POS_GU2_SHIFT		20
+#define TH_INTR_POS_GU2_MASK		0x1
+#define TH_INTR_POS_GD1_SHIFT		19
+#define TH_INTR_POS_GD1_MASK		0x1
+#define TH_INTR_POS_GU1_SHIFT		18
+#define TH_INTR_POS_GU1_MASK		0x1
+#define TH_INTR_POS_GD0_SHIFT		17
+#define TH_INTR_POS_GD0_MASK		0x1
+#define TH_INTR_POS_GU0_SHIFT		16
+#define TH_INTR_POS_GU0_MASK		0x1
+#define TH_INTR_POS_CD3_SHIFT		15
+#define TH_INTR_POS_CD3_MASK		0x1
+#define TH_INTR_POS_CU3_SHIFT		14
+#define TH_INTR_POS_CU3_MASK		0x1
+#define TH_INTR_POS_CD2_SHIFT		13
+#define TH_INTR_POS_CD2_MASK		0x1
+#define TH_INTR_POS_CU2_SHIFT		12
+#define TH_INTR_POS_CU2_MASK		0x1
+#define TH_INTR_POS_CD1_SHIFT		11
+#define TH_INTR_POS_CD1_MASK		0x1
+#define TH_INTR_POS_CU1_SHIFT		10
+#define TH_INTR_POS_CU1_MASK		0x1
+#define TH_INTR_POS_CD0_SHIFT		9
+#define TH_INTR_POS_CD0_MASK		0x1
+#define TH_INTR_POS_CU0_SHIFT		8
+#define TH_INTR_POS_CU0_MASK		0x1
+#define TH_INTR_POS_PD3_SHIFT		7
+#define TH_INTR_POS_PD3_MASK		0x1
+#define TH_INTR_POS_PU3_SHIFT		6
+#define TH_INTR_POS_PU3_MASK		0x1
+#define TH_INTR_POS_PD2_SHIFT		5
+#define TH_INTR_POS_PD2_MASK		0x1
+#define TH_INTR_POS_PU2_SHIFT		4
+#define TH_INTR_POS_PU2_MASK		0x1
+#define TH_INTR_POS_PD1_SHIFT		3
+#define TH_INTR_POS_PD1_MASK		0x1
+#define TH_INTR_POS_PU1_SHIFT		2
+#define TH_INTR_POS_PU1_MASK		0x1
+#define TH_INTR_POS_PD0_SHIFT		1
+#define TH_INTR_POS_PD0_MASK		0x1
+#define TH_INTR_POS_PU0_SHIFT		0
+#define TH_INTR_POS_PU0_MASK		0x1
+
+
 #define UP_STATS_L0		0x10
 #define DN_STATS_L0		0x14
 
-#define INTR_STATUS			0x84
-#define INTR_STATUS_CD0_SHIFT		9
-#define INTR_STATUS_CD0_MASK		0x1
-#define INTR_STATUS_CU0_SHIFT		8
-#define INTR_STATUS_CU0_MASK		0x1
-
-#define INTR_EN			0x88
-#define INTR_EN_MU0_SHIFT	24
-#define INTR_EN_MD0_SHIFT	25
-#define INTR_EN_CU0_SHIFT	8
-#define INTR_EN_CD0_SHIFT	9
-
-#define INTR_DIS		0x8c
-#define LOCK_CTL		0x90
 #define STATS_CTL		0x94
+#define STATS_CTL_CLR_DN	0x8
+#define STATS_CTL_EN_DN		0x4
+#define STATS_CTL_CLR_UP	0x2
+#define STATS_CTL_EN_UP		0x1
 
-#define THROT_GLOBAL_CFG		0x400
+#define THROT_GLOBAL_CFG	0x400
+
+#define OC1_CFG				0x310
+#define OC1_CFG_LONG_LATENCY_SHIFT	6
+#define OC1_CFG_LONG_LATENCY_MASK	0x1
+#define OC1_CFG_HW_RESTORE_SHIFT	5
+#define OC1_CFG_HW_RESTORE_MASK		0x1
+#define OC1_CFG_PWR_GOOD_MASK_SHIFT	4
+#define OC1_CFG_PWR_GOOD_MASK_MASK	0x1
+#define OC1_CFG_THROTTLE_MODE_SHIFT	2
+#define OC1_CFG_THROTTLE_MODE_MASK	0x3
+#define OC1_CFG_ALARM_POLARITY_SHIFT	1
+#define OC1_CFG_ALARM_POLARITY_MASK	0x1
+#define OC1_CFG_EN_THROTTLE_SHIFT	0
+#define OC1_CFG_EN_THROTTLE_MASK	0x1
+
+#define OC1_CNT_THRESHOLD		0x314
+#define OC1_THRESHOLD_PERIOD		0x318
+#define OC1_ALARM_COUNT			0x31c
+#define OC1_FILTER			0x320
+
+#define OC1_STATS			0x3a8
+
+#define OC_INTR_STATUS			0x39c
+#define OC_INTR_ENABLE			0x3a0
+#define OC_INTR_DISABLE			0x3a4
+#define OC_INTR_POS_OC1_SHIFT		0
+#define OC_INTR_POS_OC1_MASK		0x1
+#define OC_INTR_POS_OC2_SHIFT		1
+#define OC_INTR_POS_OC2_MASK		0x1
+#define OC_INTR_POS_OC3_SHIFT		2
+#define OC_INTR_POS_OC3_MASK		0x1
+#define OC_INTR_POS_OC4_SHIFT		3
+#define OC_INTR_POS_OC4_MASK		0x1
+#define OC_INTR_POS_OC5_SHIFT		4
+#define OC_INTR_POS_OC5_MASK		0x1
+
+#define OC_STATS_CTL			0x3c4
+#define OC_STATS_CTL_CLR_ALL		0x2
+#define OC_STATS_CTL_EN_ALL		0x1
 
 #define CPU_PSKIP_STATUS			0x418
 #define CPU_PSKIP_STATUS_M_SHIFT		12
@@ -187,25 +309,30 @@ static int soc_therm_precision = -1;
 #define THROT_STATUS_ENABLED_SHIFT		0
 #define THROT_STATUS_ENABLED_MASK		0x1
 
-#define THROT_PSKIP_CTRL_LITE_CPU			0x430
+#define THROT_PSKIP_CTRL_LITE_CPU		0x430
 #define THROT_PSKIP_CTRL_ENABLE_SHIFT		31
 #define THROT_PSKIP_CTRL_ENABLE_MASK		0x1
-#define THROT_PSKIP_CTRL_DIVIDEND_SHIFT	8
+#define THROT_PSKIP_CTRL_DIVIDEND_SHIFT		8
 #define THROT_PSKIP_CTRL_DIVIDEND_MASK		0xff
 #define THROT_PSKIP_CTRL_DIVISOR_SHIFT		0
 #define THROT_PSKIP_CTRL_DIVISOR_MASK		0xff
 
-#define THROT_PSKIP_RAMP_LITE_CPU			0x434
-#define THROT_PSKIP_RAMP_DURATION_SHIFT	8
+#define THROT_PSKIP_RAMP_LITE_CPU		0x434
+#define THROT_PSKIP_RAMP_DURATION_SHIFT		8
 #define THROT_PSKIP_RAMP_DURATION_MASK		0xffff
 #define THROT_PSKIP_RAMP_STEP_SHIFT		0
 #define THROT_PSKIP_RAMP_STEP_MASK		0xff
 
-#define THROT_LITE_PRIORITY			0x444
-#define THROT_LITE_PRIORITY_PRIORITY_SHIFT	0
-#define THROT_LITE_PRIORITY_PRIORITY_MASK	0xff
+#define THROT_PRIORITY_LITE			0x444
+#define THROT_PRIORITY_LITE_PRIO_SHIFT		0
+#define THROT_PRIORITY_LITE_PRIO_MASK		0xff
+
+#define THROT_DELAY_LITE			0x448
+#define THROT_DELAY_LITE_DELAY_SHIFT		0
+#define THROT_DELAY_LITE_DELAY_MASK		0xff
 
 #define THROT_OFFSET				0x30
+#define ALARM_OFFSET				0x14
 
 #define FUSE_BASE_CP_SHIFT	0
 #define FUSE_BASE_CP_MASK	0x3ff
@@ -224,27 +351,90 @@ static int soc_therm_precision = -1;
 #define FUSE_TSENSOR_CALIB_CP_MASK	0x1fff
 #define FUSE_TSENSOR_CALIB_BITS		13
 
+/* car register offsets needed for enabling HW throttling */
+#define CAR_SUPER_CCLK_DIVIDER		0x24
+#define CDIV_USE_THERM_CONTROLS_SHIFT	30
+#define CDIV_USE_THERM_CONTROLS_MASK	0x1
+
+/* pmc register offsets needed for powering off PMU */
+#define PMC_SCRATCH_WRITE_SHIFT			2
+#define PMC_SCRATCH_WRITE_MASK			0x1
+#define PMC_ENABLE_RST_SHIFT			1
+#define PMC_ENABLE_RST_MASK			0x1
+#define PMC_SENSOR_CTRL				0x1B0
+#define PMC_SCRATCH54				0x258
+#define PMC_SCRATCH55				0x25C
+
+/* scratch54 register bit fields */
+#define PMU_OFF_DATA_SHIFT			8
+#define PMU_OFF_DATA_MASK			0xff
+#define PMU_OFF_ADDR_SHIFT			0
+#define PMU_OFF_ADDR_MASK			0xff
+
+/* scratch55 register bit fields */
+#define RESET_TEGRA_SHIFT			31
+#define RESET_TEGRA_MASK			0x1
+#define CONTROLLER_TYPE_SHIFT			30
+#define CONTROLLER_TYPE_MASK			0x1
+#define I2C_CONTROLLER_ID_SHIFT			27
+#define I2C_CONTROLLER_ID_MASK			0x7
+#define PINMUX_SHIFT				24
+#define PINMUX_MASK				0x7
+#define CHECKSUM_SHIFT				16
+#define CHECKSUM_MASK				0xff
+#define PMU_16BIT_SUPPORT_SHIFT			15
+#define PMU_16BIT_SUPPORT_MASK			0x1
+#define PMU_I2C_ADDRESS_SHIFT			0
+#define PMU_I2C_ADDRESS_MASK			0x7f
+
+
 #define THROT_PSKIP_CTRL(throt, dev)		(THROT_PSKIP_CTRL_LITE_CPU + \
 						(THROT_OFFSET * throt) + \
 						(8 * dev))
 #define THROT_PSKIP_RAMP(throt, dev)		(THROT_PSKIP_RAMP_LITE_CPU + \
 						(THROT_OFFSET * throt) + \
 						(8 * dev))
+#define THROT_PRIORITY_CTRL(throt)		(THROT_PRIORITY_LITE + \
+						(THROT_OFFSET * throt))
+#define THROT_DELAY_CTRL(throt)			(THROT_DELAY_LITE + \
+						(THROT_OFFSET * throt))
+#define ALARM_CFG(throt)			(OC1_CFG + \
+						(ALARM_OFFSET * (throt - \
+								THROTTLE_OC1)))
+#define ALARM_CNT_THRESHOLD(throt)		(OC1_CNT_THRESHOLD + \
+						(ALARM_OFFSET * (throt - \
+								THROTTLE_OC1)))
+#define ALARM_THRESHOLD_PERIOD(throt)		(OC1_THRESHOLD_PERIOD + \
+						(ALARM_OFFSET * (throt - \
+								THROTTLE_OC1)))
+#define ALARM_ALARM_COUNT(throt)		(OC1_ALARM_COUNT + \
+						(ALARM_OFFSET * (throt - \
+								THROTTLE_OC1)))
+#define ALARM_FILTER(throt)			(OC1_FILTER + \
+						(ALARM_OFFSET * (throt - \
+								THROTTLE_OC1)))
+#define ALARM_STATS(throt)			(OC1_STATS + \
+						(4 * (throt - THROTTLE_OC1)))
 
-#define PSKIP_CTRL_OC1_CPU			0x490
+#define THROT_DEPTH_DIVIDEND(depth)	((256 * (100 - (depth)) / 100) - 1)
+#define THROT_DEPTH_DEFAULT		(80)
+#define THROT_DEPTH(th, dp)		{			\
+		(th)->depth    = (dp);				\
+		(th)->dividend = THROT_DEPTH_DIVIDEND(dp);	\
+		(th)->divisor  = 255;				\
+		(th)->duration = 0xff;				\
+		(th)->step     = 0xf;				\
+	}
 
-#define REG_SET(r,_name,val) \
-	((r)&~(_name##_MASK<<_name##_SHIFT))|(((val)&_name##_MASK)<<_name##_SHIFT)
+#define REG_SET(r, _name, val)	(((r) & ~(_name##_MASK << _name##_SHIFT)) | \
+				 (((val) & _name##_MASK) << _name##_SHIFT))
+#define REG_GET_BIT(r, _name)	((r) & (_name##_MASK << _name##_SHIFT))
+#define REG_GET(r, _name)	(REG_GET_BIT(r, _name) >> _name##_SHIFT)
+#define MAKE_SIGNED32(val, nb)	((s32)(val) << (32 - (nb)) >> (32 - (nb)))
 
-#define REG_GET(r,_name) \
-	(((r)&(_name##_MASK<<_name##_SHIFT))>>_name##_SHIFT)
-
-#define MAKE_SIGNED32(val, nb) \
-	((s32)(val) << (32 - (nb)) >> (32 - (nb)))
-
-static void __iomem *reg_soctherm_base = IO_ADDRESS(TEGRA_SOCTHERM_BASE);
-static void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
-static void __iomem *clk_reset_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+static const void __iomem *reg_soctherm_base = IO_ADDRESS(TEGRA_SOCTHERM_BASE);
+static const void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+static const void __iomem *clk_reset_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 
 #define clk_reset_writel(value, reg) \
 	__raw_writel(value, (u32)clk_reset_base + (reg))
@@ -253,12 +443,17 @@ static void __iomem *clk_reset_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 #define pmc_writel(value, reg) __raw_writel(value, (u32)pmc_base + (reg))
 #define pmc_readl(reg) __raw_readl((u32)pmc_base + (reg))
 
-#define soctherm_writel(value, reg) \
-	__raw_writel(value, (u32)reg_soctherm_base + (reg))
-#define soctherm_readl(reg) \
-	__raw_readl((u32)reg_soctherm_base + (reg))
+#define soctherm_writel(value, reg)	\
+	(soctherm_suspended ?:		\
+		__raw_writel(value, (u32)reg_soctherm_base + (reg)))
+#define soctherm_readl(reg)		\
+	(soctherm_suspended ? 0 :	\
+		__raw_readl((u32)reg_soctherm_base + (reg)))
 
-#define max4(a, b, c, d)	max(max(a, b), max(c, d))
+static DEFINE_SPINLOCK(soctherm_suspend_resume_lock);
+
+static int soctherm_suspend(void);
+static int soctherm_resume(void);
 
 static struct soctherm_platform_data plat_data;
 
@@ -267,30 +462,55 @@ static struct soctherm_platform_data plat_data;
  * the board files calls platform_device_register instead of directly calling
  * tegra11_soctherm_init(). See nvbug 1206311.
  */
-static bool soctherm_init_platform_done = false;
+static bool soctherm_init_platform_done;
+static bool read_hw_temp = true;
+static bool soctherm_suspended;
 
 static struct clk *soctherm_clk;
 static struct clk *tsensor_clk;
 
+static inline long temp_convert(int cap, int a, int b)
+{
+	cap *= a;
+	cap >>= 10;
+	cap += (b << 3);
+	cap *= LOWER_PRECISION_FOR_CONV(500);
+	cap /= 8;
+	return cap;
+}
+
 #ifdef CONFIG_THERMAL
 static struct thermal_zone_device *thz[THERM_SIZE];
 #endif
-static struct workqueue_struct *workqueue;
-static struct work_struct work;
 
 static u32 fuse_calib_base_cp;
 static u32 fuse_calib_base_ft;
 static s32 actual_temp_cp;
 static s32 actual_temp_ft;
 
-static char *therm_names[] = {
+static const char *const therm_names[] = {
 	[THERM_CPU] = "CPU",
 	[THERM_MEM] = "MEM",
 	[THERM_GPU] = "GPU",
 	[THERM_PLL] = "PLL",
 };
 
-static char *sensor_names[] = {
+static const char *const throt_names[] = {
+	[THROTTLE_LIGHT]   = "light",
+	[THROTTLE_HEAVY]   = "heavy",
+	[THROTTLE_OC1]     = "oc1",
+	[THROTTLE_OC2]     = "oc2",
+	[THROTTLE_OC3]     = "oc3",
+	[THROTTLE_OC4]     = "oc4",
+	[THROTTLE_OC5]     = "oc5",
+};
+
+static const char *const throt_dev_names[] = {
+	[THROTTLE_DEV_CPU] = "CPU",
+	[THROTTLE_DEV_GPU] = "GPU",
+};
+
+static const char *const sensor_names[] = {
 	[TSENSE_CPU0] = "cpu0",
 	[TSENSE_CPU1] = "cpu1",
 	[TSENSE_CPU2] = "cpu2",
@@ -301,7 +521,7 @@ static char *sensor_names[] = {
 	[TSENSE_PLLX] = "pllx",
 };
 
-static int sensor2tsensorcalib[] = {
+static const int sensor2tsensorcalib[] = {
 	[TSENSE_CPU0] = 0,
 	[TSENSE_CPU1] = 1,
 	[TSENSE_CPU2] = 2,
@@ -311,6 +531,38 @@ static int sensor2tsensorcalib[] = {
 	[TSENSE_GPU]  = 4,
 	[TSENSE_PLLX] = 7,
 };
+
+static const int tsensor2therm_map[] = {
+	[TSENSE_CPU0] = THERM_CPU,
+	[TSENSE_CPU1] = THERM_CPU,
+	[TSENSE_CPU2] = THERM_CPU,
+	[TSENSE_CPU3] = THERM_CPU,
+	[TSENSE_GPU]  = THERM_GPU,
+	[TSENSE_MEM0] = THERM_MEM,
+	[TSENSE_MEM1] = THERM_MEM,
+	[TSENSE_PLLX] = THERM_PLL,
+};
+
+static const enum soctherm_throttle_dev_id therm2dev[] = {
+	[THERM_CPU] = THROTTLE_DEV_CPU,
+	[THERM_MEM] = -1,
+	[THERM_GPU] = THROTTLE_DEV_GPU,
+	[THERM_PLL] = -1,
+};
+
+static const struct soctherm_sensor sensor_defaults = {
+	.tall      = 16300,
+	.tiddq     = 1,
+	.ten_count = 1,
+	.tsample   = 163,
+	.pdiv      = 10,
+};
+
+static const unsigned long default_soctherm_clk_rate = 51000000;
+static const unsigned long default_tsensor_clk_rate = 500000;
+
+static int sensor2therm_a[TSENSE_SIZE];
+static int sensor2therm_b[TSENSE_SIZE];
 
 static inline s64 div64_s64_precise(s64 a, s32 b)
 {
@@ -329,69 +581,272 @@ static inline long temp_translate(int readback)
 	int lsb = (readback & 0x80) >> 7;
 	int sign = readback & 0x01 ? -1 : 1;
 
-	if (soc_therm_precision == -1)
-		return (abs * 1000 + lsb * 500) * sign;
-	else
-		return (abs * 2000 + lsb * 1000) * sign;
+	return (abs * LOWER_PRECISION_FOR_CONV(1000) +
+		lsb * LOWER_PRECISION_FOR_CONV(500)) * sign;
 }
 
 #ifdef CONFIG_THERMAL
-static int soctherm_set_limits(enum soctherm_therm_id therm,
+static inline void prog_hw_shutdown(struct thermal_trip_info *trip_state,
+				    int therm)
+{
+	int trip_temp;
+	u32 r;
+
+	trip_temp = LOWER_PRECISION_FOR_TEMP(trip_state->trip_temp / 1000);
+
+
+	r = soctherm_readl(THERMTRIP);
+	if (therm == THERM_CPU) {
+		r = REG_SET(r, THERMTRIP_CPU_EN, 1);
+		r = REG_SET(r, THERMTRIP_CPU_THRESH, trip_temp);
+	} else if (therm == THERM_GPU) {
+		r = REG_SET(r, THERMTRIP_GPU_EN, 1);
+		r = REG_SET(r, THERMTRIP_GPUMEM_THRESH, trip_temp);
+	} else if (therm == THERM_PLL) {
+		r = REG_SET(r, THERMTRIP_TSENSE_EN, 1);
+		r = REG_SET(r, THERMTRIP_TSENSE_THRESH, trip_temp);
+	} else if (therm == THERM_MEM) {
+		r = REG_SET(r, THERMTRIP_MEM_EN, 1);
+		r = REG_SET(r, THERMTRIP_GPUMEM_THRESH, trip_temp);
+	}
+	r = REG_SET(r, THERMTRIP_ANY_EN, 0);
+	soctherm_writel(r, THERMTRIP);
+}
+
+static inline void prog_hw_threshold(struct thermal_trip_info *trip_state,
+				     int therm, int throt)
+{
+	int trip_temp;
+	u32 r, reg_off;
+
+	trip_temp = LOWER_PRECISION_FOR_TEMP(trip_state->trip_temp / 1000);
+
+	/* Hardcode LITE on level-1 and HEAVY on level-2 */
+	reg_off = TS_THERM_REG_OFFSET(CTL_LVL0_CPU0, throt + 1, therm);
+
+	r = soctherm_readl(reg_off);
+	r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH, trip_temp);
+
+	r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH, trip_temp);
+	r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
+	r = REG_SET(r, CTL_LVL0_CPU0_CPU_THROT,
+		    throt == THROTTLE_HEAVY ?
+		    CTL_LVL0_CPU0_CPU_THROT_HEAVY :
+		    CTL_LVL0_CPU0_CPU_THROT_LIGHT);
+
+	soctherm_writel(r, reg_off);
+}
+
+static void soctherm_set_limits(enum soctherm_therm_id therm,
 				long lo_limit, long hi_limit)
 {
-	u32 r = soctherm_readl(CTL_LVL0_CPU0);
+	u32 r, reg_off;
+
+	reg_off = TS_THERM_REG_OFFSET(CTL_LVL0_CPU0, 0, therm);
+	r = soctherm_readl(reg_off);
+
+	lo_limit = LOWER_PRECISION_FOR_TEMP(lo_limit);
+	hi_limit = LOWER_PRECISION_FOR_TEMP(hi_limit);
+
 	r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH, lo_limit);
 	r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH, hi_limit);
-	soctherm_writel(r, CTL_LVL0_CPU0);
+	r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
+	soctherm_writel(r, reg_off);
 
-	soctherm_writel(1<<INTR_EN_CU0_SHIFT, INTR_EN);
-	soctherm_writel(1<<INTR_EN_CD0_SHIFT, INTR_EN);
-	return 0;
+	switch (therm) {
+	case THERM_CPU:
+		r = REG_SET(0, TH_INTR_POS_CD0, 1);
+		r = REG_SET(r, TH_INTR_POS_CU0, 1);
+		break;
+	case THERM_GPU:
+		r = REG_SET(0, TH_INTR_POS_GD0, 1);
+		r = REG_SET(r, TH_INTR_POS_GU0, 1);
+		break;
+	case THERM_MEM:
+		r = REG_SET(0, TH_INTR_POS_PD0, 1);
+		r = REG_SET(r, TH_INTR_POS_PU0, 1);
+		break;
+	case THERM_PLL:
+		r = REG_SET(0, TH_INTR_POS_MD0, 1);
+		r = REG_SET(r, TH_INTR_POS_MU0, 1);
+		break;
+	default:
+		r = 0;
+		break;
+	}
+	soctherm_writel(r, TH_INTR_ENABLE);
+}
+
+static void soctherm_update_zone(int zn)
+{
+	const int MAX_HIGH_TEMP = 128000;
+	long low_temp = 0, high_temp = MAX_HIGH_TEMP;
+	long trip_temp, passive_low_temp = MAX_HIGH_TEMP, zone_temp;
+	enum thermal_trip_type trip_type;
+	struct thermal_trip_info *trip_state;
+	struct thermal_zone_device *cur_thz = thz[zn];
+	int count, trips;
+
+	thermal_zone_device_update(cur_thz);
+
+	trips = cur_thz->trips;
+	for (count = 0; count < trips; count++) {
+		cur_thz->ops->get_trip_type(cur_thz, count, &trip_type);
+		if ((trip_type == THERMAL_TRIP_HOT) ||
+		    (trip_type == THERMAL_TRIP_CRITICAL))
+			continue; /* handled in HW */
+
+		cur_thz->ops->get_trip_temp(cur_thz, count, &trip_temp);
+
+		trip_state = &plat_data.therm[zn].trips[count];
+		zone_temp = cur_thz->temperature;
+
+		if (!trip_state->tripped) { /* not tripped? update high */
+			if (trip_temp < high_temp)
+				high_temp = trip_temp;
+		} else { /* tripped? update low */
+			if (trip_type != THERMAL_TRIP_PASSIVE) {
+				/* get highest ACTIVE */
+				if (trip_temp > low_temp)
+					low_temp = trip_temp;
+			} else {
+				/* get lowest PASSIVE */
+				if (trip_temp < passive_low_temp)
+					passive_low_temp = trip_temp;
+			}
+		}
+	}
+
+	if (passive_low_temp != MAX_HIGH_TEMP)
+		low_temp = max(low_temp, passive_low_temp);
+
+	soctherm_set_limits(zn, low_temp/1000, high_temp/1000);
 }
 
 static void soctherm_update(void)
 {
-	long temp, trip_temp, low_temp = 0, high_temp = 128000;
-	int i, count;
+	int i;
 
 	if (!soctherm_init_platform_done)
 		return;
 
 	for (i = 0; i < THERM_SIZE; i++) {
-		if (!thz[i])
+		if (thz[i] && thz[i]->trips)
+			soctherm_update_zone(i);
+	}
+}
+
+static int soctherm_hw_action_get_max_state(struct thermal_cooling_device *cdev,
+					    unsigned long *max_state)
+{
+	struct thermal_trip_info *trip_state = cdev->devdata;
+
+	if (!trip_state)
+		return 0;
+
+	*max_state = 3; /* bit 1: CPU  bit 2: GPU */
+	return 0;
+}
+
+static int soctherm_hw_action_get_cur_state(struct thermal_cooling_device *cdev,
+					    unsigned long *cur_state)
+{
+	struct thermal_trip_info *trip_state = cdev->devdata;
+	u32 r, m, n;
+	int i, j;
+
+	if (!trip_state)
+		return 0;
+
+	*cur_state = 0;
+	if (trip_state->trip_type != THERMAL_TRIP_HOT)
+		return 0;
+
+	for (j = 0; j < THROTTLE_DEV_SIZE; j++) {
+		r = soctherm_readl(CPU_PSKIP_STATUS + (j * 4));
+		if (!REG_GET(r, CPU_PSKIP_STATUS_ENABLED))
 			continue;
 
-		if (!thz[i]->passive)
-			thermal_zone_device_update(thz[i]);
-
-		thz[i]->ops->get_temp(thz[i], &temp);
-		for (count = 0; count < thz[i]->trips; count++) {
-			thz[i]->ops->get_trip_temp(thz[i], count, &trip_temp);
-
-			if ((trip_temp >= temp) && (trip_temp < high_temp))
-				high_temp = trip_temp;
-
-			if ((trip_temp < temp) && (trip_temp > low_temp))
-				low_temp = trip_temp -
-					plat_data.therm[i].hysteresis;
+		m = REG_GET(r, CPU_PSKIP_STATUS_M);
+		n = REG_GET(r, CPU_PSKIP_STATUS_N);
+		for (i = THROTTLE_LIGHT; i <= THROTTLE_HEAVY; i++) {
+			if (strnstr(trip_state->cdev_type,
+					throt_names[i], THERMAL_NAME_LENGTH) &&
+				plat_data.throttle[i].devs[j].enable &&
+				m == plat_data.throttle[i].devs[j].dividend &&
+				n == plat_data.throttle[i].devs[j].divisor)
+				*cur_state |= (j + 1); /* bit1: CPU bit2: GPU */
 		}
 	}
-
-	soctherm_set_limits(THERM_CPU, low_temp/1000, high_temp/1000);
+	return 0;
 }
+
+static int soctherm_hw_action_set_cur_state(struct thermal_cooling_device *cdev,
+					    unsigned long cur_state)
+{
+	return 0; /* hw sets this state */
+}
+
+static struct thermal_cooling_device_ops soctherm_hw_action_ops = {
+	.get_max_state = soctherm_hw_action_get_max_state,
+	.get_cur_state = soctherm_hw_action_get_cur_state,
+	.set_cur_state = soctherm_hw_action_set_cur_state,
+};
+
+static int soctherm_suspend_get_max_state(struct thermal_cooling_device *cdev,
+					  unsigned long *max_state)
+{
+	*max_state = 1;
+	return 0;
+}
+
+static int soctherm_suspend_get_cur_state(struct thermal_cooling_device *cdev,
+					  unsigned long *cur_state)
+{
+	*cur_state = !soctherm_suspended;
+	return 0;
+}
+
+static int soctherm_suspend_set_cur_state(struct thermal_cooling_device *cdev,
+					  unsigned long cur_state)
+{
+	if (!cur_state != soctherm_suspended) {
+		if (cur_state)
+			soctherm_resume();
+		else
+			soctherm_suspend();
+	}
+	return 0;
+}
+
+static struct thermal_cooling_device_ops soctherm_suspend_ops = {
+	.get_max_state = soctherm_suspend_get_max_state,
+	.get_cur_state = soctherm_suspend_get_cur_state,
+	.set_cur_state = soctherm_suspend_set_cur_state,
+};
 
 static int soctherm_bind(struct thermal_zone_device *thz,
 				struct thermal_cooling_device *cdev)
 {
-	int index = ((int)thz->devdata) - TSENSE_SIZE;
+	int i, index = ((int)thz->devdata) - TSENSE_SIZE;
+	struct thermal_trip_info *trip_state;
 
-	if (index < 0 || !plat_data.therm[index].cdev_type)
+	if (index < 0)
 		return 0;
 
-	if (!strcmp(plat_data.therm[index].cdev_type, cdev->type))
-		return thermal_zone_bind_cooling_device(thz, 0, cdev,
-							THERMAL_NO_LIMIT,
-							THERMAL_NO_LIMIT);
+	for (i = 0; i < plat_data.therm[index].num_trips; i++) {
+		trip_state = &plat_data.therm[index].trips[i];
+		if (trip_state->bound)
+			continue;
+		if (trip_state->cdev_type &&
+		    !strncmp(trip_state->cdev_type, cdev->type,
+						THERMAL_NAME_LENGTH)) {
+			thermal_zone_bind_cooling_device(thz, i, cdev,
+							 trip_state->upper,
+							 trip_state->lower);
+			trip_state->bound = true;
+		}
+	}
 
 	return 0;
 }
@@ -399,13 +854,23 @@ static int soctherm_bind(struct thermal_zone_device *thz,
 static int soctherm_unbind(struct thermal_zone_device *thz,
 				struct thermal_cooling_device *cdev)
 {
-	int index = ((int)thz->devdata) - TSENSE_SIZE;
+	int i, index = ((int)thz->devdata) - TSENSE_SIZE;
+	struct thermal_trip_info *trip_state;
 
-	if (index < 0 || !plat_data.therm[index].cdev_type)
+	if (index < 0)
 		return 0;
 
-	if (!strcmp(plat_data.therm[index].cdev_type, cdev->type))
-		return thermal_zone_unbind_cooling_device(thz, 0, cdev);
+	for (i = 0; i < plat_data.therm[index].num_trips; i++) {
+		trip_state = &plat_data.therm[index].trips[i];
+		if (!trip_state->bound)
+			continue;
+		if (trip_state->cdev_type &&
+		    !strncmp(trip_state->cdev_type, cdev->type,
+						THERMAL_NAME_LENGTH)) {
+			thermal_zone_unbind_cooling_device(thz, 0, cdev);
+			trip_state->bound = false;
+		}
+	}
 
 	return 0;
 }
@@ -414,66 +879,149 @@ static int soctherm_get_temp(struct thermal_zone_device *thz,
 					unsigned long *temp)
 {
 	int index = (int)thz->devdata;
-	u32 r;
+	u32 r, regv, shft, mask;
+	enum soctherm_sense i, j;
+	int tt, ti;
 
-	if (index < TSENSE_SIZE) {
-		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_STATUS1,
-							index));
-		*temp = temp_translate(REG_GET(r, TS_CPU0_STATUS1_TEMP));
+	if (index < TSENSE_SIZE) { /* 'TSENSE_XXX' thermal zone */
+		regv = TS_CPU0_STATUS1;
+		shft = TS_CPU0_STATUS1_TEMP_SHIFT;
+		mask = TS_CPU0_STATUS1_TEMP_MASK;
+		i = j = index;
 	} else {
-		index -= TSENSE_SIZE;
+		index -= TSENSE_SIZE; /* 'THERM_XXX' thermal zone */
 
-		if (index == THERM_CPU || index == THERM_GPU)
-			r = soctherm_readl(TS_TEMP1);
-		else
-			r = soctherm_readl(TS_TEMP2);
+		switch (index) {
+		case THERM_CPU:
+			regv = TS_TEMP1;
+			shft = TS_TEMP1_CPU_TEMP_SHIFT;
+			mask = TS_TEMP1_CPU_TEMP_MASK;
+			i = TSENSE_CPU0;
+			j = TSENSE_CPU3;
+			break;
 
-		if (index == THERM_CPU || index == THERM_MEM)
-			*temp = temp_translate(REG_GET(r, TS_TEMP1_CPU_TEMP));
-		else
-			*temp = temp_translate(REG_GET(r, TS_TEMP1_GPU_TEMP));
+		case THERM_GPU:
+			regv = TS_TEMP1;
+			shft = TS_TEMP1_GPU_TEMP_SHIFT;
+			mask = TS_TEMP1_GPU_TEMP_MASK;
+			i = j = TSENSE_GPU;
+			break;
 
-		plat_data.therm[index].etemp = *temp;
+		case THERM_PLL:
+			regv = TS_TEMP2;
+			shft = TS_TEMP2_PLLX_TEMP_SHIFT;
+			mask = TS_TEMP2_PLLX_TEMP_MASK;
+			i = j = TSENSE_PLLX;
+			break;
+
+		case THERM_MEM:
+			regv = TS_TEMP2;
+			shft = TS_TEMP2_MEM_TEMP_SHIFT;
+			mask = TS_TEMP2_MEM_TEMP_MASK;
+			i = TSENSE_MEM0;
+			j = TSENSE_MEM1;
+			break;
+
+		default:
+			return 0; /* error really */
+		}
 	}
 
+	if (read_hw_temp) {
+		r = soctherm_readl(regv);
+		*temp = temp_translate((r & (mask << shft)) >> shft);
+	} else {
+		for (tt = 0; i <= j; i++) {
+			r = soctherm_readl(TS_TSENSE_REG_OFFSET(
+						TS_CPU0_STATUS0, i));
+			ti = temp_convert(REG_GET(r, TS_CPU0_STATUS0_CAPTURE),
+						sensor2therm_a[i],
+						sensor2therm_b[i]);
+			*temp = tt = max(tt, ti);
+		}
+	}
 	return 0;
 }
 
 static int soctherm_get_trip_type(struct thermal_zone_device *thz,
-					int trip,
-					enum thermal_trip_type *type) {
+				int trip, enum thermal_trip_type *type)
+{
 	int index = ((int)thz->devdata) - TSENSE_SIZE;
+	struct thermal_trip_info *trip_state;
 
-	if (index < 0 || !plat_data.therm[index].cdev_type)
+	if (index < 0)
 		return -EINVAL;
 
-	*type = THERMAL_TRIP_PASSIVE;
+	trip_state = &plat_data.therm[index].trips[trip];
+	*type = trip_state->trip_type;
 	return 0;
 }
 
 static int soctherm_get_trip_temp(struct thermal_zone_device *thz,
-					int trip,
-					unsigned long *temp) {
+				int trip, unsigned long *temp)
+{
 	int index = ((int)thz->devdata) - TSENSE_SIZE;
+	struct thermal_trip_info *trip_state;
+	unsigned long trip_temp, zone_temp;
 
-	if (index < 0 || !plat_data.therm[index].cdev_type)
+	if (index < 0)
 		return -EINVAL;
 
-	*temp = plat_data.therm[index].trip_temp;
+	trip_state = &plat_data.therm[index].trips[trip];
+	trip_temp = trip_state->trip_temp;
+	zone_temp = thz->temperature;
+
+	if (zone_temp >= trip_temp) {
+		trip_temp -= trip_state->hysteresis;
+		trip_state->tripped = true;
+	} else if (trip_state->tripped) {
+		trip_temp -= trip_state->hysteresis;
+		if (zone_temp < trip_temp)
+			trip_state->tripped = false;
+	}
+
+	*temp = trip_temp;
+
 	return 0;
 }
 
 static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
-					int trip,
-					unsigned long temp)
+				int trip, unsigned long temp)
 {
 	int index = ((int)thz->devdata) - TSENSE_SIZE;
+	struct thermal_trip_info *trip_state;
+	long rem;
 
-	if (index < 0 || !plat_data.therm[index].cdev_type)
+	if (index < 0)
 		return -EINVAL;
 
-	plat_data.therm[index].trip_temp = temp;
-	soctherm_update();
+	trip_state = &plat_data.therm[index].trips[trip];
+
+	trip_state->trip_temp = temp;
+
+	rem = trip_state->trip_temp % LOWER_PRECISION_FOR_CONV(1000);
+	if (rem) {
+		pr_warn("soctherm: zone%d/trip_point%d %ld mC rounded down\n",
+			index, trip, trip_state->trip_temp);
+		trip_state->trip_temp -= rem;
+	}
+
+	if (trip_state->trip_type == THERMAL_TRIP_HOT) {
+		if (strnstr(trip_state->cdev_type,
+				"heavy", THERMAL_NAME_LENGTH))
+			prog_hw_threshold(trip_state, index, THROTTLE_HEAVY);
+		else if (strnstr(trip_state->cdev_type,
+				"light", THERMAL_NAME_LENGTH))
+			prog_hw_threshold(trip_state, index, THROTTLE_LIGHT);
+	}
+
+	/* Allow SW to shutdown at 'Critical temperature reached' */
+	soctherm_update_zone(index);
+
+	/* Reprogram HW thermtrip */
+	if (trip_state->trip_type == THERMAL_TRIP_CRITICAL)
+		prog_hw_shutdown(trip_state, index);
+
 	return 0;
 }
 
@@ -482,19 +1030,31 @@ static int soctherm_get_trend(struct thermal_zone_device *thz,
 				enum thermal_trend *trend)
 {
 	int index = ((int)thz->devdata) - TSENSE_SIZE;
-	struct soctherm_therm *trip_state;
+	struct thermal_trip_info *trip_state;
+	long trip_temp;
 
-	if (index < 0 || !plat_data.therm[index].cdev_type)
+	if (index < 0)
 		return -EINVAL;
 
-	trip_state = &plat_data.therm[index];
+	trip_state = &plat_data.therm[index].trips[trip];
+	thz->ops->get_trip_temp(thz, trip, &trip_temp);
 
-	/* always THERMAL_TRIP_PASSIVE */
-	if (trip_state->etemp > trip_state->trip_temp)
+	switch (trip_state->trip_type) {
+	case THERMAL_TRIP_ACTIVE:
+		/* aggressive active cooling */
 		*trend = THERMAL_TREND_RAISING;
-	else
-		*trend = THERMAL_TREND_DROPPING;
-
+		break;
+	case THERMAL_TRIP_PASSIVE:
+		if (thz->temperature > trip_state->trip_temp)
+			*trend = THERMAL_TREND_RAISING;
+		else if (thz->temperature < trip_temp)
+			*trend = THERMAL_TREND_DROPPING;
+		else
+			*trend = THERMAL_TREND_STABLE;
+		break;
+	default:
+		return -EINVAL;
+	}
 	return 0;
 }
 
@@ -508,17 +1068,21 @@ static struct thermal_zone_device_ops soctherm_ops = {
 	.get_trend = soctherm_get_trend,
 };
 
-static int __init soctherm_thermal_init(void)
+static int __init soctherm_thermal_sys_init(void)
 {
-	char name[64];
-	int i;
+	char name[THERMAL_NAME_LENGTH];
+	struct soctherm_therm *therm;
+	bool oc_en = false;
+	int i, j, k;
 
 	if (!soctherm_init_platform_done)
 		return 0;
 
+
 	for (i = 0; i < TSENSE_SIZE; i++) {
 		if (plat_data.sensor_data[i].zone_enable) {
-			sprintf(name, "%s-tsensor", sensor_names[i]);
+			snprintf(name, THERMAL_NAME_LENGTH,
+				 "%s-tsensor", sensor_names[i]);
 			/* Create a thermal zone device for each sensor */
 			thermal_zone_device_register(
 					name,
@@ -533,86 +1097,351 @@ static int __init soctherm_thermal_init(void)
 	}
 
 	for (i = 0; i < THERM_SIZE; i++) {
-		if (plat_data.therm[i].zone_enable) {
-			sprintf(name, "%s-therm", therm_names[i]);
-			thz[i] = thermal_zone_device_register(
+		therm = &plat_data.therm[i];
+		if (!therm->zone_enable)
+			continue;
+
+		for (j = 0; j < therm->num_trips; j++) {
+			switch (therm->trips[j].trip_type) {
+			case THERMAL_TRIP_CRITICAL:
+				thermal_cooling_device_register(
+						therm->trips[j].cdev_type,
+						&therm->trips[j],
+						&soctherm_hw_action_ops);
+				break;
+
+			case THERMAL_TRIP_HOT:
+				for (k = 0; k < THROTTLE_SIZE; k++) {
+					if (!plat_data.throttle[k].
+					    devs[therm2dev[i]].enable)
+						continue;
+
+					if ((strnstr(therm->trips[j].cdev_type,
+						     "heavy",
+						     THERMAL_NAME_LENGTH)
+					     && k == THROTTLE_LIGHT) ||
+					    (strnstr(therm->trips[j].cdev_type,
+						     "light",
+						     THERMAL_NAME_LENGTH)
+					     && k == THROTTLE_HEAVY) ||
+					    (strnstr(therm->trips[j].cdev_type,
+						     "oc1",
+						     THERMAL_NAME_LENGTH)
+					     && k == THROTTLE_OC1) ||
+					    (strnstr(therm->trips[j].cdev_type,
+						     "oc2",
+						     THERMAL_NAME_LENGTH)
+					     && k == THROTTLE_OC2) ||
+					    (strnstr(therm->trips[j].cdev_type,
+						     "oc3",
+						     THERMAL_NAME_LENGTH)
+					     && k == THROTTLE_OC3) ||
+					    (strnstr(therm->trips[j].cdev_type,
+						     "oc4",
+						     THERMAL_NAME_LENGTH)
+					     && k == THROTTLE_OC4) ||
+					    (strnstr(therm->trips[j].cdev_type,
+						     "oc5",
+						     THERMAL_NAME_LENGTH)
+					     && k == THROTTLE_OC5))
+						continue;
+
+					thermal_cooling_device_register(
+						therm->trips[j].cdev_type,
+						&therm->trips[j],
+						&soctherm_hw_action_ops);
+				}
+				break;
+
+			case THERMAL_TRIP_PASSIVE:
+			case THERMAL_TRIP_ACTIVE:
+				break; /* done elsewhere */
+			}
+		}
+
+		snprintf(name, THERMAL_NAME_LENGTH,
+			 "%s-therm", therm_names[i]);
+		thz[i] = thermal_zone_device_register(
 					name,
-					plat_data.therm[i].cdev_type ? 1 : 0,
-					plat_data.therm[i].cdev_type ? 0x1 : 0,
+					therm->num_trips,
+					(1 << therm->num_trips) - 1,
 					(void *)TSENSE_SIZE + i,
 					&soctherm_ops,
-					NULL,
-					plat_data.therm[i].passive_delay,
+					therm->tzp,
+					therm->passive_delay,
 					0);
-		}
+
+		for (k = THROTTLE_OC1; !oc_en && k < THROTTLE_SIZE; k++)
+			if (plat_data.throttle[k].devs[therm2dev[i]].enable)
+				oc_en = true;
 	}
+
+	/* do not enable suspend feature if any OC alarms are enabled */
+	if (!oc_en)
+		thermal_cooling_device_register("suspend_soctherm", 0,
+						&soctherm_suspend_ops);
+	else
+		pr_warn("soctherm: Suspend feature CANNOT be enabled %s\n",
+			"when any OC alarm is enabled");
 
 	soctherm_update();
 	return 0;
 }
-module_init(soctherm_thermal_init);
+module_init(soctherm_thermal_sys_init);
 
 #else
+static void soctherm_update_zone(int zn)
+{
+}
 static void soctherm_update(void)
 {
 }
 #endif
 
-static void soctherm_work_func(struct work_struct *work)
+static irqreturn_t soctherm_thermal_work_func(int irq, void *arg)
 {
-	u32 st;
+	u32 st, ex = 0, cp = 0, gp = 0;
 
-	st = soctherm_readl(INTR_STATUS);
+	st = soctherm_readl(TH_INTR_STATUS);
 
-	/* deliberately clear each expected interrupt */
-	if (REG_GET(st, INTR_STATUS_CD0) || REG_GET(st, INTR_STATUS_CU0)) {
-		soctherm_writel(REG_SET(0, INTR_STATUS_CD0, 1), INTR_STATUS);
-		soctherm_writel(REG_SET(0, INTR_STATUS_CU0, 1), INTR_STATUS);
-		st = REG_SET(st, INTR_STATUS_CD0, 0);
-		st = REG_SET(st, INTR_STATUS_CU0, 0);
-		soctherm_update();
+	/* deliberately clear expected interrupts handled in SW */
+	cp |= REG_GET_BIT(st, TH_INTR_POS_CD0);
+	cp |= REG_GET_BIT(st, TH_INTR_POS_CU0);
+	ex |= cp;
+
+	gp |= REG_GET_BIT(st, TH_INTR_POS_GD0);
+	gp |= REG_GET_BIT(st, TH_INTR_POS_GU0);
+	ex |= gp;
+
+	if (ex) {
+		soctherm_writel(ex, TH_INTR_STATUS);
+		st &= ~ex;
+		if (cp)
+			soctherm_update_zone(THERM_CPU);
+		if (gp)
+			soctherm_update_zone(THERM_GPU);
+
 	}
 
-	if (!st)
-		return;
+	/* deliberately ignore expected interrupts NOT handled in SW */
+	ex |= REG_GET_BIT(st, TH_INTR_POS_PD0);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_PU0);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_MD0);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_MU0);
 
-	/* Whine about any other unexpected INTR bits still set */
-	pr_err("soctherm: Ignored unexpected INTR status 0x%08x\n", st);
-}
+	ex |= REG_GET_BIT(st, TH_INTR_POS_CD1);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_CU1);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_CD2);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_CU2);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_CD3);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_CU3);
 
-static irqreturn_t soctherm_isr(int irq, void *arg_data)
-{
-	u32 r;
+	ex |= REG_GET_BIT(st, TH_INTR_POS_GD1);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_GU1);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_GD2);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_GU2);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_GD3);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_GU3);
 
-	queue_work(workqueue, &work);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_PD1);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_PU1);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_PD2);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_PU2);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_PD3);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_PU3);
 
-	r = soctherm_readl(INTR_STATUS);
-	soctherm_writel(r, INTR_DIS);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_MD1);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_MU1);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_MD2);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_MU2);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_MD3);
+	ex |= REG_GET_BIT(st, TH_INTR_POS_MU3);
+	st &= ~ex;
+
+	if (st) {
+		/* Whine about any other unexpected INTR bits still set */
+		pr_err("soctherm: Ignored unexpected INTRs 0x%08x\n", st);
+		soctherm_writel(st, TH_INTR_STATUS);
+	}
 
 	return IRQ_HANDLED;
 }
 
-void tegra11_soctherm_throttle_program(enum soctherm_throttle_id throttle,
-					struct soctherm_throttle *data)
+static inline void soctherm_oc_intr_enable(enum soctherm_throttle_id alarm,
+					   bool enable)
+{
+	u32 r;
+
+	if (!enable)
+		return;
+
+	switch (alarm) {
+	case THROTTLE_OC1:
+		r = REG_SET(0, OC_INTR_POS_OC1, 1);
+		break;
+	case THROTTLE_OC2:
+		r = REG_SET(0, OC_INTR_POS_OC2, 1);
+		break;
+	case THROTTLE_OC3:
+		r = REG_SET(0, OC_INTR_POS_OC3, 1);
+		break;
+	case THROTTLE_OC4:
+		r = REG_SET(0, OC_INTR_POS_OC4, 1);
+		break;
+	case THROTTLE_OC5:
+		r = REG_SET(0, OC_INTR_POS_OC5, 1);
+		break;
+	default:
+		r = 0;
+		break;
+	}
+	soctherm_writel(r, OC_INTR_ENABLE);
+}
+
+/* Return 0 (success) if you want to  reenable OC alarm intr. */
+static int soctherm_handle_alarm(enum soctherm_throttle_id alarm)
+{
+	int rv = -EINVAL;
+
+	switch (alarm) {
+	case THROTTLE_OC1:
+		pr_warn("soctherm: Unexpected OC1 alarm\n");
+		/* add OC1 alarm handling code here */
+		break;
+
+	case THROTTLE_OC2:
+		pr_info("soctherm: Successfully handled OC2 alarm\n");
+		/* TODO: add OC2 alarm handling code here */
+		rv = 0;
+		break;
+
+	case THROTTLE_OC3:
+		pr_warn("soctherm: Unexpected OC3 alarm\n");
+		/* add OC3 alarm handling code here */
+		break;
+
+	case THROTTLE_OC4:
+		pr_info("soctherm: Successfully handled OC4 alarm\n");
+		/* TODO: add OC4 alarm handling code here */
+		rv = 0;
+
+		break;
+	case THROTTLE_OC5:
+		pr_warn("soctherm: Unexpected OC5 alarm\n");
+		/* add OC5 alarm handling code here */
+		break;
+
+	default:
+		break;
+	}
+
+	if (rv)
+		pr_err("soctherm: ERROR in handling %s alarm\n",
+			throt_names[alarm]);
+
+	return rv;
+}
+
+static irqreturn_t soctherm_edp_work_func(int irq, void *arg_data)
+{
+	u32 st, ex, oc1, oc2, oc3, oc4, oc5;
+
+	st = soctherm_readl(OC_INTR_STATUS);
+
+	/* deliberately clear expected interrupts handled in SW */
+	oc1 = REG_GET_BIT(st, OC_INTR_POS_OC1);
+	oc2 = REG_GET_BIT(st, OC_INTR_POS_OC2);
+	oc3 = REG_GET_BIT(st, OC_INTR_POS_OC3);
+	oc4 = REG_GET_BIT(st, OC_INTR_POS_OC4);
+	oc5 = REG_GET_BIT(st, OC_INTR_POS_OC5);
+	ex = oc1 | oc2 | oc3 | oc4 | oc5;
+
+	if (ex) {
+		soctherm_writel(st, OC_INTR_STATUS);
+		st &= ~ex;
+
+		if (oc1 && !soctherm_handle_alarm(THROTTLE_OC1))
+			soctherm_oc_intr_enable(THROTTLE_OC1, true);
+
+		if (oc2 && !soctherm_handle_alarm(THROTTLE_OC2))
+			soctherm_oc_intr_enable(THROTTLE_OC2, true);
+
+		if (oc3 && !soctherm_handle_alarm(THROTTLE_OC3))
+			soctherm_oc_intr_enable(THROTTLE_OC3, true);
+
+		if (oc4 && !soctherm_handle_alarm(THROTTLE_OC4))
+			soctherm_oc_intr_enable(THROTTLE_OC4, true);
+
+		if (oc5 && !soctherm_handle_alarm(THROTTLE_OC5))
+			soctherm_oc_intr_enable(THROTTLE_OC5, true);
+	}
+
+	if (st) {
+		pr_err("soctherm: Ignored unexpected OC ALARM 0x%08x\n", st);
+		soctherm_writel(st, OC_INTR_STATUS);
+	}
+
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t soctherm_thermal_isr(int irq, void *arg)
+{
+	u32 r;
+
+	r = soctherm_readl(TH_INTR_STATUS);
+	soctherm_writel(r, TH_INTR_DISABLE);
+
+	return IRQ_WAKE_THREAD;
+}
+
+static irqreturn_t soctherm_edp_isr(int irq, void *arg_data)
+{
+	u32 r;
+
+	r = soctherm_readl(OC_INTR_STATUS);
+	soctherm_writel(r, OC_INTR_DISABLE);
+
+	return IRQ_WAKE_THREAD;
+}
+
+static void tegra11_soctherm_throttle_program(enum soctherm_throttle_id throt)
 {
 	u32 r;
 	int i;
+	bool throt_enable = false;
 	struct soctherm_throttle_dev *dev;
+	struct soctherm_throttle *data = &plat_data.throttle[throt];
 
 	for (i = 0; i < THROTTLE_DEV_SIZE; i++) {
 		dev = &data->devs[i];
+		if (!dev->enable)
+			continue;
+		throt_enable = true;
 
-		r = soctherm_readl(THROT_PSKIP_CTRL(throttle, i));
+		if (dev->depth) {
+			THROT_DEPTH(dev, dev->depth);
+		} else if (!dev->dividend || !dev->divisor || !dev->duration ||
+			   !dev->step) {
+			THROT_DEPTH(dev, THROT_DEPTH_DEFAULT);
+		}
+
+		r = soctherm_readl(THROT_PSKIP_CTRL(throt, i));
 		r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
 		r = REG_SET(r, THROT_PSKIP_CTRL_DIVIDEND, dev->dividend);
 		r = REG_SET(r, THROT_PSKIP_CTRL_DIVISOR, dev->divisor);
-		soctherm_writel(r, THROT_PSKIP_CTRL(throttle, i));
+		soctherm_writel(r, THROT_PSKIP_CTRL(throt, i));
 
-		r = soctherm_readl(THROT_PSKIP_RAMP(throttle, i));
+		r = soctherm_readl(THROT_PSKIP_RAMP(throt, i));
 		r = REG_SET(r, THROT_PSKIP_RAMP_DURATION, dev->duration);
 		r = REG_SET(r, THROT_PSKIP_RAMP_STEP, dev->step);
-		soctherm_writel(r, THROT_PSKIP_RAMP(throttle, i));
+		soctherm_writel(r, THROT_PSKIP_RAMP(throt, i));
 	}
+
+	r = REG_SET(0, THROT_PRIORITY_LITE_PRIO, data->priority);
+	soctherm_writel(r, THROT_PRIORITY_CTRL(throt));
+
+	r = REG_SET(0, THROT_DELAY_LITE_DELAY, 0);
+	soctherm_writel(r, THROT_DELAY_CTRL(throt));
 
 	r = soctherm_readl(THROT_PRIORITY_LOCK);
 	if (r < data->priority) {
@@ -620,11 +1449,29 @@ void tegra11_soctherm_throttle_program(enum soctherm_throttle_id throttle,
 		soctherm_writel(r, THROT_PRIORITY_LOCK);
 	}
 
-	r = REG_SET(0, THROT_LITE_PRIORITY_PRIORITY, data->priority);
-	soctherm_writel(r, THROT_LITE_PRIORITY + THROT_OFFSET * throttle);
+	if (!throt_enable || (throt < THROTTLE_OC1))
+		return;
+
+	/* ----- configure OC alarms ----- */
+
+	if (!(data->throt_mode == BRIEF || data->throt_mode == STICKY))
+		pr_warn("soctherm: Invalid throt_mode in %s\n",
+			throt_names[throt]);
+
+	r = soctherm_readl(ALARM_CFG(throt));
+	r = REG_SET(r, OC1_CFG_HW_RESTORE, 1);
+	r = REG_SET(r, OC1_CFG_THROTTLE_MODE, data->throt_mode);
+	r = REG_SET(r, OC1_CFG_ALARM_POLARITY, data->polarity);
+	r = REG_SET(r, OC1_CFG_EN_THROTTLE, 1);
+	soctherm_writel(r, ALARM_CFG(throt));
+
+	soctherm_oc_intr_enable(throt, data->intr);
+
+	soctherm_writel(data->period, ALARM_THRESHOLD_PERIOD(throt)); /* usec */
+	soctherm_writel(0xffffffff, ALARM_FILTER(throt));
 }
 
-static void __init soctherm_tsense_program(enum soctherm_sense sensor,
+static void soctherm_tsense_program(enum soctherm_sense sensor,
 						struct soctherm_sensor *data)
 {
 	u32 r;
@@ -635,7 +1482,7 @@ static void __init soctherm_tsense_program(enum soctherm_sense sensor,
 	r = REG_SET(0, TS_CPU0_CONFIG1_TIDDQ, data->tiddq);
 	r = REG_SET(r, TS_CPU0_CONFIG1_EN, 1);
 	r = REG_SET(r, TS_CPU0_CONFIG1_TEN_COUNT, data->ten_count);
-	r = REG_SET(r, TS_CPU0_CONFIG1_TSAMPLE, data->tsample);
+	r = REG_SET(r, TS_CPU0_CONFIG1_TSAMPLE, data->tsample - 1);
 	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG1, sensor));
 }
 
@@ -650,6 +1497,12 @@ static int __init soctherm_clk_init(void)
 		soctherm_clk = tsensor_clk = NULL;
 		return -EINVAL;
 	}
+
+	/* initialize default clock rates */
+	plat_data.soctherm_clk_rate =
+		plat_data.soctherm_clk_rate ?: default_soctherm_clk_rate;
+	plat_data.tsensor_clk_rate =
+		plat_data.tsensor_clk_rate ?: default_tsensor_clk_rate;
 
 	if (clk_get_rate(soctherm_clk) != plat_data.soctherm_clk_rate)
 		if (clk_set_rate(soctherm_clk, plat_data.soctherm_clk_rate))
@@ -701,11 +1554,27 @@ static void soctherm_fuse_read_vsensor(void)
 	actual_temp_ft = 2 * 90 + calib_ft;
 
 	/* adjust: for LO precision: use fuse_temp in 1C */
-	if (soc_therm_precision != -1) {
-		actual_temp_cp /= 2;
-		actual_temp_ft /= 2;
-	}
+	actual_temp_cp = LOWER_PRECISION_FOR_TEMP(actual_temp_cp);
+	actual_temp_ft = LOWER_PRECISION_FOR_TEMP(actual_temp_ft);
 }
+
+static int fuse_corr_alpha[] = { /* scaled *1000000 */
+	[TSENSE_CPU0] = 1196400,
+	[TSENSE_CPU1] = 1196400,
+	[TSENSE_CPU2] = 1196400,
+	[TSENSE_CPU3] = 1196400,
+	[TSENSE_GPU]  = 1124500,
+	[TSENSE_PLLX] = 1224200,
+};
+
+static int fuse_corr_beta[] = { /* scaled *1000000 */
+	[TSENSE_CPU0] = -13600000,
+	[TSENSE_CPU1] = -13600000,
+	[TSENSE_CPU2] = -13600000,
+	[TSENSE_CPU3] = -13600000,
+	[TSENSE_GPU]  =  -9793100,
+	[TSENSE_PLLX] = -14665000,
+};
 
 static void soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 {
@@ -738,22 +1607,81 @@ static void soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 				     ((s64)actual_tsensor_cp * actual_temp_ft)),
 				    (s64)delta_sens);
 
+	if (PRECISION_IS_LOWER()) {
+		/* cp_fuse corrections */
+		fuse_corr_alpha[sensor] = fuse_corr_alpha[sensor] ?: 1000000;
+		therm_a = div64_s64_precise(
+				(s64)therm_a * fuse_corr_alpha[sensor],
+				(s64)1000000LL);
+		therm_b = div64_s64_precise(
+				(s64)therm_b * fuse_corr_alpha[sensor] +
+				fuse_corr_beta[sensor], (s64)1000000LL);
+	}
+
+	sensor2therm_a[sensor] = (s16)therm_a;
+	sensor2therm_b[sensor] = (s16)therm_b;
+
 	r = REG_SET(0, TS_CPU0_CONFIG2_THERM_A, therm_a);
 	r = REG_SET(r, TS_CPU0_CONFIG2_THERM_B, therm_b);
 	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG2, sensor));
 }
 
+static void soctherm_therm_trip_init(struct tegra_tsensor_pmu_data *data)
+{
+	u32 val, checksum;
+
+	if (!data)
+		return;
+
+	val = pmc_readl(PMC_SENSOR_CTRL);
+	val = REG_SET(val, PMC_SCRATCH_WRITE, 1);
+	val = REG_SET(val, PMC_ENABLE_RST, 1);
+	pmc_writel(val, PMC_SENSOR_CTRL);
+
+	/* Fill scratch registers to shutdown device on therm TRIP */
+	val = REG_SET(0, PMU_OFF_DATA, data->poweroff_reg_data);
+	val = REG_SET(val, PMU_OFF_ADDR, data->poweroff_reg_addr);
+	pmc_writel(val, PMC_SCRATCH54);
+
+	val = REG_SET(0, RESET_TEGRA, 1);
+	val = REG_SET(val, CONTROLLER_TYPE, data->controller_type);
+	val = REG_SET(val, I2C_CONTROLLER_ID, data->i2c_controller_id);
+	val = REG_SET(val, PINMUX, data->pinmux);
+	val = REG_SET(val, PMU_16BIT_SUPPORT, data->pmu_16bit_ops);
+	val = REG_SET(val, PMU_I2C_ADDRESS, data->pmu_i2c_addr);
+
+	checksum = data->poweroff_reg_addr +
+		data->poweroff_reg_data +
+		(val & 0xFF) +
+		((val >> 8) & 0xFF) +
+		((val >> 24) & 0xFF);
+	checksum &= 0xFF;
+	checksum = 0x100 - checksum;
+
+	val = REG_SET(val, CHECKSUM, checksum);
+	pmc_writel(val, PMC_SCRATCH55);
+}
+
 static int soctherm_init_platform_data(void)
 {
 	struct soctherm_therm *therm;
-	int i;
+	struct soctherm_sensor *s;
+	int i, j, k;
+	long rem;
 	u32 r;
-	u32 reg_off;
 
-	therm = plat_data.therm;
-
-	/* Can only thermtrip with either GPU or MEM but not both */
-	BUG_ON(therm[THERM_GPU].thermtrip && therm[THERM_MEM].thermtrip);
+	/* initialize default values for unspecified params */
+	for (i = 0; i < TSENSE_SIZE; i++) {
+		therm = &plat_data.therm[tsensor2therm_map[i]];
+		s = &plat_data.sensor_data[i];
+		s->sensor_enable = s->zone_enable;
+		s->sensor_enable = s->sensor_enable ?: therm->zone_enable;
+		s->tall      = s->tall      ?: sensor_defaults.tall;
+		s->tiddq     = s->tiddq     ?: sensor_defaults.tiddq;
+		s->ten_count = s->ten_count ?: sensor_defaults.ten_count;
+		s->tsample   = s->tsample   ?: sensor_defaults.tsample;
+		s->pdiv      = s->pdiv      ?: sensor_defaults.pdiv;
+	}
 
 	/* Pdiv */
 	r = soctherm_readl(TS_PDIV);
@@ -772,72 +1700,126 @@ static int soctherm_init_platform_data(void)
 		}
 	}
 
+	/* Sanitize therm trips */
 	for (i = 0; i < THERM_SIZE; i++) {
-		if (plat_data.therm[i].hw_backstop) {
-			reg_off = TS_TSENSE_REG_OFFSET(CTL_LVL0_CPU0, 1)
-				+ i * 4;
-			r = soctherm_readl(reg_off);
-			r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH,
-					plat_data.therm[i].hw_backstop);
-			r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH,
-					plat_data.therm[i].hw_backstop - 2);
-			r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
+		therm = &plat_data.therm[i];
+		if (!therm->zone_enable)
+			continue;
 
-			/* Heavy throttling */
-			r = REG_SET(r, CTL_LVL0_CPU0_CPU_THROT, 2);
-			soctherm_writel(r, reg_off);
+		for (j = 0; j < therm->num_trips; j++) {
+			rem = therm->trips[j].trip_temp %
+				LOWER_PRECISION_FOR_CONV(1000);
+			if (rem) {
+				pr_warn(
+			"soctherm: zone%d/trip_point%d %ld mC rounded down\n",
+					i, j, therm->trips[j].trip_temp);
+				therm->trips[j].trip_temp -= rem;
+			}
 		}
 	}
 
-	/* Enable Level 0 */
-	r = soctherm_readl(CTL_LVL0_CPU0);
-	r = REG_SET(r, CTL_LVL0_CPU0_EN, !!therm[THERM_CPU].trip_temp);
-	soctherm_writel(r, CTL_LVL0_CPU0);
+	/* Program hotspot offsets per THERM */
+	r = REG_SET(0, TS_HOTSPOT_OFF_CPU,
+		    plat_data.therm[THERM_CPU].hotspot_offset / 1000);
+	r = REG_SET(r, TS_HOTSPOT_OFF_GPU,
+		    plat_data.therm[THERM_GPU].hotspot_offset / 1000);
+	r = REG_SET(r, TS_HOTSPOT_OFF_MEM,
+		    plat_data.therm[THERM_MEM].hotspot_offset / 1000);
+	soctherm_writel(r, TS_HOTSPOT_OFF);
 
-	/* Thermtrip */
-	r = REG_SET(0, THERMTRIP_CPU_EN, !!therm[THERM_CPU].thermtrip);
-	r = REG_SET(r, THERMTRIP_GPU_EN, !!therm[THERM_GPU].thermtrip);
-	r = REG_SET(r, THERMTRIP_MEM_EN, !!therm[THERM_MEM].thermtrip);
-	r = REG_SET(r, THERMTRIP_TSENSE_EN, !!therm[THERM_PLL].thermtrip);
-	r = REG_SET(r, THERMTRIP_CPU_THRESH, therm[THERM_CPU].thermtrip);
-	r = REG_SET(r, THERMTRIP_GPUMEM_THRESH, therm[THERM_GPU].thermtrip |
-						therm[THERM_MEM].thermtrip);
-	r = REG_SET(r, THERMTRIP_TSENSE_THRESH, therm[THERM_PLL].thermtrip);
-	soctherm_writel(r, THERMTRIP);
+	/* Sanitize HW throttle priority */
+	for (i = 0; i < THROTTLE_SIZE; i++)
+		if (!plat_data.throttle[i].priority)
+			plat_data.throttle[i].priority = 0xE + i;
+	if (plat_data.throttle[THROTTLE_HEAVY].priority <
+	    plat_data.throttle[THROTTLE_LIGHT].priority)
+		pr_err("soctherm: ERROR: Priority of HEAVY less than LIGHT\n");
+
+	/* Thermal HW throttle programming */
+	for (i = 0; i < THROTTLE_SIZE; i++) {
+		/* Setup PSKIP parameters */
+		tegra11_soctherm_throttle_program(i);
+
+		/* Setup throttle thresholds per THERM */
+		for (j = 0; j < THERM_SIZE; j++) {
+			/* Check if PSKIP params are enabled */
+			if ((therm2dev[j] == -1) ||
+			    (!plat_data.throttle[i].devs[therm2dev[j]].enable))
+				continue;
+
+			therm = &plat_data.therm[j];
+			for (k = 0; k < therm->num_trips; k++)
+				if ((therm->trips[k].trip_type ==
+				     THERMAL_TRIP_HOT) &&
+				    strnstr(therm->trips[k].cdev_type,
+					    i == THROTTLE_HEAVY ? "heavy" :
+					    "light", THERMAL_NAME_LENGTH))
+					break;
+			if (k < therm->num_trips && i <= THROTTLE_HEAVY)
+				prog_hw_threshold(&therm->trips[k], j, i);
+		}
+	}
+
+	/* initialize stats collection */
+	r = STATS_CTL_CLR_DN | STATS_CTL_EN_DN |
+		STATS_CTL_CLR_UP | STATS_CTL_EN_UP;
+	soctherm_writel(r, STATS_CTL);
+	soctherm_writel(OC_STATS_CTL_EN_ALL, OC_STATS_CTL);
 
 	/* Enable PMC to shutdown */
-	r = pmc_readl(0x1b0);
-	r |= 0x2;
-	pmc_writel(r, 0x1b0);
+	soctherm_therm_trip_init(plat_data.tshut_pmu_trip_data);
 
-	/* Throttling */
-	for (i = 0; i < THROTTLE_SIZE; i++)
-		tegra11_soctherm_throttle_program(i, &plat_data.throttle[i]);
+	r = clk_reset_readl(CAR_SUPER_CCLK_DIVIDER);
+	r = REG_SET(r, CDIV_USE_THERM_CONTROLS, 1);
+	clk_reset_writel(r, CAR_SUPER_CCLK_DIVIDER);
 
-	r = clk_reset_readl(0x24);
-	r |= (1 << 30);
-	clk_reset_writel(r, 0x24);
+	/* Thermtrip */
+	for (i = 0; i < THERM_SIZE; i++) {
+		therm = &plat_data.therm[i];
+		if (!therm->zone_enable)
+			continue;
+
+		for (j = 0; j < therm->num_trips; j++)
+			if (therm->trips[j].trip_type == THERMAL_TRIP_CRITICAL)
+				prog_hw_shutdown(&therm->trips[j], i);
+	}
 
 	return 0;
 }
 
 static int soctherm_suspend(void)
 {
-	soctherm_writel((u32)-1, INTR_DIS);
-	soctherm_clk_enable(false);
-	disable_irq(INT_THERMAL);
-	cancel_work_sync(&work);
+	spin_lock(&soctherm_suspend_resume_lock);
 
+	if (!soctherm_suspended) {
+		soctherm_writel((u32)-1, TH_INTR_DISABLE);
+		soctherm_writel((u32)-1, OC_INTR_DISABLE);
+		disable_irq(INT_THERMAL);
+		disable_irq(INT_EDP);
+		soctherm_clk_enable(false);
+		soctherm_init_platform_done = false;
+		soctherm_suspended = true;
+	}
+
+	spin_unlock(&soctherm_suspend_resume_lock);
 	return 0;
 }
 
 static int soctherm_resume(void)
 {
-	soctherm_clk_enable(true);
-	enable_irq(INT_THERMAL);
-	soctherm_init_platform_data();
-	soctherm_update();
+	spin_lock(&soctherm_suspend_resume_lock);
 
+	if (soctherm_suspended) {
+		soctherm_suspended = false;
+		soctherm_clk_enable(true);
+		soctherm_init_platform_data();
+		soctherm_init_platform_done = true;
+		soctherm_update();
+		enable_irq(INT_THERMAL);
+		enable_irq(INT_EDP);
+	}
+
+	spin_unlock(&soctherm_suspend_resume_lock);
 	return 0;
 }
 
@@ -862,8 +1844,6 @@ static struct notifier_block soctherm_nb = {
 
 int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 {
-	int err;
-
 	register_pm_notifier(&soctherm_nb);
 
 	if (!data)
@@ -881,27 +1861,36 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 
 	soctherm_init_platform_done = true;
 
-	/* enable interrupts */
-	workqueue = create_singlethread_workqueue("soctherm");
-	INIT_WORK(&work, soctherm_work_func);
-
-	err = request_irq(INT_THERMAL, soctherm_isr, 0, "soctherm", NULL);
-	if (err < 0)
+	/* enable threaded interrupts */
+	if (request_threaded_irq(INT_THERMAL, soctherm_thermal_isr,
+				 soctherm_thermal_work_func, IRQF_ONESHOT,
+				 "soctherm_thermal", NULL) < 0)
 		return -1;
+
+	if (request_threaded_irq(INT_EDP, soctherm_edp_isr,
+				 soctherm_edp_work_func, IRQF_ONESHOT,
+				 "soctherm_edp", NULL) < 0)
+		return -1;
+
 	return 0;
 }
 
-
 #ifdef CONFIG_DEBUG_FS
+
 static int regs_show(struct seq_file *s, void *data)
 {
 	u32 r;
 	u32 state;
-	long tcpu[TSENSE_SIZE];
-	int i, level;
+	int tcpu[TSENSE_SIZE];
+	int i, j, level;
 
-	seq_printf(s, "-----TSENSE (precision %s)-----\n",
-		   soc_therm_precision == -1 ? "Hi" : "Lo");
+	if (soctherm_suspended) {
+		seq_printf(s, "SOC_THERM is SUSPENDED\n");
+		return 0;
+	}
+
+	seq_printf(s, "-----TSENSE (precision %s  convert %s)-----\n",
+		PRECISION_TO_STR(), read_hw_temp ? "HW" : "SW");
 	for (i = 0; i < TSENSE_SIZE; i++) {
 		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG1, i));
 		state = REG_GET(r, TS_CPU0_CONFIG1_EN);
@@ -916,21 +1905,21 @@ static int regs_show(struct seq_file *s, void *data)
 		state = REG_GET(r, TS_CPU0_CONFIG1_TEN_COUNT);
 		seq_printf(s, "ten_count(%d) ", state);
 		state = REG_GET(r, TS_CPU0_CONFIG1_TSAMPLE);
-		seq_printf(s, "tsample(%d) ", state);
-
-		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_STATUS0, i));
-		state = REG_GET(r, TS_CPU0_STATUS0_VALID);
-		seq_printf(s, "Capture(%d/", state);
-		state = REG_GET(r, TS_CPU0_STATUS0_CAPTURE);
-		seq_printf(s, "%d) ", state);
-
+		seq_printf(s, "tsample(%d) ", state + 1);
 
 		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_STATUS1, i));
 		state = REG_GET(r, TS_CPU0_STATUS1_TEMP_VALID);
 		seq_printf(s, "Temp(%d/", state);
 		state = REG_GET(r, TS_CPU0_STATUS1_TEMP);
-		seq_printf(s, "%ld) ", tcpu[i] = temp_translate(state));
+		seq_printf(s, "%d) ", tcpu[i] = temp_translate(state));
 
+		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_STATUS0, i));
+		state = REG_GET(r, TS_CPU0_STATUS0_VALID);
+		seq_printf(s, "Capture(%d/", state);
+		state = REG_GET(r, TS_CPU0_STATUS0_CAPTURE);
+		seq_printf(s, "%d) (Converted-temp(%ld) ", state,
+			   temp_convert(state, sensor2therm_a[i],
+					sensor2therm_b[i]));
 
 		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG0, i));
 		state = REG_GET(r, TS_CPU0_CONFIG0_TALL);
@@ -946,7 +1935,7 @@ static int regs_show(struct seq_file *s, void *data)
 		state = REG_GET(r, TS_CPU0_CONFIG2_THERM_A);
 		seq_printf(s, "Therm_A/B(%d/", state);
 		state = REG_GET(r, TS_CPU0_CONFIG2_THERM_B);
-		seq_printf(s, "%d)\n", state);
+		seq_printf(s, "%d)\n", (s16)state);
 	}
 
 	r = soctherm_readl(TS_PDIV);
@@ -957,31 +1946,36 @@ static int regs_show(struct seq_file *s, void *data)
 
 	r = soctherm_readl(TS_TEMP1);
 	state = REG_GET(r, TS_TEMP1_CPU_TEMP);
-	seq_printf(s, "Temperature: CPU(%ld) [Max(%ld)%c] ",
-		   temp_translate(state),
-		   max4(tcpu[0], tcpu[1], tcpu[2], tcpu[3]),
-		   max4(tcpu[0], tcpu[1], tcpu[2], tcpu[3]) ==
-		   temp_translate(state) ? '=' : '!');
+	seq_printf(s, "Temperatures: CPU(%ld) ", temp_translate(state));
 	state = REG_GET(r, TS_TEMP1_GPU_TEMP);
 	seq_printf(s, " GPU(%ld) ", temp_translate(state));
 	r = soctherm_readl(TS_TEMP2);
-	state = REG_GET(r, TS_TEMP2_MEM_TEMP);
-	seq_printf(s, " MEM(%ld) ", temp_translate(state));
 	state = REG_GET(r, TS_TEMP2_PLLX_TEMP);
-	seq_printf(s, " PLLX(%ld)\n\n", temp_translate(state));
+	seq_printf(s, " PLLX(%ld) ", temp_translate(state));
+	state = REG_GET(r, TS_TEMP2_MEM_TEMP);
+	seq_printf(s, " MEM(%ld)\n", temp_translate(state));
 
 	for (i = 0; i < THERM_SIZE; i++) {
+		if (i == THERM_MEM)
+			continue;
 		seq_printf(s, "%s:\n", therm_names[i]);
 
 		for (level = 0; level < 4; level++) {
-			r = soctherm_readl(TS_TSENSE_REG_OFFSET(CTL_LVL0_CPU0,
-								i) + level * 4);
+			r = soctherm_readl(TS_THERM_REG_OFFSET(CTL_LVL0_CPU0,
+								level, i));
 			state = REG_GET(r, CTL_LVL0_CPU0_UP_THRESH);
-			seq_printf(s, "    Up/Dn(%d/", state);
+			seq_printf(s, "   %d: Up/Dn(%d/", level,
+				   LOWER_PRECISION_FOR_CONV(state));
 			state = REG_GET(r, CTL_LVL0_CPU0_DN_THRESH);
-			seq_printf(s, "%d) ", state);
+			seq_printf(s, "%d) ", LOWER_PRECISION_FOR_CONV(state));
 			state = REG_GET(r, CTL_LVL0_CPU0_EN);
 			seq_printf(s, "En(%d) ", state);
+			state = REG_GET(r, CTL_LVL0_CPU0_CPU_THROT);
+			seq_printf(s, "Throt");
+			seq_printf(s, "(%s) ", state ?
+				state == CTL_LVL0_CPU0_CPU_THROT_LIGHT ? "L" :
+				state == CTL_LVL0_CPU0_CPU_THROT_HEAVY ? "H" :
+				"H+L" : "none");
 			state = REG_GET(r, CTL_LVL0_CPU0_STATUS);
 			seq_printf(s, "Status(%s)\n",
 				   state == 0 ? "LO" :
@@ -990,24 +1984,37 @@ static int regs_show(struct seq_file *s, void *data)
 		}
 	}
 
-	r = soctherm_readl(INTR_STATUS);
-	state = REG_GET(r, INTR_STATUS_CD0);
-	seq_printf(s, "CD0: %d\n", state);
-	state = REG_GET(r, INTR_STATUS_CU0);
-	seq_printf(s, "CU0: %d\n", state);
+	r = soctherm_readl(STATS_CTL);
+	seq_printf(s, "STATS: Up(%s) Dn(%s)\n",
+		   r & STATS_CTL_EN_UP ? "En" : "--",
+		   r & STATS_CTL_EN_DN ? "En" : "--");
+	for (level = 0; level < 4; level++) {
+		r = soctherm_readl(TS_TSENSE_REG_OFFSET(UP_STATS_L0, level));
+		seq_printf(s, "  Level_%d Up(%d) ", level, r);
+		r = soctherm_readl(TS_TSENSE_REG_OFFSET(DN_STATS_L0, level));
+		seq_printf(s, "Dn(%d)\n", r);
+	}
 
 	r = soctherm_readl(THERMTRIP);
-	state = REG_GET(r, THERMTRIP_CPU_THRESH);
-	seq_printf(s, "THERMTRIP_CPU_THRESH: %d ", state);
+	state = REG_GET(r, THERMTRIP_ANY_EN);
+	seq_printf(s, "ThermTRIP ANY En(%d)\n", state);
 	state = REG_GET(r, THERMTRIP_CPU_EN);
-	seq_printf(s, "%d\n", state);
-
-
-	seq_printf(s, "\n-----THROTTLE-----\n");
+	seq_printf(s, "     CPU En(%d) ", state);
+	state = REG_GET(r, THERMTRIP_CPU_THRESH);
+	seq_printf(s, "Thresh(%d)\n", LOWER_PRECISION_FOR_CONV(state));
+	state = REG_GET(r, THERMTRIP_GPU_EN);
+	seq_printf(s, "     GPU En(%d) ", state);
+	state = REG_GET(r, THERMTRIP_GPUMEM_THRESH);
+	seq_printf(s, "Thresh(%d)\n", LOWER_PRECISION_FOR_CONV(state));
+	state = REG_GET(r, THERMTRIP_TSENSE_EN);
+	seq_printf(s, "    PLLX En(%d) ", state);
+	state = REG_GET(r, THERMTRIP_TSENSE_THRESH);
+	seq_printf(s, "Thresh(%d)\n", LOWER_PRECISION_FOR_CONV(state));
 
 	r = soctherm_readl(THROT_GLOBAL_CFG);
-	seq_printf(s, "GLOBAL CONFIG: 0x%x\n", r);
+	seq_printf(s, "GLOBAL THROTTLE CONFIG: 0x%08x\n", r);
 
+	seq_printf(s, "---------------------------------------------------\n");
 	r = soctherm_readl(THROT_STATUS);
 	state = REG_GET(r, THROT_STATUS_BREACH);
 	seq_printf(s, "THROT STATUS: breach(%d) ", state);
@@ -1016,28 +2023,85 @@ static int regs_show(struct seq_file *s, void *data)
 	state = REG_GET(r, THROT_STATUS_ENABLED);
 	seq_printf(s, "enabled(%d)\n", state);
 
-	r = soctherm_readl(CPU_PSKIP_STATUS);
-	state = REG_GET(r, CPU_PSKIP_STATUS_M);
-	seq_printf(s, "CPU PSKIP: M(%d) ", state);
-	state = REG_GET(r, CPU_PSKIP_STATUS_N);
-	seq_printf(s, "N(%d) ", state);
-	state = REG_GET(r, CPU_PSKIP_STATUS_ENABLED);
-	seq_printf(s, "enabled(%d)\n", state);
+	for (j = 0; j < THROTTLE_DEV_SIZE; j++) {
+		r = soctherm_readl(CPU_PSKIP_STATUS + (j * 4));
+		state = REG_GET(r, CPU_PSKIP_STATUS_M);
+		seq_printf(s, "%s PSKIP STATUS: M(%d) ",
+			   throt_dev_names[j], state);
+		state = REG_GET(r, CPU_PSKIP_STATUS_N);
+		seq_printf(s, "N(%d) ", state);
+		state = REG_GET(r, CPU_PSKIP_STATUS_ENABLED);
+		seq_printf(s, "enabled(%d)\n", state);
+	}
 
-	r = soctherm_readl(THROT_PSKIP_CTRL(THROTTLE_HEAVY, THROTTLE_DEV_CPU));
-	state = REG_GET(r, THROT_PSKIP_CTRL_ENABLE);
-	seq_printf(s, "CPU PSKIP HEAVY: enabled(%d) ", state);
-	state = REG_GET(r, THROT_PSKIP_CTRL_DIVIDEND);
-	seq_printf(s, "dividend(%d) ", state);
-	state = REG_GET(r, THROT_PSKIP_CTRL_DIVISOR);
-	seq_printf(s, "divisor(%d) ", state);
+	seq_printf(s, "---------------------------------------------------\n");
+	seq_printf(s, "THROTTLE control and PSKIP configuration:\n");
+	seq_printf(s, "%5s  %3s  %2s  %8s  %7s  %8s  %4s  %4s  %5s  ",
+		   "throt", "dev", "en", "dividend", "divisor", "duration",
+		   "step", "prio", "delay");
+	seq_printf(s, "%2s  %2s  %2s  %2s  %2s  %2s  ",
+		   "LL", "HW", "PG", "MD", "01", "EN");
+	seq_printf(s, "%8s  %8s  %8s  %8s  %8s\n",
+		   "thresh", "period", "count", "filter", "stats");
+	for (i = 0; i < THROTTLE_SIZE; i++) {
+		for (j = 0; j < THROTTLE_DEV_SIZE; j++) {
+			r = soctherm_readl(THROT_PSKIP_CTRL(i, j));
+			state = REG_GET(r, THROT_PSKIP_CTRL_ENABLE);
+			seq_printf(s, "%5s  %3s  %2d  ",
+				   j ? "" : throt_names[i],
+				   throt_dev_names[j], state);
+			state = REG_GET(r, THROT_PSKIP_CTRL_DIVIDEND);
+			seq_printf(s, "%8d  ", state);
+			state = REG_GET(r, THROT_PSKIP_CTRL_DIVISOR);
+			seq_printf(s, "%7d  ", state);
+			r = soctherm_readl(THROT_PSKIP_RAMP(i, j));
+			state = REG_GET(r, THROT_PSKIP_RAMP_DURATION);
+			seq_printf(s, "%8d  ", state);
+			state = REG_GET(r, THROT_PSKIP_RAMP_STEP);
+			seq_printf(s, "%4d  ", state);
 
-	r = soctherm_readl(THROT_PSKIP_RAMP(THROTTLE_HEAVY, THROTTLE_DEV_CPU));
-	state = REG_GET(r, THROT_PSKIP_RAMP_DURATION);
-	seq_printf(s, "duration(%d) ", state);
-	state = REG_GET(r, THROT_PSKIP_RAMP_STEP);
-	seq_printf(s, "step(%d)\n", state);
+			if (j) {
+				seq_printf(s, "\n");
+				continue;
+			}
 
+			r = soctherm_readl(THROT_PRIORITY_CTRL(i));
+			state = REG_GET(r, THROT_PRIORITY_LITE_PRIO);
+			seq_printf(s, "%4d  ", state);
+
+			r = soctherm_readl(THROT_DELAY_CTRL(i));
+			state = REG_GET(r, THROT_DELAY_LITE_DELAY);
+			seq_printf(s, "%5d  ", state);
+
+			if (i >= THROTTLE_OC1) {
+				r = soctherm_readl(ALARM_CFG(i));
+				state = REG_GET(r, OC1_CFG_LONG_LATENCY);
+				seq_printf(s, "%2d  ", state);
+				state = REG_GET(r, OC1_CFG_HW_RESTORE);
+				seq_printf(s, "%2d  ", state);
+				state = REG_GET(r, OC1_CFG_PWR_GOOD_MASK);
+				seq_printf(s, "%2d  ", state);
+				state = REG_GET(r, OC1_CFG_THROTTLE_MODE);
+				seq_printf(s, "%2d  ", state);
+				state = REG_GET(r, OC1_CFG_ALARM_POLARITY);
+				seq_printf(s, "%2d  ", state);
+				state = REG_GET(r, OC1_CFG_EN_THROTTLE);
+				seq_printf(s, "%2d  ", state);
+
+				r = soctherm_readl(ALARM_CNT_THRESHOLD(i));
+				seq_printf(s, "%8d  ", r);
+				r = soctherm_readl(ALARM_THRESHOLD_PERIOD(i));
+				seq_printf(s, "%8d  ", r);
+				r = soctherm_readl(ALARM_ALARM_COUNT(i));
+				seq_printf(s, "%8d  ", r);
+				r = soctherm_readl(ALARM_FILTER(i));
+				seq_printf(s, "%8d  ", r);
+				r = soctherm_readl(ALARM_STATS(i));
+				seq_printf(s, "%8d  ", r);
+			}
+			seq_printf(s, "\n");
+		}
+	}
 	return 0;
 }
 
@@ -1053,6 +2117,18 @@ static const struct file_operations regs_fops = {
 	.release	= single_release,
 };
 
+static int convert_get(void *data, u64 *val)
+{
+	*val = !read_hw_temp;
+	return 0;
+}
+static int convert_set(void *data, u64 val)
+{
+	read_hw_temp = !val;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(convert_fops, convert_get, convert_set, "%llu\n");
+
 static int __init soctherm_debug_init(void)
 {
 	struct dentry *tegra_soctherm_root;
@@ -1060,6 +2136,8 @@ static int __init soctherm_debug_init(void)
 	tegra_soctherm_root = debugfs_create_dir("tegra_soctherm", 0);
 	debugfs_create_file("regs", 0644, tegra_soctherm_root,
 				NULL, &regs_fops);
+	debugfs_create_file("convert", 0644, tegra_soctherm_root,
+				NULL, &convert_fops);
 	return 0;
 }
 late_initcall(soctherm_debug_init);

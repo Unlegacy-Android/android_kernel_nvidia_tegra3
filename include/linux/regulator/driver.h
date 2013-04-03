@@ -68,6 +68,8 @@ enum regulator_status {
  *
  * @enable_time: Time taken for the regulator voltage output voltage to
  *               stabilise after being enabled, in microseconds.
+ * @set_ramp_delay: Set the ramp delay for the regulator. The driver should
+ *		select ramp delay equal to or less than(closest) ramp_delay.
  * @set_voltage_time_sel: Time taken for the regulator voltage output voltage
  *               to stabilise after being set to a new value, in microseconds.
  *               The function provides the from and to voltage selector, the
@@ -111,12 +113,17 @@ struct regulator_ops {
 	int (*set_mode) (struct regulator_dev *, unsigned int mode);
 	unsigned int (*get_mode) (struct regulator_dev *);
 
+	/* get/set regulator sleep mode (defined in consumer.h) */
+	int (*set_sleep_mode) (struct regulator_dev *, unsigned int sleep_mode);
+	unsigned int (*get_sleep_mode) (struct regulator_dev *);
+
 	/* get/set regulator control mode (defined in consumer.h) */
 	int (*set_control_mode) (struct regulator_dev *, unsigned int mode);
 	unsigned int (*get_control_mode) (struct regulator_dev *);
 
 	/* Time taken to enable or set voltage on the regulator */
 	int (*enable_time) (struct regulator_dev *);
+	int (*set_ramp_delay) (struct regulator_dev *, int ramp_delay);
 	int (*set_voltage_time_sel) (struct regulator_dev *,
 				     unsigned int old_selector,
 				     unsigned int new_selector);
@@ -164,6 +171,7 @@ enum regulator_type {
  * @supply_name: Identifying the regulator supply
  * @id: Numerical identifier for the regulator.
  * @n_voltages: Number of selectors available for ops.list_voltage().
+ * @ramp_delay: Time to settle down after voltage change (unit: uV/us)
  * @ops: Regulator operations table.
  * @irq: Interrupt number for the regulator.
  * @type: Indicates if the regulator is a voltage or current regulator.
@@ -178,6 +186,7 @@ struct regulator_desc {
 	int irq;
 	enum regulator_type type;
 	struct module *owner;
+	unsigned int ramp_delay;
 	unsigned int vsel_reg;
 	unsigned int vsel_mask;
 	unsigned int enable_reg;
@@ -234,6 +243,10 @@ struct device *rdev_get_dev(struct regulator_dev *rdev);
 int rdev_get_id(struct regulator_dev *rdev);
 
 int regulator_mode_to_status(unsigned int);
+
+int regulator_set_voltage_time_sel(struct regulator_dev *rdev,
+				   unsigned int old_selector,
+				   unsigned int new_selector);
 
 void *regulator_get_init_drvdata(struct regulator_init_data *reg_init_data);
 

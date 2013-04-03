@@ -278,14 +278,14 @@ ENTRY(cpu_v7_do_resume)
 	mcr	p15, 0, r1, c2, c0, 0	@ TTB 0
 	mcr	p15, 0, r7, c2, c0, 1	@ TTB 1
 	mcr	p15, 0, r11, c2, c0, 2	@ TTB control register
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	ldr	r4, =TEGRA_CLK_RESET_BOND_OUT
-	ldr	r4, [r4]
-	tst	r4, #1
-	bne	.
-#endif
 	mrc	p15, 0, r4, c1, c0, 1	@ Read Auxiliary control register
 	teq	r4, r9			@ Is it already set?
+#ifdef CONFIG_ARM_ERRATA_799270
+	ldr	r4, =TEGRA_CLK_RESET_BOND_OUT
+	ldr	r4, [r4]
+	and	r4, r4, #0
+	orr	r9, r9, r4
+#endif
 	mcrne	p15, 0, r9, c1, c0, 1	@ No, so write it
 	mcr	p15, 0, r10, c1, c0, 2	@ Co-processor access control
 	ldr	r4, =PRRR		@ PRRR
@@ -426,15 +426,16 @@ __v7_ca15mp_setup:
 	orreq	r0, r0, #0x1000			@ disable prefetch throttling
 	mcreq	p15, 1, r0, c15, c0, 3
 
-	ldr	r0, =TEGRA_CLK_RESET_BOND_OUT
-	ldr	r0, [r0]
-	tst	r0, #1
-	bne	.
-
 	ALT_SMP(mrc	p15, 0, r0, c1, c0, 1)
 	ALT_UP(mov	r0, #(1 << 6))		@ fake it for UP
 	tst	r0, #(1 << 6)			@ SMP/nAMP mode enabled?
 	orreq	r0, r0, #(1 << 6)		@ Enable SMP/nAMP mode
+#ifdef CONFIG_ARM_ERRATA_799270
+	ldr	r10, =TEGRA_CLK_RESET_BOND_OUT
+	ldr	r10, [r10]
+	and	r10, r10, #0
+	orr	r0, r0, r10
+#endif
 	mcreq	p15, 0, r0, c1, c0, 1
 
 	b	__v7_setup
@@ -452,11 +453,18 @@ __v7_ca7mp_setup:
 #endif
 __v7_setup:
 	adr	r12, __v7_setup_stack		@ the local stack
+	mrc	p15, 0, r0, c0, c0, 0		@ read main ID register
+	ubfx	r10, r0, #4, #28
+	ldr	r6, =0x00f0000
+	bic	r10, r10, r6
+	ldr	r6, =0x410fc0f			@ ARM cortex A15
+	teq	r10, r6
+	biceq	r10, r10, r10			@ clear r10 if it's A15
+	beq	4f
 	stmia	r12, {r0-r5, r7, r9, r11, lr}
 	bl	v7_flush_dcache_all
 	ldmia	r12, {r0-r5, r7, r9, r11, lr}
 
-	mrc	p15, 0, r0, c0, c0, 0		@ read main ID register
 	and	r10, r0, #0xff000000		@ ARM?
 	teq	r10, #0x41000000
 	bne	3f
@@ -553,6 +561,7 @@ __v7_setup:
 3:	mov	r10, #0
 	mcr	p15, 0, r10, c7, c5, 0		@ I+BTB cache invalidate
 	dsb
+4:
 #ifdef CONFIG_MMU
 	mcr	p15, 0, r10, c8, c7, 0		@ invalidate I + D TLBs
 	v7_ttb_setup r10, r4, r8, r5		@ TTBCR, TTBRx setup

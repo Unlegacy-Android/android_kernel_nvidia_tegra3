@@ -5,7 +5,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (C) 2010-2012 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2010-2013 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -26,7 +26,8 @@
 
 #define MAX_DVFS_FREQS	40
 #define MAX_DVFS_TABLES	80
-#define DVFS_RAIL_STATS_TOP_BIN	50
+#define DVFS_RAIL_STATS_TOP_BIN	60
+#define MAX_THERMAL_FLOORS	8
 
 struct clk;
 struct dvfs_rail;
@@ -62,7 +63,8 @@ struct dvfs_rail {
 	int max_millivolts;
 	int reg_max_millivolts;
 	int nominal_millivolts;
-	int min_millivolts_cold;
+	const int *therm_mv_floors;
+	int therm_mv_floors_num;
 
 	int step;
 	bool jmp_to_zero;
@@ -80,6 +82,7 @@ struct dvfs_rail {
 	int offs_millivolts;
 	bool suspended;
 	bool dfll_mode;
+	bool dfll_mode_updating;
 	int thermal_idx;
 	struct tegra_cooling_device *pll_mode_cdev;
 	struct tegra_cooling_device *dfll_mode_cdev;
@@ -103,6 +106,7 @@ struct dvfs_dfll_data {
 	int tune_high_min_millivolts;
 	int min_millivolts;
 	enum dfll_range	range;
+	void (*tune_trimmers)(bool trim_high);
 };
 
 struct dvfs {
@@ -154,6 +158,8 @@ struct cpu_cvb_dvfs {
 	int speedo_scale;
 	int voltage_scale;
 	struct cpu_cvb_dvfs_table cvb_table[MAX_DVFS_FREQS];
+	int therm_trips_table[MAX_THERMAL_FLOORS];
+	int therm_floors_table[MAX_THERMAL_FLOORS];
 };
 
 extern struct dvfs_rail *tegra_cpu_rail;
@@ -165,6 +171,21 @@ struct dvfs_data {
 	int *millivolts;
 	unsigned int num_tables;
 	unsigned int num_voltages;
+};
+
+struct core_dvfs_cap_table {
+	const char *cap_name;
+	struct clk *cap_clk;
+	unsigned long freqs[MAX_DVFS_FREQS];
+};
+
+struct core_bus_cap_table {
+	const char *cap_name;
+	struct clk *cap_clk;
+	struct kobj_attribute refcnt_attr;
+	struct kobj_attribute level_attr;
+	int refcnt;
+	int level;
 };
 
 #ifdef CONFIG_OF
@@ -203,6 +224,7 @@ int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate);
 struct tegra_cooling_device *tegra_dvfs_get_cpu_dfll_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_cpu_pll_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_core_cdev(void);
+int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail);
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 int tegra_dvfs_rail_disable_prepare(struct dvfs_rail *rail);
@@ -220,17 +242,31 @@ static inline void tegra_dvfs_age_cpu(int cur_linear_age)
 { return; }
 #endif
 
+int tegra_init_core_cap(struct core_dvfs_cap_table *table, int table_size,
+	const int *millivolts, int millivolts_num, struct kobject *cap_kobj);
+int tegra_init_shared_bus_cap(struct core_bus_cap_table *table, int table_size,
+	struct kobject *cap_kobj);
+
 static inline bool tegra_dvfs_rail_is_dfll_mode(struct dvfs_rail *rail)
 {
-	return rail->dfll_mode;
+	return rail ? rail->dfll_mode : false;
 }
+static inline bool tegra_dvfs_is_dfll_range_entry(struct dvfs *d,
+						  unsigned long rate)
+{
+	/* make exception for cluster switch (cur_rate = 0) */
+	return  d->cur_rate && d->dvfs_rail && (!d->dvfs_rail->dfll_mode) &&
+		(d->dfll_data.range == DFLL_RANGE_HIGH_RATES) &&
+		(rate >= d->dfll_data.use_dfll_rate_min) &&
+		(d->cur_rate < d->dfll_data.use_dfll_rate_min);
+}
+
 static inline bool tegra_dvfs_is_dfll_scale(struct dvfs *d, unsigned long rate)
 {
-	return  d->dvfs_rail && (d->dvfs_rail->dfll_mode ||
-		((d->dfll_data.range == DFLL_RANGE_HIGH_RATES) &&
-		 (rate >= d->dfll_data.use_dfll_rate_min) &&
-		 (d->cur_rate < d->dfll_data.use_dfll_rate_min)));
+	return tegra_dvfs_rail_is_dfll_mode(d->dvfs_rail) ||
+		tegra_dvfs_is_dfll_range_entry(d, rate);
 }
+
 static inline bool tegra_dvfs_is_dfll_range(struct dvfs *d, unsigned long rate)
 {
 	return (d->dfll_data.range == DFLL_RANGE_ALL_RATES) ||
@@ -247,6 +283,25 @@ static inline int tegra_dvfs_set_dfll_range(struct dvfs *d, int range)
 
 	d->dfll_data.range = range;
 	return 0;
+}
+static inline void tegra_dvfs_rail_mode_updating(struct dvfs_rail *rail,
+						 bool updating)
+{
+	if (rail)
+		rail->dfll_mode_updating = updating;
+}
+
+static inline void tegra_dvfs_set_dfll_tune_trimmers(
+	struct dvfs *d, void (*tune_trimmers)(bool trim_high))
+{
+	d->dfll_data.tune_trimmers = tune_trimmers;
+}
+
+static inline int tegra_dvfs_rail_get_nominal_millivolts(struct dvfs_rail *rail)
+{
+	if (rail)
+		return rail->nominal_millivolts;
+	return -ENOENT;
 }
 
 #endif

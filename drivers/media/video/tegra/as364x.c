@@ -1,7 +1,7 @@
 /*
  * AS364X.c - AS364X flash/torch kernel driver
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -148,6 +148,7 @@ struct as364x_info {
 	u8 flash_mode;
 	u8 led_num;
 	u8 led_mask;
+	bool shutdown_complete;
 };
 
 static struct as364x_platform_data as364x_default_pdata = {
@@ -175,10 +176,17 @@ static DEFINE_SPINLOCK(as364x_spinlock);
 static const u16 v_in_low[] = {0, 3000, 3070, 3140, 3220, 3300, 3338, 3470};
 
 static int as364x_debugfs_init(struct as364x_info *info);
+static int as364x_power_off(struct as364x_info *info);
 
 static int as364x_reg_rd(struct as364x_info *info, u8 reg, u8 *val)
 {
 	struct i2c_msg msg[2];
+	mutex_lock(&info->mutex);
+
+	if (info && info->shutdown_complete) {
+		mutex_unlock(&info->mutex);
+		return -EINVAL;
+	}
 
 	*val = 0;
 	msg[0].addr = info->i2c_client->addr;
@@ -189,24 +197,36 @@ static int as364x_reg_rd(struct as364x_info *info, u8 reg, u8 *val)
 	msg[1].flags = I2C_M_RD;
 	msg[1].len = 1;
 	msg[1].buf = val;
-	if (i2c_transfer(info->i2c_client->adapter, msg, 2) != 2)
+	if (i2c_transfer(info->i2c_client->adapter, msg, 2) != 2) {
+		mutex_unlock(&info->mutex);
 		return -EIO;
+	}
 
+	mutex_unlock(&info->mutex);
 	return 0;
 }
 
 static int as364x_reg_raw_wr(struct as364x_info *info, u8 *buf, u8 num)
 {
 	struct i2c_msg msg;
+	mutex_lock(&info->mutex);
+
+	if (info && info->shutdown_complete) {
+		mutex_unlock(&info->mutex);
+		return -EINVAL;
+	}
 
 	msg.addr = info->i2c_client->addr;
 	msg.flags = 0;
 	msg.len = num;
 	msg.buf = buf;
-	if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
+	if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1) {
+		mutex_unlock(&info->mutex);
 		return -EIO;
+	}
 
 	dev_dbg(&info->i2c_client->dev, "%s %x %x\n", __func__, buf[0], buf[1]);
+	mutex_unlock(&info->mutex);
 	return 0;
 }
 
@@ -549,7 +569,10 @@ static void as364x_shutdown(struct i2c_client *client)
 	dev_info(&client->dev, "Shutting down %s\n", info->caps.name);
 
 	mutex_lock(&info->mutex);
-	as364x_set_leds(info, 3, 0, 0);
+	/* powier off chip to turn off led */
+	if (info->pwr_state != NVC_PWR_OFF)
+		as364x_power_off(info);
+	info->shutdown_complete = true;
 	mutex_unlock(&info->mutex);
 }
 #endif
@@ -1215,6 +1238,7 @@ static int as364x_probe(
 		return -ENODEV;
 	}
 
+	info->shutdown_complete = false;
 	as364x_debugfs_init(info);
 	return 0;
 }

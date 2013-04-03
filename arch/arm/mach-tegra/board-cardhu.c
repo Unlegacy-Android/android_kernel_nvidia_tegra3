@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu.c
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -83,7 +83,7 @@
 #include "wdt-recovery.h"
 #include "common.h"
 
-#ifdef CONFIG_BT_BLUESLEEP
+#if defined(CONFIG_BT_BLUESLEEP) || defined(CONFIG_BT_BLUESLEEP_MODULE)
 static struct rfkill_gpio_platform_data cardhu_bt_rfkill_pdata[] = {
 	{
 		.name           = "bt_rfkill",
@@ -762,8 +762,6 @@ static struct platform_device *cardhu_devices[] __initdata = {
 	&tegra_rtc_device,
 	&tegra_udc_device,
 	&tegra_wdt0_device,
-	&tegra_wdt1_device,
-	&tegra_wdt2_device,
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
@@ -781,7 +779,7 @@ static struct platform_device *cardhu_devices[] __initdata = {
 	&spdif_dit_device,
 	&bluetooth_dit_device,
 	&baseband_dit_device,
-#ifdef CONFIG_BT_BLUESLEEP
+#if defined(CONFIG_BT_BLUESLEEP) || defined(CONFIG_BT_BLUESLEEP_MODULE)
 	&cardhu_bt_rfkill_device,
 #endif
 	&tegra_pcm_device,
@@ -809,10 +807,10 @@ static struct platform_device *beaver_audio_devices[] __initdata = {
 
 };
 
-#define MXT_CFG_NAME            "Android_Cardhu_2012-01-31.cfg"
+#define MXT_CFG_NAME            "Android_Cardhu_2012-12-18.cfg"
 
 static struct mxt_platform_data atmel_mxt_info = {
-	.irqflags       = IRQF_TRIGGER_FALLING,
+	.irqflags       = IRQF_ONESHOT | IRQF_TRIGGER_LOW,
 	.read_chg       = &read_chg,
 	.mxt_cfg_name	= MXT_CFG_NAME,
 };
@@ -852,6 +850,7 @@ struct rm_spi_ts_platform_data rm31080ts_cardhu_data = {
 	.config = 0,
 	.platform_id = RM_PLATFORM_C210,
 	.name_of_clock = "clk_out_3",
+	.name_of_clock_con = "extern3",
 };
 
 struct spi_board_info rm31080a_cardhu_spi_board[1] = {
@@ -913,12 +912,12 @@ static int __init cardhu_touch_init(void)
 		tegra_get_board_info(&BoardInfo);
 		if ((BoardInfo.sku & SKU_TOUCH_MASK) == SKU_TOUCH_2000)
 			strncpy(atmel_mxt_info.mxt_cfg_name,
-				"Android_Cardhu_SKU2000_2012-01-31.cfg",
+				"Android_Cardhu_SKU2000_2012-12-18.cfg",
 				CFG_NAME_SIZE);
 
 		if (DisplayBoardInfo.board_id == BOARD_DISPLAY_E1506) {
 			strncpy(atmel_mxt_info.mxt_cfg_name,
-			"Android_Cardhu_Verbier_E1506_2012-06-06.cfg",
+			"Android_Cardhu_Verbier_E1506_2012-12-18.cfg",
 			CFG_NAME_SIZE);
 			e1506_atmel_i2c_info[0].irq = gpio_to_irq(TEGRA_GPIO_PH4);
 			i2c_register_board_info(1, e1506_atmel_i2c_info, 1);
@@ -1092,7 +1091,7 @@ static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	.op_mode        = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
 		.vbus_gpio = -1,
-		.hot_plug = false,
+		.hot_plug = true,
 		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
 	},
@@ -1190,9 +1189,6 @@ static void cardhu_usb_init(void)
 		tegra_ehci2_device.dev.platform_data =
 						&tegra_ehci2_hsic_xmm_pdata;
 		/* ehci2 registration happens in baseband-xmm-power  */
-	} else {
-		tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
-		platform_device_register(&tegra_ehci2_device);
 	}
 
 	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
@@ -1275,6 +1271,8 @@ static void cardhu_modem_init(void)
 	struct board_info board_info;
 	int w_disable_gpio, ret;
 
+	int modem_id = tegra_get_modem_id();
+
 	tegra_get_board_info(&board_info);
 	switch (board_info.board_id) {
 	case BOARD_E1291:
@@ -1315,6 +1313,11 @@ static void cardhu_modem_init(void)
 		break;
 	default:
 		break;
+	}
+
+	if (modem_id == TEGRA_BB_TANGO) {
+		tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
+		platform_device_register(&tegra_ehci2_device);
 	}
 
 }
@@ -1372,7 +1375,7 @@ static void __init tegra_cardhu_init(void)
 	cardhu_panel_init();
 	cardhu_pmon_init();
 	cardhu_sensors_init();
-#ifdef CONFIG_BT_BLUESLEEP
+#if defined(CONFIG_BT_BLUESLEEP) || defined(CONFIG_BT_BLUESLEEP_MODULE)
 	cardhu_setup_bluesleep();
 #elif defined CONFIG_BLUEDROID_PM
 	cardhu_setup_bluedroid_pm();
@@ -1393,6 +1396,7 @@ static void __init tegra_cardhu_init(void)
 #endif
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	tegra_vibrator_init();
+	tegra_register_fuse();
 }
 
 static void __init tegra_cardhu_dt_init(void)

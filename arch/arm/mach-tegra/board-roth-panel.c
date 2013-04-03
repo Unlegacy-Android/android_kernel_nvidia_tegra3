@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-roth-panel.c
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -317,6 +317,8 @@ fail:
 	return err;
 }
 
+static struct tegra_dc_out roth_disp1_out;
+
 static int roth_dsi_panel_enable(struct device *dev)
 {
 	int err = 0;
@@ -366,6 +368,10 @@ static int roth_dsi_panel_enable(struct device *dev)
 			goto fail;
 		}
 	}
+
+	/* Skip panel programming if in initialized mode */
+	if (roth_disp1_out.flags & TEGRA_DC_OUT_INITIALIZED_MODE)
+		return 0;
 
 #if DSI_PANEL_RESET
 	gpio_direction_output(DSI_PANEL_RST_GPIO, 1);
@@ -523,7 +529,7 @@ static struct tegra_dc_out roth_disp2_out = {
 	.dcc_bus	= 3,
 	.hotplug_gpio	= roth_hdmi_hpd,
 
-	.max_pixclock	= KHZ2PICOS(148500),
+	.max_pixclock	= KHZ2PICOS(297000),
 
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
@@ -648,6 +654,7 @@ static struct platform_pwm_backlight_data roth_disp1_bl_data = {
 	.max_brightness	= 255,
 	.dft_brightness	= 77,
 	.pwm_period_ns	= 40000,
+	.pwm_gpio	= DSI_PANEL_BL_PWM,
 	.notify		= roth_disp1_bl_notify,
 	/* Only toggle backlight on fb blank notifications for disp1 */
 	.check_fb	= roth_disp1_check_fb,
@@ -676,8 +683,8 @@ static struct tegra_dc_sd_settings roth_sd_settings = {
 	.soft_clipping_enable = true,
 	/* Low soft clipping threshold to compensate for aggressive k_limit */
 	.soft_clipping_threshold = 128,
-	.smooth_k_enable = false,
-	.smooth_k_incr = 64,
+	.smooth_k_enable = true,
+	.smooth_k_incr = 4,
 	/* Default video coefficients */
 	.coeff = {5, 9, 2},
 	.fc = {0, 0},
@@ -717,7 +724,7 @@ static struct platform_device __maybe_unused
 	&roth_disp1_bl_device,
 };
 
-int __init roth_panel_init(void)
+int __init roth_panel_init(int board_id)
 {
 	int err = 0;
 	struct resource __maybe_unused *res;
@@ -755,10 +762,27 @@ int __init roth_panel_init(void)
 		tegra_fb_start, tegra_bootloader_fb_start,
 			min(tegra_fb_size, tegra_bootloader_fb_size));
 
+	/*
+	 * If the bootloader fb2 is valid, copy it to the fb2, or else
+	 * clear fb2 to avoid garbage on dispaly2.
+	 */
+	if (tegra_bootloader_fb2_size)
+		tegra_move_framebuffer(tegra_fb2_start,
+			tegra_bootloader_fb2_start,
+			min(tegra_fb2_size, tegra_bootloader_fb2_size));
+	else
+		tegra_clear_framebuffer(tegra_fb2_start, tegra_fb2_size);
+
 	res = platform_get_resource_byname(&roth_disp2_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb2_start;
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
+
+	/*
+	 * only roth supports initialized mode.
+	 */
+	if (!board_id)
+		roth_disp1_out.flags |= TEGRA_DC_OUT_INITIALIZED_MODE;
 
 	roth_disp1_device.dev.parent = &phost1x->dev;
 	err = platform_device_register(&roth_disp1_device);
@@ -781,13 +805,6 @@ int __init roth_panel_init(void)
 		pr_err("disp1 bl device registration failed");
 		return err;
 	}
-
-	err = gpio_request(DSI_PANEL_BL_PWM, "panel pwm");
-	if (err < 0) {
-		pr_err("panel backlight pwm gpio request failed\n");
-		return err;
-	}
-	gpio_free(DSI_PANEL_BL_PWM);
 #endif
 
 #ifdef CONFIG_TEGRA_NVAVP

@@ -4,6 +4,8 @@
  * Copyright (C) 2009 Palm, Inc.
  * Author: Yvonne Yip <y@palm.com>
  *
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -30,10 +32,12 @@
 #define MMC_OCR_2V8_MASK    0x00010000
 
 /* uhs mask can be used to mask any of the UHS modes support */
-#define MMC_UHS_MASK_SDR25	1
-#define MMC_UHS_MASK_SDR50	2
-#define MMC_UHS_MASK_DDR50	4
-#define MMC_UHS_MASK_SDR104	8
+#define MMC_UHS_MASK_SDR12	0x1
+#define MMC_UHS_MASK_SDR25	0x2
+#define MMC_UHS_MASK_SDR50	0x4
+#define MMC_UHS_MASK_DDR50	0x8
+#define MMC_UHS_MASK_SDR104	0x10
+#define MMC_MASK_HS200		0x20
 
 struct tegra_sdhci_platform_data {
 	int cd_gpio;
@@ -42,12 +46,17 @@ struct tegra_sdhci_platform_data {
 	int is_8bit;
 	int pm_flags;
 	int pm_caps;
+	int nominal_vcore_uV;
 	unsigned int max_clk_limit;
 	unsigned int ddr_clk_limit;
 	unsigned int tap_delay;
 	unsigned int trim_delay;
 	unsigned int uhs_mask;
+	unsigned int sd_detect_in_suspend;
 	struct mmc_platform_data mmc_data;
+	bool edp_support;
+	unsigned int edp_states[SD_EDP_NUM_STATES];
+	bool power_off_rail;
 };
 
 #endif

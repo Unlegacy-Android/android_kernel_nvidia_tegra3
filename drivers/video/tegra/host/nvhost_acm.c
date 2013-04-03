@@ -26,6 +26,8 @@
 #include <linux/device.h>
 #include <linux/delay.h>
 #include <linux/platform_device.h>
+#include <linux/pm.h>
+#include <linux/pm_runtime.h>
 #include <trace/events/nvhost.h>
 
 #include <mach/powergate.h>
@@ -141,6 +143,11 @@ static void to_state_clockgated_locked(struct platform_device *dev)
 
 		if (dev->dev.parent)
 			nvhost_module_idle(to_platform_device(dev->dev.parent));
+
+		if (!pdata->can_powergate) {
+			pm_runtime_mark_last_busy(&dev->dev);
+			pm_runtime_put_autosuspend(&dev->dev);
+		}
 	} else if (pdata->powerstate == NVHOST_POWER_STATE_POWERGATED
 			&& pdata->can_powergate) {
 		do_unpowergate_locked(pdata->powergate_ids[0]);
@@ -157,11 +164,16 @@ static void to_state_running_locked(struct platform_device *dev)
 	struct nvhost_device_data *pdata = platform_get_drvdata(dev);
 	int prev_state = pdata->powerstate;
 
-	if (pdata->powerstate == NVHOST_POWER_STATE_POWERGATED)
+	if (pdata->powerstate == NVHOST_POWER_STATE_POWERGATED) {
+		pm_runtime_get_sync(&dev->dev);
 		to_state_clockgated_locked(dev);
+	}
 
 	if (pdata->powerstate == NVHOST_POWER_STATE_CLOCKGATED) {
 		int i;
+
+		if (!pdata->can_powergate)
+			pm_runtime_get_sync(&dev->dev);
 
 		if (dev->dev.parent)
 			nvhost_module_busy(to_platform_device(dev->dev.parent));
@@ -214,6 +226,8 @@ static int to_state_powergated_locked(struct platform_device *dev)
 	}
 
 	pdata->powerstate = NVHOST_POWER_STATE_POWERGATED;
+	pm_runtime_mark_last_busy(&dev->dev);
+	pm_runtime_put_autosuspend(&dev->dev);
 	return 0;
 }
 
@@ -627,6 +641,9 @@ int nvhost_module_init(struct platform_device *dev)
 	attr->attr.mode = S_IWUSR | S_IRUGO;
 	attr->show = clockgate_delay_show;
 	attr->store = clockgate_delay_store;
+#ifdef CONFIG_DEBUG_LOCK_ALLOC
+	sysfs_attr_init(&attr->attr);
+#endif
 	if (sysfs_create_file(pdata->power_kobj, &attr->attr)) {
 		dev_err(&dev->dev, "Could not create sysfs attribute clockgate_delay\n");
 		err = -EIO;
@@ -638,6 +655,9 @@ int nvhost_module_init(struct platform_device *dev)
 	attr->attr.mode = S_IWUSR | S_IRUGO;
 	attr->show = powergate_delay_show;
 	attr->store = powergate_delay_store;
+#ifdef CONFIG_DEBUG_LOCK_ALLOC
+	sysfs_attr_init(&attr->attr);
+#endif
 	if (sysfs_create_file(pdata->power_kobj, &attr->attr)) {
 		dev_err(&dev->dev, "Could not create sysfs attribute powergate_delay\n");
 		err = -EIO;
@@ -648,6 +668,9 @@ int nvhost_module_init(struct platform_device *dev)
 	attr->attr.name = "refcount";
 	attr->attr.mode = S_IRUGO;
 	attr->show = refcount_show;
+#ifdef CONFIG_DEBUG_LOCK_ALLOC
+	sysfs_attr_init(&attr->attr);
+#endif
 	if (sysfs_create_file(pdata->power_kobj, &attr->attr)) {
 		dev_err(&dev->dev, "Could not create sysfs attribute refcount\n");
 		err = -EIO;

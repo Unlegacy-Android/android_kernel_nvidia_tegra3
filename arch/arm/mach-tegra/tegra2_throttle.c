@@ -7,7 +7,7 @@
  *	Colin Cross <ccross@google.com>
  *	Based on arch/arm/plat-omap/cpu-omap.c, (C) 2005 Nokia Corporation
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation
+ * Copyright (C) 2010-2013 NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -37,6 +37,8 @@
 
 /* tegra throttling require frequencies in the table to be in ascending order */
 static struct cpufreq_frequency_table *throttle_table;
+
+/* cpu_throttle_lock is tegra_cpu_lock from cpu-tegra.c */
 static struct mutex *cpu_throttle_lock;
 
 /* CPU frequency is gradually lowered when throttling is enabled */
@@ -63,7 +65,7 @@ static void tegra_throttle_work_func(struct work_struct *work)
 	throttle_index = throttle_next_index;
 
 	if (throttle_table[throttle_index].frequency < current_freq)
-		tegra_cpu_set_speed_cap(NULL);
+		tegra_cpu_set_speed_cap_locked(NULL);
 
 	if (throttle_index > throttle_lowest_index) {
 		throttle_next_index = throttle_index - 1;
@@ -98,7 +100,7 @@ void tegra_throttling_enable(bool enable)
 	} else if (!enable && is_throttling) {
 		if (!(--is_throttling)) {
 			/* restore speed requested by governor */
-			tegra_cpu_set_speed_cap(NULL);
+			tegra_cpu_set_speed_cap_locked(NULL);
 
 			mutex_unlock(cpu_throttle_lock);
 			cancel_delayed_work_sync(&throttle_work);

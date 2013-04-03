@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra3_usb_phy.c
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -1155,6 +1155,7 @@ static void utmi_phy_close(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
 	void __iomem *base = phy->regs;
+	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 
 	DBG("%s inst:[%d]\n", __func__, phy->inst);
 
@@ -1164,6 +1165,10 @@ static void utmi_phy_close(struct tegra_usb_phy *phy)
 		val &= ~USB_PHY_CLK_VALID_INT_ENB;
 		writel(val, base + USB_SUSP_CTRL);
 	}
+
+	val = readl(pmc_base + PMC_SLEEP_CFG);
+	if (val & UTMIP_MASTER_ENABLE(phy->inst))
+		utmip_phy_disable_pmc_bus_ctrl(phy);
 
 	clk_put(phy->utmi_pad_clk);
 }
@@ -1472,6 +1477,10 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 			pr_err("%s: timeout waiting for USB_USBSTS_HCH\n", __func__);
 		}
 		utmip_setup_pmc_wake_detect(phy);
+
+		val = readl(base + USB_SUSP_CTRL);
+		val &= ~USB_WAKE_ON_CNNT_EN_DEV;
+		writel(val, base + USB_SUSP_CTRL);
 	}
 
 	if (!phy->hot_plug) {
@@ -2916,6 +2925,7 @@ static int ulpi_null_phy_restore(struct tegra_usb_phy *phy)
 			pr_warn("phy restore timeout\n");
 			return 1;
 		}
+		mdelay(1);
 	}
 
 	return 0;

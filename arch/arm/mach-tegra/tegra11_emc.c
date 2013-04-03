@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11_emc.c
  *
- * Copyright (C) 2011-2012 NVIDIA Corporation
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -22,6 +22,7 @@
 #include <linux/clk.h>
 #include <linux/err.h>
 #include <linux/io.h>
+#include <linux/of.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/platform_device.h>
@@ -38,6 +39,7 @@
 #include "dvfs.h"
 #include "board.h"
 #include "tegra11_emc.h"
+#include "fuse.h"
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE
 static bool emc_enable = true;
@@ -166,7 +168,8 @@ enum {
 	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_DA_TURNS),	\
 	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_DA_COVERS),	\
 	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_MISC0),		\
-	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_RING1_THROTTLE),
+	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_RING1_THROTTLE),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_SEL_DPD_CTRL),
 
 #define BURST_UP_DOWN_REG_LIST \
 	DEFINE_REG(TEGRA_MC_BASE, MC_PTSA_GRANT_DECREMENT),	\
@@ -738,9 +741,10 @@ int tegra_emc_set_rate(unsigned long rate)
 	return 0;
 }
 
-long tegra_emc_round_rate(unsigned long rate)
+long tegra_emc_round_rate_updown(unsigned long rate, bool up)
 {
 	int i;
+	unsigned long table_rate;
 
 	if (!tegra_emc_table)
 		return clk_get_rate_locked(emc); /* no table - no rate change */
@@ -758,11 +762,15 @@ long tegra_emc_round_rate(unsigned long rate)
 		if (tegra_emc_clk_sel[i].input == NULL)
 			continue;	/* invalid entry */
 
-		if (tegra_emc_table[i].rate >= rate) {
-			pr_debug("%s: using %lu\n",
-				 __func__, tegra_emc_table[i].rate);
+		table_rate = tegra_emc_table[i].rate;
+		if (table_rate >= rate) {
+			if (!up && i && (table_rate > rate)) {
+				i--;
+				table_rate = tegra_emc_table[i].rate;
+			}
+			pr_debug("%s: using %lu\n", __func__, table_rate);
 			last_round_idx = i;
-			return tegra_emc_table[i].rate * 1000;
+			return table_rate * 1000;
 		}
 	}
 
@@ -810,7 +818,7 @@ bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
 	struct clk *p = NULL;
 	unsigned long p_rate = 0;
 
-	if (!tegra_emc_table || !emc_enable)
+	if (!tegra_emc_table)
 		return true;
 
 	pr_debug("%s: %lu\n", __func__, rate);
@@ -1026,6 +1034,253 @@ static int purge_emc_table(unsigned long max_rate)
 #define purge_emc_table(max_rate) (0)
 #endif
 
+#ifdef CONFIG_OF
+static struct device_node *tegra_emc_ramcode_devnode(struct device_node *np)
+{
+	struct device_node *iter;
+	u32 reg;
+
+	for_each_child_of_node(np, iter) {
+		if (of_property_read_u32(np, "nvidia,ram-code", &reg))
+			continue;
+		if (reg == tegra_bct_strapping)
+			return of_node_get(iter);
+	}
+
+	return NULL;
+}
+
+static struct tegra11_emc_pdata *tegra_emc_dt_parse_pdata(
+		struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct device_node *tnp, *iter;
+	struct tegra11_emc_pdata *pdata;
+	int ret, i, num_tables;
+
+	if (!np)
+		return NULL;
+
+	if (of_find_property(np, "nvidia,use-ram-code", NULL)) {
+		tnp = tegra_emc_ramcode_devnode(np);
+		if (!tnp)
+			dev_warn(&pdev->dev,
+				"can't find emc table for ram-code 0x%02x\n",
+					tegra_bct_strapping);
+	} else
+		tnp = of_node_get(np);
+
+	if (!tnp)
+		return NULL;
+
+	num_tables = 0;
+	for_each_child_of_node(tnp, iter)
+		if (of_device_is_compatible(iter, "nvidia,tegra11-emc-table"))
+			num_tables++;
+
+	if (!num_tables) {
+		pdata = NULL;
+		goto out;
+	}
+
+	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
+	pdata->tables = devm_kzalloc(&pdev->dev,
+				sizeof(*pdata->tables) * num_tables,
+					GFP_KERNEL);
+
+	i = 0;
+	for_each_child_of_node(tnp, iter) {
+		u32 u;
+		const char *source_name;
+
+		ret = of_property_read_u32(iter, "nvidia,revision", &u);
+		if (ret) {
+			dev_err(&pdev->dev, "no revision in %s\n",
+				iter->full_name);
+			continue;
+		}
+		pdata->tables[i].rev = u;
+
+		ret = of_property_read_u32(iter, "clock-frequency", &u);
+		if (ret) {
+			dev_err(&pdev->dev, "no clock-frequency in %s\n",
+				iter->full_name);
+			continue;
+		}
+		pdata->tables[i].rate = u;
+
+		ret = of_property_read_u32(iter, "nvidia,emc-min-mv", &u);
+		if (ret) {
+			dev_err(&pdev->dev, "no emc-min-mv in %s\n",
+				iter->full_name);
+			continue;
+		}
+		pdata->tables[i].emc_min_mv = u;
+
+		ret = of_property_read_string(iter,
+					"nvidia,source", &source_name);
+		if (ret) {
+			dev_err(&pdev->dev, "no source name in %s\n",
+				iter->full_name);
+			continue;
+		}
+		pdata->tables[i].src_name = source_name;
+
+		ret = of_property_read_u32(iter, "nvidia,src-sel-reg", &u);
+		if (ret) {
+			dev_err(&pdev->dev, "no src-sel-reg in %s\n",
+				iter->full_name);
+			continue;
+		}
+		pdata->tables[i].src_sel_reg = u;
+
+		ret = of_property_read_u32(iter, "nvidia,burst-regs-num", &u);
+		if (ret) {
+			dev_err(&pdev->dev, "no burst-regs-num in %s\n",
+				iter->full_name);
+			continue;
+		}
+		pdata->tables[i].burst_regs_num = u;
+
+		ret = of_property_read_u32(iter, "nvidia,emc-trimmers-num", &u);
+		if (ret) {
+			dev_err(&pdev->dev, "no emc-trimmers-num in %s\n",
+				iter->full_name);
+			continue;
+		}
+		pdata->tables[i].emc_trimmers_num = u;
+
+		ret = of_property_read_u32(iter,
+					"nvidia,burst-up-down-regs-num", &u);
+		if (ret) {
+			dev_err(&pdev->dev, "no burst-up-down-regs-num in %s\n",
+				iter->full_name);
+			continue;
+		}
+		pdata->tables[i].burst_up_down_regs_num = u;
+
+		ret = of_property_read_u32_array(iter, "nvidia,emc-registers",
+					pdata->tables[i].burst_regs,
+					pdata->tables[i].burst_regs_num);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-registers property in %s\n",
+				iter->full_name);
+			continue;
+		}
+
+		ret = of_property_read_u32_array(iter, "nvidia,emc-trimmers-0",
+					pdata->tables[i].emc_trimmers_0,
+					pdata->tables[i].emc_trimmers_num);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-trimmers-0 property in %s\n",
+				iter->full_name);
+			continue;
+		}
+
+		ret = of_property_read_u32_array(iter, "nvidia,emc-trimmers-1",
+					pdata->tables[i].emc_trimmers_1,
+					pdata->tables[i].emc_trimmers_num);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-trimmers-1 property in %s\n",
+				iter->full_name);
+			continue;
+		}
+
+		ret = of_property_read_u32_array(iter,
+				"nvidia,emc-burst-up-down-regs",
+				pdata->tables[i].burst_up_down_regs,
+				pdata->tables[i].burst_up_down_regs_num);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-burst-up-down-regs property in %s\n",
+				iter->full_name);
+			continue;
+		}
+
+		ret = of_property_read_u32(iter, "nvidia,emc-zcal-cnt-long",
+					&pdata->tables[i].emc_zcal_cnt_long);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-zcal-cnt-long property in %s\n",
+				iter->full_name);
+			continue;
+		}
+
+		ret = of_property_read_u32(iter, "nvidia,emc-acal-interval",
+					&pdata->tables[i].emc_acal_interval);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-acal-interval property in %s\n",
+				iter->full_name);
+			continue;
+		}
+
+		ret = of_property_read_u32(iter, "nvidia,emc-cfg",
+					&pdata->tables[i].emc_cfg);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-cfg property in %s\n",
+				iter->full_name);
+			continue;
+		}
+
+		ret = of_property_read_u32(iter, "nvidia,emc-mode-reset",
+					&pdata->tables[i].emc_mode_reset);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-mode-reset property in %s\n",
+				iter->full_name);
+			continue;
+		}
+
+		ret = of_property_read_u32(iter, "nvidia,emc-mode-1",
+					&pdata->tables[i].emc_mode_1);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-mode-1 property in %s\n",
+				iter->full_name);
+			continue;
+		}
+
+		ret = of_property_read_u32(iter, "nvidia,emc-mode-2",
+					&pdata->tables[i].emc_mode_2);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-mode-2 property in %s\n",
+				iter->full_name);
+			continue;
+		}
+
+		ret = of_property_read_u32(iter, "nvidia,emc-mode-4",
+					&pdata->tables[i].emc_mode_4);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-mode-4 property in %s\n",
+				iter->full_name);
+			continue;
+		}
+
+		of_property_read_u32(iter, "nvidia,emc-clock-latency-change",
+					&pdata->tables[i].clock_change_latency);
+		i++;
+	}
+	pdata->num_tables = i;
+
+out:
+	of_node_put(tnp);
+	return pdata;
+}
+#else
+static struct tegra_emc_pdata *tegra_emc_dt_parse_pdata(
+					struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
+
 static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 {
 	int i, mv;
@@ -1063,6 +1318,7 @@ static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 	switch (table[0].rev) {
 	case 0x40:
 	case 0x41:
+	case 0x42:
 		start_timing.burst_regs_num = table[0].burst_regs_num;
 		start_timing.emc_trimmers_num = table[0].emc_trimmers_num;
 		break;
@@ -1149,6 +1405,9 @@ static int __devinit tegra11_emc_probe(struct platform_device *pdev)
 	struct tegra11_emc_pdata *pdata;
 	struct resource *res;
 
+	if (tegra_emc_table)
+		return -EINVAL;
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		dev_err(&pdev->dev, "missing register base\n");
@@ -1156,6 +1415,10 @@ static int __devinit tegra11_emc_probe(struct platform_device *pdev)
 	}
 
 	pdata = pdev->dev.platform_data;
+
+	if (!pdata)
+		pdata = (struct tegra11_emc_pdata *)tegra_emc_dt_parse_pdata(pdev);
+
 	if (!pdata) {
 		dev_err(&pdev->dev, "missing platform data\n");
 		return -ENODATA;
@@ -1164,17 +1427,34 @@ static int __devinit tegra11_emc_probe(struct platform_device *pdev)
 	return init_emc_table(pdata->tables, pdata->num_tables);
 }
 
+static struct of_device_id tegra11_emc_of_match[] __devinitdata = {
+	{ .compatible = "nvidia,tegra11-emc", },
+	{ },
+};
+
 static struct platform_driver tegra11_emc_driver = {
 	.driver         = {
 		.name   = "tegra-emc",
 		.owner  = THIS_MODULE,
+		.of_match_table = tegra11_emc_of_match,
 	},
 	.probe          = tegra11_emc_probe,
 };
 
+static struct emc_iso_usage tegra11_emc_iso_usage[] = {
+	{ BIT(EMC_USER_DC),			80 },
+	{ BIT(EMC_USER_DC) | BIT(EMC_USER_VI),	45 },
+};
+
 int __init tegra11_emc_init(void)
 {
-	return platform_driver_register(&tegra11_emc_driver);
+	int ret = platform_driver_register(&tegra11_emc_driver);
+	if (!ret) {
+		tegra_clk_preset_emc_monitor();
+		tegra_emc_iso_usage_table_init(tegra11_emc_iso_usage,
+			ARRAY_SIZE(tegra11_emc_iso_usage));
+	}
+	return ret;
 }
 
 void tegra_emc_timing_invalidate(void)
@@ -1348,6 +1628,9 @@ static int __init tegra_emc_debug_init(void)
 
 	if (!debugfs_create_file("efficiency", S_IRUGO | S_IWUSR,
 				 emc_debugfs_root, NULL, &efficiency_fops))
+		goto err_out;
+
+	if (tegra_emc_iso_usage_debugfs_init(emc_debugfs_root))
 		goto err_out;
 
 	return 0;

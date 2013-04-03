@@ -49,6 +49,13 @@ config BCMDHD_NOAPI
 
 endchoice
 
+config BCMDHD_EDP_SUPPORT
+	bool "BCMDHD EDP Support"
+	depends on BCMDHD && EDP_FRAMEWORK
+	help
+	  Use BCMDHD EDP Support to register the driver to
+	  battery edp manager.
+
 config DHD_USE_STATIC_BUF
 	bool "Enable memory preallocation"
 	depends on BCMDHD

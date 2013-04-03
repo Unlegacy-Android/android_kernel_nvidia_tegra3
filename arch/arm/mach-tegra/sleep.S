@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/sleep.S
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  * Copyright (c) 2011, Google, Inc.
  *
  * Author: Colin Cross <ccross@android.com>
@@ -48,7 +48,6 @@
 #define CLK_RESET_CCLK_DIVIDER		0x24
 
 #define TEGRA_PMC_VIRT		(TEGRA_PMC_BASE - IO_APB_PHYS + IO_APB_VIRT)
-#define TEGRA_CLK_RESET_VIRT	(TEGRA_CLK_RESET_BASE - IO_PPSB_PHYS + IO_PPSB_VIRT)
 
 #define TEGRA_FLOW_CTRL_VIRT (TEGRA_FLOW_CTRL_BASE - IO_PPSB_PHYS \
 					+ IO_PPSB_VIRT)
@@ -114,12 +113,6 @@ ENDPROC(tegra_pen_unlock)
  * corrupts r4-r5
  */
 ENTRY(tegra_cpu_exit_coherency)
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	ldr	r4, =TEGRA_CLK_RESET_VIRT
-	ldr	r5, [r4, #70]	/* BOND_OUT_L */
-	tst	r5, #1
-	bne	.
-#endif
 	exit_smp r4, r5
 	mov	pc, lr
 ENDPROC(tegra_cpu_exit_coherency)
@@ -259,10 +252,11 @@ ENTRY(tegra_turn_off_mmu)
 	mcr	p15, 0, r3, c2, c0, 0	@ TTB 0
 	isb
 
-	mov	r2, #0
 	mcr	p15, 0, r2, c8, c3, 0	@ invalidate TLB
 	mcr	p15, 0, r2, c7, c5, 6	@ flush BTAC
 	mcr	p15, 0, r2, c7, c5, 0	@ flush instruction cache
+	dsb
+	isb
 
 	mov32	r3, tegra_shut_off_mmu
 	add	r3, r3, r0

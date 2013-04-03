@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pluto-pinmux.c
  *
- * Copyright (C) 2012 NVIDIA Corporation
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -147,6 +147,8 @@
 		.ioreset    = TEGRA_PIN_IO_RESET_DEFAULT,	\
 	}
 
+#define USB_PINMUX CEC_PINMUX
+
 /* We are disabling this code for now. */
 #define GPIO_INIT_PIN_MODE(_gpio, _is_input, _value)	\
 	{					\
@@ -227,18 +229,47 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_set_nontristate[] = 
 	DEFAULT_PINMUX(KB_ROW4,     KBC,      PULL_DOWN,    NORMAL,    INPUT),
 	DEFAULT_PINMUX(KB_ROW5,     KBC,      PULL_DOWN,    NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(KB_ROW6,     KBC,      PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(KB_ROW7,     KBC,      PULL_UP,		NORMAL,    INPUT),
+	DEFAULT_PINMUX(KB_ROW7,     KBC,      PULL_UP,      NORMAL,    INPUT),
 	DEFAULT_PINMUX(KB_ROW8,     KBC,      PULL_DOWN,    NORMAL,    INPUT),
 
 	DEFAULT_PINMUX(CLK3_REQ,    RSVD3,    NORMAL,      NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(GPIO_PU4,    RSVD3,     NORMAL,      NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(GPIO_PU5,    RSVD3,     NORMAL,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(GPIO_PU6,    RSVD3,      NORMAL,      NORMAL,     INPUT),
+	DEFAULT_PINMUX(GPIO_PU4,    PWM1,     NORMAL,      NORMAL,     OUTPUT),
+	DEFAULT_PINMUX(GPIO_PU5,    PWM2,     NORMAL,      NORMAL,     INPUT),
+	DEFAULT_PINMUX(GPIO_PU6,    PWM3,     NORMAL,      NORMAL,     INPUT),
 
 	DEFAULT_PINMUX(HDMI_INT,    RSVD,      PULL_DOWN,    NORMAL,    INPUT),
 };
 
 #include "board-pluto-pinmux-t11x.h"
+
+#ifdef CONFIG_PM_SLEEP
+/* pinmux settings during low power mode for power saving purpose */
+static struct tegra_pingroup_config pluto_sleep_pinmux[] = {
+	DEFAULT_PINMUX(GMI_AD14,    DTV,     NORMAL,    TRISTATE,  INPUT),
+	DEFAULT_PINMUX(GMI_AD15,    DTV,     NORMAL,    TRISTATE,  INPUT),
+	DEFAULT_PINMUX(GMI_AD8,     DTV,     NORMAL,    TRISTATE,  INPUT),
+	DEFAULT_PINMUX(GMI_WAIT,    DTV,     NORMAL,    TRISTATE,  INPUT),
+	DEFAULT_PINMUX(GMI_AD6,     SPI4,    NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD7,     SPI4,    NORMAL,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_CS6_N,   SPI4,    NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_WR_N,    SPI4,    NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_CS1_N,   SOC,     NORMAL,    TRISTATE,  INPUT),
+	DEFAULT_PINMUX(GMI_OE_N,    SOC,     NORMAL,    TRISTATE,  INPUT),
+	DEFAULT_PINMUX(GMI_AD10,    GMI,     NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD12,    GMI,     NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD13,    GMI,     NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD14,    GMI,     NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD8,     GMI,     NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_ADV_N,   GMI,     NORMAL,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_CLK,     GMI,     NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_CS0_N,   GMI,     NORMAL,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_CS3_N,   GMI,     NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_CS4_N,   GMI,     NORMAL,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_CS7_N,   GMI,     NORMAL,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_IORDY,   GMI,     NORMAL,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_RST_N,   GMI,     NORMAL,    NORMAL,    INPUT),
+};
+#endif
 
 static void __init pluto_gpio_init_configure(void)
 {
@@ -267,6 +298,7 @@ int __init pluto_pinmux_init(void)
 					ARRAY_SIZE(pluto_drive_pinmux));
 	tegra_pinmux_config_table(unused_pins_lowpower,
 		ARRAY_SIZE(unused_pins_lowpower));
-
+	tegra11x_set_sleep_pinmux(pluto_sleep_pinmux,
+		ARRAY_SIZE(pluto_sleep_pinmux));
 	return 0;
 }

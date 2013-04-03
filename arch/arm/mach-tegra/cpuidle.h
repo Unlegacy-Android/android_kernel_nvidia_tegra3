@@ -23,7 +23,11 @@
 
 #ifdef CONFIG_PM_SLEEP
 
+#define TEGRA_CPUIDLE_FORCE_DO_CLKGT_VMIN 0x1
+#define TEGRA_CPUIDLE_FORCE_NO_CLKGT_VMIN 0x2
+
 extern int tegra_pg_exit_latency;
+extern u32 tegra_force_clkgt_at_vmin;
 
 struct tegra_cpuidle_ops {
 	bool (*tegra_idle_pd)(struct cpuidle_device *dev,
@@ -40,6 +44,8 @@ struct tegra_cpuidle_ops {
 int tegra2_cpuidle_init_soc(struct tegra_cpuidle_ops *ops);
 int tegra3_cpuidle_init_soc(struct tegra_cpuidle_ops *ops);
 int tegra11x_cpuidle_init_soc(struct tegra_cpuidle_ops *ops);
+int tegra11_cpu_lp_idle_rate_exchange(unsigned long *rate);
+int tegra11_cpu_g_idle_rate_exchange(unsigned long *rate);
 
 static inline int tegra_cpuidle_init_soc(struct tegra_cpuidle_ops *ops)
 {
@@ -51,6 +57,24 @@ static inline int tegra_cpuidle_init_soc(struct tegra_cpuidle_ops *ops)
 #endif
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	return tegra11x_cpuidle_init_soc(ops);
+#endif
+}
+
+static inline int tegra_cpu_g_idle_rate_exchange(unsigned long *rate)
+{
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	return tegra11_cpu_g_idle_rate_exchange(rate);
+#else
+	return -ENOSYS;
+#endif
+}
+
+static inline int tegra_cpu_lp_idle_rate_exchange(unsigned long *rate)
+{
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	return tegra11_cpu_lp_idle_rate_exchange(rate);
+#else
+	return -ENOSYS;
 #endif
 }
 

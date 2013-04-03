@@ -165,7 +165,7 @@ static const struct usb_device_id cdc_devs[] = {
 	},
 	{
 		/* Icera Nemo */
-		USB_DEVICE_AND_INTERFACE_INFO(0x1983, 0x1006, USB_CLASS_COMM,
+		USB_DEVICE_AND_INTERFACE_INFO(0x1983, 0x1007, USB_CLASS_COMM,
 				USB_CDC_SUBCLASS_NCM, USB_CDC_PROTO_NONE),
 		.driver_info = (unsigned long)&cdc_mbm_info,
 	},
@@ -1089,6 +1089,7 @@ static int cdc_ncm_rx_fixup(struct usbnet *dev, struct sk_buff *skb_in)
 			skb->len = len;
 			skb->data = ((u8 *)skb_in->data) + offset;
 			skb_set_tail_pointer(skb, len);
+			skb->truesize = len + sizeof(struct sk_buff);
 			usbnet_skb_return(dev, skb);
 		}
 	}

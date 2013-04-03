@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -740,7 +740,16 @@ bool tegra_dc_hpd(struct tegra_dc *dc)
 	int sense;
 	int level;
 
-	level = gpio_get_value(dc->out->hotplug_gpio);
+	if (WARN_ON(!dc || !dc->out))
+		return false;
+
+	if (dc->out->hotplug_state != 0) {
+		if (dc->out->hotplug_state == 1) /* force on */
+			return true;
+		if (dc->out->hotplug_state == -1) /* force off */
+			return false;
+	}
+	level = gpio_get_value_cansleep(dc->out->hotplug_gpio);
 
 	sense = dc->out->flags & TEGRA_DC_OUT_HOTPLUG_MASK;
 
@@ -1549,7 +1558,7 @@ static irqreturn_t tegra_dc_irq(int irq, void *ptr)
 	int need_disable = 0;
 
 	mutex_lock(&dc->lock);
-	if (!dc->enabled) {
+	if (!dc->enabled || !tegra_dc_is_powered(dc)) {
 		mutex_unlock(&dc->lock);
 		return IRQ_HANDLED;
 	}
@@ -1819,8 +1828,12 @@ static bool _tegra_dc_controller_enable(struct tegra_dc *dc)
 
 	tegra_dc_unpowergate_locked(dc);
 
-	if (dc->out->enable)
+	if (dc->out->enable) {
 		dc->out->enable(&dc->ndev->dev);
+
+		/* important to track dc init latency */
+		dev_info(&dc->ndev->dev, "dc out enabled\n");
+	}
 
 	tegra_dc_setup_clk(dc, dc->clk);
 	tegra_dc_clk_enable(dc);
@@ -2007,13 +2020,6 @@ static void _tegra_dc_controller_disable(struct tegra_dc *dc)
 
 	tegra_dc_clear_bandwidth(dc);
 
-	/* ugly hack */
-	if (dc->out_ops->release &&
-		(dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_LP_MODE))
-		tegra_dc_release_dc_out(dc);
-	else
-		tegra_dc_clk_disable(dc);
-
 	if (dc->out && dc->out->disable)
 		dc->out->disable();
 
@@ -2036,6 +2042,9 @@ static void _tegra_dc_controller_disable(struct tegra_dc *dc)
 		}
 	}
 	trace_display_disable(dc);
+
+	tegra_dc_clk_disable(dc);
+	tegra_dc_release_dc_out(dc);
 }
 
 void tegra_dc_stats_enable(struct tegra_dc *dc, bool enable)
@@ -2101,6 +2110,12 @@ static void _tegra_dc_disable(struct tegra_dc *dc)
 
 	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_MODE)
 		mutex_unlock(&dc->one_shot_lock);
+
+	/*
+	 * We will need to reinitialize the display the next time panel
+	 * is enabled.
+	 */
+	dc->out->flags &= ~TEGRA_DC_OUT_INITIALIZED_MODE;
 }
 
 void tegra_dc_disable(struct tegra_dc *dc)
@@ -2201,56 +2216,6 @@ static void tegra_dc_underflow_worker(struct work_struct *work)
 	tegra_dc_io_end(dc);
 	mutex_unlock(&dc->lock);
 }
-
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-/* A mutex used to protect the critical section used by both DC heads. */
-static struct mutex tegra_dc_powergate_status_lock;
-
-/* defer turning off DISA until DISB is turned off */
-void tegra_dc_powergate_locked(struct tegra_dc *dc)
-{
-	struct tegra_dc *dc_partner;
-
-	mutex_lock(&tegra_dc_powergate_status_lock);
-	/* Get the handler of the other display controller. */
-	dc_partner = tegra_dc_get_dc(dc->ndev->id ^ 1);
-	if (!dc_partner)
-		_tegra_dc_powergate_locked(dc);
-	else if (dc->powergate_id == TEGRA_POWERGATE_DISA) {
-		/* If DISB is powergated, then powergate DISA. */
-		if (!dc_partner->powered)
-			_tegra_dc_powergate_locked(dc);
-	} else if (dc->powergate_id == TEGRA_POWERGATE_DISB) {
-		/* If DISA is enabled, only powergate DISB;
-		 * otherwise, powergate DISA and DISB.
-		 * */
-		if (dc_partner->enabled) {
-			_tegra_dc_powergate_locked(dc);
-		} else {
-			_tegra_dc_powergate_locked(dc);
-			_tegra_dc_powergate_locked(dc_partner);
-		}
-	}
-	mutex_unlock(&tegra_dc_powergate_status_lock);
-}
-
-
-/* to turn on DISB we must first power on DISA */
-void tegra_dc_unpowergate_locked(struct tegra_dc *dc)
-{
-	mutex_lock(&tegra_dc_powergate_status_lock);
-	if (dc->powergate_id == TEGRA_POWERGATE_DISB) {
-		struct tegra_dc *dc_partner;
-
-		/* Get the handler of the other display controller. */
-		dc_partner = tegra_dc_get_dc(dc->ndev->id ^ 1);
-		if (dc_partner)
-			_tegra_dc_unpowergate_locked(dc_partner);
-	}
-	_tegra_dc_unpowergate_locked(dc);
-	mutex_unlock(&tegra_dc_powergate_status_lock);
-}
-#endif
 
 #ifdef CONFIG_SWITCH
 static ssize_t switch_modeset_print_mode(struct switch_dev *sdev, char *buf)
@@ -2392,9 +2357,6 @@ static int tegra_dc_probe(struct platform_device *ndev)
 
 	mutex_init(&dc->lock);
 	mutex_init(&dc->one_shot_lock);
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	mutex_init(&tegra_dc_powergate_status_lock);
-#endif
 	init_completion(&dc->frame_end_complete);
 	init_waitqueue_head(&dc->wq);
 	init_waitqueue_head(&dc->timestamp_wq);
@@ -2636,6 +2598,9 @@ static int tegra_dc_resume(struct platform_device *ndev)
 
 	mutex_lock(&dc->lock);
 	dc->suspended = false;
+
+	/* To pan the fb on resume */
+	tegra_fb_pan_display_reset(dc->fb);
 
 	if (dc->enabled) {
 		dc->enabled = false;

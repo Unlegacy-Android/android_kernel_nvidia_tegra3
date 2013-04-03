@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-roth-sensors.c
  *
- * Copyright (c) 2012 NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2012-2013 NVIDIA CORPORATION, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -52,25 +52,64 @@
 static struct board_info board_info;
 
 static struct throttle_table tj_throttle_table[] = {
-	{      0, 1000 },
-	{  51000, 1000 },
-	{ 102000, 1000 },
-	{ 204000, 1000 },
-	{ 252000, 1000 },
-	{ 288000, 1000 },
-	{ 372000, 1000 },
-	{ 468000, 1000 },
-	{ 510000, 1000 },
-	{ 612000, 1000 },
-	{ 714000, 1050 },
-	{ 816000, 1050 },
-	{ 918000, 1050 },
-	{1020000, 1100 },
-	{1122000, 1100 },
-	{1224000, 1100 },
-	{1326000, 1100 },
-	{1428000, 1100 },
-	{1530000, 1100 },
+	/* CPU_THROT_LOW cannot be used by other than CPU */
+	/*      CPU,  C2BUS,  C3BUS,   SCLK,    EMC   */
+	{ { 1810500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1785000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1759500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1734000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1708500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1683000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1657500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1632000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1606500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1581000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1555500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1530000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1504500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1479000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1453500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1428000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1402500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1377000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1351500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1326000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1300500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1275000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1249500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1224000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1198500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1173000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1147500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1122000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1096500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1071000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1045500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1020000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  994500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  969000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  943500, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  918000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  892500, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  867000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  841500, 564000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  816000, 564000, NO_CAP, NO_CAP, 792000 } },
+	{ {  790500, 564000, NO_CAP, 372000, 792000 } },
+	{ {  765000, 564000, 468000, 372000, 792000 } },
+	{ {  739500, 528000, 468000, 372000, 792000 } },
+	{ {  714000, 528000, 468000, 336000, 792000 } },
+	{ {  688500, 528000, 420000, 336000, 792000 } },
+	{ {  663000, 492000, 420000, 336000, 792000 } },
+	{ {  637500, 492000, 420000, 336000, 408000 } },
+	{ {  612000, 492000, 420000, 300000, 408000 } },
+	{ {  586500, 492000, 360000, 336000, 408000 } },
+	{ {  561000, 420000, 420000, 300000, 408000 } },
+	{ {  535500, 420000, 360000, 228000, 408000 } },
+	{ {  510000, 420000, 288000, 228000, 408000 } },
+	{ {  484500, 324000, 288000, 228000, 408000 } },
+	{ {  459000, 324000, 288000, 228000, 408000 } },
+	{ {  433500, 324000, 288000, 228000, 408000 } },
+	{ {  408000, 324000, 288000, 228000, 408000 } },
 };
 
 static struct balanced_throttle tj_throttle = {
@@ -79,7 +118,7 @@ static struct balanced_throttle tj_throttle = {
 };
 
 static struct throttle_table tj_heavy_throttle_table[] = {
-	{ 204000, 1000 },
+	{ {  204000,  420000,  360000,  208000,  204000 } },
 };
 
 static struct balanced_throttle tj_heavy_throttle = {
@@ -98,6 +137,10 @@ static int __init roth_throttle_init(void)
 }
 module_init(roth_throttle_init);
 
+static struct thermal_zone_params roth_nct1008_tzp = {
+	.governor_name = "step_wise",
+};
+
 static struct nct1008_platform_data roth_nct1008_pdata = {
 	.supported_hwrev = true,
 	.ext_range = true,
@@ -109,63 +152,41 @@ static struct nct1008_platform_data roth_nct1008_pdata = {
 
 	.passive_delay = 2000,
 
-	.num_trips = 2,
+	.num_trips = 3,
 	.trips = {
 		/* Thermal Throttling */
 		[0] = {
 			.cdev_type = "tegra-balanced",
 			.trip_temp = 84000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
-			.state = THERMAL_NO_LIMIT,
+			.upper = THERMAL_NO_LIMIT,
+			.lower = THERMAL_NO_LIMIT,
 			.hysteresis = 0,
 		},
 		[1] = {
 			.cdev_type = "tegra-heavy",
 			.trip_temp = 89000, /* shutdown_ext_limit - 2C */
 			.trip_type = THERMAL_TRIP_PASSIVE,
-			.state = 1,
+			.upper = 1,
+			.lower = 1,
 			.hysteresis = 6000,
 		},
+		[2] = {
+			.cdev_type = "suspend_soctherm",
+			.trip_temp = 50000,
+			.trip_type = THERMAL_TRIP_ACTIVE,
+			.upper = 1,
+			.lower = 1,
+			.hysteresis = 5000,
+		},
 	},
-};
-
-static struct nct1008_platform_data roth_nct1008_left_pdata = {
-	.supported_hwrev = true,
-	.ext_range = true,
-	.conv_rate = 0x08,
-	.offset = 0,
-	.loc_name = "left",
-	.shutdown_ext_limit = 90, /* C */
-	.shutdown_local_limit = 120, /* C */
-};
-
-static struct nct1008_platform_data roth_nct1008_right_pdata = {
-	.supported_hwrev = true,
-	.ext_range = true,
-	.conv_rate = 0x08,
-	.offset = 0,
-	.loc_name = "right",
-	.shutdown_ext_limit = 90, /* C */
-	.shutdown_local_limit = 120, /* C */
+	.tzp = &roth_nct1008_tzp,
 };
 
 static struct i2c_board_info roth_i2c4_nct1008_board_info[] = {
 	{
 		I2C_BOARD_INFO("nct1008", 0x4C),
 		.platform_data = &roth_nct1008_pdata,
-		.irq = -1,
-	}
-};
-
-static struct i2c_board_info roth_i2c4_nct1008_lr_board_info[] = {
-	{
-		I2C_BOARD_INFO("nct1008", 0x4C),
-		.platform_data = &roth_nct1008_left_pdata,
-		.irq = -1,
-	},
-	{
-		I2C_BOARD_INFO("nct1008", 0x4D),
-		.platform_data = &roth_nct1008_right_pdata,
 		.irq = -1,
 	}
 };
@@ -235,8 +256,11 @@ static int roth_nct1008_init(void)
 	int ret = 0;
 
 	tegra_platform_edp_init(roth_nct1008_pdata.trips,
-				&roth_nct1008_pdata.num_trips);
+				&roth_nct1008_pdata.num_trips,
+				0); /* edp temperature margin */
 	tegra_add_cdev_trips(roth_nct1008_pdata.trips,
+				&roth_nct1008_pdata.num_trips);
+	tegra_add_tj_trips(roth_nct1008_pdata.trips,
 				&roth_nct1008_pdata.num_trips);
 
 	roth_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
@@ -257,8 +281,6 @@ static int roth_nct1008_init(void)
 	i2c_register_board_info(0, roth_i2c4_nct1008_board_info,
 		ARRAY_SIZE(roth_i2c4_nct1008_board_info));
 
-	i2c_register_board_info(1, roth_i2c4_nct1008_lr_board_info,
-		ARRAY_SIZE(roth_i2c4_nct1008_lr_board_info));
 	return ret;
 }
 
@@ -269,78 +291,111 @@ static struct i2c_board_info __initdata bq20z45_pdata[] = {
 };
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
-static int tegra_skin_match(struct thermal_zone_device *thz, void *data)
-{
-	return strcmp((char *)data, thz->type) == 0;
-}
+static struct thermal_trip_info skin_trips[] = {
+	{
+		.cdev_type = "skin-balanced",
+		.trip_temp = 45000,
+		.trip_type = THERMAL_TRIP_PASSIVE,
+		.upper = THERMAL_NO_LIMIT,
+		.lower = THERMAL_NO_LIMIT,
+		.hysteresis = 0,
+	},
+};
 
-static int tegra_skin_get_temp(void *data, long *temp)
-{
-	struct thermal_zone_device *thz;
-
-	thz = thermal_zone_device_find(data, tegra_skin_match);
-
-	if (!thz || thz->ops->get_temp(thz, temp))
-		*temp = 25000;
-
-	return 0;
-}
+static struct therm_est_subdevice skin_devs[] = {
+	{
+		.dev_data = "nct_ext",
+		.coeffs = {
+			2, 1, 1, 1,
+			1, 1, 1, 1,
+			1, 1, 1, 0,
+			1, 1, 0, 0,
+			0, 0, -1, -7
+		},
+	},
+	{
+		.dev_data = "nct_int",
+		.coeffs = {
+			-11, -7, -5, -3,
+			-3, -2, -1, 0,
+			0, 0, 1, 1,
+			1, 2, 2, 3,
+			4, 6, 11, 18
+		},
+	},
+};
 
 static struct therm_est_data skin_data = {
-	.cdev_type = "skin-balanced",
+	.num_trips = ARRAY_SIZE(skin_trips),
+	.trips = skin_trips,
 	.toffset = 9793,
 	.polling_period = 1100,
-	.ndevs = 2,
-	.tc1 = 5,
+	.passive_delay = 15000,
+	.tc1 = 10,
 	.tc2 = 1,
-	.devs = {
-			{
-				.dev_data = "nct_ext",
-				.get_temp = tegra_skin_get_temp,
-				.coeffs = {
-					2, 1, 1, 1,
-					1, 1, 1, 1,
-					1, 1, 1, 0,
-					1, 1, 0, 0,
-					0, 0, -1, -7
-				},
-			},
-			{
-				.dev_data = "nct_int",
-				.get_temp = tegra_skin_get_temp,
-				.coeffs = {
-					-11, -7, -5, -3,
-					-3, -2, -1, 0,
-					0, 0, 1, 1,
-					1, 2, 2, 3,
-					4, 6, 11, 18
-				},
-			},
-	},
-	.trip_temp = 43000,
-	.passive_delay = 5000,
+	.ndevs = ARRAY_SIZE(skin_devs),
+	.devs = skin_devs,
 };
 
 static struct throttle_table skin_throttle_table[] = {
-	{      0, 1000 },
-	{  51000, 1000 },
-	{ 102000, 1000 },
-	{ 204000, 1000 },
-	{ 252000, 1000 },
-	{ 288000, 1000 },
-	{ 372000, 1000 },
-	{ 468000, 1000 },
-	{ 510000, 1000 },
-	{ 612000, 1000 },
-	{ 714000, 1050 },
-	{ 816000, 1050 },
-	{ 918000, 1050 },
-	{1020000, 1100 },
-	{1122000, 1100 },
-	{1224000, 1100 },
-	{1326000, 1100 },
-	{1428000, 1100 },
-	{1530000, 1100 },
+	/* CPU_THROT_LOW cannot be used by other than CPU */
+	/*      CPU,  C2BUS,  C3BUS,   SCLK,    EMC   */
+	{ { 1810500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1785000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1759500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1734000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1708500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1683000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1657500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1632000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1606500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1581000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1555500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1530000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1504500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1479000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1453500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1428000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1402500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1377000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1351500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1326000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1300500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1275000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1249500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1224000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1198500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1173000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1147500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1122000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1096500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1071000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1045500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1020000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  994500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  969000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  943500, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  918000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  892500, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  867000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  841500, 564000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  816000, 564000, NO_CAP, NO_CAP, 792000 } },
+	{ {  790500, 564000, NO_CAP, 372000, 792000 } },
+	{ {  765000, 564000, 468000, 372000, 792000 } },
+	{ {  739500, 528000, 468000, 372000, 792000 } },
+	{ {  714000, 528000, 468000, 336000, 792000 } },
+	{ {  688500, 528000, 420000, 336000, 792000 } },
+	{ {  663000, 492000, 420000, 336000, 792000 } },
+	{ {  637500, 492000, 420000, 336000, 408000 } },
+	{ {  612000, 492000, 420000, 300000, 408000 } },
+	{ {  586500, 492000, 360000, 336000, 408000 } },
+	{ {  561000, 420000, 420000, 300000, 408000 } },
+	{ {  535500, 420000, 360000, 228000, 408000 } },
+	{ {  510000, 420000, 288000, 228000, 408000 } },
+	{ {  484500, 324000, 288000, 228000, 408000 } },
+	{ {  459000, 324000, 288000, 228000, 408000 } },
+	{ {  433500, 324000, 288000, 228000, 408000 } },
+	{ {  408000, 324000, 288000, 228000, 408000 } },
 };
 
 static struct balanced_throttle skin_throttle = {

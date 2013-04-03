@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/thermal.h
  *
- * Copyright (C) 2010-2012 NVIDIA Corporation.
+ * Copyright (c) 2010-2013 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -27,18 +27,24 @@ struct tegra_cooling_device {
 };
 
 #define MAX_THROT_TABLE_SIZE	(64)
+#define NO_CAP			(ULONG_MAX) /* no cap */
+#define CPU_THROT_LOW		0 /* lowest throttle freq. only used for CPU */
+
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+#define NUM_OF_CAP_FREQS	5 /* cpu, c2bus, c3bus, sclk, emc */
+#else
+#define NUM_OF_CAP_FREQS	4 /* cpu, cbus, sclk, emc */
+#endif
 
 struct throttle_table {
-	unsigned int cpu_freq;
-	int core_cap_level;
+	unsigned long cap_freqs[NUM_OF_CAP_FREQS];
 };
 
 struct balanced_throttle {
 	struct thermal_cooling_device *cdev;
 	struct list_head node;
-	int is_throttling;
+	unsigned long cur_state;
 	int throttle_count;
-	int throttle_index;
 	int throt_tab_size;
 	struct throttle_table *throt_tab;
 };
@@ -50,7 +56,7 @@ struct thermal_cooling_device *balanced_throttle_register(
 		char *type);
 void tegra_throttle_exit(void);
 bool tegra_is_throttling(int *count);
-unsigned int tegra_throttle_governor_speed(unsigned int requested_speed);
+unsigned long tegra_throttle_governor_speed(unsigned long requested_speed);
 int tegra_throttle_debug_init(struct dentry *cpu_tegra_debugfs_root);
 void tegra_throttling_enable(bool enable);
 #else
@@ -64,8 +70,8 @@ static inline void tegra_throttle_exit(void)
 {}
 static inline bool tegra_is_throttling(int *count)
 { return false; }
-static inline unsigned int tegra_throttle_governor_speed(
-	unsigned int requested_speed)
+static inline unsigned long tegra_throttle_governor_speed(
+	unsigned long requested_speed)
 { return requested_speed; }
 static inline int tegra_throttle_debug_init(
 	struct dentry *cpu_tegra_debugfs_root)

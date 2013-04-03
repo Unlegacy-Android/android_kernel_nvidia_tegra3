@@ -75,10 +75,12 @@ struct tegra_cl_dvfs_platform_data {
 	int			vdd_map_size;
 
 	struct tegra_cl_dvfs_cfg_param		*cfg_param;
+	bool					out_quiet_then_disable;
 };
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 int tegra_init_cl_dvfs(void);
+int tegra_cl_dvfs_debug_init(struct clk *dfll_clk);
 void tegra_cl_dvfs_resume(struct tegra_cl_dvfs *cld);
 
 void tegra_cl_dvfs_disable(struct tegra_cl_dvfs *cld);
@@ -89,6 +91,8 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate);
 unsigned long tegra_cl_dvfs_request_get(struct tegra_cl_dvfs *cld);
 #else
 static inline int tegra_init_cl_dvfs(void)
+{ return -ENOSYS; }
+static inline int tegra_cl_dvfs_debug_init(struct clk *dfll_clk)
 { return -ENOSYS; }
 static inline void tegra_cl_dvfs_resume(struct tegra_cl_dvfs *cld)
 {}

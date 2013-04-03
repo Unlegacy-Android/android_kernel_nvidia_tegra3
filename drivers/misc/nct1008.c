@@ -3,7 +3,7 @@
  *
  * Driver for NCT1008, temperature monitoring device from ON Semiconductors
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -79,6 +79,8 @@
 #define CELSIUS_TO_MILLICELSIUS(x) ((x)*1000)
 #define MILLICELSIUS_TO_CELSIUS(x) ((x)/1000)
 
+#define POWER_ON_DELAY 20 /*ms*/
+
 struct nct1008_data {
 	struct workqueue_struct *workqueue;
 	struct work_struct work;
@@ -117,10 +119,14 @@ static int nct1008_write_reg(struct i2c_client *client, u8 reg, u16 value)
 	int ret = 0;
 	struct nct1008_data *data = i2c_get_clientdata(client);
 
-	if (data && data->shutdown_complete)
+	mutex_lock(&data->mutex);
+	if (data && data->shutdown_complete) {
+		mutex_unlock(&data->mutex);
 		return -ENODEV;
+	}
 
 	ret = i2c_smbus_write_byte_data(client, reg, value);
+	mutex_unlock(&data->mutex);
 
 	if (ret < 0)
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
@@ -132,11 +138,14 @@ static int nct1008_read_reg(struct i2c_client *client, u8 reg)
 {
 	int ret = 0;
 	struct nct1008_data *data = i2c_get_clientdata(client);
-
-	if (data && data->shutdown_complete)
+	mutex_lock(&data->mutex);
+	if (data && data->shutdown_complete) {
+		mutex_unlock(&data->mutex);
 		return -ENODEV;
+	}
 
 	ret = i2c_smbus_read_byte_data(client, reg);
+	mutex_unlock(&data->mutex);
 
 	if (ret < 0)
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
@@ -475,7 +484,7 @@ static void nct1008_update(struct nct1008_data *data)
 {
 	struct thermal_zone_device *thz = data->nct_ext;
 	long low_temp = 0, high_temp = NCT1008_MAX_TEMP * 1000;
-	struct nct_trip_temp *trip_state;
+	struct thermal_trip_info *trip_state;
 	long temp, trip_temp, hysteresis_temp;
 	int count;
 	enum events type = 0;
@@ -490,8 +499,10 @@ static void nct1008_update(struct nct1008_data *data)
 	for (count = 0; count < thz->trips; count++) {
 		trip_state = &data->plat_data.trips[count];
 		trip_temp = trip_state->trip_temp;
-		hysteresis_temp = trip_state->is_enabled ?
-				trip_temp - trip_state->hysteresis : trip_temp;
+		hysteresis_temp = trip_temp - trip_state->hysteresis;
+		if ((trip_state->trip_type == THERMAL_TRIP_PASSIVE) &&
+		    !trip_state->tripped)
+			hysteresis_temp = trip_temp;
 
 		if ((trip_temp >= temp) && (trip_temp < high_temp)) {
 			high_temp = trip_temp;
@@ -548,8 +559,8 @@ static int nct1008_ext_bind(struct thermal_zone_device *thz,
 	for (i = 0; i < data->plat_data.num_trips; i++) {
 		if (!strcmp(data->plat_data.trips[i].cdev_type, cdev->type)) {
 			thermal_zone_bind_cooling_device(thz, i, cdev,
-					data->plat_data.trips[i].state,
-					data->plat_data.trips[i].state);
+					data->plat_data.trips[i].upper,
+					data->plat_data.trips[i].lower);
 			bind = true;
 		}
 	}
@@ -578,16 +589,19 @@ static int nct1008_ext_get_trip_temp(struct thermal_zone_device *thz,
 				     unsigned long *temp)
 {
 	struct nct1008_data *data = thz->devdata;
-	struct nct_trip_temp *trip_state = &data->plat_data.trips[trip];
+	struct thermal_trip_info *trip_state = &data->plat_data.trips[trip];
 
 	*temp = trip_state->trip_temp;
 
-	if (thz->temperature >= trip_state->trip_temp) {
-		trip_state->is_enabled = true;
-	} else if (trip_state->is_enabled) {
+	if (trip_state->trip_type != THERMAL_TRIP_PASSIVE)
+		return 0;
+
+	if (thz->temperature >= *temp) {
+		trip_state->tripped = true;
+	} else if (trip_state->tripped) {
 		*temp -= trip_state->hysteresis;
 		if (thz->temperature < *temp)
-			trip_state->is_enabled = false;
+			trip_state->tripped = false;
 	}
 
 	return 0;
@@ -619,7 +633,7 @@ static int nct1008_ext_get_trend(struct thermal_zone_device *thz,
 				 enum thermal_trend *trend)
 {
 	struct nct1008_data *data = thz->devdata;
-	struct nct_trip_temp *trip_state;
+	struct thermal_trip_info *trip_state;
 
 	trip_state = &data->plat_data.trips[trip];
 
@@ -890,7 +904,7 @@ static void nct1008_power_control(struct nct1008_data *data, bool is_enable)
 	}
 	if (is_enable) {
 		ret = regulator_enable(data->nct_reg);
-		usleep_range(100, 1000);
+		msleep(POWER_ON_DELAY);
 	} else {
 		ret = regulator_disable(data->nct_reg);
 	}
@@ -1083,6 +1097,7 @@ static int __devinit nct1008_probe(struct i2c_client *client,
 	memcpy(&data->plat_data, client->dev.platform_data,
 		sizeof(struct nct1008_platform_data));
 	i2c_set_clientdata(client, data);
+	mutex_init(&data->mutex);
 
 	nct1008_power_control(data, true);
 	/* extended range recommended steps 1 through 4 taken care
@@ -1153,7 +1168,7 @@ static int __devinit nct1008_probe(struct i2c_client *client,
 					mask,
 					data,
 					&nct_ext_ops,
-					NULL,
+					data->plat_data.tzp,
 					data->plat_data.passive_delay,
 					0);
 	if (IS_ERR_OR_NULL(data->nct_ext)) {
@@ -1164,12 +1179,12 @@ static int __devinit nct1008_probe(struct i2c_client *client,
 
 	nct1008_update(data);
 #endif
-
 	return 0;
 
 error:
 	dev_err(&client->dev, "\n exit %s, err=%d ", __func__, err);
 	nct1008_power_control(data, false);
+	mutex_destroy(&data->mutex);
 	if (data->nct_reg)
 		regulator_put(data->nct_reg);
 	kfree(data);
@@ -1189,7 +1204,7 @@ static int __devexit nct1008_remove(struct i2c_client *client)
 	nct1008_power_control(data, false);
 	if (data->nct_reg)
 		regulator_put(data->nct_reg);
-
+	mutex_destroy(&data->mutex);
 	kfree(data);
 
 	return 0;
@@ -1198,16 +1213,17 @@ static int __devexit nct1008_remove(struct i2c_client *client)
 static void nct1008_shutdown(struct i2c_client *client)
 {
 	struct nct1008_data *data = i2c_get_clientdata(client);
-
 	if (client->irq)
 		disable_irq(client->irq);
 
 	cancel_work_sync(&data->work);
 
+	mutex_lock(&data->mutex);
 	data->shutdown_complete = 1;
+	mutex_unlock(&data->mutex);
 }
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 static int nct1008_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -1257,6 +1273,9 @@ MODULE_DEVICE_TABLE(i2c, nct1008_id);
 static struct i2c_driver nct1008_driver = {
 	.driver = {
 		.name	= "nct1008_nct72",
+#ifdef CONFIG_PM_SLEEP
+		.pm = &nct1008_pm_ops,
+#endif
 	},
 	.probe		= nct1008_probe,
 	.remove		= __devexit_p(nct1008_remove),

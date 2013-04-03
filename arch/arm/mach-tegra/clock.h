@@ -6,7 +6,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (C) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -22,6 +22,20 @@
 #ifndef __MACH_TEGRA_CLOCK_H
 #define __MACH_TEGRA_CLOCK_H
 
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#define USE_PLL_LOCK_BITS 0	/* Never use lock bits on Tegra2 */
+#else
+#define USE_PLL_LOCK_BITS 1	/* Use lock bits for PLL stabiliation */
+#define USE_PLLE_SS 1		/* Use spread spectrum coefficients for PLLE */
+#define PLL_PRE_LOCK_DELAY  2	/* Delay 1st lock bit read after pll enabled */
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#define PLL_POST_LOCK_DELAY 50	/* Safety delay after lock is detected */
+#else
+#define USE_PLLE_SWCTL 0	/* Use s/w controls for PLLE */
+#define PLL_POST_LOCK_DELAY 10	/* Safety delay after lock is detected */
+#endif
+#endif
+
 #ifndef __ASSEMBLY__
 
 #include <linux/clkdev.h>
@@ -36,20 +50,6 @@
 #define MAX_SAME_LIMIT_SKU_IDS	16
 
 struct clk;
-
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-#define USE_PLL_LOCK_BITS 0	/* Never use lock bits on Tegra2 */
-#else
-#define USE_PLL_LOCK_BITS 1	/* Use lock bits for PLL stabiliation */
-#define USE_PLLE_SS 1		/* Use spread spectrum coefficients for PLLE */
-#define PLL_PRE_LOCK_DELAY  2	/* Delay 1st lock bit read after pll enabled */
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-#define PLL_POST_LOCK_DELAY 50	/* Safety delay after lock is detected */
-#else
-#define USE_PLLE_SWCTL 0	/* Use s/w controls for PLLE */
-#define PLL_POST_LOCK_DELAY 10	/* Safety delay after lock is detected */
-#endif
-#endif
 
 #define DIV_BUS			(1 << 0)
 #define DIV_U71			(1 << 1)
@@ -111,6 +111,7 @@ struct clk_ops {
 	int		(*shared_bus_update)(struct clk *);
 	int		(*clk_cfg_ex)(struct clk *,
 				enum tegra_clk_ex_param, u32);
+	long		(*round_rate_updown)(struct clk *, unsigned long, bool);
 };
 
 struct clk_stats {
@@ -129,6 +130,7 @@ enum shared_bus_users_mode {
 	SHARED_CEILING,
 	SHARED_AUTO,
 	SHARED_OVERRIDE,
+	SHARED_ISO_BW,
 };
 
 enum clk_state {
@@ -150,6 +152,7 @@ struct clk {
 	struct clk_ops		*ops;
 	unsigned long		dvfs_rate;
 	unsigned long		rate;
+	unsigned long		boot_rate;
 	unsigned long		max_rate;
 	unsigned long		min_rate;
 	bool			auto_dvfs;
@@ -230,6 +233,7 @@ struct clk {
 			struct clk			*client;
 			u32				client_div;
 			enum shared_bus_users_mode	mode;
+			u32				usage_flag;
 		} shared_bus_user;
 	} u;
 
@@ -264,11 +268,13 @@ void tegra11x_init_clocks(void);
 void tegra11x_clk_init_la(void);
 void tegra_common_init_clock(void);
 void tegra_init_max_rate(struct clk *c, unsigned long max_rate);
-void tegra_clk_vefify_parents(void);
+void tegra_clk_preset_emc_monitor(void);
+void tegra_clk_verify_parents(void);
 void clk_init(struct clk *clk);
 struct clk *tegra_get_clock_by_name(const char *name);
 unsigned long tegra_clk_measure_input_freq(void);
 int clk_reparent(struct clk *c, struct clk *parent);
+void tegra_clk_init_cbus_plls_from_table(struct tegra_clk_init_table *table);
 void tegra_clk_init_from_table(struct tegra_clk_init_table *table);
 void clk_set_cansleep(struct clk *c);
 unsigned long clk_get_max_rate(struct clk *c);
@@ -280,20 +286,11 @@ int clk_set_parent_locked(struct clk *c, struct clk *parent);
 long clk_round_rate_locked(struct clk *c, unsigned long rate);
 int tegra_clk_shared_bus_update(struct clk *c);
 void tegra3_set_cpu_skipper_delay(int delay);
-int tegra_emc_set_rate(unsigned long rate);
-long tegra_emc_round_rate(unsigned long rate);
-struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value);
-bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
-		unsigned long *parent_rate, unsigned long *backup_rate);
-void tegra_emc_timing_invalidate(void);
 unsigned long tegra_clk_measure_input_freq(void);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-static inline int tegra_emc_backup(unsigned long rate)
-{ return 0; }
 static inline bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 { return true; }
 #else
-int tegra_emc_backup(unsigned long rate);
 bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p);
 #endif
 

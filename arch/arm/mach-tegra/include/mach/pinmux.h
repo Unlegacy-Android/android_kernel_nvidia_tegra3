@@ -30,6 +30,7 @@
 	TEGRA_MUX(DAP4) \
 	TEGRA_MUX(DAP5) \
 	TEGRA_MUX(DISPLAYA) \
+	TEGRA_MUX(DISPLAYA_ALT) \
 	TEGRA_MUX(DISPLAYB) \
 	TEGRA_MUX(EMC_TEST0_DLL) \
 	TEGRA_MUX(EMC_TEST1_DLL) \
@@ -467,6 +468,8 @@ void tegra30_pinmux_init(const struct tegra_pingroup_desc **pg, int *pg_max,
 void tegra11x_pinmux_init(const struct tegra_pingroup_desc **pg, int *pg_max,
 	const struct tegra_drive_pingroup_desc **pgdrive, int *pgdrive_max,
 	const int **gpiomap, int *gpiomap_max);
+
+void tegra11x_default_pinmux(void);
 
 int tegra_pinmux_get_func(int pg);
 int tegra_pinmux_set_tristate(int pg, enum tegra_tristate tristate);

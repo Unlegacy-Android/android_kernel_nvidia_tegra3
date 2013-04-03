@@ -150,7 +150,11 @@ static struct resource pinmux_resource[] = {
 	[1] = {
 		/* Mux registers */
 		.start	= TEGRA_APB_MISC_BASE + 0x3000,
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 		.end	= TEGRA_APB_MISC_BASE + 0x33e0 + 3,
+#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
+		.end	= TEGRA_APB_MISC_BASE + 0x3408 + 3,
+#endif
 		.flags	= IORESOURCE_MEM,
 	},
 #endif
@@ -920,26 +924,19 @@ static struct resource tegra_usb3_resources[] = {
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 static struct resource tegra_xusb_resources[] = {
-	[0] = {
-		.start  = TEGRA_XUSB_HOST_BASE,
-		.end    = TEGRA_XUSB_HOST_BASE + TEGRA_XUSB_HOST_SIZE - 1,
-		.flags  = IORESOURCE_MEM,
-	},
-	[1] = {
-		.start  = INT_USB3_HOST_INT,
-		.end    = INT_USB3_HOST_INT,
-		.flags  = IORESOURCE_IRQ,
-	},
-	[2] = {
-		.start  = INT_USB3_NOT_SMI,
-		.end    = INT_USB3_NOT_SMI,
-		.flags  = IORESOURCE_IRQ,
-	},
-	[3] = {
-		.start  = INT_XUSB_PADCTL,
-		.end    = INT_XUSB_PADCTL,
-		.flags  = IORESOURCE_IRQ,
-	},
+	[0] = DEFINE_RES_MEM_NAMED(TEGRA_XUSB_HOST_BASE, TEGRA_XUSB_HOST_SIZE,
+			"host"),
+	[1] = DEFINE_RES_MEM_NAMED(TEGRA_XUSB_FPCI_BASE, TEGRA_XUSB_FPCI_SIZE,
+			"fpci"),
+	[2] = DEFINE_RES_MEM_NAMED(TEGRA_XUSB_IPFS_BASE, TEGRA_XUSB_IPFS_SIZE,
+			"ipfs"),
+	[3] = DEFINE_RES_MEM_NAMED(TEGRA_XUSB_PADCTL_BASE,
+			TEGRA_XUSB_PADCTL_SIZE, "padctl"),
+	[4] = DEFINE_RES_MEM_NAMED(TEGRA_PMC_BASE, TEGRA_PMC_SIZE, "pmc"),
+	[5] = DEFINE_RES_IRQ_NAMED(INT_XUSB_HOST_INT, "host"),
+	[6] = DEFINE_RES_IRQ_NAMED(INT_XUSB_HOST_SMI, "host-smi"),
+	[7] = DEFINE_RES_IRQ_NAMED(INT_XUSB_PADCTL, "padctl"),
+	[8] = DEFINE_RES_IRQ_NAMED(INT_USB3, "usb3"),
 };
 
 static u64 tegra_xusb_dmamask = DMA_BIT_MASK(64);
@@ -1802,32 +1799,6 @@ static struct resource tegra_wdt0_resources[] = {
 #endif
 };
 
-static struct resource tegra_wdt1_resources[] = {
-	[0] = {
-		.start	= TEGRA_WDT1_BASE,
-		.end	= TEGRA_WDT1_BASE + TEGRA_WDT1_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	[1] = {
-		.start	= TEGRA_TMR8_BASE,
-		.end	= TEGRA_TMR8_BASE + TEGRA_TMR8_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-};
-
-static struct resource tegra_wdt2_resources[] = {
-	[0] = {
-		.start	= TEGRA_WDT2_BASE,
-		.end	= TEGRA_WDT2_BASE + TEGRA_WDT2_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	[1] = {
-		.start	= TEGRA_TMR9_BASE,
-		.end	= TEGRA_TMR9_BASE + TEGRA_TMR9_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-};
-
 struct platform_device tegra_wdt0_device = {
 	.name		= "tegra_wdt",
 	.id		= 0,
@@ -1835,19 +1806,6 @@ struct platform_device tegra_wdt0_device = {
 	.resource	= tegra_wdt0_resources,
 };
 
-struct platform_device tegra_wdt1_device = {
-	.name		= "tegra_wdt",
-	.id		= 1,
-	.num_resources	= ARRAY_SIZE(tegra_wdt1_resources),
-	.resource	= tegra_wdt1_resources,
-};
-
-struct platform_device tegra_wdt2_device = {
-	.name		= "tegra_wdt",
-	.id		= 2,
-	.num_resources	= ARRAY_SIZE(tegra_wdt2_resources),
-	.resource	= tegra_wdt2_resources,
-};
 #endif
 
 static struct resource tegra_pwfm0_resource = {
@@ -2205,6 +2163,11 @@ struct platform_device tegra_cl_dvfs_device = {
 	.num_resources	= ARRAY_SIZE(cl_dvfs_resource),
 };
 #endif
+
+struct platform_device tegra_fuse_device = {
+	.name	= "tegra-fuse",
+	.id	= -1,
+};
 
 void __init tegra_init_debug_uart_rate(void)
 {

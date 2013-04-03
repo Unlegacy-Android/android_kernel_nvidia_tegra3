@@ -1,9 +1,9 @@
 /*
- * ina230.c - driver for TI INA230 current / power monitor sensor
- * (also compatible with TI INA226)
+ * ina230.c - driver for TI INA230/INA226/HPA02149/HPA01112 current/power
+ * monitor sensor
  *
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -71,11 +71,11 @@ rst|-   -   -  |AVG        |Vbus_CT    |Vsh_CT     |MODE
 #define INA230_VSH_CT		(0 << 3) /* Vshunt 140us conversion time */
 
 #if MEASURE_BUS_VOLT
-#define INA230_CONT_MODE	5	/* Continuous Shunt measurement */
-#define INA230_TRIG_MODE	1	/* Triggered Shunt measurement */
-#else
 #define INA230_CONT_MODE	7	/* Continuous Bus and shunt measure */
 #define INA230_TRIG_MODE	3	/* Triggered Bus and shunt measure */
+#else
+#define INA230_CONT_MODE	5	/* Continuous Shunt measurement */
+#define INA230_TRIG_MODE	1	/* Triggered Shunt measurement */
 #endif
 
 #define INA230_POWER_DOWN	0
@@ -91,7 +91,8 @@ SOL|SUL|BOL|BUL|POL|CVR|-   -   -   -   -  |AFF|CVF|OVF|APO|LEN
 */
 #define INA230_MASK_SOL		(1 << 15)
 #define INA230_MASK_SUL		(1 << 14)
-
+#define INA230_MASK_CVF		(1 << 3)
+#define INA230_MAX_CONVERSION_TRIALS	50
 
 struct ina230_data {
 	struct device *hwmon_dev;
@@ -381,6 +382,30 @@ static s32 show_shunt_voltage(struct device *dev,
 	return sprintf(buf, "%d uV\n", voltage_uV);
 }
 
+static int  __locked_wait_for_conversion(struct device *dev)
+{
+	int retval, conversion, trials = 0;
+	struct i2c_client *client = to_i2c_client(dev);
+
+	/* wait till conversion ready bit is set */
+	do {
+		retval = be16_to_cpu(i2c_smbus_read_word_data(client,
+							INA230_MASK));
+		if (retval < 0) {
+			dev_err(dev, "mask data read failed sts: 0x%x\n",
+				retval);
+			return retval;
+		}
+		conversion = retval & INA230_MASK_CVF;
+	} while ((!conversion) && (++trials < INA230_MAX_CONVERSION_TRIALS));
+
+	if (trials == INA230_MAX_CONVERSION_TRIALS) {
+		dev_err(dev, "maximum retries exceeded\n");
+		return -EAGAIN;
+	}
+
+	return 0;
+}
 
 static s32 show_current(struct device *dev,
 			struct device_attribute *attr,
@@ -404,6 +429,12 @@ static s32 show_current(struct device *dev,
 	if (retval < 0) {
 		dev_err(dev, "calibration data write failed sts: 0x%x\n",
 			retval);
+		mutex_unlock(&data->mutex);
+		return retval;
+	}
+
+	retval = __locked_wait_for_conversion(dev);
+	if (retval) {
 		mutex_unlock(&data->mutex);
 		return retval;
 	}
@@ -449,6 +480,12 @@ static s32 show_power(struct device *dev,
 	if (retval < 0) {
 		dev_err(dev, "calibration data write failed sts: 0x%x\n",
 			retval);
+		mutex_unlock(&data->mutex);
+		return retval;
+	}
+
+	retval = __locked_wait_for_conversion(dev);
+	if (retval) {
 		mutex_unlock(&data->mutex);
 		return retval;
 	}
@@ -598,7 +635,10 @@ static int ina230_resume(struct i2c_client *client)
 
 
 static const struct i2c_device_id ina230_id[] = {
-	{DRIVER_NAME, 0 },
+	{"ina226", 0 },
+	{"ina230", 0 },
+	{"hpa01112", 0 },
+	{"hpa02149", 0 },
 	{}
 };
 MODULE_DEVICE_TABLE(i2c, ina230_id);

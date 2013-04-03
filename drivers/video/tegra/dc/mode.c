@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2010 Google, Inc.
  *
- * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -301,13 +301,17 @@ EXPORT_SYMBOL(tegra_dc_set_mode);
 int tegra_dc_to_fb_videomode(struct fb_videomode *fbmode,
 	const struct tegra_dc_mode *mode)
 {
+	long mode_pclk;
+
 	if (!fbmode || !mode || !mode->pclk)
 		return -EINVAL;
-	memset(fbmode, 0, sizeof(*fbmode));
 	if (mode->rated_pclk >= 1000) /* handle DSI one-shot modes */
-		fbmode->pixclock = KHZ2PICOS(mode->rated_pclk / 1000);
+		mode_pclk = mode->rated_pclk;
 	else if (mode->pclk >= 1000) /* normal continous modes */
-		fbmode->pixclock = KHZ2PICOS(mode->pclk / 1000);
+		mode_pclk = mode->pclk;
+	else
+		mode_pclk = 0;
+	memset(fbmode, 0, sizeof(*fbmode));
 	fbmode->right_margin = mode->h_front_porch;
 	fbmode->lower_margin = mode->v_front_porch;
 	fbmode->hsync_len = mode->h_sync_width;
@@ -317,20 +321,31 @@ int tegra_dc_to_fb_videomode(struct fb_videomode *fbmode,
 	fbmode->xres = mode->h_active;
 	fbmode->yres = mode->v_active;
 	fbmode->vmode = FB_VMODE_NONINTERLACED;
-	if (mode->stereo_mode)
+	if (mode->stereo_mode) {
 #ifndef CONFIG_TEGRA_HDMI_74MHZ_LIMIT
+		/* Double the pixel clock and update v_active only for
+		 * frame packed mode */
+		mode_pclk /= 2;
+		/* total v_active = yres*2 + activespace */
+		fbmode->yres = (mode->v_active - mode->v_sync_width -
+			mode->v_back_porch - mode->v_front_porch) / 2;
 		fbmode->vmode |= FB_VMODE_STEREO_FRAME_PACK;
 #else
 		fbmode->vmode |= FB_VMODE_STEREO_LEFT_RIGHT;
 #endif
+	}
+
 	if (!(mode->flags & TEGRA_DC_MODE_FLAG_NEG_H_SYNC))
 		fbmode->sync |=  FB_SYNC_HOR_HIGH_ACT;
 	if (!(mode->flags & TEGRA_DC_MODE_FLAG_NEG_V_SYNC))
 		fbmode->sync |= FB_SYNC_VERT_HIGH_ACT;
-	if (mode->rated_pclk >= 1000)
-		fbmode->pixclock = KHZ2PICOS(mode->rated_pclk / 1000);
-	else if (mode->pclk >= 1000)
-		fbmode->pixclock = KHZ2PICOS(mode->pclk / 1000);
+	if (mode->avi_m == TEGRA_DC_MODE_AVI_M_16_9)
+		fbmode->flag |= FB_FLAG_RATIO_16_9;
+	else if (mode->avi_m == TEGRA_DC_MODE_AVI_M_4_3)
+		fbmode->flag |= FB_FLAG_RATIO_4_3;
+
+	if (mode_pclk >= 1000) /* else 0 */
+		fbmode->pixclock = KHZ2PICOS(mode_pclk / 1000);
 	fbmode->refresh = tegra_dc_calc_refresh(mode) / 1000;
 
 	return 0;
@@ -351,6 +366,7 @@ int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 	if (!fbmode->pixclock)
 		return -EINVAL;
 
+	memset(&mode, 0, sizeof(mode));
 	mode.pclk = PICOS2KHZ(fbmode->pixclock) * 1000;
 	mode.h_sync_width = fbmode->hsync_len;
 	mode.v_sync_width = fbmode->vsync_len;
@@ -361,6 +377,21 @@ int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 	mode.h_front_porch = fbmode->right_margin;
 	mode.v_front_porch = fbmode->lower_margin;
 	mode.stereo_mode = stereo_mode;
+	if (fbmode->flag & FB_FLAG_RATIO_16_9)
+		mode.avi_m = TEGRA_DC_MODE_AVI_M_16_9;
+	else if (fbmode->flag & FB_FLAG_RATIO_4_3)
+		mode.avi_m = TEGRA_DC_MODE_AVI_M_4_3;
+	else if (dc->out) { /* if ratio is unspecified, detect a default */
+		unsigned h_size = dc->out->h_size;
+		unsigned v_size = dc->out->v_size;
+
+		/* get aspect ratio */
+		if (h_size * 18 > v_size * 31 && h_size * 18 < v_size * 33)
+			mode.avi_m = TEGRA_DC_MODE_AVI_M_16_9;
+		if (h_size * 18 > v_size * 23 && h_size * 18 < v_size * 25)
+			mode.avi_m = TEGRA_DC_MODE_AVI_M_4_3;
+	}
+
 	if (dc->out->type == TEGRA_DC_OUT_HDMI) {
 		/* HDMI controller requires h_ref=1, v_ref=1 */
 		mode.h_ref_to_sync = 1;

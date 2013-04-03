@@ -1,7 +1,7 @@
 /*
  * Backlight LEDs driver for MAX8831
  *
- * Copyright (c) 2008-2012, NVIDIA Corporation.
+ * Copyright (c) 2008-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -81,10 +81,10 @@ static int max8831_backlight_set_with_edp(struct backlight_device *bl,
 {
 	struct max8831_backlight_data *data = bl_get_data(bl);
 	struct device *dev = data->max8831_dev;
-	int approved;
+	unsigned int approved;
 	int ret;
-	int edp_state;
-	int i;
+	unsigned int edp_state;
+	unsigned int i;
 	if (data->max8831_edp_client) {
 		for (i = 0; i < MAX8831_EDP_NUM_STATES; i++) {
 			if (brightness >= data->edp_brightness_states[i])
@@ -93,8 +93,10 @@ static int max8831_backlight_set_with_edp(struct backlight_device *bl,
 		edp_state = i;
 		ret = edp_update_client_request(data->max8831_edp_client,
 							edp_state, &approved);
-		if (ret || approved != edp_state)
+		if (ret || approved != edp_state) {
 			dev_err(dev, "E state transition failed\n");
+			return ret;
+		}
 	}
 
 	max8831_backlight_set(bl, brightness);
@@ -189,7 +191,7 @@ static int __devinit max8831_bl_probe(struct platform_device *pdev)
 	data->max8831_edp_client->num_states = MAX8831_EDP_NUM_STATES;
 	data->max8831_edp_client->e0_index = MAX8831_EDP_ZERO;
 	data->max8831_edp_client->private_data = bl;
-	data->max8831_edp_client->priority = EDP_MAX_PRIO - 2;
+	data->max8831_edp_client->priority = EDP_MAX_PRIO + 2;
 	data->max8831_edp_client->throttle = max8831_backlight_throttle;
 
 	battery_manager = edp_get_manager("battery");

@@ -313,10 +313,15 @@ struct tegra_dc_mode {
 	int	v_front_porch;
 	int	stereo_mode;
 	u32	flags;
+	u8	avi_m;
 };
 
 #define TEGRA_DC_MODE_FLAG_NEG_V_SYNC	(1 << 0)
 #define TEGRA_DC_MODE_FLAG_NEG_H_SYNC	(1 << 1)
+
+/* aspect ratio. 0 means unspecified or default. */
+#define TEGRA_DC_MODE_AVI_M_4_3		0x1
+#define TEGRA_DC_MODE_AVI_M_16_9	0x2
 
 enum {
 	TEGRA_DC_OUT_RGB,
@@ -459,6 +464,7 @@ struct tegra_dc_out {
 
 	int				dcc_bus;
 	int				hotplug_gpio;
+	int				hotplug_state; /* 0 normal 1 force on */
 	const char			*parent_clk;
 	const char			*parent_clk_backup;
 
@@ -507,6 +513,7 @@ struct tegra_dc_out {
 #define TEGRA_DC_OUT_ONE_SHOT_MODE		(1 << 3)
 #define TEGRA_DC_OUT_N_SHOT_MODE		(1 << 4)
 #define TEGRA_DC_OUT_ONE_SHOT_LP_MODE		(1 << 5)
+#define TEGRA_DC_OUT_INITIALIZED_MODE		(1 << 6)
 
 #define TEGRA_DC_ALIGN_MSB		0
 #define TEGRA_DC_ALIGN_LSB		1

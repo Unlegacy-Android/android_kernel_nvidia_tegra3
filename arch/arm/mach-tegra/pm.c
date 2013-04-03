@@ -3,7 +3,7 @@
  *
  * CPU complex suspend & resume functions for Tegra SoCs
  *
- * Copyright (c) 2009-2012, NVIDIA Corporation.
+ * Copyright (c) 2009-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -103,9 +103,6 @@ struct suspend_context {
 	u8 uart[5];
 
 	struct tegra_twd_context twd;
-#ifdef CONFIG_ARM_ARCH_TIMER
-	struct arch_timer_context arch_timer;
-#endif
 };
 
 #ifdef CONFIG_PM_SLEEP
@@ -134,6 +131,8 @@ struct suspend_context tegra_sctx;
 #define TEGRA_POWER_CPU_PWRREQ_POLARITY (1 << 15)  /* CPU power request polarity */
 #define TEGRA_POWER_CPU_PWRREQ_OE	(1 << 16)  /* CPU power request enable */
 #define TEGRA_POWER_CPUPWRGOOD_EN	(1 << 19)  /* CPU power good enable */
+
+#define TEGRA_DPAD_ORIDE_SYS_CLK_REQ	(1 << 21)
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_LATCH_WAKEUPS	(1 << 5)
@@ -259,14 +258,35 @@ unsigned long tegra_cpu_lp2_min_residency(void)
 }
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
-unsigned long tegra_min_residency_noncpu(void)
+#define TEGRA_MIN_RESIDENCY_VMIN_FMIN	2000
+#define TEGRA_MIN_RESIDENCY_NCPU_SLOW	2000
+#define TEGRA_MIN_RESIDENCY_NCPU_FAST	13000
+#define TEGRA_MIN_RESIDENCY_CRAIL	20000
+
+unsigned long tegra_min_residency_vmin_fmin(void)
 {
-	return pdata->min_residency_noncpu;
+	return pdata && pdata->min_residency_vmin_fmin
+			? pdata->min_residency_vmin_fmin
+			: TEGRA_MIN_RESIDENCY_VMIN_FMIN;
+}
+
+unsigned long tegra_min_residency_ncpu()
+{
+	if (is_lp_cluster()) {
+		return pdata && pdata->min_residency_ncpu_slow
+			? pdata->min_residency_ncpu_slow
+			: TEGRA_MIN_RESIDENCY_NCPU_SLOW;
+	} else
+		return pdata && pdata->min_residency_ncpu_fast
+			? pdata->min_residency_ncpu_fast
+			: TEGRA_MIN_RESIDENCY_NCPU_FAST;
 }
 
 unsigned long tegra_min_residency_crail(void)
 {
-	return pdata->min_residency_crail;
+	return pdata && pdata->min_residency_crail
+			? pdata->min_residency_crail
+			: TEGRA_MIN_RESIDENCY_CRAIL;
 }
 #endif
 
@@ -429,19 +449,11 @@ static void restore_cpu_complex(u32 mode)
 	   idle or system suspend, the local timer was shut down and
 	   timekeeping switched over to the global system timer. In this
 	   case keep local timer disabled, and restore only periodic load. */
+#ifdef CONFIG_HAVE_ARM_TWD
 	if (!(mode & (TEGRA_POWER_CLUSTER_MASK |
 		      TEGRA_POWER_CLUSTER_IMMEDIATE))) {
-#ifdef CONFIG_ARM_ARCH_TIMER
-		tegra_sctx.arch_timer.cntp_ctl = 0;
-#endif
-#ifdef CONFIG_HAVE_ARM_TWD
 		tegra_sctx.twd.twd_ctrl = 0;
-#endif
 	}
-#ifdef CONFIG_ARM_ARCH_TIMER
-	arch_timer_resume(&tegra_sctx.arch_timer);
-#endif
-#ifdef CONFIG_HAVE_ARM_TWD
 	tegra_twd_resume(&tegra_sctx.twd);
 #endif
 }
@@ -477,9 +489,6 @@ static void suspend_cpu_complex(u32 mode)
 
 #ifdef CONFIG_HAVE_ARM_TWD
 	tegra_twd_suspend(&tegra_sctx.twd);
-#endif
-#ifdef CONFIG_ARM_ARCH_TIMER
-	arch_timer_suspend(&tegra_sctx.arch_timer);
 #endif
 
 	reg = readl(FLOW_CTRL_CPU_CSR(cpu));
@@ -1155,9 +1164,16 @@ static void tegra_pm_enter_resume(void)
 	pr_info("Exited suspend state %s\n", lp_state[current_suspend_mode]);
 }
 
+static void tegra_pm_enter_shutdown(void)
+{
+	suspend_cpu_dfll_mode();
+	pr_info("Shutting down tegra ...\n");
+}
+
 static struct syscore_ops tegra_pm_enter_syscore_ops = {
 	.suspend = tegra_pm_enter_suspend,
 	.resume = tegra_pm_enter_resume,
+	.shutdown = tegra_pm_enter_shutdown,
 };
 
 static __init int tegra_pm_enter_syscore_init(void)
@@ -1259,7 +1275,7 @@ out:
 		plat->suspend_mode = TEGRA_SUSPEND_LP2;
 	}
 
-#ifdef CONFIG_TEGRA_LP1_950
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
 	if (pdata->lp1_lowvolt_support) {
 		u32 lp1_core_lowvolt, lp1_core_highvolt;
 		memcpy(tegra_lp1_register_pmuslave_addr(), &pdata->pmuslave_addr, 4);
@@ -1312,6 +1328,12 @@ out:
 	if (!pdata->combined_req)
 		reg |= TEGRA_POWER_PWRREQ_OE;
 	pmc_32kwritel(reg, PMC_CTRL);
+
+	if (pdata->sysclkreq_gpio) {
+		reg = readl(pmc + PMC_DPAD_ORIDE);
+		reg &= ~TEGRA_DPAD_ORIDE_SYS_CLK_REQ;
+		pmc_32kwritel(reg, PMC_DPAD_ORIDE);
+	}
 
 	if (pdata->suspend_mode == TEGRA_SUSPEND_LP0)
 		tegra_lp0_suspend_init();

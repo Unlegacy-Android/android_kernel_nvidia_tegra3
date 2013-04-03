@@ -5,7 +5,7 @@
  *	Colin Cross <ccross@android.com>
  *	Erik Gilling <ccross@android.com>
  *
- * Copyright (C) 2010-2012 NVIDIA Corporation.
+ * Copyright (C) 2010-2013 NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -124,8 +124,6 @@ extern struct platform_device tegra_smmu_device;
 extern struct platform_device tegra_wdt_device;
 #else
 extern struct platform_device tegra_wdt0_device;
-extern struct platform_device tegra_wdt1_device;
-extern struct platform_device tegra_wdt2_device;
 #endif
 extern struct platform_device tegra_pwfm0_device;
 extern struct platform_device tegra_pwfm1_device;
@@ -160,12 +158,14 @@ extern struct platform_device debug_uarte_device;
 extern struct platform_device tegra_disp1_device;
 extern struct platform_device tegra_disp2_device;
 extern struct platform_device tegra_nvmap_device;
+extern struct platform_device tegra_xhci_device;
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 extern struct platform_device tegra_cec_device;
 #endif
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 extern struct platform_device tegra_cl_dvfs_device;
 #endif
+extern struct platform_device tegra_fuse_device;
 
 void __init tegra_init_debug_uart_rate(void);
 

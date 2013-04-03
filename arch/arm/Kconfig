@@ -592,6 +592,7 @@ config ARCH_KIRKWOOD
 	bool "Marvell Kirkwood"
 	select CPU_FEROCEON
 	select PCI
+	select PCI_QUIRKS
 	select ARCH_REQUIRE_GPIOLIB
 	select GENERIC_CLOCKEVENTS
 	select NEED_MACH_IO_H
@@ -1450,6 +1451,53 @@ config PL310_ERRATA_769419
 	  on systems with an outer cache, the store buffer is drained
 	  explicitly.
 
+config ARM_ERRATA_798181
+	bool "ARM errata: TLBI/DSB failure on Cortex-A15"
+	depends on CPU_V7 && SMP
+	help
+	  On Cortex-A15 (r0p0..r3p2) the TLBI*IS/DSB operations are not
+	  adequately shooting down all use of the old entries. This
+	  option enables the Linux kernel workaround for this erratum
+	  which sends an IPI to the CPUs that are running the same mm
+	  (and ASID) as the one being invalidated.
+
+config ARM_ERRATA_775420
+       bool "ARM errata: A data cache maintenance operation which aborts, might lead to deadlock"
+       depends on CPU_V7
+       help
+	 This option enables the workaround for the 775420 Cortex-A9 (r2p2,
+	 r2p6,r2p8,r2p10,r3p0) erratum. In case a date cache maintenance
+	 operation aborts with MMU exception, it might cause the processor
+	 to deadlock. This workaround puts DSB before executing ISB if
+	 an abort may occur on cache maintenance.
+
+config ARM_ERRATA_799270
+	bool "ARM errata: Writing ACTLR.SMP when the L2 cache has been idle for an extended period may not work correctly"
+	depends on CPU_V7 && SMP
+	help
+	  This option enables the workaround for the 799270 Cortex-A15 (r2p0,
+	  r2p1, r2p2, r2p3, r2p4) erratum. If the L2 cache logic clock is
+	  stopped because of L2 inactivity, setting or clearing the ACTLR.SMP
+	  bit might not be effective. The bit is modified in the ACTLR, meaning
+	  a read of the register returns the updated value. However the logic
+	  that uses that bit retains the previous value. The workaround is to
+	  do a memory read to a memory location with Non-cacheable, Strongly-
+	  ordered, or Device memory attributes. A dependency must be created
+	  between the returning load data and the MCR instruction that sets the
+	  ACTLR.SMP bit.
+
+config ARM_ERRATA_798870
+	bool "ARM errata: A memory read can stall indefinitely in the L2 cache"
+	depends on CPU_V7
+	help
+	  If back-to-back speculative cache line fills (fill A and fill B)
+	  are issued from the L1 data cache of a CPU to the L2 cache, the
+	  second request (fill B) is then cancelled, and the second request
+	  would have detected a hazard against a recent write or eviction
+	  (write B) to the same cache line as fill B, then the L2 logic might
+	  deadlock. The workaround is to let a secondary CPU go through reset
+	  cycle periodically which can restart L2 clock.
+
 endmenu
 
 source "arch/arm/common/Kconfig"
@@ -1951,6 +1999,19 @@ config UACCESS_WITH_MEMCPY
 	  However, if the CPU data cache is using a write-allocate mode,
 	  this option is unlikely to provide any performance gain.
 
+config ARM_PLD_64BYTE
+	bool "Use 64-bit preload size for kernel memory copy"
+	depends on CPU_V7
+	help
+	  Config preload size for memcpy, selecting this for Cortex-A15
+
+config USE_LDRDSTRD_OVER_LDMSTM
+	bool "Use 64-bit access instructions to optimize memory copy"
+	depends on CPU_V7
+	help
+	  Cortex-A15 perform better when use LDRD/STRD to access memory.
+	  Selecting this to optimize memory copy routines.
+
 config SECCOMP
 	bool
 	prompt "Enable seccomp to safely compute untrusted bytecode"
@@ -2221,6 +2282,7 @@ source "drivers/cpufreq/Kconfig"
 config CPU_FREQ_IMX
 	tristate "CPUfreq driver for i.MX CPUs"
 	depends on ARCH_MXC && CPU_FREQ
+	select CPU_FREQ_TABLE
 	help
 	  This enables the CPUfreq driver for i.MX CPUs.
 

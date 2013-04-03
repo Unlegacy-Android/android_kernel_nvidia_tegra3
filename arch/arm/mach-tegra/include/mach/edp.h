@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/edp.h
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,8 @@
 #include <linux/debugfs.h>
 #include <linux/edp.h>
 #include <linux/thermal.h>
-#include <linux/nct1008.h>
+#include <linux/platform_data/tegra_edp.h>
+#include <linux/platform_data/thermal_sensors.h>
 
 struct tegra_edp_vdd_cpu_entry {
 	char speedo_id;
@@ -36,12 +37,6 @@ struct tegra_edp_vdd_cpu_entry {
 struct tegra_edp_limits {
 	int temperature;
 	unsigned int freq_limits[4];
-};
-
-struct tegra_system_edp_entry {
-	char speedo_id;
-	char power_limit_100mW;
-	char freq_limits[4];
 };
 
 struct tegra_edp_cpu_leakage_params {
@@ -76,8 +71,6 @@ struct tegra_core_edp_limits {
 	unsigned long *cap_rates_scpu_off;
 };
 
-struct nct_trip_temp;
-
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 struct thermal_cooling_device *edp_cooling_device_create(void *v);
 void tegra_init_cpu_edp_limits(unsigned int regulator_mA);
@@ -88,7 +81,9 @@ unsigned int tegra_get_edp_limit(int *get_edp_thermal_index);
 void tegra_get_system_edp_limits(const unsigned int **limits);
 int tegra_system_edp_alarm(bool alarm);
 unsigned int tegra_edp_find_maxf(int volt);
-void tegra_platform_edp_init(struct nct_trip_temp *trips, int *num_trips);
+void tegra_platform_edp_init(struct thermal_trip_info *trips,
+					int *num_trips, int margin);
+struct tegra_system_edp_entry *tegra_get_system_edp_entries(int *size);
 #else
 static inline struct thermal_cooling_device *edp_cooling_device_create(
 	int index)
@@ -110,9 +105,11 @@ static inline int tegra_system_edp_alarm(bool alarm)
 { return -1; }
 static inline unsigned int tegra_edp_find_maxf(int volt)
 { return -1; }
-static inline void tegra_platform_edp_init(struct nct_trip_temp *trips,
-					   int *num_trips)
+static inline void tegra_platform_edp_init(struct thermal_trip_info *trips,
+					   int *num_trips, int margin)
 {}
+static inline struct tegra_system_edp_entry
+		*tegra_get_system_edp_entries(int *size) { return NULL; }
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC

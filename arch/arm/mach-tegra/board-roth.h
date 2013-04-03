@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-roth.h
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012 - 2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -25,6 +25,9 @@
 #include <linux/mfd/max77663-core.h>
 #include "gpio-names.h"
 
+#define PMC_WAKE_STATUS 0x14
+#define PMC_WAKE2_STATUS 0x168
+
 /* External peripheral act as gpio */
 /* MAX77663 GPIO */
 #define MAX77663_GPIO_BASE      TEGRA_NR_GPIOS
@@ -43,7 +46,7 @@
 
 #define TEGRA_GPIO_SPKR_EN		-1
 #define TEGRA_GPIO_HP_DET		TEGRA_GPIO_PR7
-#define TEGRA_GPIO_INT_MIC_EN		TEGRA_GPIO_PK3
+#define TEGRA_GPIO_INT_MIC_EN		-1
 #define TEGRA_GPIO_EXT_MIC_EN		-1
 
 #define TEGRA_GPIO_W_DISABLE		TEGRA_GPIO_PDD7
@@ -98,7 +101,7 @@ int roth_pinmux_init(void);
 int roth_sensors_init(void);
 int roth_emc_init(void);
 int roth_edp_init(void);
-int roth_panel_init(void);
+int roth_panel_init(int board_id);
 int roth_kbc_init(void);
 int roth_pmon_init(void);
 int roth_soctherm_init(void);

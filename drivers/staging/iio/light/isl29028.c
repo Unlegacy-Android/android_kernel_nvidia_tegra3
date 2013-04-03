@@ -1269,9 +1269,9 @@ static int __devinit isl29028_probe(struct i2c_client *client,
 				"error %d\n", chip->irq, err);
 			goto exit_iio_free;
 		}
+		chip->is_int_enable = true;
 	}
 
-	chip->is_int_enable = true;
 	indio_dev->info = &isl29028_info;
 	indio_dev->dev.parent = &client->dev;
 	indio_dev->modes = INDIO_DIRECT_MODE;

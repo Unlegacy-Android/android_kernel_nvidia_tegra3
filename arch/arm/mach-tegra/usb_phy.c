@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/usb_phy.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -364,7 +364,7 @@ int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 		 * support through OTG is supported on the board.
 		 */
 		if (phy->pdata->u_data.dev.vbus_pmu_irq &&
-			phy->pdata->builtin_host_disabled) {
+			phy->pdata->id_det_type == TEGRA_USB_VIRTUAL_ID) {
 			tegra_clk_disable_unprepare(phy->ctrlr_clk);
 			phy->ctrl_clk_on = false;
 			if (phy->vdd_reg && phy->vdd_reg_on) {
@@ -572,6 +572,17 @@ bool tegra_usb_phy_charger_detected(struct tegra_usb_phy *phy)
 	return status;
 }
 
+bool tegra_usb_phy_nv_charger_detected(struct tegra_usb_phy *phy)
+{
+	bool status = 0;
+
+	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+	if (phy->ops && phy->ops->nv_charger_detect)
+		status = phy->ops->nv_charger_detect(phy);
+
+	return status;
+}
+
 bool tegra_usb_phy_hw_accessible(struct tegra_usb_phy *phy)
 {
 	if (!phy->hw_accessible)
@@ -587,18 +598,6 @@ bool tegra_usb_phy_pmc_wakeup(struct tegra_usb_phy *phy)
 	return phy->pmc_remote_wakeup || phy->pmc_hotplug_wakeup;
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_pmc_wakeup);
-
-bool tegra_usb_phy_has_hostpc(struct tegra_usb_phy *phy)
-{
-	return phy->pdata->has_hostpc;
-}
-EXPORT_SYMBOL_GPL(tegra_usb_phy_has_hostpc);
-
-bool tegra_usb_phy_otg_supported(struct tegra_usb_phy *phy)
-{
-	return phy->pdata->port_otg;
-}
-EXPORT_SYMBOL_GPL(tegra_usb_phy_otg_supported);
 
 void tegra_usb_phy_memory_prefetch_on(struct tegra_usb_phy *phy)
 {

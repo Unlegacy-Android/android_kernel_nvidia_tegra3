@@ -1,7 +1,7 @@
 /*
  * ov9772.c - ov9772 sensor driver
  *
- *  * Copyright (c) 2012 NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA Corporation.  All rights reserved.
  *
  * Contributors:
  *	Phil Breczinski <pbreczinski@nvidia.com>

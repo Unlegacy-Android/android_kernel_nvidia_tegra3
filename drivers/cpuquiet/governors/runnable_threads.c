@@ -183,23 +183,19 @@ static void runnables_work_func(struct work_struct *work)
 	unsigned int cpu = nr_cpu_ids;
 	int action, state;
 
-	mutex_lock(&runnables_lock);
-	if (runnables_state != RUNNING) {
-		mutex_unlock(&runnables_lock);
+	if (runnables_state != RUNNING)
 		return;
-	}
 
 	action = get_action(nr_run_last);
 	if (action > 0) {
 		cpu = cpumask_next_zero(0, cpu_online_mask);
 		if (cpu < nr_cpu_ids)
-			cpuquiet_wake_cpu(cpu);
+			cpuquiet_wake_cpu(cpu, false);
 	} else if (action < 0) {
 		cpu = get_lightest_loaded_cpu_n();
 		if (cpu < nr_cpu_ids)
-			cpuquiet_quiesence_cpu(cpu);
+			cpuquiet_quiesence_cpu(cpu, false);
 	}
-	mutex_unlock(&runnables_lock);
 }
 
 CPQ_BASIC_ATTRIBUTE(sample_rate, 0644, uint);

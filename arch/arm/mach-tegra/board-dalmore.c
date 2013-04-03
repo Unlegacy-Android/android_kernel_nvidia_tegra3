@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-dalmore.c
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -31,6 +31,7 @@
 #include <linux/gpio.h>
 #include <linux/input.h>
 #include <linux/platform_data/tegra_usb.h>
+#include <linux/platform_data/tegra_xusb.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/rm31080a_ts.h>
 #include <linux/tegra_uart.h>
@@ -65,7 +66,8 @@
 #include <mach/usb_phy.h>
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_fiq_debugger.h>
-#include <mach/tegra_usb_modem_power.h>
+#include <linux/platform_data/tegra_usb_modem_power.h>
+#include <mach/hardware.h>
 
 #include "board-touch-raydium.h"
 #include "board.h"
@@ -80,7 +82,7 @@
 #include "common.h"
 #include "tegra-board-id.h"
 
-#ifdef CONFIG_BT_BLUESLEEP
+#if defined(CONFIG_BT_BLUESLEEP) || defined(CONFIG_BT_BLUESLEEP_MODULE)
 static struct rfkill_gpio_platform_data dalmore_bt_rfkill_pdata = {
 		.name           = "bt_rfkill",
 		.shutdown_gpio  = TEGRA_GPIO_PQ7,
@@ -236,7 +238,7 @@ static struct tegra_i2c_platform_data dalmore_i2c2_platform_data = {
 static struct tegra_i2c_platform_data dalmore_i2c3_platform_data = {
 	.adapter_nr	= 2,
 	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 0 },
+	.bus_clk_rate	= { 400000, 0 },
 	.scl_gpio		= {TEGRA_GPIO_I2C3_SCL, 0},
 	.sda_gpio		= {TEGRA_GPIO_I2C3_SDA, 0},
 	.arb_recovery = arb_lost_recovery,
@@ -446,6 +448,7 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.port_otg = true,
 	.has_hostpc = true,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.unaligned_dma_buf_supported = false,
 	.op_mode = TEGRA_USB_OPMODE_DEVICE,
 	.u_data.dev = {
 		.vbus_pmu_irq = 0,
@@ -531,6 +534,12 @@ static void dalmore_usb_init(void)
 	tegra_set_usb_wake_source();
 
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
+		if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11 &&
+			tegra_revision == TEGRA_REVISION_A02) {
+			tegra_ehci1_utmi_pdata \
+			.unaligned_dma_buf_supported = true;
+			tegra_udc_pdata.unaligned_dma_buf_supported = true;
+		}
 		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 		platform_device_register(&tegra_otg_device);
 		/* Setup the udc platform data */
@@ -538,8 +547,63 @@ static void dalmore_usb_init(void)
 	}
 
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
+		if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11 &&
+			tegra_revision == TEGRA_REVISION_A02) {
+			tegra_ehci3_utmi_pdata \
+			.unaligned_dma_buf_supported = true;
+		}
 		tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 		platform_device_register(&tegra_ehci3_device);
+	}
+}
+
+static struct tegra_xusb_pad_data xusb_padctl_data = {
+	.pad_mux = (0x1 << 2),
+	.port_cap = (0x1 << 4),
+	.snps_oc_map = (0x1fc << 0),
+	.usb2_oc_map = (0x2f << 0),
+	.ss_port_map = (0x2 << 0),
+	.oc_det = (0x2c << 10),
+	.rx_wander = (0xf << 4),
+	.rx_eq = (0x3070 << 8),
+	.cdr_cntl = (0x26 << 24),
+	.dfe_cntl = 0x002008EE,
+	.hs_slew = (0xE << 6),
+	.ls_rslew = (0x3 << 14),
+	.otg_pad0_ctl0 = (0x7 << 19),
+	.otg_pad1_ctl0 = (0x0 << 19),
+	.otg_pad0_ctl1 = (0x4 << 0),
+	.otg_pad1_ctl1 = (0x3 << 0),
+	.hs_disc_lvl = (0x5 << 2),
+	.hsic_pad0_ctl0 = (0x00 << 8),
+	.hsic_pad0_ctl1 = (0x00 << 8),
+};
+
+static void dalmore_xusb_init(void)
+{
+	int usb_port_owner_info = tegra_get_usb_port_owner_info();
+
+	if (usb_port_owner_info & UTMI2_PORT_OWNER_XUSB) {
+		u32 usb_calib0 = tegra_fuse_readl(FUSE_SKU_USB_CALIB_0);
+
+		pr_info("dalmore_xusb_init: usb_calib0 = 0x%08x\n", usb_calib0);
+		/*
+		 * read from usb_calib0 and pass to driver
+		 * set HS_CURR_LEVEL (PAD0)	= usb_calib0[5:0]
+		 * set TERM_RANGE_ADJ		= usb_calib0[10:7]
+		 * set HS_SQUELCH_LEVEL		= usb_calib0[12:11]
+		 * set HS_IREF_CAP		= usb_calib0[14:13]
+		 * set HS_CURR_LEVEL (PAD1)	= usb_calib0[20:15]
+		 */
+
+		xusb_padctl_data.hs_curr_level_pad0 = (usb_calib0 >> 0) & 0x3f;
+		xusb_padctl_data.hs_term_range_adj = (usb_calib0 >> 7) & 0xf;
+		xusb_padctl_data.hs_squelch_level = (usb_calib0 >> 11) & 0x3;
+		xusb_padctl_data.hs_iref_cap = (usb_calib0 >> 13) & 0x3;
+		xusb_padctl_data.hs_curr_level_pad1 = (usb_calib0 >> 15) & 0x3f;
+
+		tegra_xhci_device.dev.platform_data = &xusb_padctl_data;
+		platform_device_register(&tegra_xhci_device);
 	}
 }
 
@@ -611,8 +675,13 @@ static void dalmore_modem_init(void)
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 	switch (modem_id) {
 	case TEGRA_BB_NEMO: /* on board i500 HSIC */
-		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB))
+		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB)) {
+			if ((tegra_get_chipid() == TEGRA_CHIPID_TEGRA11) &&
+				(tegra_revision == TEGRA_REVISION_A02))
+				tegra_ehci2_hsic_baseband_pdata \
+				.unaligned_dma_buf_supported = true;
 			platform_device_register(&icera_nemo_device);
+		}
 		break;
 	}
 }
@@ -620,6 +689,7 @@ static void dalmore_modem_init(void)
 #else
 static void dalmore_usb_init(void) { }
 static void dalmore_modem_init(void) { }
+static void dalmore_xusb_init(void) { }
 #endif
 
 static void dalmore_audio_init(void)
@@ -648,7 +718,6 @@ struct spi_clk_parent spi_parent_clk_dalmore[] = {
 };
 
 static struct tegra_spi_platform_data dalmore_spi_pdata = {
-	.is_dma_based           = false,
 	.max_dma_buffer         = 16 * 1024,
         .is_clkon_always        = false,
         .max_rate               = 25000000,
@@ -675,6 +744,8 @@ static void __init dalmore_spi_init(void)
         }
         dalmore_spi_pdata.parent_clk_list = spi_parent_clk_dalmore;
         dalmore_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk_dalmore);
+	dalmore_spi_pdata.is_dma_based = (tegra_revision == TEGRA_REVISION_A01)
+							? false : true ;
 	tegra11_spi_device4.dev.platform_data = &dalmore_spi_pdata;
         platform_add_devices(dalmore_spi_devices,
                                 ARRAY_SIZE(dalmore_spi_devices));
@@ -688,10 +759,11 @@ static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 };
 
 struct rm_spi_ts_platform_data rm31080ts_dalmore_data = {
-	.gpio_reset = 0,
+	.gpio_reset = TOUCH_GPIO_RST_RAYDIUM_SPI,
 	.config = 0,
 	.platform_id = RM_PLATFORM_D010,
 	.name_of_clock = "clk_out_2",
+	.name_of_clock_con = "extern2",
 };
 
 static struct tegra_spi_device_controller_data dev_cdata = {
@@ -717,7 +789,6 @@ static int __init dalmore_touch_init(void)
 
 	tegra_get_display_board_info(&board_info);
 	tegra_clk_init_from_table(touch_clk_init_table);
-	clk_enable(tegra_get_clock_by_name("clk_out_2"));
 	if (board_info.board_id == BOARD_E1582)
 		rm31080ts_dalmore_data.platform_id = RM_PLATFORM_P005;
 	else
@@ -732,55 +803,20 @@ static int __init dalmore_touch_init(void)
 	return 0;
 }
 
-#ifdef CONFIG_EDP_FRAMEWORK
-static struct edp_manager battery_edp_manager = {
-	.name = "battery",
-	.imax = 2500
-};
-
-static void __init dalmore_battery_edp_init(void)
-{
-	struct edp_governor *g;
-	int r;
-
-	r = edp_register_manager(&battery_edp_manager);
-	if (r)
-		goto err_ret;
-
-	/* start with priority governor */
-	g = edp_get_governor("priority");
-	if (!g) {
-		r = -EFAULT;
-		goto err_ret;
-	}
-
-	r = edp_set_governor(&battery_edp_manager, g);
-	if (r)
-		goto err_ret;
-
-	return;
-
-err_ret:
-	pr_err("Battery EDP init failed with error %d\n", r);
-	WARN_ON(1);
-}
-#else
-static inline void dalmore_battery_edp_init(void) {}
-#endif
 static void __init tegra_dalmore_init(void)
 {
 	struct board_info board_info;
 
 	tegra_get_display_board_info(&board_info);
-	dalmore_battery_edp_init();
 	tegra_clk_init_from_table(dalmore_clk_init_table);
-	tegra_clk_vefify_parents();
+	tegra_clk_verify_parents();
 	tegra_soc_device_init("dalmore");
 	tegra_enable_pinmux();
 	dalmore_pinmux_init();
 	dalmore_i2c_init();
 	dalmore_spi_init();
 	dalmore_usb_init();
+	dalmore_xusb_init();
 	dalmore_uart_init();
 	dalmore_audio_init();
 	platform_add_devices(dalmore_devices, ARRAY_SIZE(dalmore_devices));
@@ -793,12 +829,12 @@ static void __init tegra_dalmore_init(void)
 	dalmore_edp_init();
 	dalmore_touch_init();
 	if (board_info.board_id == BOARD_E1582)
-		roth_panel_init();
+		roth_panel_init(board_info.board_id);
 	else
 		dalmore_panel_init();
 	dalmore_kbc_init();
 	dalmore_pmon_init();
-#ifdef CONFIG_BT_BLUESLEEP
+#if defined(CONFIG_BT_BLUESLEEP) || defined(CONFIG_BT_BLUESLEEP_MODULE)
 	dalmore_setup_bluesleep();
 	dalmore_setup_bt_rfkill();
 #elif defined CONFIG_BLUEDROID_PM
@@ -812,6 +848,7 @@ static void __init tegra_dalmore_init(void)
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	dalmore_sensors_init();
 	dalmore_soctherm_init();
+	tegra_register_fuse();
 }
 
 static void __init dalmore_ramconsole_reserve(unsigned long size)
@@ -821,12 +858,12 @@ static void __init dalmore_ramconsole_reserve(unsigned long size)
 
 static void __init tegra_dalmore_dt_init(void)
 {
-	tegra_dalmore_init();
-
 #ifdef CONFIG_USE_OF
 	of_platform_populate(NULL,
 		of_default_bus_match_table, NULL, NULL);
 #endif
+
+	tegra_dalmore_init();
 }
 
 static void __init tegra_dalmore_reserve(void)

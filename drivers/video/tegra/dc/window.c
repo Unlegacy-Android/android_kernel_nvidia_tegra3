@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2010 Google, Inc.
  *
- * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -50,12 +50,14 @@ static bool tegra_dc_windows_are_clean(struct tegra_dc_win *windows[],
 
 int tegra_dc_config_frame_end_intr(struct tegra_dc *dc, bool enable)
 {
+	tegra_dc_io_start(dc);
 	tegra_dc_writel(dc, FRAME_END_INT, DC_CMD_INT_STATUS);
 	if (enable) {
 		atomic_inc(&frame_end_ref);
 		tegra_dc_unmask_interrupt(dc, FRAME_END_INT);
 	} else if (!atomic_dec_return(&frame_end_ref))
 		tegra_dc_mask_interrupt(dc, FRAME_END_INT);
+	tegra_dc_io_end(dc);
 	return 0;
 }
 
@@ -354,6 +356,7 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 
 	for (i = 0; i < n; i++) {
 		struct tegra_dc_win *win = windows[i];
+		struct tegra_dc_win *dc_win = tegra_dc_get_window(dc, win->idx);
 		bool scan_column = 0;
 		fixed20_12 h_offset, v_offset;
 		bool invert_h = (win->flags & TEGRA_WIN_FLAG_INVERT_H) != 0;
@@ -389,7 +392,7 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 			update_mask |= WIN_A_ACT_REQ << win->idx;
 
 		if (!WIN_IS_ENABLED(win)) {
-			dc->windows[i].dirty = 1;
+			dc_win->dirty = no_vsync ? 0 : 1;
 			tegra_dc_writel(dc, 0, DC_WIN_WIN_OPTIONS);
 			continue;
 		}
@@ -496,7 +499,7 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 
 		tegra_dc_writel(dc, win_options, DC_WIN_WIN_OPTIONS);
 
-		win->dirty = no_vsync ? 0 : 1;
+		dc_win->dirty = no_vsync ? 0 : 1;
 
 		trace_window_update(dc, win);
 	}

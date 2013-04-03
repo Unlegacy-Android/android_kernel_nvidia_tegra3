@@ -39,8 +39,7 @@ struct palmas {
 	/* IRQ Data */
 	int irq;
 	u32 irq_mask;
-	struct mutex irq_lock;
-	struct regmap_irq_chip_data *irq_data;
+	struct palmas_irq_chip_data *irq_chip_data;
 
 	/* Child Devices */
 	struct palmas_pmic *pmic;
@@ -50,6 +49,11 @@ struct palmas {
 	u8 gpio_muxed;
 	u8 led_muxed;
 	u8 pwm_muxed;
+
+	int design_revision;
+	int sw_otp_version;
+	int es_minor_version;
+	int es_major_version;
 };
 
 struct palmas_reg_init {
@@ -198,6 +202,31 @@ struct palmas_rtc_platform_data {
 	unsigned charging_current_ua;
 };
 
+struct palmas_gpadc_platform_data {
+	int channel0_current_uA;
+	int channel3_current_uA;
+};
+
+struct palmas_pinctrl_config {
+	int pin_name;
+	int pin_mux_option;
+	int open_drain_state;
+	int pin_pull_up_dn;
+};
+
+struct palmas_pinctrl_platform_data {
+	struct palmas_pinctrl_config *pincfg;
+	int num_pinctrl;
+	bool dvfs1_enable;
+	bool dvfs2_enable;
+};
+
+struct palmas_extcon_platform_data {
+	const char *connection_name;
+	bool enable_vbus_detection;
+	bool enable_id_pin_detection;
+};
+
 struct palmas_platform_data {
 	int gpio_base;
 	int irq_base;
@@ -206,19 +235,18 @@ struct palmas_platform_data {
 	/* bit value to be loaded to the POWER_CTRL register */
 	u8 power_ctrl;
 
-	/*
-	 * boolean to select if we want to configure muxing here
-	 * then the two value to load into the registers if true
-	 */
-	int mux_from_pdata;
-	u8 pad1, pad2, pad3;
-
 	struct palmas_pmic_platform_data *pmic_pdata;
 	struct palmas_rtc_platform_data *rtc_pdata;
+	struct palmas_gpadc_platform_data *adc_pdata;
 
 	struct palmas_clk32k_init_data  *clk32k_init_data;
 	int clk32k_init_data_size;
 	bool use_power_off;
+
+	struct palmas_pinctrl_platform_data *pinctrl_pdata;
+	struct palmas_extcon_platform_data *extcon_pdata;
+
+	int watchdog_timer_initial_period;
 };
 
 /* Define the palmas IRQ numbers */
@@ -273,6 +301,9 @@ struct palmas_pmic {
 	int smps123;
 	int smps457;
 
+	unsigned int ramp_delay[PALMAS_NUM_REGS];
+	unsigned int current_mode_reg[PALMAS_NUM_REGS];
+
 	int range[PALMAS_REG_SMPS10];
 };
 
@@ -315,6 +346,7 @@ struct palmas_pmic {
 #define PALMAS_USB_BASE						0x290
 #define PALMAS_GPADC_BASE					0x2C0
 #define PALMAS_TRIM_GPADC_BASE					0x3CD
+#define PALMAS_PAGE3_BASE					0x300
 
 /* Registers for function RTC */
 #define PALMAS_SECONDS_REG					0x0
@@ -1763,6 +1795,10 @@ struct palmas_pmic {
 #define PALMAS_PWM_CTRL2_PWM_DUTY_SEL_MASK			0xff
 #define PALMAS_PWM_CTRL2_PWM_DUTY_SEL_SHIFT			0
 
+/* Maximum INT mask/edge regsiter */
+#define PALMAS_MAX_INTERRUPT_MASK_REG				4
+#define PALMAS_MAX_INTERRUPT_EDGE_REG				8
+
 /* Registers for function INTERRUPT */
 #define PALMAS_INT1_STATUS					0x0
 #define PALMAS_INT1_MASK					0x1
@@ -2666,6 +2702,9 @@ struct palmas_pmic {
 #define PALMAS_GPADC_SMPS_VSEL_MONITORING_SMPS_VSEL_MONITORING_MASK	0x7f
 #define PALMAS_GPADC_SMPS_VSEL_MONITORING_SMPS_VSEL_MONITORING_SHIFT	0
 
+#define PALMAS_INTERNAL_DESIGNREV				0x57
+#define PALMAS_INTERNAL_DESIGNREV_DESIGNREV(val)		((val) & 0xF)
+
 /* Registers for function GPADC */
 #define PALMAS_GPADC_TRIM1					0x0
 #define PALMAS_GPADC_TRIM2					0x1
@@ -2683,6 +2722,7 @@ struct palmas_pmic {
 #define PALMAS_GPADC_TRIM14					0xD
 #define PALMAS_GPADC_TRIM15					0xE
 #define PALMAS_GPADC_TRIM16					0xF
+#define PALMAS_GPADC_TRIMINVALID				-1
 
 enum {
 	PALMAS_EXT_CONTROL_ENABLE1	= 0x1,
@@ -2704,6 +2744,28 @@ enum {
 	PALMAS_GPIO7,
 
 	PALMAS_GPIO_NR,
+};
+
+/* Palma GPADC Channels */
+enum {
+	PALMAS_ADC_CH_IN0,
+	PALMAS_ADC_CH_IN1,
+	PALMAS_ADC_CH_IN2,
+	PALMAS_ADC_CH_IN3,
+	PALMAS_ADC_CH_IN4,
+	PALMAS_ADC_CH_IN5,
+	PALMAS_ADC_CH_IN6,
+	PALMAS_ADC_CH_IN7,
+	PALMAS_ADC_CH_IN8,
+	PALMAS_ADC_CH_IN9,
+	PALMAS_ADC_CH_IN10,
+	PALMAS_ADC_CH_IN11,
+	PALMAS_ADC_CH_IN12,
+	PALMAS_ADC_CH_IN13,
+	PALMAS_ADC_CH_IN14,
+	PALMAS_ADC_CH_IN15,
+
+	PALMAS_ADC_CH_MAX,
 };
 
 /* Palma Sleep requestor IDs IDs */
@@ -2739,7 +2801,135 @@ enum {
 	PALMAS_SLEEP_REQSTR_ID_MAX,
 };
 
+/* Palmas Pinmux option */
+enum {
+	PALMAS_PINMUX_GPIO = 0,
+	PALMAS_PINMUX_LED,
+	PALMAS_PINMUX_PWM,
+	PALMAS_PINMUX_REGEN,
+	PALMAS_PINMUX_SYSEN,
+	PALMAS_PINMUX_CLK32KGAUDIO,
+	PALMAS_PINMUX_ID,
+	PALMAS_PINMUX_VBUS_DET,
+	PALMAS_PINMUX_CHRG_DET,
+	PALMAS_PINMUX_VAC,
+	PALMAS_PINMUX_VACOK,
+	PALMAS_PINMUX_POWERGOOD,
+	PALMAS_PINMUX_USB_PSEL,
+	PALMAS_PINMUX_MSECURE,
+	PALMAS_PINMUX_PWRHOLD,
+	PALMAS_PINMUX_INT,
+	PALMAS_PINMUX_DVFS2,
+	PALMAS_PINMUX_DVFS1,
+	PALMAS_PINMUX_NRESWARM,
+	PALMAS_PINMUX_PWRDOWN,
+	PALMAS_PINMUX_GPADC_START,
+	PALMAS_PINMUX_RESET_IN,
+	PALMAS_PINMUX_NSLEEP,
+	PALMAS_PINMUX_ENABLE1,
+	PALMAS_PINMUX_ENABLE2,
+	PALMAS_PINMUX_RESVD = 0x2000,
+	PALMAS_PINMUX_DEFAULT = 0x4000,
+	PALMAS_PINMUX_INVALID = 0x8000,
+};
+
+/* Palmas Pinmux Pullup/pulldown/opendrain configuration. */
+enum {
+	PALMAS_PIN_CONFIG_DEFAULT,
+	PALMAS_PIN_CONFIG_NORMAL,
+	PALMAS_PIN_CONFIG_PULL_UP,
+	PALMAS_PIN_CONFIG_PULL_DOWN,
+
+	PALMAS_PIN_CONFIG_OD_DEFAULT,
+	PALMAS_PIN_CONFIG_OD_ENABLE,
+	PALMAS_PIN_CONFIG_OD_DISABLE,
+};
+
+/* Palmas Pins name */
+enum {
+	PALMAS_PIN_NAME_GPIO0,
+	PALMAS_PIN_NAME_GPIO1,
+	PALMAS_PIN_NAME_GPIO2,
+	PALMAS_PIN_NAME_GPIO3,
+	PALMAS_PIN_NAME_GPIO4,
+	PALMAS_PIN_NAME_GPIO5,
+	PALMAS_PIN_NAME_GPIO6,
+	PALMAS_PIN_NAME_GPIO7,
+	PALMAS_PIN_NAME_VAC,
+	PALMAS_PIN_NAME_POWERGOOD,
+	PALMAS_PIN_NAME_NRESWARM,
+	PALMAS_PIN_NAME_PWRDOWN,
+	PALMAS_PIN_NAME_GPADC_START,
+	PALMAS_PIN_NAME_RESET_IN,
+	PALMAS_PIN_NAME_NSLEEP,
+	PALMAS_PIN_NAME_ENABLE1,
+	PALMAS_PIN_NAME_ENABLE2,
+	PALMAS_PIN_NAME_INT,
+	PALMAS_PIN_NAME_MAX,
+};
+
 extern int palmas_ext_power_req_config(struct palmas *palmas,
 		int id,  int ext_pwr_ctrl, bool enable);
 
+static inline int palmas_read(struct palmas *palmas, unsigned int base,
+		unsigned int reg, unsigned int *val)
+{
+	unsigned int addr =  PALMAS_BASE_TO_REG(base, reg);
+	int slave_id = PALMAS_BASE_TO_SLAVE(base);
+
+	return regmap_read(palmas->regmap[slave_id], addr, val);
+}
+
+static inline int palmas_write(struct palmas *palmas, unsigned int base,
+		unsigned int reg, unsigned int value)
+{
+	unsigned int addr = PALMAS_BASE_TO_REG(base, reg);
+	int slave_id = PALMAS_BASE_TO_SLAVE(base);
+
+	return regmap_write(palmas->regmap[slave_id], addr, value);
+}
+
+static inline int palmas_bulk_write(struct palmas *palmas, unsigned int base,
+	unsigned int reg, const void *val, size_t val_count)
+{
+	unsigned int addr = PALMAS_BASE_TO_REG(base, reg);
+	int slave_id = PALMAS_BASE_TO_SLAVE(base);
+
+	return regmap_bulk_write(palmas->regmap[slave_id], addr,
+			val, val_count);
+}
+
+static inline int palmas_bulk_read(struct palmas *palmas, unsigned int base,
+		unsigned int reg, void *val, size_t val_count)
+{
+	unsigned int addr = PALMAS_BASE_TO_REG(base, reg);
+	int slave_id = PALMAS_BASE_TO_SLAVE(base);
+
+	return regmap_bulk_read(palmas->regmap[slave_id], addr,
+		val, val_count);
+}
+
+static inline int palmas_update_bits(struct palmas *palmas, unsigned int base,
+	unsigned int reg, unsigned int mask, unsigned int val)
+{
+	unsigned int addr = PALMAS_BASE_TO_REG(base, reg);
+	int slave_id = PALMAS_BASE_TO_SLAVE(base);
+
+	return regmap_update_bits(palmas->regmap[slave_id], addr, mask, val);
+}
+
+extern int palmas_irq_get_virq(struct palmas *palmas, int irq);
+
+static inline int palmas_is_es_version_or_less(struct palmas *palmas,
+	int major, int minor)
+{
+	if (palmas->es_major_version < major)
+		return true;
+
+	if ((palmas->es_major_version == major) &&
+		(palmas->es_minor_version <= minor))
+		return true;
+
+	return false;
+}
 #endif /*  __LINUX_MFD_PALMAS_H */

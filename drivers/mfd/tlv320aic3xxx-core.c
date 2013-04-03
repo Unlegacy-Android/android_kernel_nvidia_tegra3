@@ -68,6 +68,14 @@ struct aic3262_gpio aic3262_gpio_control[] = {
 	 },
 };
 
+/*Codec read count limit once*/
+#define CODEC_BULK_READ_MAX 128
+/*Ap read conut limit once*/
+#define CODEC_BULK_READ_LIMIT 63
+
+#define CHECK_AIC3xxx_I2C_SHUTDOWN(a) { if (a && a->shutdown_complete) { \
+dev_err(a->dev, "error: i2c state is 'shutdown'\n"); return -ENODEV; } }
+
 int set_aic3xxx_book(struct aic3xxx *aic3xxx, int book)
 {
 	int ret = 0;
@@ -120,6 +128,7 @@ int aic3xxx_reg_read(struct aic3xxx *aic3xxx, unsigned int reg)
 	offset = aic_reg->aic3xxx_register.offset;
 
 	mutex_lock(&aic3xxx->io_lock);
+	CHECK_AIC3xxx_I2C_SHUTDOWN(aic3xxx)
 	if (aic3xxx->book_no != book) {
 		ret = set_aic3xxx_book(aic3xxx, book);
 		if (ret < 0) {
@@ -157,14 +166,19 @@ int aic3xxx_bulk_read(struct aic3xxx *aic3xxx, unsigned int reg,
 		      int count, u8 *buf)
 {
 	int ret;
+	int count_temp = count;
 	union aic3xxx_reg_union *aic_reg = (union aic3xxx_reg_union *) &reg;
 	u8 book, page, offset;
+
+	if (count > CODEC_BULK_READ_MAX)
+		return -1;
 
 	page = aic_reg->aic3xxx_register.page;
 	book = aic_reg->aic3xxx_register.book;
 	offset = aic_reg->aic3xxx_register.offset;
 
 	mutex_lock(&aic3xxx->io_lock);
+	CHECK_AIC3xxx_I2C_SHUTDOWN(aic3xxx)
 	if (aic3xxx->book_no != book) {
 		ret = set_aic3xxx_book(aic3xxx, book);
 		if (ret < 0) {
@@ -180,7 +194,23 @@ int aic3xxx_bulk_read(struct aic3xxx *aic3xxx, unsigned int reg,
 			return ret;
 		}
 	}
-	ret = regmap_bulk_read(aic3xxx->regmap, offset, buf, count);
+
+	while (count_temp) {
+		if (count_temp > CODEC_BULK_READ_LIMIT) {
+			ret = regmap_bulk_read(aic3xxx->regmap, offset,
+			buf, CODEC_BULK_READ_LIMIT);
+			offset += CODEC_BULK_READ_LIMIT;
+			buf += CODEC_BULK_READ_LIMIT;
+			count_temp -= CODEC_BULK_READ_LIMIT;
+		} else {
+			ret = regmap_bulk_read(aic3xxx->regmap, offset,
+			buf, count_temp);
+			offset += count_temp;
+			buf += count_temp;
+			count_temp -= count_temp;
+		}
+	}
+
 	mutex_unlock(&aic3xxx->io_lock);
 		return ret;
 }
@@ -205,6 +235,7 @@ int aic3xxx_reg_write(struct aic3xxx *aic3xxx, unsigned int reg,
 	offset = aic_reg->aic3xxx_register.offset;
 
 	mutex_lock(&aic3xxx->io_lock);
+	CHECK_AIC3xxx_I2C_SHUTDOWN(aic3xxx)
 	if (book != aic3xxx->book_no) {
 		ret = set_aic3xxx_book(aic3xxx, book);
 		if (ret < 0) {
@@ -246,6 +277,7 @@ int aic3xxx_bulk_write(struct aic3xxx *aic3xxx, unsigned int reg,
 	offset = aic_reg->aic3xxx_register.offset;
 
 	mutex_lock(&aic3xxx->io_lock);
+	CHECK_AIC3xxx_I2C_SHUTDOWN(aic3xxx)
 	if (book != aic3xxx->book_no) {
 		ret = set_aic3xxx_book(aic3xxx, book);
 		if (ret < 0) {
@@ -286,6 +318,7 @@ int aic3xxx_set_bits(struct aic3xxx *aic3xxx, unsigned int reg,
 	offset = aic_reg->aic3xxx_register.offset;
 
 	mutex_lock(&aic3xxx->io_lock);
+	CHECK_AIC3xxx_I2C_SHUTDOWN(aic3xxx)
 	if (book != aic3xxx->book_no) {
 		ret = set_aic3xxx_book(aic3xxx, book);
 		if (ret < 0) {
@@ -332,8 +365,8 @@ int aic3xxx_wait_bits(struct aic3xxx *aic3xxx, unsigned int reg,
 	};
 	if (!counter)
 		dev_err(aic3xxx->dev,
-			"wait_bits timedout (%d millisecs). lastval 0x%x\n",
-			timeout, status);
+			"wait_bits timedout (%d millisecs). lastval 0x%x val 0x%x\n",
+			timeout, status, val);
 	return counter;
 }
 EXPORT_SYMBOL_GPL(aic3xxx_wait_bits);
@@ -416,7 +449,8 @@ int aic3xxx_device_init(struct aic3xxx *aic3xxx, int irq)
 				 aic3xxx->type);
 		aic3xxx->type = TLV320AIC3285;
 	default:
-		dev_err(aic3xxx->dev, "Device is not a TLV320AIC3262");
+		dev_err(aic3xxx->dev, "Device is not a TLV320AIC3262 type=%d",
+			ret);
 		ret = -EINVAL;
 		goto err_return;
 	}
@@ -461,6 +495,7 @@ int aic3xxx_device_init(struct aic3xxx *aic3xxx, int irq)
 			aic3xxx_set_bits(aic3xxx, aic3262_gpio_control[i].reg,
 					 aic3262_gpio_control[i].mask, 0x0);
 	}
+	aic3xxx->suspended = true;
 
 	/* codec interrupt */
 	if (aic3xxx->irq) {

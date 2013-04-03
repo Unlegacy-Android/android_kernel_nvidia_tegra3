@@ -34,10 +34,12 @@
 #include <linux/dmapool.h>
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
+#include <linux/extcon.h>
 #include <linux/workqueue.h>
 #include <linux/err.h>
 #include <linux/io.h>
 #include <linux/pm_qos.h>
+#include <linux/platform_data/tegra_usb.h>
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
@@ -104,6 +106,16 @@ static struct tegra_udc *the_udc;
 	static u8 boost_cpufreq_work_flag;
 #endif
 
+static char *const tegra_udc_extcon_cable[] = {
+	[CONNECT_TYPE_NONE] = "",
+	[CONNECT_TYPE_SDP] = "USB",
+	[CONNECT_TYPE_DCP] = "TA",
+	[CONNECT_TYPE_CDP] = "Charge-downstream",
+	[CONNECT_TYPE_NV_CHARGER] = "Fast-charger",
+	[CONNECT_TYPE_NON_STANDARD_CHARGER] = "Slow-charger",
+	NULL,
+};
+
 static inline void udc_writel(struct tegra_udc *udc, u32 val, u32 offset)
 {
 	writel(val, udc->regs + offset);
@@ -119,7 +131,9 @@ static inline bool vbus_enabled(struct tegra_udc *udc)
 {
 	bool status = false;
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	status = (udc_readl(udc, VBUS_WAKEUP_REG_OFFSET) & USB_SYS_VBUS_STATUS);
+	if (!udc->support_pmu_vbus)
+		status = (udc_readl(udc, VBUS_WAKEUP_REG_OFFSET)
+							& USB_SYS_VBUS_STATUS);
 #else
 	/* On FPGA VBUS is detected through VBUS A Session instead of VBUS
 	 * status.*/
@@ -370,8 +384,20 @@ static void dr_controller_run(struct tegra_udc *udc)
 	temp |= USB_MODE_CTRL_MODE_DEVICE;
 	udc_writel(udc, temp, USB_MODE_REG_OFFSET);
 
+	if (udc->support_pmu_vbus) {
+		temp = udc_readl(udc, VBUS_SENSOR_REG_OFFSET);
+		temp |= (USB_SYS_VBUS_A_VLD_SW_VALUE |
+					USB_SYS_VBUS_A_VLD_SW_EN |
+					USB_SYS_VBUS_ASESSION_VLD_SW_VALUE |
+					USB_SYS_VBUS_ASESSION_VLD_SW_EN);
+		udc_writel(udc, temp, VBUS_SENSOR_REG_OFFSET);
+	}
+
+	/* set interrupt latency to 125 uS (1 uFrame) */
 	/* Set controller to Run */
 	temp = udc_readl(udc, USB_CMD_REG_OFFSET);
+	temp &= ~USB_CMD_ITC;
+	temp |= USB_CMD_ITC_1_MICRO_FRM;
 	if (can_pullup(udc))
 		temp |= USB_CMD_RUN_STOP;
 	else
@@ -1285,40 +1311,89 @@ static int tegra_set_selfpowered(struct usb_gadget *gadget, int is_on)
 	return 0;
 }
 
+static void tegra_udc_set_charger_type(struct tegra_udc *udc,
+		enum tegra_connect_type type)
+{
+	udc->prev_connect_type = udc->connect_type;
+	udc->connect_type = type;
+}
+
+#ifdef CONFIG_EXTCON
+static void tegra_udc_set_extcon_state(struct tegra_udc *udc)
+{
+	const char **cables;
+	struct extcon_dev *edev;
+
+	if (udc->edev == NULL || udc->edev->supported_cable == NULL)
+		return;
+	edev = udc->edev;
+	cables = udc->edev->supported_cable;
+	/* set previous cable type to false, then set current type to true */
+	if (udc->prev_connect_type != CONNECT_TYPE_NONE)
+		extcon_set_cable_state(edev, cables[udc->prev_connect_type],
+					false);
+	if (udc->connect_type != CONNECT_TYPE_NONE)
+		extcon_set_cable_state(edev, cables[udc->connect_type], true);
+}
+#endif
+
 static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 {
 	int max_ua;
+	struct device *dev;
+	int ret;
 
-	if (NULL == udc->vbus_reg)
-		return 0;
-
+	dev = &udc->pdev->dev;
 	switch (udc->connect_type) {
 	case CONNECT_TYPE_NONE:
-		pr_debug("cable/charger is not connected");
+		dev_info(dev, "cable/charger is not connected\n");
 		max_ua = 0;
 		break;
 	case CONNECT_TYPE_SDP:
-		pr_debug("detected SDP port");
-		max_ua = USB_CHARGING_SDP_CURRENT_LIMIT_UA;
+		dev_info(dev, "detected SDP port\n");
+		max_ua = min(udc->current_limit * 1000,
+				USB_CHARGING_SDP_CURRENT_LIMIT_UA);
 		break;
 	case CONNECT_TYPE_DCP:
-		pr_debug("detected DCP port(wall charger)");
+		dev_info(dev, "detected DCP port(wall charger)\n");
 		max_ua = USB_CHARGING_DCP_CURRENT_LIMIT_UA;
 		break;
 	case CONNECT_TYPE_CDP:
-		pr_debug("detected CDP port(1A USB port)");
-		max_ua = USB_CHARGING_CDP_CURRENT_LIMIT_UA;
+		dev_info(dev, "detected CDP port(1A USB port)\n");
+		/*
+		 * if current is more than VBUS suspend current, we draw CDP
+		 * allowed maximum current (override SDP max current which is
+		 * set by the upper level driver).
+		 */
+		if (udc->current_limit > 2)
+			max_ua = USB_CHARGING_CDP_CURRENT_LIMIT_UA;
+		else
+			max_ua = udc->current_limit * 1000;
+		break;
+	case CONNECT_TYPE_NV_CHARGER:
+		dev_info(dev, "detected NV charging port\n");
+		max_ua = USB_CHARGING_NV_CHARGER_CURRENT_LIMIT_UA;
 		break;
 	case CONNECT_TYPE_NON_STANDARD_CHARGER:
-		pr_debug("detected non-standard charging port");
+		dev_info(dev, "detected non-standard charging port\n");
 		max_ua = USB_CHARGING_NON_STANDARD_CHARGER_CURRENT_LIMIT_UA;
 		break;
 	default:
-		pr_debug("detected USB charging type is unknown");
+		dev_info(dev, "detected USB charging type is unknown\n");
 		max_ua = 0;
 	}
 
-	return regulator_set_current_limit(udc->vbus_reg, 0, max_ua);
+	ret = 0;
+	/*
+	 * we set charging regulator's maximum charging current 1st, then
+	 * notify the charging type.
+	 */
+	if (NULL != udc->vbus_reg)
+		ret = regulator_set_current_limit(udc->vbus_reg, 0, max_ua);
+#ifdef CONFIG_EXTCON
+	tegra_udc_set_extcon_state(udc);
+#endif
+	return ret;
 }
 
 static void tegra_detect_charging_type_is_cdp_or_dcp(struct tegra_udc *udc)
@@ -1340,9 +1415,9 @@ static void tegra_detect_charging_type_is_cdp_or_dcp(struct tegra_udc *udc)
 	/* use D+ and D- status to check it is CDP or DCP */
 	portsc = udc_readl(udc, PORTSCX_REG_OFFSET) & PORTSCX_LINE_STATUS_BITS;
 	if (portsc == (PORTSCX_LINE_STATUS_DP_BIT | PORTSCX_LINE_STATUS_DM_BIT))
-		udc->connect_type = CONNECT_TYPE_DCP;
+		tegra_udc_set_charger_type(udc, CONNECT_TYPE_DCP);
 	else if (portsc == PORTSCX_LINE_STATUS_DP_BIT)
-		udc->connect_type = CONNECT_TYPE_CDP;
+		tegra_udc_set_charger_type(udc, CONNECT_TYPE_CDP);
 	else
 		/*
 		 * If it take more 100mS between D+ pull high and read Line
@@ -1352,9 +1427,29 @@ static void tegra_detect_charging_type_is_cdp_or_dcp(struct tegra_udc *udc)
 		 * Bug can be raised here but it is also safe to assume
 		 * as CDP.
 		 */
-		udc->connect_type = CONNECT_TYPE_CDP;
+		tegra_udc_set_charger_type(udc, CONNECT_TYPE_CDP);
 
 	spin_unlock_irqrestore(&udc->lock, flags);
+}
+
+static int tegra_detect_cable_type(struct tegra_udc *udc)
+{
+	if (tegra_usb_phy_charger_detected(udc->phy))
+		tegra_detect_charging_type_is_cdp_or_dcp(udc);
+	else if (tegra_usb_phy_nv_charger_detected(udc->phy))
+		tegra_udc_set_charger_type(udc, CONNECT_TYPE_NV_CHARGER);
+	else
+		tegra_udc_set_charger_type(udc, CONNECT_TYPE_SDP);
+
+	/*
+	 * If it is charger types, we start charging now. If it connect to USB
+	 * host, we let upper gadget driver to decide the current capability.
+	 */
+	if ((udc->connect_type != CONNECT_TYPE_SDP) &&
+		(udc->connect_type != CONNECT_TYPE_CDP))
+			tegra_usb_set_charging_current(udc);
+
+	return 0;
 }
 
 /**
@@ -1370,7 +1465,7 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 
 	if (udc->vbus_active && !is_active) {
 		/* If cable disconnected, cancel any delayed work */
-		cancel_delayed_work(&udc->non_std_charger_work);
+		cancel_delayed_work_sync(&udc->non_std_charger_work);
 		spin_lock_irqsave(&udc->lock, flags);
 		/* reset all internal Queues and inform client driver */
 		reset_queues(udc);
@@ -1379,7 +1474,7 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		dr_controller_reset(udc);
 		udc->vbus_active = 0;
 		udc->usb_state = USB_STATE_DEFAULT;
-		udc->connect_type = CONNECT_TYPE_NONE;
+		tegra_udc_set_charger_type(udc, CONNECT_TYPE_NONE);
 		spin_unlock_irqrestore(&udc->lock, flags);
 		tegra_usb_phy_power_off(udc->phy);
 		tegra_usb_set_charging_current(udc);
@@ -1394,22 +1489,11 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		udc->ep0_state = WAIT_FOR_SETUP;
 		udc->ep0_dir = 0;
 		udc->vbus_active = 1;
-		if (tegra_usb_phy_charger_detected(udc->phy)) {
-			tegra_detect_charging_type_is_cdp_or_dcp(udc);
-		} else {
-			udc->connect_type = CONNECT_TYPE_SDP;
-			/*
-			 * Schedule work to wait for 1000 msec and check for
-			 * a non-standard charger if setup packet is not
-			 * received.
-			 */
-			schedule_delayed_work(&udc->non_std_charger_work,
-				msecs_to_jiffies(
-				USB_CHARGER_DETECTION_WAIT_TIME_MS));
-		}
-		/* start the controller */
-		dr_controller_run(udc);
-		tegra_usb_set_charging_current(udc);
+		tegra_detect_cable_type(udc);
+		/* start the controller if USB host detected */
+		if ((udc->connect_type == CONNECT_TYPE_SDP) ||
+		    (udc->connect_type == CONNECT_TYPE_CDP))
+			dr_controller_run(udc);
 	}
 
 	return 0;
@@ -1428,11 +1512,9 @@ static int tegra_vbus_draw(struct usb_gadget *gadget, unsigned mA)
 	struct tegra_udc *udc;
 
 	udc = container_of(gadget, struct tegra_udc, gadget);
-	/* Do not set current limits for CDP ports */
-	if (udc->connect_type != CONNECT_TYPE_CDP) {
-		udc->current_limit = mA;
-		schedule_work(&udc->current_work);
-	}
+
+	udc->current_limit = mA;
+	schedule_work(&udc->current_work);
 
 	if (udc->transceiver)
 		return usb_phy_set_power(udc->transceiver, mA);
@@ -1454,14 +1536,27 @@ static int tegra_pullup(struct usb_gadget *gadget, int is_on)
 			OTG_STATE_B_PERIPHERAL)
 			return 0;
 
+	/* set interrupt latency to 125 uS (1 uFrame) */
 	tmp = udc_readl(udc, USB_CMD_REG_OFFSET);
-	if (can_pullup(udc))
-		udc_writel(udc, tmp | USB_CMD_RUN_STOP,
-				USB_CMD_REG_OFFSET);
-	else
-		udc_writel(udc, (tmp & ~USB_CMD_RUN_STOP),
-				USB_CMD_REG_OFFSET);
-
+	tmp &= ~USB_CMD_ITC;
+	tmp |= USB_CMD_ITC_1_MICRO_FRM;
+	if (can_pullup(udc)) {
+		udc_writel(udc, tmp | USB_CMD_RUN_STOP, USB_CMD_REG_OFFSET);
+		/*
+		 * We cannot tell difference between a SDP and non-standard
+		 * charger (which has D+/D- line floating) based on line status
+		 * at the time VBUS is detected.
+		 *
+		 * We can schedule a 4s delayed work and verify it is an
+		 * non-standard charger if no setup packet is received after
+		 * enumeration started.
+		 */
+		if (udc->connect_type == CONNECT_TYPE_SDP)
+			schedule_delayed_work(&udc->non_std_charger_work,
+				msecs_to_jiffies(NON_STD_CHARGER_DET_TIME_MS));
+	} else {
+		udc_writel(udc, (tmp & ~USB_CMD_RUN_STOP), USB_CMD_REG_OFFSET);
+	}
 	return 0;
 }
 
@@ -1969,7 +2064,8 @@ static int process_ep_req(struct tegra_udc *udc, int pipe,
 
 	for (j = 0; j < curr_req->dtd_count; j++) {
 		/* Fence read for coherency of AHB master intiated writes */
-		readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
+		if (udc->fence_read)
+			readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
 
 		dma_sync_single_for_cpu(udc->gadget.dev.parent, curr_td->td_dma,
 				sizeof(struct ep_td_struct), DMA_FROM_DEVICE);
@@ -2211,13 +2307,7 @@ static void tegra_udc_set_current_limit_work(struct work_struct *work)
 {
 	struct tegra_udc *udc = container_of(work, struct tegra_udc,
 						current_work);
-	/* check udc regulator is available for drawing vbus current*/
-	if (udc->vbus_reg) {
-		/* set the current limit in uA */
-		regulator_set_current_limit(
-			udc->vbus_reg, 0,
-			udc->current_limit * 1000);
-	}
+	tegra_usb_set_charging_current(udc);
 }
 
 #ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
@@ -2253,7 +2343,7 @@ static void tegra_udc_irq_work(struct work_struct *irq_work)
 /*
  * When VBUS is detected we already know it is DCP/SDP/CDP devices if it is a
  * standard device; If we did not receive EP0 setup packet, we can assuming it
- * is a charger capable of 1.8A charging.
+ * is an non-DCP charger.
  */
 static void tegra_udc_non_std_charger_detect_work(struct work_struct *work)
 {
@@ -2261,7 +2351,10 @@ static void tegra_udc_non_std_charger_detect_work(struct work_struct *work)
 					non_std_charger_work.work);
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
-	udc->connect_type = CONNECT_TYPE_NON_STANDARD_CHARGER;
+	dr_controller_stop(udc);
+
+	tegra_udc_set_charger_type(udc, CONNECT_TYPE_NON_STANDARD_CHARGER);
+
 	tegra_usb_set_charging_current(udc);
 
 	DBG("%s(%d) END\n", __func__, __LINE__);
@@ -2320,7 +2413,8 @@ static irqreturn_t tegra_udc_irq(int irq, void *_udc)
 		goto done;
 
 	/* Fence read for coherency of AHB master intiated writes */
-	readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
+	if (udc->fence_read)
+		readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
 
 	irq_src = udc_readl(udc, USB_STS_REG_OFFSET) &
 				udc_readl(udc, USB_INTR_REG_OFFSET);
@@ -2620,6 +2714,7 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 {
 	struct tegra_udc *udc;
 	struct resource *res;
+	struct tegra_usb_platform_data *pdata;
 	int err = -ENODEV;
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
@@ -2677,6 +2772,15 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 			udc->irq, err);
 		err = 0;
 	}
+	/*Disable fence read if H/W support is disabled*/
+	pdata = dev_get_platdata(&pdev->dev);
+	if (pdata) {
+		if (pdata->unaligned_dma_buf_supported)
+			udc->fence_read = false;
+		else
+			udc->fence_read = true;
+	} else
+		dev_err(&pdev->dev, "failed to get platform_data\n");
 
 	udc->phy = tegra_usb_phy_open(pdev);
 	if (IS_ERR(udc->phy)) {
@@ -2699,7 +2803,8 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 	spin_lock_init(&udc->lock);
 	udc->stopped = 1;
 	udc->pdev = pdev;
-	udc->has_hostpc = tegra_usb_phy_has_hostpc(udc->phy) ? 1 : 0;
+	udc->has_hostpc = pdata->has_hostpc;
+	udc->support_pmu_vbus = pdata->support_pmu_vbus;
 	platform_set_drvdata(pdev, udc);
 
 	/* Initialize the udc structure including QH members */
@@ -2765,7 +2870,7 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 	}
 
 #ifdef CONFIG_USB_OTG_UTILS
-	if (tegra_usb_phy_otg_supported(udc->phy))
+	if (pdata->port_otg)
 		udc->transceiver = usb_get_transceiver();
 #else
 		udc->transceiver = usb_get_transceiver();
@@ -2784,6 +2889,24 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 	/* Power down the phy if cable is not connected */
 	if (!vbus_enabled(udc))
 		tegra_usb_phy_power_off(udc->phy);
+#endif
+
+#ifdef CONFIG_EXTCON
+	/* External connector */
+	udc->edev = kzalloc(sizeof(struct extcon_dev), GFP_KERNEL);
+	if (!udc->edev) {
+		dev_err(&pdev->dev, "failed to allocate memory for extcon\n");
+		err = -ENOMEM;
+		goto err_del_udc;
+	}
+	udc->edev->name = driver_name;
+	udc->edev->supported_cable = (const char **) tegra_udc_extcon_cable;
+	err = extcon_dev_register(udc->edev, &pdev->dev);
+	if (err) {
+		dev_err(&pdev->dev, "failed to register extcon device\n");
+		kfree(udc->edev);
+		udc->edev = NULL;
+	}
 #endif
 
 	DBG("%s(%d) END\n", __func__, __LINE__);
@@ -2825,6 +2948,13 @@ static int __exit tegra_udc_remove(struct platform_device *pdev)
 
 	if (!udc)
 		return -ENODEV;
+
+#ifdef CONFIG_EXTCON
+	if (udc->edev != NULL) {
+		extcon_dev_unregister(udc->edev);
+		kfree(udc->edev);
+	}
+#endif
 
 	usb_del_gadget_udc(&udc->gadget);
 	udc->done = &done;

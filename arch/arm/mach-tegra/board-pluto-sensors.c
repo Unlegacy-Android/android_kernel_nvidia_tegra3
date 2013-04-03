@@ -35,6 +35,7 @@
 #include <media/imx091.h>
 #include <media/imx132.h>
 #include <media/ad5816.h>
+#include <media/ov5640.h>
 #include <asm/mach-types.h>
 
 #include "gpio-names.h"
@@ -106,14 +107,24 @@ static struct max17042_config_data conf_data = {
 };
 
 static unsigned int bat_depl_states[] = {
-	900, 800, 700, 600, 500, 400, 300, 200, 100, 0
+	9900, 9600, 9300, 9000, 8700, 8400, 8100, 7800,
+	7500, 7200, 6900, 6600, 6300, 6000, 5800, 5600,
+	5400, 5200, 5000, 4800, 4600, 4400, 4200, 4000,
+	3800, 3600, 3400, 3200, 3000, 2800, 2600, 2400,
+	2200, 2000, 1900, 1800, 1700, 1600, 1500, 1400,
+	1300, 1200, 1100, 1000,  900,  800,  700,  600,
+	 500,  400,  300,  200,  100,    0
 };
 
 static struct edp_client bat_depl_client = {
 	.states = bat_depl_states,
 	.num_states = ARRAY_SIZE(bat_depl_states),
-	.e0_index = 0,
+	.e0_index = 16,
 	.priority = EDP_MAX_PRIO
+};
+
+struct max17042_rbat_map max17042_rbat_map[] = {
+	{   0, 150000 }
 };
 
 static struct max17042_platform_data max17042_pdata = {
@@ -123,6 +134,7 @@ static struct max17042_platform_data max17042_pdata = {
 	.enable_por_init = 1, /* Use POR init from Maxim appnote */
 	.enable_current_sense = 1,
 	.r_sns = 0,
+	.rbat_map = max17042_rbat_map,
 	.edp_client = &bat_depl_client
 };
 
@@ -152,7 +164,7 @@ static struct nvc_torch_lumi_level_v1 pluto_max77665_lumi_tbl[] = {
 	{15, 1375060},
 };
 
-static unsigned max77665_f_estates[] = {1000, 800, 600, 400, 200, 100, 0};
+static unsigned max77665_f_estates[] = { 3500, 2375, 560, 456, 0 };
 
 static struct max77665_f_platform_data pluto_max77665_flash_pdata = {
 	.config		= {
@@ -168,6 +180,10 @@ static struct max77665_f_platform_data pluto_max77665_flash_pdata = {
 		/* .flash_on_torch         = true, */
 		.max_total_current_mA	= 1000,
 		.max_peak_current_mA	= 600,
+		.max_flash_threshold_mV	= 3400,
+		.max_flash_hysteresis_mV = 200,
+		.max_flash_lbdly_f_uS	= 256,
+		.max_flash_lbdly_r_uS	= 256,
 		.led_config[0] = {
 			.flash_torch_ratio = 18100,
 			.granularity = 1000,
@@ -190,8 +206,8 @@ static struct max77665_f_platform_data pluto_max77665_flash_pdata = {
 	.edpc_config	= {
 		.states = max77665_f_estates,
 		.num_states = ARRAY_SIZE(max77665_f_estates),
-		.e0_index = 3,
-		.priority = EDP_MAX_PRIO - 2,
+		.e0_index = ARRAY_SIZE(max77665_f_estates) - 1,
+		.priority = EDP_MAX_PRIO + 2,
 		},
 };
 
@@ -209,7 +225,7 @@ static struct max77665_haptic_platform_data max77665_haptic_pdata = {
 	.cont_mode = MAX77665_CONT_MODE,
 	.motor_startup_val = 0,
 	.scf_val = 2,
-	.edp_states = {90, 0},
+	.edp_states = { 360, 0 },
 };
 
 static struct max77665_charger_cable maxim_cable[] = {
@@ -244,7 +260,7 @@ static struct max77665_charger_plat_data max77665_charger = {
 };
 
 static struct max77665_muic_platform_data max77665_muic = {
-	.irq_base = 0,
+	.ext_conn_name = "MAX77665_MUIC_ID",
 };
 
 static struct max77665_platform_data pluto_max77665_pdata = {
@@ -283,25 +299,64 @@ static struct i2c_board_info pluto_i2c1_isl_board_info[] = {
 };
 
 static struct throttle_table tj_throttle_table[] = {
-	{      0, 1000 },
-	{  51000, 1000 },
-	{ 102000, 1000 },
-	{ 204000, 1000 },
-	{ 252000, 1000 },
-	{ 288000, 1000 },
-	{ 372000, 1000 },
-	{ 468000, 1000 },
-	{ 510000, 1000 },
-	{ 612000, 1000 },
-	{ 714000, 1050 },
-	{ 816000, 1050 },
-	{ 918000, 1050 },
-	{1020000, 1100 },
-	{1122000, 1100 },
-	{1224000, 1100 },
-	{1326000, 1100 },
-	{1428000, 1100 },
-	{1530000, 1100 },
+	/* CPU_THROT_LOW cannot be used by other than CPU */
+	/*      CPU,  C2BUS,  C3BUS,   SCLK,    EMC   */
+	{ { 1810500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1785000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1759500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1734000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1708500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1683000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1657500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1632000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1606500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1581000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1555500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1530000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1504500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1479000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1453500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1428000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1402500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1377000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1351500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1326000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1300500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1275000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1249500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1224000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1198500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1173000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1147500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1122000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1096500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1071000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1045500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1020000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  994500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  969000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  943500, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  918000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  892500, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  867000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  841500, 564000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  816000, 564000, NO_CAP, NO_CAP, 792000 } },
+	{ {  790500, 564000, NO_CAP, 372000, 792000 } },
+	{ {  765000, 564000, 468000, 372000, 792000 } },
+	{ {  739500, 528000, 468000, 372000, 792000 } },
+	{ {  714000, 528000, 468000, 336000, 792000 } },
+	{ {  688500, 528000, 420000, 336000, 792000 } },
+	{ {  663000, 492000, 420000, 336000, 792000 } },
+	{ {  637500, 492000, 420000, 336000, 408000 } },
+	{ {  612000, 492000, 420000, 300000, 408000 } },
+	{ {  586500, 492000, 360000, 336000, 408000 } },
+	{ {  561000, 420000, 420000, 300000, 408000 } },
+	{ {  535500, 420000, 360000, 228000, 408000 } },
+	{ {  510000, 420000, 288000, 228000, 408000 } },
+	{ {  484500, 324000, 288000, 228000, 408000 } },
+	{ {  459000, 324000, 288000, 228000, 408000 } },
+	{ {  433500, 324000, 288000, 228000, 408000 } },
+	{ {  408000, 324000, 288000, 228000, 408000 } },
 };
 
 static struct balanced_throttle tj_throttle = {
@@ -320,22 +375,20 @@ module_init(pluto_throttle_init);
 static struct nct1008_platform_data pluto_nct1008_pdata = {
 	.supported_hwrev = true,
 	.ext_range = true,
-	.conv_rate = 0x08,
+	.conv_rate = 0x06, /* 4Hz conversion rate */
 	.offset = 0,
-	.shutdown_ext_limit = 85, /* C */
+	.shutdown_ext_limit = 105, /* C */
 	.shutdown_local_limit = 120, /* C */
-
-	.passive_delay = 2000,
 
 	.num_trips = 1,
 	.trips = {
-		/* Thermal Throttling */
-		[0] = {
-			.cdev_type = "tegra-balanced",
-			.trip_temp = 75000,
-			.trip_type = THERMAL_TRIP_PASSIVE,
-			.state = THERMAL_NO_LIMIT,
-			.hysteresis = 0,
+		{
+			.cdev_type = "suspend_soctherm",
+			.trip_temp = 50000,
+			.trip_type = THERMAL_TRIP_ACTIVE,
+			.upper = 1,
+			.lower = 1,
+			.hysteresis = 5000,
 		},
 	},
 };
@@ -482,7 +535,7 @@ static int pluto_imx091_power_on(struct nvc_regulator *vreg)
 		goto imx091_vcm_fail;
 	usleep_range(300, 310);
 
-	return 0;
+	return 1;
 
 imx091_vcm_fail:
 	regulator_disable(pluto_i2cvdd);
@@ -517,8 +570,10 @@ static int pluto_imx091_power_off(struct nvc_regulator *vreg)
 	regulator_disable(vreg[IMX091_VREG_IOVDD].vreg);
 	regulator_disable(vreg[IMX091_VREG_DVDD].vreg);
 	regulator_disable(vreg[IMX091_VREG_AVDD].vreg);
-	regulator_disable(pluto_i2cvdd);
-	regulator_disable(pluto_vcmvdd);
+	if (pluto_i2cvdd)
+		regulator_disable(pluto_i2cvdd);
+	if (pluto_vcmvdd)
+		regulator_disable(pluto_vcmvdd);
 
 	return 0;
 }
@@ -532,7 +587,7 @@ static struct nvc_imager_cap imx091_cap = {
 	.initial_clock_rate_khz	= 6000,
 	.clock_profiles[0] = {
 		.external_clock_khz	= 24000,
-		.clock_multiplier	= 10416667, /* value / 1,000,000 */
+		.clock_multiplier	= 850000, /* value / 1,000,000 */
 	},
 	.clock_profiles[1] = {
 		.external_clock_khz	= 0,
@@ -554,7 +609,7 @@ static struct nvc_imager_cap imx091_cap = {
 	.cap_version		= NVC_IMAGER_CAPABILITIES_VERSION2,
 };
 
-static unsigned imx091_estates[] = {200, 100, 2};
+static unsigned imx091_estates[] = { 876, 656, 220, 0 };
 
 static struct imx091_platform_data imx091_pdata = {
 	.num			= 0,
@@ -570,8 +625,8 @@ static struct imx091_platform_data imx091_pdata = {
 	.edpc_config	= {
 		.states = imx091_estates,
 		.num_states = ARRAY_SIZE(imx091_estates),
-		.e0_index = 0,
-		.priority = EDP_MAX_PRIO - 1,
+		.e0_index = ARRAY_SIZE(imx091_estates) - 1,
+		.priority = EDP_MAX_PRIO + 1,
 		},
 	.power_on		= pluto_imx091_power_on,
 	.power_off		= pluto_imx091_power_off,
@@ -673,6 +728,97 @@ static struct ad5816_platform_data pluto_ad5816_pdata = {
 	.power_off	= pluto_focuser_power_off,
 };
 
+static struct regulator *dvdd_1v8;
+static struct regulator *avdd_cam2;
+static struct regulator *vdd_af1;
+static int pluto_ov5640_power_on(struct device *dev)
+{
+	if (avdd_cam2 == NULL) {
+		avdd_cam2 = regulator_get(dev, "avdd_cam2");
+		if (WARN_ON(IS_ERR(avdd_cam2))) {
+			pr_err("%s: couldn't get regulator avdd_cam2: %ld\n",
+				__func__, PTR_ERR(avdd_cam2));
+			avdd_cam2 = NULL;
+			goto avdd_cam2_fail;
+		}
+	}
+	if (dvdd_1v8 == NULL) {
+		dvdd_1v8 = regulator_get(dev, "vdd_1v8_cam12");
+		if (WARN_ON(IS_ERR(dvdd_1v8))) {
+			pr_err("%s: couldn't get regulator vdd_1v8_cam: %ld\n",
+				__func__, PTR_ERR(dvdd_1v8));
+			dvdd_1v8 = NULL;
+			goto dvdd_1v8_fail;
+		}
+	}
+
+	if (vdd_af1 == NULL) {
+		vdd_af1 = regulator_get(dev, "vdd_af_cam1");
+		if (WARN_ON(IS_ERR(vdd_af1))) {
+			pr_err("%s: couldn't get regulator vdd_af_cam1: %ld\n",
+				__func__, PTR_ERR(vdd_af1));
+			vdd_af1 = NULL;
+			goto vdd_af1_fail;
+		}
+	}
+
+	/* power up sequence */
+	gpio_set_value(CAM2_POWER_DWN_GPIO, 1);
+	gpio_set_value(CAM_RSTN, 0);
+	mdelay(1);
+
+	regulator_enable(vdd_af1);
+	regulator_enable(dvdd_1v8);
+	regulator_enable(avdd_cam2);
+
+	tegra_pinmux_config_table(&pbb0_enable, 1);
+
+	mdelay(5);
+	gpio_set_value(CAM2_POWER_DWN_GPIO, 0);
+	mdelay(1);
+	gpio_set_value(CAM_RSTN, 1);
+
+	mdelay(20);
+
+	return 0;
+
+vdd_af1_fail:
+	regulator_disable(dvdd_1v8);
+dvdd_1v8_fail:
+	regulator_disable(avdd_cam2);
+avdd_cam2_fail:
+	return -ENODEV;
+}
+
+static int pluto_ov5640_power_off(struct device *dev)
+{
+	gpio_set_value(CAM_RSTN, 0);
+
+	tegra_pinmux_config_table(&pbb0_disable, 1);
+
+	if (avdd_cam2)
+		regulator_disable(avdd_cam2);
+	if (dvdd_1v8)
+		regulator_disable(dvdd_1v8);
+	if (vdd_af1)
+		regulator_disable(vdd_af1);
+	gpio_set_value(CAM2_POWER_DWN_GPIO, 1);
+
+	return 0;
+}
+
+struct ov5640_platform_data pluto_ov5640_data = {
+	.power_on = pluto_ov5640_power_on,
+	.power_off = pluto_ov5640_power_off,
+};
+
+static struct i2c_board_info pluto_board_info_ov5640[] = {
+	{
+		I2C_BOARD_INFO("ov5640", 0x3c),
+		.platform_data = &pluto_ov5640_data,
+	}
+};
+
 static struct i2c_board_info pluto_i2c_board_info_e1625[] = {
 	{
 		I2C_BOARD_INFO("imx091", 0x10),
@@ -688,6 +834,58 @@ static struct i2c_board_info pluto_i2c_board_info_e1625[] = {
 	},
 };
 
+/* Detect ov5640 adapter by toggling the CAM_GPIO1 and read it back
+ * from CAM_GPIO2.
+ * On the ov5640 adapter board (E1633) for pluto, pin 5 & 6 of connector J9
+ * should be shorted.
+ */
+static int ov5640_installed(void)
+{
+	int val;
+	int ret;
+
+	ret = gpio_request(CAM_GPIO1, "camera_gpio1");
+	if (ret < 0) {
+		pr_err("%s, gpio_request failed for CAM_GPIO1\n", __func__);
+		return 0;
+	}
+
+	ret = gpio_request(CAM_GPIO2, "camera_gpio2");
+	if (ret < 0) {
+		pr_err("%s, gpio_request failed for CAM_GPIO2\n", __func__);
+		gpio_free(CAM_GPIO1);
+		return 0;
+	}
+
+	gpio_direction_output(CAM_GPIO1, 1);
+	gpio_direction_input(CAM_GPIO2);
+
+	val = gpio_get_value(CAM_GPIO1);
+	ret = gpio_get_value(CAM_GPIO2);
+	pr_info("%s round 1: %d vs %d\n", __func__, val, ret);
+	if (ret != val) {
+		gpio_free(CAM_GPIO1);
+		gpio_free(CAM_GPIO2);
+		return 0;
+	}
+
+	/* toggle CAM_GPIO1 and read back from detect pin */
+	val ^= 1;
+	gpio_set_value(CAM_GPIO1, val & 1);
+	ret = gpio_get_value(CAM_GPIO2);
+	/* resume CAM_GPIO1 state */
+	gpio_set_value(CAM_GPIO1, (~val) & 1);
+
+	gpio_free(CAM_GPIO2);
+	gpio_free(CAM_GPIO1);
+
+	pr_info("%s round 2: %d vs %d\n", __func__, val, ret);
+	if (ret != val)
+		return 0;
+
+	return 1;
+}
+
 static int pluto_camera_init(void)
 {
 	pr_debug("%s: ++\n", __func__);
@@ -695,8 +893,13 @@ static int pluto_camera_init(void)
 	tegra_pinmux_config_table(&mclk_disable, 1);
 	tegra_pinmux_config_table(&pbb0_disable, 1);
 
-	i2c_register_board_info(2, pluto_i2c_board_info_e1625,
-		ARRAY_SIZE(pluto_i2c_board_info_e1625));
+	if (ov5640_installed()) {
+		pr_info("%s ov5640 installed.\n", __func__);
+		i2c_register_board_info(2, pluto_board_info_ov5640,
+			ARRAY_SIZE(pluto_board_info_ov5640));
+	} else
+		i2c_register_board_info(2, pluto_i2c_board_info_e1625,
+			ARRAY_SIZE(pluto_i2c_board_info_e1625));
 
 	return 0;
 }
@@ -706,18 +909,38 @@ static struct mpu_platform_data mpu_gyro_data = {
 	.int_config	= 0x00,
 	.level_shifter	= 0,
 	.orientation	= MPU_GYRO_ORIENTATION,
-	.sec_slave_type	= SECONDARY_SLAVE_TYPE_COMPASS,
-	.sec_slave_id	= COMPASS_ID_AK8963,
-	.secondary_i2c_addr	= MPU_COMPASS_ADDR,
-	.secondary_orientation	= MPU_COMPASS_ORIENTATION,
+	.sec_slave_type	= SECONDARY_SLAVE_TYPE_NONE,
 	.key		= {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
 			   0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
+};
+
+static struct mpu_platform_data mpu_compass_data = {
+	.orientation	= MPU_COMPASS_ORIENTATION,
+	.config		= NVI_CONFIG_BOOT_MPU,
+};
+
+static struct mpu_platform_data bmp180_pdata = {
+	.config		= NVI_CONFIG_BOOT_MPU,
 };
 
 static struct i2c_board_info __initdata inv_mpu_i2c0_board_info[] = {
 	{
 		I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
 		.platform_data = &mpu_gyro_data,
+	},
+	{
+		/* The actual BMP180 address is 0x77 but because this conflicts
+		 * with another device, this address is hacked so Linux will
+		 * call the driver.  The conflict is technically okay since the
+		 * BMP180 is behind the MPU.  Also, the BMP180 driver uses a
+		 * hard-coded address of 0x77 since it can't be changed anyway.
+		 */
+		I2C_BOARD_INFO("bmp180", 0x78),
+		.platform_data = &bmp180_pdata,
+	},
+	{
+		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
+		.platform_data = &mpu_compass_data,
 	},
 };
 
@@ -766,8 +989,6 @@ static int pluto_nct1008_init(void)
 			board_info.board_id);
 	}
 
-	tegra_platform_edp_init(pluto_nct1008_pdata.trips,
-				&pluto_nct1008_pdata.num_trips);
 	tegra_add_cdev_trips(pluto_nct1008_pdata.trips,
 				&pluto_nct1008_pdata.num_trips);
 
@@ -794,78 +1015,111 @@ static int pluto_nct1008_init(void)
 }
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
-static int tegra_skin_match(struct thermal_zone_device *thz, void *data)
-{
-	return strcmp((char *)data, thz->type) == 0;
-}
+static struct thermal_trip_info skin_trips[] = {
+	{
+		.cdev_type = "skin-balanced",
+		.trip_temp = 45000,
+		.trip_type = THERMAL_TRIP_PASSIVE,
+		.upper = THERMAL_NO_LIMIT,
+		.lower = THERMAL_NO_LIMIT,
+		.hysteresis = 0,
+	},
+};
 
-static int tegra_skin_get_temp(void *data, long *temp)
-{
-	struct thermal_zone_device *thz;
-
-	thz = thermal_zone_device_find(data, tegra_skin_match);
-
-	if (!thz || thz->ops->get_temp(thz, temp))
-		*temp = 25000;
-
-	return 0;
-}
+static struct therm_est_subdevice skin_devs[] = {
+	{
+		.dev_data = "nct_ext",
+		.coeffs = {
+			2, 1, 1, 1,
+			1, 1, 1, 1,
+			1, 1, 1, 0,
+			1, 1, 0, 0,
+			0, 0, -1, -7
+		},
+	},
+	{
+		.dev_data = "nct_int",
+		.coeffs = {
+			-11, -7, -5, -3,
+			-3, -2, -1, 0,
+			0, 0, 1, 1,
+			1, 2, 2, 3,
+			4, 6, 11, 18
+		},
+	},
+};
 
 static struct therm_est_data skin_data = {
-	.cdev_type = "skin-balanced",
+	.num_trips = ARRAY_SIZE(skin_trips),
+	.trips = skin_trips,
 	.toffset = 9793,
 	.polling_period = 1100,
-	.ndevs = 2,
-	.tc1 = 5,
+	.passive_delay = 15000,
+	.tc1 = 10,
 	.tc2 = 1,
-	.devs = {
-			{
-				.dev_data = "nct_ext",
-				.get_temp = tegra_skin_get_temp,
-				.coeffs = {
-					2, 1, 1, 1,
-					1, 1, 1, 1,
-					1, 1, 1, 0,
-					1, 1, 0, 0,
-					0, 0, -1, -7
-				},
-			},
-			{
-				.dev_data = "nct_int",
-				.get_temp = tegra_skin_get_temp,
-				.coeffs = {
-					-11, -7, -5, -3,
-					-3, -2, -1, 0,
-					0, 0, 1, 1,
-					1, 2, 2, 3,
-					4, 6, 11, 18
-				},
-			},
-	},
-	.trip_temp = 43000,
-	.passive_delay = 5000,
+	.ndevs = ARRAY_SIZE(skin_devs),
+	.devs = skin_devs,
 };
 
 static struct throttle_table skin_throttle_table[] = {
-	{      0, 1000 },
-	{  51000, 1000 },
-	{ 102000, 1000 },
-	{ 204000, 1000 },
-	{ 252000, 1000 },
-	{ 288000, 1000 },
-	{ 372000, 1000 },
-	{ 468000, 1000 },
-	{ 510000, 1000 },
-	{ 612000, 1000 },
-	{ 714000, 1050 },
-	{ 816000, 1050 },
-	{ 918000, 1050 },
-	{1020000, 1100 },
-	{1122000, 1100 },
-	{1224000, 1100 },
-	{1326000, 1100 },
-	{1428000, 1100 },
-	{1530000, 1100 },
+	/* CPU_THROT_LOW cannot be used by other than CPU */
+	/*      CPU,  C2BUS,  C3BUS,   SCLK,    EMC   */
+	{ { 1810500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1785000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1759500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1734000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1708500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1683000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1657500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1632000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1606500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1581000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1555500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1530000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1504500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1479000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1453500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1428000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1402500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1377000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1351500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1326000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1300500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1275000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1249500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1224000, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1198500, NO_CAP, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1173000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1147500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1122000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1096500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1071000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1045500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ { 1020000, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  994500, 636000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  969000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  943500, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  918000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  892500, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  867000, 600000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  841500, 564000, NO_CAP, NO_CAP, NO_CAP } },
+	{ {  816000, 564000, NO_CAP, NO_CAP, 792000 } },
+	{ {  790500, 564000, NO_CAP, 372000, 792000 } },
+	{ {  765000, 564000, 468000, 372000, 792000 } },
+	{ {  739500, 528000, 468000, 372000, 792000 } },
+	{ {  714000, 528000, 468000, 336000, 792000 } },
+	{ {  688500, 528000, 420000, 336000, 792000 } },
+	{ {  663000, 492000, 420000, 336000, 792000 } },
+	{ {  637500, 492000, 420000, 336000, 408000 } },
+	{ {  612000, 492000, 420000, 300000, 408000 } },
+	{ {  586500, 492000, 360000, 336000, 408000 } },
+	{ {  561000, 420000, 420000, 300000, 408000 } },
+	{ {  535500, 420000, 360000, 228000, 408000 } },
+	{ {  510000, 420000, 288000, 228000, 408000 } },
+	{ {  484500, 324000, 288000, 228000, 408000 } },
+	{ {  459000, 324000, 288000, 228000, 408000 } },
+	{ {  433500, 324000, 288000, 228000, 408000 } },
+	{ {  408000, 324000, 288000, 228000, 408000 } },
 };
 
 static struct balanced_throttle skin_throttle = {

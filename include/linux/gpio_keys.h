@@ -25,8 +25,8 @@ struct gpio_keys_platform_data {
 	unsigned int rep:1;		/* enable input subsystem auto repeat */
 	int (*enable)(struct device *dev);
 	void (*disable)(struct device *dev);
-	const char *name;		/* input device name */
 	int (*wakeup_key)(void);
+	const char *name;		/* input device name */
 };
 
 #endif

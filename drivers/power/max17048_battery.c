@@ -2,7 +2,7 @@
  *  max17048_battery.c
  *  fuel-gauge systems for lithium-ion (Li+) batteries
  *
- *  Copyright (C) 2012 Nvidia Cooperation
+ *  Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved
  *  Chandler Zhang <chazhang@nvidia.com>
  *  Syed Rafiuddin <srafiuddin@nvidia.com>
  *
@@ -71,12 +71,22 @@ struct max17048_chip {
 	int lasttime_status;
 	int use_usb:1;
 	int use_ac:1;
+	int shutdown_complete;
+	struct mutex mutex;
 };
 struct max17048_chip *max17048_data;
 
 static int max17048_write_word(struct i2c_client *client, int reg, u16 value)
 {
+	struct max17048_chip *chip = i2c_get_clientdata(client);
 	int ret;
+
+	mutex_lock(&chip->mutex);
+	if (chip && chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return -ENODEV;
+	}
+
 
 	ret = i2c_smbus_write_word_data(client, reg, swab16(value));
 
@@ -84,22 +94,56 @@ static int max17048_write_word(struct i2c_client *client, int reg, u16 value)
 		dev_err(&client->dev, "%s(): Failed in writing register"
 					"0x%02x err %d\n", __func__, reg, ret);
 
+	mutex_unlock(&chip->mutex);
 	return ret;
 }
 
-static int max17048_read_word(struct i2c_client *client, int reg)
+
+static int max17048_write_block(const struct i2c_client *client,
+		uint8_t command, uint8_t length, const uint8_t *values)
 {
+	struct max17048_chip *chip = i2c_get_clientdata(client);
 	int ret;
 
-	ret = i2c_smbus_read_word_data(client, reg);
+	mutex_lock(&chip->mutex);
+	if (chip && chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return -ENODEV;
+	}
 
+	ret = i2c_smbus_write_i2c_block_data(client, command, length, values);
+	if (ret < 0)
+		dev_err(&client->dev, "%s(): Failed in writing block data to"
+				"0x%02x err %d\n", __func__, command, ret);
+	mutex_unlock(&chip->mutex);
+	return ret;
+}
+
+
+static int max17048_read_word(struct i2c_client *client, int reg)
+{
+	struct max17048_chip *chip = i2c_get_clientdata(client);
+	int ret;
+
+	mutex_lock(&chip->mutex);
+	if (chip && chip->shutdown_complete) {
+		mutex_unlock(&chip->mutex);
+		return -ENODEV;
+	}
+
+	ret = i2c_smbus_read_word_data(client, reg);
 	if (ret < 0) {
 		dev_err(&client->dev, "%s(): Failed in reading register"
 					"0x%02x err %d\n", __func__, reg, ret);
+
+		mutex_unlock(&chip->mutex);
 		return ret;
 	} else {
 		ret = (int)swab16((uint16_t)(ret & 0x0000ffff));
+
+		mutex_unlock(&chip->mutex);
 		return ret;
+
 	}
 }
 
@@ -111,6 +155,9 @@ static int max17048_get_property(struct power_supply *psy,
 				struct max17048_chip, battery);
 
 	switch (psp) {
+	case POWER_SUPPLY_PROP_TECHNOLOGY:
+		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
+		break;
 	case POWER_SUPPLY_PROP_STATUS:
 		val->intval = chip->status;
 		break;
@@ -185,7 +232,7 @@ static void max17048_get_soc(struct i2c_client *client)
 	else
 		chip->soc = (uint16_t)soc >> 9;
 
-	if (chip->soc > MAX17048_BATTERY_FULL) {
+	if (chip->soc >= MAX17048_BATTERY_FULL) {
 		chip->soc = MAX17048_BATTERY_FULL;
 		chip->status = POWER_SUPPLY_STATUS_FULL;
 		chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_FULL;
@@ -201,7 +248,7 @@ static void max17048_get_soc(struct i2c_client *client)
 
 static uint16_t max17048_get_version(struct i2c_client *client)
 {
-	return swab16(i2c_smbus_read_word_data(client, MAX17048_VER));
+	return swab16(max17048_read_word(client, MAX17048_VER));
 }
 
 static void max17048_work(struct work_struct *work)
@@ -223,6 +270,7 @@ static void max17048_work(struct work_struct *work)
 
 		power_supply_changed(&chip->battery);
 	}
+
 	schedule_delayed_work(&chip->work, MAX17048_DELAY);
 }
 
@@ -253,6 +301,7 @@ void max17048_battery_status(int status,
 EXPORT_SYMBOL_GPL(max17048_battery_status);
 
 static enum power_supply_property max17048_battery_props[] = {
+	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_CAPACITY,
@@ -275,8 +324,8 @@ static int max17048_write_rcomp_seg(struct i2c_client *client,
 	int ret;
 	uint8_t rcomp_seg_table[16];
 
-	rs2 = rcomp_seg | 0x00FF;
-	rs1 = rcomp_seg >> 8;
+	rs2 = (rcomp_seg >> 8) & 0xff;
+	rs1 = rcomp_seg & 0xff;
 
 	rcomp_seg_table[0] = rcomp_seg_table[2] = rcomp_seg_table[4] =
 		rcomp_seg_table[6] = rcomp_seg_table[8] = rcomp_seg_table[10] =
@@ -286,14 +335,14 @@ static int max17048_write_rcomp_seg(struct i2c_client *client,
 		rcomp_seg_table[7] = rcomp_seg_table[9] = rcomp_seg_table[11] =
 			rcomp_seg_table[13] = rcomp_seg_table[15] = rs2;
 
-	ret = i2c_smbus_write_i2c_block_data(client, MAX17048_RCOMPSEG1,
+	ret = max17048_write_block(client, MAX17048_RCOMPSEG1,
 				16, (uint8_t *)rcomp_seg_table);
 	if (ret < 0) {
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
 		return ret;
 	}
 
-	ret = i2c_smbus_write_i2c_block_data(client, MAX17048_RCOMPSEG2,
+	ret = max17048_write_block(client, MAX17048_RCOMPSEG2,
 				16, (uint8_t *)rcomp_seg_table);
 	if (ret < 0) {
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
@@ -325,7 +374,7 @@ static int max17048_load_model_data(struct max17048_chip *chip)
 
 	/* write custom model data */
 	for (i = 0; i < 4; i += 1) {
-		if (i2c_smbus_write_i2c_block_data(client,
+		if (max17048_write_block(client,
 			(MAX17048_TABLE+i*16), 16,
 				&mdata->data_tbl[i*0x10]) < 0) {
 			dev_err(&client->dev, "%s: error writing model data:\n",
@@ -389,8 +438,8 @@ static int max17048_load_model_data(struct max17048_chip *chip)
 
 static int max17048_initialize(struct max17048_chip *chip)
 {
-	uint8_t ret, config, status;
-	uint16_t wrt_status;
+	uint8_t ret;
+	uint8_t config = 0;
 	struct i2c_client *client = chip->client;
 	struct max17048_battery_model *mdata = chip->pdata->model_data;
 
@@ -411,7 +460,8 @@ static int max17048_initialize(struct max17048_chip *chip)
 		config = 32 - (mdata->alert_threshold * 2);
 	else if (mdata->bits == 18)
 		config = 32 - mdata->alert_threshold;
-
+	else
+		dev_info(&client->dev, "Alert bit not set!");
 	config = mdata->one_percent_alerts | config;
 
 	ret = max17048_write_word(client, MAX17048_CONFIG,
@@ -424,25 +474,7 @@ static int max17048_initialize(struct max17048_chip *chip)
 	if (ret < 0)
 		return ret;
 
-	/* Hibernate configuration */
-	ret = max17048_write_word(client, MAX17048_HIBRT, mdata->hibernate);
-	if (ret < 0)
-		return ret;
-
 	ret = max17048_write_word(client, MAX17048_VRESET, mdata->vreset);
-	if (ret < 0)
-		return ret;
-
-	/* clears the reset indicator */
-	ret = max17048_read_word(client, MAX17048_STATUS);
-	if (ret < 0)
-		return ret;
-
-	/* Sets the EnVR bit if selected */
-	status = (ret & 0xFE) | mdata->alert_on_reset;
-	wrt_status = status << 8;
-
-	ret = max17048_write_word(client, MAX17048_STATUS, wrt_status);
 	if (ret < 0)
 		return ret;
 
@@ -487,6 +519,8 @@ static int __devinit max17048_probe(struct i2c_client *client,
 	chip->ac_online = 0;
 	chip->usb_online = 0;
 	max17048_data = chip;
+	mutex_init(&chip->mutex);
+	chip->shutdown_complete = 0;
 	i2c_set_clientdata(client, chip);
 
 	version = max17048_check_battery();
@@ -507,6 +541,7 @@ static int __devinit max17048_probe(struct i2c_client *client,
 	chip->battery.get_property	= max17048_get_property;
 	chip->battery.properties	= max17048_battery_props;
 	chip->battery.num_properties	= ARRAY_SIZE(max17048_battery_props);
+	chip->status			= POWER_SUPPLY_STATUS_DISCHARGING;
 
 	ret = power_supply_register(&client->dev, &chip->battery);
 	if (ret) {
@@ -551,6 +586,7 @@ error:
 error1:
 	power_supply_unregister(&chip->battery);
 error2:
+	mutex_destroy(&chip->mutex);
 	kfree(chip);
 	return ret;
 }
@@ -562,9 +598,22 @@ static int __devexit max17048_remove(struct i2c_client *client)
 	power_supply_unregister(&chip->battery);
 	power_supply_unregister(&chip->usb);
 	power_supply_unregister(&chip->ac);
-	cancel_delayed_work(&chip->work);
+	cancel_delayed_work_sync(&chip->work);
+	mutex_destroy(&chip->mutex);
 	kfree(chip);
+
 	return 0;
+}
+
+static void max17048_shutdown(struct i2c_client *client)
+{
+	struct max17048_chip *chip = i2c_get_clientdata(client);
+
+	cancel_delayed_work_sync(&chip->work);
+	mutex_lock(&chip->mutex);
+	chip->shutdown_complete = 1;
+	mutex_unlock(&chip->mutex);
+
 }
 
 #ifdef CONFIG_PM
@@ -575,8 +624,7 @@ static int max17048_suspend(struct i2c_client *client,
 	struct max17048_chip *chip = i2c_get_clientdata(client);
 	int ret;
 
-	cancel_delayed_work(&chip->work);
-
+	cancel_delayed_work_sync(&chip->work);
 	ret = max17048_write_word(client, MAX17048_HIBRT, 0xffff);
 	if (ret < 0) {
 		dev_err(&client->dev, "failed in entering hibernate mode\n");
@@ -598,7 +646,8 @@ static int max17048_resume(struct i2c_client *client)
 		return ret;
 	}
 
-	schedule_work(&chip->work);
+	schedule_delayed_work(&chip->work, MAX17048_DELAY);
+
 	return 0;
 }
 
@@ -624,6 +673,7 @@ static struct i2c_driver max17048_i2c_driver = {
 	.suspend	= max17048_suspend,
 	.resume		= max17048_resume,
 	.id_table	= max17048_id,
+	.shutdown	= max17048_shutdown,
 };
 
 static int __init max17048_init(void)

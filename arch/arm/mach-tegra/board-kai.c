@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-kai.c
  *
- * Copyright (c) 2012, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -529,8 +529,6 @@ static struct platform_device *kai_devices[] __initdata = {
 	&tegra_rtc_device,
 	&tegra_udc_device,
 	&tegra_wdt0_device,
-	&tegra_wdt1_device,
-	&tegra_wdt2_device,
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
@@ -579,6 +577,7 @@ struct rm_spi_ts_platform_data rm31080ts_kai_007_data = {
 	.config = 0,
 	.platform_id = RM_PLATFORM_K007,
 	.name_of_clock = NULL,
+	.name_of_clock_con = NULL,
 };
 
 struct rm_spi_ts_platform_data rm31080ts_kai_107_data = {
@@ -586,6 +585,7 @@ struct rm_spi_ts_platform_data rm31080ts_kai_107_data = {
 	.config = 0,
 	.platform_id = RM_PLATFORM_K107,
 	.name_of_clock = "clk_out_3",
+	.name_of_clock_con = "extern3",
 };
 
 struct spi_board_info rm31080a_kai_spi_board[1] = {
@@ -660,7 +660,6 @@ static int __init kai_touch_init(void)
 		pr_info("Raydium On-Board touch init\n");
 		tegra_clk_init_from_table(spi_clk_init_table);
 		tegra_clk_init_from_table(touch_clk_init_table);
-		clk_enable(tegra_get_clock_by_name("clk_out_3"));
 		rm31080a_kai_spi_board[0].platform_data =
 			&rm31080ts_kai_107_data;
 		rm31080a_kai_spi_board[0].irq =
@@ -737,7 +736,7 @@ static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	.op_mode	= TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
 		.vbus_gpio = -1,
-		.hot_plug = false,
+		.hot_plug = true,
 		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
 
@@ -768,14 +767,18 @@ static void kai_usb_init(void)
 
 	/* Setup the udc platform data */
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
-
-	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
-	platform_device_register(&tegra_ehci2_device);
 }
 
 static void kai_modem_init(void)
 {
 	int ret;
+	int modem_id = tegra_get_modem_id();
+
+	if (modem_id == TEGRA_BB_TANGO) {
+		tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
+		platform_device_register(&tegra_ehci2_device);
+	}
+
 
 	ret = gpio_request(TEGRA_GPIO_W_DISABLE, "w_disable_gpio");
 	if (ret < 0)
@@ -874,6 +877,7 @@ static void __init tegra_kai_init(void)
 	tegra_wdt_recovery_init();
 #endif
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
+	tegra_register_fuse();
 }
 
 static void __init kai_ramconsole_reserve(unsigned long size)

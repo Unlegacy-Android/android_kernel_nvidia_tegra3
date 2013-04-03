@@ -3,7 +3,7 @@
  *
  * CPU idle driver for Tegra11x CPUs
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -112,6 +112,7 @@ static struct {
 	unsigned int c1nc_gating_done_count_bin[32];
 	unsigned int pd_int_count[NR_IRQS];
 	unsigned int last_pd_int_count[NR_IRQS];
+	unsigned int clk_gating_vmin;
 } idle_stats;
 
 static inline unsigned int time_to_bin(unsigned int time)
@@ -165,7 +166,9 @@ bool tegra11x_pd_is_allowed(struct cpuidle_device *dev,
 				to_cpumask(&cpu_power_gating_in_idle)))
 		return false;
 
-	request = ktime_to_us(tick_nohz_get_sleep_length());
+	if (tegra_cpu_timer_get_remain(&request))
+		return false;
+
 	if (state->exit_latency != pd_exit_latencies[cpu_number(dev->cpu)]) {
 		/* possible on the 1st entry after cluster switch*/
 		state->exit_latency = pd_exit_latencies[cpu_number(dev->cpu)];
@@ -369,39 +372,17 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 {
 #ifdef CONFIG_SMP
 	s64 sleep_time;
+	u32 cntp_tval;
+	u32 cntfrq;
 	ktime_t entry_time;
-	struct arch_timer_context timer_context;
 	bool sleep_completed = false;
 	struct tick_sched *ts = tick_get_tick_sched(dev->cpu);
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
 	unsigned int cpu = cpu_number(dev->cpu);
-#endif
 
-	if (!arch_timer_get_state(&timer_context)) {
-		if ((timer_context.cntp_ctl & ARCH_TIMER_CTRL_ENABLE) &&
-		    ~(timer_context.cntp_ctl & ARCH_TIMER_CTRL_IT_MASK)) {
-			if (timer_context.cntp_tval <= 0) {
-				cpu_do_idle();
-				return false;
-			}
-			request = div_u64((u64)timer_context.cntp_tval *
-					1000000, timer_context.cntfrq);
-#ifdef CONFIG_TEGRA_LP2_CPU_TIMER
-			if (request >= state->target_residency) {
-				timer_context.cntp_tval -= state->exit_latency *
-					(timer_context.cntfrq / 1000000);
-				__asm__("mcr p15, 0, %0, c14, c2, 0\n"
-					:
-					:
-					"r"(timer_context.cntp_tval));
-			}
-#endif
-		}
-	}
-
-	if (!tegra_is_cpu_wake_timer_ready(dev->cpu) ||
-	    (request < state->target_residency) ||
-	    (!ts) || (ts->nohz_mode == NOHZ_MODE_INACTIVE)) {
+	if ((tegra_cpu_timer_get_remain(&request) == -ETIME) ||
+		(request <= state->target_residency) || (!ts) ||
+		(ts->nohz_mode == NOHZ_MODE_INACTIVE) ||
+		!tegra_is_cpu_wake_timer_ready(dev->cpu)) {
 		/*
 		 * Not enough time left to enter LP2, or wake timer not ready
 		 */
@@ -409,15 +390,19 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 		return false;
 	}
 
+#ifdef CONFIG_TEGRA_LP2_CPU_TIMER
+	asm volatile("mrc p15, 0, %0, c14, c0, 0" : "=r" (cntfrq));
+	cntp_tval = (request - state->exit_latency) * (cntfrq / 1000000);
+	asm volatile("mcr p15, 0, %0, c14, c2, 0" : : "r"(cntp_tval));
+#endif
 	cpu_pm_enter();
 
 #if !defined(CONFIG_TEGRA_LP2_CPU_TIMER)
 	sleep_time = request - state->exit_latency;
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
-	arch_timer_suspend(&timer_context);
 	tegra_pd_set_trigger(sleep_time);
 #endif
-	idle_stats.tear_down_count[cpu_number(dev->cpu)]++;
+	idle_stats.tear_down_count[cpu]++;
 
 	entry_time = ktime_get();
 
@@ -437,26 +422,26 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	tegra_cpu_wake_by_time[dev->cpu] = LLONG_MAX;
 
 #ifdef CONFIG_TEGRA_LP2_CPU_TIMER
-	if (!arch_timer_get_state(&timer_context))
-		sleep_completed = (timer_context.cntp_tval <= 0);
+	asm volatile("mrc p15, 0, %0, c14, c2, 0" : "=r" (cntp_tval));
+	if ((s32)cntp_tval <= 0)
+		sleep_completed = true;
 #else
 	sleep_completed = !tegra_pd_timer_remain();
 	tegra_pd_set_trigger(0);
-	arch_timer_resume(&timer_context);
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT, &dev->cpu);
 #endif
 	sleep_time = ktime_to_us(ktime_sub(ktime_get(), entry_time));
-	idle_stats.cpu_pg_time[cpu_number(dev->cpu)] += sleep_time;
+	idle_stats.cpu_pg_time[cpu] += sleep_time;
 	if (sleep_completed) {
 		/*
 		 * Stayed in LP2 for the full time until timer expires,
 		 * adjust the exit latency based on measurement
 		 */
 		int offset = sleep_time - request;
-		int latency = pd_exit_latencies[cpu_number(dev->cpu)] +
+		int latency = pd_exit_latencies[cpu] +
 			offset / 16;
 		latency = clamp(latency, 0, 10000);
-		pd_exit_latencies[cpu_number(dev->cpu)] = latency;
+		pd_exit_latencies[cpu] = latency;
 		state->exit_latency = latency;		/* for idle governor */
 		smp_wmb();
 	}
@@ -471,8 +456,16 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 {
 	bool power_down;
 	bool cpu_gating_only = false;
+	bool clkgt_at_vmin = false;
 	bool power_gating_cpu_only = true;
-	s64 request = ktime_to_us(tick_nohz_get_sleep_length());
+	int status = -1;
+	unsigned long rate;
+	s64 request;
+
+	if (tegra_cpu_timer_get_remain(&request)) {
+		cpu_do_idle();
+		return false;
+	}
 
 	tegra_set_cpu_in_pd(dev->cpu);
 	cpu_gating_only = (((fast_cluster_power_down_mode
@@ -481,27 +474,65 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 
 	if (is_lp_cluster()) {
 		if (slow_cluster_power_gating_noncpu &&
-			(request > tegra_min_residency_noncpu()))
+			(request > tegra_min_residency_ncpu()))
 				power_gating_cpu_only = false;
 		else
 			power_gating_cpu_only = true;
-	} else if (!cpu_gating_only &&
-		(num_online_cpus() == 1) &&
-		tegra_rail_off_is_allowed()) {
-		if (fast_cluster_power_down_mode &&
-			TEGRA_POWER_CLUSTER_FORCE_MASK)
-			power_gating_cpu_only = cpu_gating_only;
-		else if (request > tegra_min_residency_noncpu())
-			power_gating_cpu_only = false;
-		else
+	} else {
+		if (num_online_cpus() > 1)
 			power_gating_cpu_only = true;
-	} else
-		power_gating_cpu_only = true;
+		else {
+			if (tegra_dvfs_rail_updating(cpu_clk_for_dvfs))
+				clkgt_at_vmin = false;
+			else if (tegra_force_clkgt_at_vmin ==
+					TEGRA_CPUIDLE_FORCE_DO_CLKGT_VMIN)
+				clkgt_at_vmin = true;
+			else if (tegra_force_clkgt_at_vmin ==
+					TEGRA_CPUIDLE_FORCE_NO_CLKGT_VMIN)
+				clkgt_at_vmin = false;
+			else if ((request >= tegra_min_residency_vmin_fmin()) &&
+				 ((request < tegra_min_residency_ncpu()) ||
+				   cpu_gating_only))
+				clkgt_at_vmin = true;
 
-	if (power_gating_cpu_only)
-		power_down = tegra_cpu_core_power_down(dev, state, request);
-	else
+			if (!cpu_gating_only && tegra_rail_off_is_allowed()) {
+				if (fast_cluster_power_down_mode &
+						TEGRA_POWER_CLUSTER_FORCE_MASK)
+					power_gating_cpu_only = false;
+				else if (request >
+						tegra_min_residency_ncpu())
+					power_gating_cpu_only = false;
+				else
+					power_gating_cpu_only = true;
+			} else
+				power_gating_cpu_only = true;
+		}
+	}
+
+	if (clkgt_at_vmin) {
+		rate = 0;
+		status = tegra_cpu_g_idle_rate_exchange(&rate);
+		if (!status) {
+			idle_stats.clk_gating_vmin++;
+			cpu_do_idle();
+			tegra_cpu_g_idle_rate_exchange(&rate);
+			power_down = true;
+		} else
+			power_down = tegra_cpu_core_power_down(dev, state,
+								request);
+	} else if (!power_gating_cpu_only) {
+		if (is_lp_cluster()) {
+			rate = ULONG_MAX;
+			status = tegra_cpu_lp_idle_rate_exchange(&rate);
+		}
+
 		power_down = tegra_cpu_cluster_power_down(dev, state, request);
+
+		/* restore cpu clock after cluster power ungating */
+		if (status == 0)
+			tegra_cpu_lp_idle_rate_exchange(&rate);
+	} else
+		power_down = tegra_cpu_core_power_down(dev, state, request);
 
 	tegra_clear_cpu_in_pd(dev->cpu);
 
@@ -527,6 +558,8 @@ int tegra11x_pd_debug_show(struct seq_file *s, void *data)
 		idle_stats.tear_down_count[2],
 		idle_stats.tear_down_count[3],
 		idle_stats.tear_down_count[4]);
+	seq_printf(s, "clk gating @ Vmin count:      %8u\n",
+		idle_stats.clk_gating_vmin);
 	seq_printf(s, "rail gating count:      %8u\n",
 		idle_stats.rail_gating_count);
 	seq_printf(s, "rail gating completed:  %8u %7u%%\n",
