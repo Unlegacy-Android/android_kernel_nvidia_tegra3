@@ -119,13 +119,20 @@ static int bq2419x_charger_enable(struct bq2419x_chip *bq2419x)
 	if (bq2419x->chg_enable) {
 		dev_info(bq2419x->dev, "Charging enabled\n");
 		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
-				BQ2419X_ENABLE_CHARGE_MASK,
-				BQ2419X_ENABLE_CHARGE);
+				 BQ2419X_ENABLE_CHARGE_MASK, 0);
+		if (ret < 0) {
+			dev_err(bq2419x->dev,
+				"register update failed, err %d\n", ret);
+			return ret;
+		}
+
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
+			 BQ2419X_ENABLE_CHARGE_MASK, BQ2419X_ENABLE_CHARGE);
 	} else {
 		dev_info(bq2419x->dev, "Charging disabled\n");
 		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
-				BQ2419X_ENABLE_CHARGE_MASK,
-				BQ2419X_DISABLE_CHARGE);
+				 BQ2419X_ENABLE_CHARGE_MASK,
+				 BQ2419X_DISABLE_CHARGE);
 	}
 	if (ret < 0)
 		dev_err(bq2419x->dev, "register update failed, err %d\n", ret);
@@ -467,6 +474,8 @@ static void bq2419x_work_thread(struct kthread_work *work)
 	struct bq2419x_chip *bq2419x = container_of(work,
 			struct bq2419x_chip, bq_wdt_work);
 	int ret;
+	int val = 0;
+	int type;
 
 	for (;;) {
 		if (bq2419x->stop_thread)
@@ -480,7 +489,33 @@ static void bq2419x_work_thread(struct kthread_work *work)
 				if (ret < 0)
 					dev_err(bq2419x->dev,
 					"Charger enable failed %d", ret);
+				ret = regmap_read(bq2419x->regmap,
+					BQ2419X_SYS_STAT_REG, &val);
+				if (ret < 0)
+					dev_err(bq2419x->dev,
+					"SYS_STAT_REG read failed %d\n", ret);
+				/*
+				* Update Charging status based on STAT register
+				*/
+				type = bq2419x->ac_online ? 1 : 2;
+				if ((val & BQ2419x_CHRG_STATE_MASK) ==
+					BQ2419x_CHRG_STATE_NOTCHARGING) {
+					bq2419x->status = 0;
+					if (bq2419x->update_status)
+						bq2419x->update_status
+							(bq2419x->status, type);
+					bq2419x->chg_restart_timeout =
+						bq2419x->chg_restart_time /
+						bq2419x->wdt_refresh_timeout;
+				} else {
+					bq2419x->status = 1;
+					if (bq2419x->update_status)
+						bq2419x->update_status
+							(bq2419x->status, type);
+				}
+
 			}
+
 			if (bq2419x->suspended)
 				bq2419x->chg_restart_timeout = 0;
 
@@ -496,11 +531,33 @@ static void bq2419x_work_thread(struct kthread_work *work)
 	}
 }
 
+static int bq2419x_reset_safety_timer(struct bq2419x_chip *bq2419x)
+{
+	int ret;
+
+	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_TIME_CTRL_REG,
+			BQ2419X_EN_SFT_TIMER_MASK, 0);
+	if (ret < 0) {
+		dev_err(bq2419x->dev,
+				"TIME_CTRL_REG update failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_TIME_CTRL_REG,
+			BQ2419X_EN_SFT_TIMER_MASK, BQ2419X_EN_SFT_TIMER_MASK);
+	if (ret < 0)
+		dev_err(bq2419x->dev,
+				"TIME_CTRL_REG update failed: %d\n", ret);
+	return ret;
+}
+
 static irqreturn_t bq2419x_irq(int irq, void *data)
 {
 	struct bq2419x_chip *bq2419x = data;
 	int ret;
 	unsigned int val;
+	int check_chg_state = 0;
+	int type;
 
 	ret = regmap_read(bq2419x->regmap, BQ2419X_FAULT_REG, &val);
 	if (ret < 0) {
@@ -544,20 +601,31 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		break;
 	case BQ2419x_FAULT_CHRG_THERMAL:
 		dev_err(bq2419x->dev, "Charging Fault: Thermal shutdown\n");
+		check_chg_state = 1;
 		break;
 	case BQ2419x_FAULT_CHRG_SAFTY:
 		dev_err(bq2419x->dev,
 			"Charging Fault: Safety timer expiration\n");
 		bq2419x->chg_restart_timeout = bq2419x->chg_restart_time /
 						bq2419x->wdt_refresh_timeout;
+		ret = bq2419x_reset_safety_timer(bq2419x);
+		if (ret < 0) {
+			dev_err(bq2419x->dev, "Reset safety timer failed %d\n",
+							ret);
+			return ret;
+		}
+
+		check_chg_state = 1;
 		break;
 	default:
 		break;
 	}
 
-	if (val & BQ2419x_FAULT_NTC_FAULT)
+	if (val & BQ2419x_FAULT_NTC_FAULT) {
 		dev_err(bq2419x->dev, "Charging Fault: NTC fault %d\n",
 				val & BQ2419x_FAULT_NTC_FAULT);
+		check_chg_state = 1;
+	}
 
 	ret = bq2419x_fault_clear_sts(bq2419x);
 	if (ret < 0) {
@@ -571,8 +639,26 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		return ret;
 	}
 
-	if ((val & BQ2419x_CHRG_STATE_MASK) == BQ2419x_CHRG_STATE_CHARGE_DONE)
+	if ((val & BQ2419x_CHRG_STATE_MASK) ==
+				BQ2419x_CHRG_STATE_CHARGE_DONE) {
+		bq2419x->chg_restart_timeout = bq2419x->chg_restart_time /
+						bq2419x->wdt_refresh_timeout;
 		dev_info(bq2419x->dev, "Charging completed\n");
+	}
+
+	/*
+	* Update Charging status based on STAT register
+	*/
+	if (check_chg_state) {
+		if ((val & BQ2419x_CHRG_STATE_MASK) ==
+				BQ2419x_CHRG_STATE_NOTCHARGING) {
+			type = bq2419x->ac_online ? 1 : 2;
+			bq2419x->status = 0;
+			if (bq2419x->update_status)
+				bq2419x->update_status
+					(bq2419x->status, type);
+		}
+	}
 
 	return IRQ_HANDLED;
 }

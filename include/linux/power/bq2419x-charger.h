@@ -53,6 +53,7 @@
 
 #define BQ2419X_WD			0x5
 #define BQ2419X_WD_MASK			0x30
+#define BQ2419X_EN_SFT_TIMER_MASK	BIT(3)
 #define BQ2419X_WD_DISABLE		0x00
 #define BQ2419X_WD_40ms			0x10
 #define BQ2419X_WD_80ms			0x20
