@@ -26,7 +26,7 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/fixed.h>
 #include <linux/mfd/palmas.h>
-#include <linux/mfd/bq2419x.h>
+#include <linux/power/bq2419x-charger.h>
 #include <linux/max17048_battery.h>
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
@@ -62,17 +62,8 @@ static struct regulator_consumer_supply bq2419x_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
 };
 
-static struct regulator_init_data bq2419x_init_data = {
-	.constraints = {
-		.name = "bq2419x_vbus",
-		.min_uV = 0,
-		.max_uV = 5000000,
-		.valid_modes_mask = (REGULATOR_MODE_NORMAL |
-					REGULATOR_MODE_STANDBY),
-		.valid_ops_mask = (REGULATOR_CHANGE_MODE |
-					REGULATOR_CHANGE_STATUS |
-					REGULATOR_CHANGE_VOLTAGE),
-	},
+static struct bq2419x_vbus_platform_data bq2419x_vbus_pdata = {
+	.gpio_otg_iusb = TEGRA_GPIO_PI4,
 	.num_consumer_supplies = ARRAY_SIZE(bq2419x_vbus_supply),
 	.consumer_supplies = bq2419x_vbus_supply,
 };
@@ -84,8 +75,7 @@ static struct bq2419x_regulator_platform_data bq2419x_reg_pdata = {
 };
 
 struct bq2419x_platform_data macallan_bq2419x_pdata = {
-	.reg_pdata = &bq2419x_reg_pdata,
-	.disable_watchdog = true,
+	.vbus_pdata = &bq2419x_vbus_pdata,
 };
 
 static struct i2c_board_info __initdata bq2419x_boardinfo[] = {

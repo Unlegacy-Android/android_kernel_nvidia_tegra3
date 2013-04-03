@@ -27,7 +27,7 @@
 #include <linux/regulator/fixed.h>
 #include <linux/mfd/palmas.h>
 #include <linux/regulator/tps51632-regulator.h>
-#include <linux/mfd/bq2419x.h>
+#include <linux/power/bq2419x-charger.h>
 #include <linux/max17048_battery.h>
 #include <linux/gpio.h>
 #include <linux/regulator/userspace-consumer.h>
@@ -103,37 +103,22 @@ static struct regulator_consumer_supply bq2419x_batt_supply[] = {
 	REGULATOR_SUPPLY("usb_bat_chg", "tegra-udc.0"),
 };
 
-static struct regulator_init_data bq2419x_init_data = {
-	.constraints = {
-		.name = "bq2419x_vbus",
-		.min_uV = 0,
-		.max_uV = 5000000,
-		.valid_modes_mask = (REGULATOR_MODE_NORMAL |
-					REGULATOR_MODE_STANDBY),
-		.valid_ops_mask = (REGULATOR_CHANGE_MODE |
-					REGULATOR_CHANGE_STATUS |
-					REGULATOR_CHANGE_VOLTAGE),
-	},
+static struct bq2419x_vbus_platform_data bq2419x_vbus_pdata = {
+	.gpio_otg_iusb = TEGRA_GPIO_PI4,
 	.num_consumer_supplies = ARRAY_SIZE(bq2419x_vbus_supply),
 	.consumer_supplies = bq2419x_vbus_supply,
-};
-
-static struct bq2419x_regulator_platform_data bq2419x_reg_pdata = {
-	.reg_init_data = &bq2419x_init_data,
-	.gpio_otg_iusb = TEGRA_GPIO_PI4,
 };
 
 struct bq2419x_charger_platform_data bq2419x_charger_pdata = {
 	.use_usb = 1,
 	.use_mains = 1,
-	.gpio_interrupt = TEGRA_GPIO_PJ0,
-	.gpio_status = TEGRA_GPIO_PK0,
 	.update_status = max17048_battery_status,
 	.battery_check = max17048_check_battery,
 	.max_charge_current_mA = 3000,
 	.charging_term_current_mA = 100,
 	.consumer_supplies = bq2419x_batt_supply,
 	.num_consumer_supplies = ARRAY_SIZE(bq2419x_batt_supply),
+	.wdt_timeout	= 40,
 };
 
 struct max17048_battery_model max17048_mdata = {
@@ -158,7 +143,7 @@ struct max17048_battery_model max17048_mdata = {
 		0x1F, 0xE0, 0x1F, 0xE0, 0x11, 0xC0, 0x11, 0x20,
 		0x14, 0x60, 0x0B, 0xE0, 0x14, 0x80, 0x14, 0xC0,
 		0x0E, 0x20, 0x12, 0xA0, 0x03, 0x60, 0x03, 0x60,
-        },
+	},
 };
 
 struct max17048_platform_data max17048_pdata = {
@@ -175,9 +160,8 @@ static struct i2c_board_info __initdata max17048_boardinfo[] = {
 };
 
 struct bq2419x_platform_data bq2419x_pdata = {
-	.reg_pdata = &bq2419x_reg_pdata,
+	.vbus_pdata = &bq2419x_vbus_pdata,
 	.bcharger_pdata = &bq2419x_charger_pdata,
-	.disable_watchdog = true,
 };
 
 static struct i2c_board_info __initdata bq2419x_boardinfo[] = {
@@ -745,6 +729,7 @@ int __init roth_regulator_init(void)
 	tegra_get_board_info(&board_info);
 	roth_palmas_regulator_init();
 
+	bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
 	i2c_register_board_info(4, tps51632_boardinfo, 1);
 	i2c_register_board_info(0, max17048_boardinfo, 1);
 	i2c_register_board_info(0, bq2419x_boardinfo, 1);

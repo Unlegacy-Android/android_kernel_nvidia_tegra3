@@ -26,7 +26,7 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/fixed.h>
 #include <linux/mfd/palmas.h>
-#include <linux/mfd/bq2419x.h>
+#include <linux/power/bq2419x-charger.h>
 #include <linux/max17048_battery.h>
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
@@ -66,38 +66,22 @@ static struct regulator_consumer_supply tegratab_bq2419x_batt_supply[] = {
 	REGULATOR_SUPPLY("usb_bat_chg", "tegra-udc.0"),
 };
 
-static struct regulator_init_data tegratab_bq2419x_init_data = {
-	.constraints = {
-		.name = "bq2419x_vbus",
-		.min_uV = 0,
-		.max_uV = 5000000,
-		.valid_modes_mask = (REGULATOR_MODE_NORMAL |
-					REGULATOR_MODE_STANDBY),
-		.valid_ops_mask = (REGULATOR_CHANGE_MODE |
-					REGULATOR_CHANGE_STATUS |
-					REGULATOR_CHANGE_VOLTAGE),
-	},
+static struct bq2419x_vbus_platform_data tegratab_bq2419x_vbus_pdata = {
+	.gpio_otg_iusb = TEGRA_GPIO_PI4,
 	.num_consumer_supplies = ARRAY_SIZE(tegratab_bq2419x_vbus_supply),
 	.consumer_supplies = tegratab_bq2419x_vbus_supply,
-};
-
-static struct bq2419x_regulator_platform_data tegratab_bq2419x_reg_pdata = {
-	.reg_init_data = &tegratab_bq2419x_init_data,
-	.gpio_otg_iusb = TEGRA_GPIO_PI4,
-	.power_off_on_suspend = true,
 };
 
 struct bq2419x_charger_platform_data tegratab_bq2419x_charger_pdata = {
 	.use_usb = 1,
 	.use_mains = 1,
-	.gpio_interrupt = TEGRA_GPIO_PJ0,
-	.gpio_status = TEGRA_GPIO_PK0,
 	.update_status = max17048_battery_status,
 	.battery_check = max17048_check_battery,
 	.max_charge_current_mA = 3000,
 	.charging_term_current_mA = 100,
 	.consumer_supplies = tegratab_bq2419x_batt_supply,
 	.num_consumer_supplies = ARRAY_SIZE(tegratab_bq2419x_batt_supply),
+	.wdt_timeout    = 40,
 };
 
 struct max17048_battery_model tegratab_max17048_mdata = {
@@ -139,15 +123,14 @@ static struct i2c_board_info __initdata tegratab_max17048_boardinfo[] = {
 };
 
 struct bq2419x_platform_data tegratab_bq2419x_pdata = {
-	.reg_pdata = &tegratab_bq2419x_reg_pdata,
+	.vbus_pdata = &tegratab_bq2419x_vbus_pdata,
 	.bcharger_pdata = &tegratab_bq2419x_charger_pdata,
-	.disable_watchdog = true,
 };
 
 static struct i2c_board_info __initdata tegratab_bq2419x_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("bq2419x", 0x6b),
-		.platform_data	= &tegratab_bq2419x_pdata,
+		.platform_data = &tegratab_bq2419x_pdata,
 	},
 };
 
@@ -670,11 +653,12 @@ int __init tegratab_regulator_init(void)
 #endif
 	tegratab_palmas_regulator_init();
 
+	i2c_register_board_info(0, tegratab_max17048_boardinfo, 1);
+
 	/* Disable charger when adapter is power source. */
 	if (get_power_supply_type() != POWER_SUPPLY_TYPE_BATTERY)
 		tegratab_bq2419x_pdata.bcharger_pdata = NULL;
 
-	i2c_register_board_info(0, tegratab_max17048_boardinfo, 1);
 	i2c_register_board_info(0, tegratab_bq2419x_boardinfo, 1);
 
 	platform_device_register(&tegratab_pda_power_device);
