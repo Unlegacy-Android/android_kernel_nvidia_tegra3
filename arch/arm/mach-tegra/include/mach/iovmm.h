@@ -223,6 +223,13 @@ size_t tegra_iovmm_get_max_free(struct tegra_iovmm_client *client);
 int tegra_iovmm_vm_insert_pfn(struct tegra_iovmm_area *area,
 	tegra_iovmm_addr_t vaddr, unsigned long pfn);
 
+static inline int tegra_iovmm_vm_insert_pages(struct tegra_iovmm_area *area,
+					      dma_addr_t va,
+					      struct page **pages, size_t count)
+{
+	return -ENODEV;
+}
+
 /*
  * called by clients to return the iovmm_area containing addr, or NULL if
  * addr has not been allocated. caller should call tegra_iovmm_area_put when
@@ -381,6 +388,20 @@ static inline void tegra_iovmm_resume(void)
 				 PAGE_SIZE, 0, 0, &attrs);		\
 		dma_mapping_error(dev, da) ? -ENOMEM : 0;		\
 	})
+
+static inline int tegra_iovmm_vm_insert_pages(struct tegra_iovmm_area *area,
+					      dma_addr_t va,
+					      struct page **pages, size_t count)
+{
+	dma_addr_t da;
+	struct device *dev = area->dev;
+	struct dma_map_ops *ops = get_dma_ops(dev);
+	DEFINE_DMA_ATTRS(attrs);
+
+	dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
+	da = ops->map_pages(dev, pages, va, count, 0, &attrs);
+	return dma_mapping_error(dev, da) ? -ENOMEM : 0;
+}
 
 struct tegra_iovmm_area *tegra_iommu_create_vm(struct device *dev,
 		       dma_addr_t req, size_t size, pgprot_t prot);
