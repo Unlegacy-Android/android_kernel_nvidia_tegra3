@@ -62,20 +62,31 @@ static struct regulator_consumer_supply bq2419x_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
 };
 
+static struct regulator_consumer_supply bq2419x_batt_supply[] = {
+	REGULATOR_SUPPLY("usb_bat_chg", "tegra-udc.0"),
+};
+
 static struct bq2419x_vbus_platform_data bq2419x_vbus_pdata = {
 	.gpio_otg_iusb = TEGRA_GPIO_PI4,
 	.num_consumer_supplies = ARRAY_SIZE(bq2419x_vbus_supply),
 	.consumer_supplies = bq2419x_vbus_supply,
 };
 
-static struct bq2419x_regulator_platform_data bq2419x_reg_pdata = {
-	.reg_init_data = &bq2419x_init_data,
-	.gpio_otg_iusb = TEGRA_GPIO_PI4,
-	.power_off_on_suspend = true,
+struct bq2419x_charger_platform_data macallan_bq2419x_charger_pdata = {
+	.use_usb = 1,
+	.use_mains = 1,
+	.update_status = max17048_battery_status,
+	.battery_check = max17048_check_battery,
+	.max_charge_current_mA = 3000,
+	.charging_term_current_mA = 100,
+	.consumer_supplies = bq2419x_batt_supply,
+	.num_consumer_supplies = ARRAY_SIZE(bq2419x_batt_supply),
+	.wdt_timeout    = 40,
 };
 
 struct bq2419x_platform_data macallan_bq2419x_pdata = {
 	.vbus_pdata = &bq2419x_vbus_pdata,
+	.bcharger_pdata = &macallan_bq2419x_charger_pdata,
 };
 
 static struct i2c_board_info __initdata bq2419x_boardinfo[] = {
