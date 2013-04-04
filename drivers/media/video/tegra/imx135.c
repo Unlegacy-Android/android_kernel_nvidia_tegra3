@@ -58,8 +58,8 @@ struct imx135_info {
 #ifdef IMX135_4208x3120_HDR
 /* HDR */
 static struct imx135_reg mode_4208x3120[] = {
-	/* software standby */
-	{0x0100, 0x00},
+	/* software reset */
+	{0x0103, 0x01},
 	/* global settings */
 	{0x0101, 0x00},
 	{0x0105, 0x01},
@@ -224,8 +224,8 @@ static struct imx135_reg mode_4208x3120[] = {
 #else
 /* standard */
 static struct imx135_reg mode_4208x3120[] = {
-	/* software standby */
-	{0x0100, 0x00},
+	/* software reset */
+	{0x0103, 0x01},
 	/* global settings */
 	{0x0101, 0x00},
 	{0x0105, 0x01},
@@ -389,8 +389,8 @@ static struct imx135_reg mode_4208x3120[] = {
 #endif
 
 static struct imx135_reg mode_1920x1080[] = {
-	/* software standby */
-	{0x0100, 0x00},
+	/* software reset */
+	{0x0103, 0x01},
 	/* global settings */
 	{0x0101, 0x00},
 	{0x0105, 0x01},
@@ -555,8 +555,8 @@ static struct imx135_reg mode_1920x1080[] = {
 #ifdef IMX135_1280x720_90_FPS
 /* 720p 90fps */
 static struct imx135_reg mode_1280x720[] = {
-	/* software standby */
-	{0x0100, 0x00},
+	/* software reset */
+	{0x0103, 0x01},
 	/* global settings */
 	{0x0101, 0x00},
 	{0x0105, 0x01},
@@ -720,8 +720,8 @@ static struct imx135_reg mode_1280x720[] = {
 #else
 /* 720p 30fps */
 static struct imx135_reg mode_1280x720[] = {
-	/* software standby */
-	{0x0100, 0x00},
+	/* software reset */
+	{0x0103, 0x01},
 	/* global settings */
 	{0x0101, 0x00},
 	{0x0105, 0x01},
@@ -885,8 +885,8 @@ static struct imx135_reg mode_1280x720[] = {
 #endif
 
 static struct imx135_reg mode_2616x1472[] = {
-	/* software standby */
-	{0x0100, 0x00},
+	/* software reset */
+	{0x0103, 0x01},
 	/* global settings */
 	{0x0101, 0x00},
 	{0x0105, 0x01},
@@ -1050,8 +1050,8 @@ static struct imx135_reg mode_2616x1472[] = {
 };
 
 static struct imx135_reg mode_3896x2192[] = {
-	/* software standby */
-	{0x0100, 0x00},
+	/* software reset */
+	{0x0103, 0x01},
 	/* global settings */
 	{0x0101, 0x00},
 	{0x0105, 0x01},
@@ -1630,6 +1630,13 @@ imx135_get_gain_reg(struct imx135_reg *regs, u16 gain)
 	regs->val = gain;
 }
 
+static inline void
+imx135_get_gain_short_reg(struct imx135_reg *regs, u16 gain)
+{
+	regs->addr = 0x233;
+	regs->val = gain;
+}
+
 static int
 imx135_read_reg(struct i2c_client *client, u16 addr, u8 *val)
 {
@@ -1770,12 +1777,15 @@ imx135_set_mode(struct imx135_info *info, struct imx135_mode *mode)
 	imx135_get_coarse_time_regs(reg_list + 2, mode->coarse_time);
 	imx135_get_gain_reg(reg_list + 4, mode->gain);
 	if (mode->hdr_en == 1)  /* if HDR is enabled */
+	{
+		imx135_get_gain_short_reg(reg_list + 5, mode->gain);
 		imx135_get_coarse_time_short_regs(
-			reg_list + 5, mode->coarse_time_short);
+			reg_list + 6, mode->coarse_time_short);
+	}
 
 	err = imx135_write_table(info->i2c_client,
 				mode_table[sensor_mode],
-				reg_list, mode->hdr_en ? 7 : 5);
+				reg_list, mode->hdr_en ? 8 : 5);
 	if (err)
 		return err;
 	if (quality_hdr)
