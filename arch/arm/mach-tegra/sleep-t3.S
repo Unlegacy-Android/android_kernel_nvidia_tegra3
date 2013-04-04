@@ -95,8 +95,11 @@
 #define CLK_RESET_PLLX_MISC3_IDDQ	3
 #endif
 
+#define CLK_RESET_PLLC_OUT0		0x84
+#define CLK_RESET_PLLM_OUT0		0x94
 #define CLK_RESET_PLLP_OUTA		0xa4
 #define CLK_RESET_PLLP_OUTB		0xa8
+#define PLL_OUT_ENABLE			0x3
 
 #define PMC_PLLP_WB0_OVERRIDE		0xf8
 #define PMC_PLLM_WB0_OVERRIDE		0x1dc
@@ -414,6 +417,23 @@ ENTRY(tegra3_lp1_reset)
 	ldr	r1, [r7]
 	add	r1, r1, #LOCK_DELAY
 	wait_until r1, r7, r3
+
+	/* after PLLs are locked enable secondary dividers */
+	ldr	r1, [r0, #CLK_RESET_PLLM_OUT0]
+	orr	r1, #PLL_OUT_ENABLE
+	str	r1, [r0, #CLK_RESET_PLLM_OUT0]
+	ldr	r1, [r0, #CLK_RESET_PLLC_OUT0]
+	orr	r1, #PLL_OUT_ENABLE
+	str	r1, [r0, #CLK_RESET_PLLC_OUT0]
+
+	ldr	r1, [r0, #CLK_RESET_PLLP_OUTA]
+	orr	r1, #PLL_OUT_ENABLE
+	orr	r1, #(PLL_OUT_ENABLE << 16)
+	str	r1, [r0, #CLK_RESET_PLLP_OUTA]
+	ldr	r1, [r0, #CLK_RESET_PLLP_OUTB]
+	orr	r1, #PLL_OUT_ENABLE
+	orr	r1, #(PLL_OUT_ENABLE << 16)
+	str	r1, [r0, #CLK_RESET_PLLP_OUTB]
 
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	add	r5, pc, #tegra3_sdram_pad_save-(.+8)	@ r5 --> saved data
@@ -835,6 +855,9 @@ lp1_volt_skip:
 	wait_until r1, r7, r9
 
 	/* disable PLLM via PMC in LP1 */
+	ldr	r0, [r5, #CLK_RESET_PLLM_OUT0]
+	bic	r0, #PLL_OUT_ENABLE
+	str	r0, [r5, #CLK_RESET_PLLM_OUT0]
 	ldr	r0, [r4, #PMC_PLLP_WB0_OVERRIDE]
 	bic	r0, r0, #(1 << 12)
 	str	r0, [r4, #PMC_PLLP_WB0_OVERRIDE]
@@ -845,6 +868,15 @@ powerdown_pll_pcx:
 	tst	r11, #TEGRA_POWER_LP1_AUDIO	@ check if voice call is going on
 	bne	powerdown_pll_cx		@ if yes, do not turn off pll-p/pll-a
 
+	ldr	r0, [r5, #CLK_RESET_PLLP_OUTA]
+	bic	r0, #PLL_OUT_ENABLE
+	bic	r0, #(PLL_OUT_ENABLE << 16)
+	str	r0, [r5, #CLK_RESET_PLLP_OUTA]
+	ldr	r0, [r5, #CLK_RESET_PLLP_OUTB]
+	bic	r0, #PLL_OUT_ENABLE
+	bic	r0, #(PLL_OUT_ENABLE << 16)
+	str	r0, [r5, #CLK_RESET_PLLP_OUTB]
+
 	ldr	r0, [r5, #CLK_RESET_PLLP_BASE]
 	bic	r0, r0, #(1<<30)
 	str	r0, [r5, #CLK_RESET_PLLP_BASE]
@@ -853,6 +885,9 @@ powerdown_pll_pcx:
 	str	r0, [r5, #CLK_RESET_PLLA_BASE]
 
 powerdown_pll_cx:
+	ldr	r0, [r5, #CLK_RESET_PLLC_OUT0]
+	bic	r0, #PLL_OUT_ENABLE
+	str	r0, [r5, #CLK_RESET_PLLC_OUT0]
 	ldr	r0, [r5, #CLK_RESET_PLLC_BASE]
 	bic	r0, r0, #(1<<30)
 	str	r0, [r5, #CLK_RESET_PLLC_BASE]
