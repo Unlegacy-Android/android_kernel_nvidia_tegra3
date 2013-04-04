@@ -828,6 +828,16 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 finish:
 	if (!oldcard)
 		host->card = card;
+
+#ifdef CONFIG_MMC_FREQ_SCALING
+	/*
+	 * This implementation is still in experimental phase. So, don't fail
+	 * enumeration even if dev freq init fails.
+	 */
+	if (mmc_devfreq_init(host))
+		dev_info(mmc_dev(host),
+			"Device frequency scaling initialization failed %d\n", err);
+#endif
 	return 0;
 
 remove:
@@ -854,6 +864,10 @@ static void mmc_sdio_remove(struct mmc_host *host)
 			host->card->sdio_func[i] = NULL;
 		}
 	}
+
+#ifdef CONFIG_MMC_FREQ_SCALING
+	mmc_devfreq_deinit(host);
+#endif
 
 	mmc_remove_card(host->card);
 	host->card = NULL;
