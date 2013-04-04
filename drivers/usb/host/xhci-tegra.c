@@ -2035,6 +2035,7 @@ static int tegra_xhci_bus_suspend(struct usb_hcd *hcd)
 	}
 	/* FIXME: verify and enable for power saving */
 	/* utmi_phy_pad_disable(); */
+	/* utmi_phy_iddq_override(true); */
 
 	/* At this point,ensure ss/hs intr enables are always on */
 	tegra_xhci_ss_wake_on_interrupts(tegra, true);
@@ -2076,6 +2077,7 @@ static int tegra_xhci_bus_resume(struct usb_hcd *hcd)
 
 	/* FIXME: verify and enable for power saving */
 	/* utmi_phy_pad_enable(); */
+	/* utmi_phy_iddq_override(false); */
 	if (tegra->usb2_rh_suspend && tegra->usb3_rh_suspend) {
 		if (tegra->ss_pwr_gated && tegra->host_pwr_gated)
 			tegra_xhci_host_partition_elpg_exit(tegra);
@@ -2208,6 +2210,7 @@ tegra_xhci_suspend(struct platform_device *pdev,
 	tegra_xhci_hs_wake_on_interrupts(tegra, false);
 
 	utmi_phy_pad_disable();
+	utmi_phy_iddq_override(true);
 	/* enable_irq_wake for ss ports */
 	ret = enable_irq_wake(tegra->padctl_irq);
 	if (ret < 0) {
@@ -2243,6 +2246,7 @@ tegra_xhci_resume(struct platform_device *pdev)
 	disable_irq_wake(tegra->usb3_irq);
 	tegra->lp0_exit = true;
 	utmi_phy_pad_enable();
+	utmi_phy_iddq_override(false);
 
 	regulator_enable(tegra->xusb_avddio_usb3_reg);
 	regulator_enable(tegra->xusb_avdd_usb3_pll_reg);
@@ -2585,6 +2589,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 
 	tegra_xhci_debug_read_pads(tegra);
 	utmi_phy_pad_enable();
+	utmi_phy_iddq_override(false);
 
 	return 0;
 
@@ -2636,6 +2641,7 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	if (!tegra->hc_in_elpg)
 		tegra_xusb_partitions_clk_deinit(tegra);
 	utmi_phy_pad_disable();
+	utmi_phy_iddq_override(true);
 
 	return 0;
 }
