@@ -1029,10 +1029,8 @@ static int palmas_extreg_init(struct palmas *palmas, int id,
 
 static void palmas_disable_smps10_boost(struct palmas *palmas)
 {
-	unsigned int reg;
 	unsigned int addr;
 	int ret;
-	int i;
 
 	addr = palmas_regs_info[PALMAS_REG_SMPS10].ctrl_addr;
 
@@ -1049,7 +1047,6 @@ static void palmas_enable_smps10_boost(struct palmas *palmas)
 	unsigned int reg;
 	unsigned int addr;
 	int ret;
-	int i;
 
 	addr = palmas_regs_info[PALMAS_REG_SMPS10].ctrl_addr;
 
@@ -1074,7 +1071,6 @@ static void palmas_enable_ldo8_track(struct palmas *palmas)
 	unsigned int reg;
 	unsigned int addr;
 	int ret;
-	int i;
 
 	addr = palmas_regs_info[PALMAS_REG_LDO8].ctrl_addr;
 
