@@ -17,6 +17,7 @@
 #include <linux/device.h>
 #include <linux/fault-inject.h>
 #include <linux/wakelock.h>
+#include <linux/devfreq.h>
 
 #include <linux/mmc/core.h>
 #include <linux/mmc/pm.h>
@@ -144,6 +145,15 @@ struct mmc_host_ops {
 	void	(*enable_preset_value)(struct mmc_host *host, bool enable);
 	int	(*select_drive_strength)(unsigned int max_dtr, int host_drv, int card_drv);
 	void	(*hw_reset)(struct mmc_host *host);
+
+	/*
+	 * Device frequency scaling optional callbacks to allow for custom
+	 * algorithms to determine the target frequency.
+	 */
+	int	(*dfs_governor_init)(struct mmc_host *host);
+	void	(*dfs_governor_exit)(struct mmc_host *host);
+	int	(*dfs_governor_get_target)(struct mmc_host *host,
+		unsigned long *freq);
 };
 
 struct mmc_card;
@@ -162,6 +172,19 @@ struct mmc_async_req {
 struct mmc_hotplug {
 	unsigned int irq;
 	void *handler_priv;
+};
+
+struct mmc_dev_stats {
+	/* Device busy and total times in the current interval */
+	unsigned long		busy_time;
+	unsigned long		total_time;
+
+	/* Active and polling timestamps used for time calculation */
+	ktime_t			t_busy;
+	ktime_t			t_interval;
+
+	unsigned int		polling_interval;
+	bool			update_dev_freq;
 };
 
 struct mmc_host {
@@ -322,6 +345,13 @@ struct mmc_host {
 	atomic_t		sdio_irq_thread_abort;
 
 	mmc_pm_flag_t		pm_flags;	/* requested pm features */
+
+	/* MMC DFS and devfreq information */
+	struct devfreq			*df;
+	struct devfreq_dev_profile	*df_profile;
+	struct devfreq_dev_status	*devfreq_stats;
+	struct mmc_dev_stats		*dev_stats;
+	struct delayed_work		dfs_work;
 
 #ifdef CONFIG_LEDS_TRIGGERS
 	struct led_trigger	*led;		/* activity led */
