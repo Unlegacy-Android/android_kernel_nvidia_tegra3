@@ -874,8 +874,13 @@ static bool tegra_dc_hdmi_detect(struct tegra_dc *dc)
 	struct fb_monspecs specs;
 	int err;
 
+	mutex_lock(&dc->lock);
+
 	if (!tegra_dc_hdmi_hpd(dc))
 		goto fail;
+
+	if (dc->connected)
+		goto success;
 
 	err = tegra_edid_get_monspecs(hdmi->edid, &specs);
 	if (err < 0) {
@@ -904,9 +909,14 @@ static bool tegra_dc_hdmi_detect(struct tegra_dc *dc)
 		tegra_dc_hdmi_detect_config(dc, &specs);
 	}
 
+success:
+	mutex_unlock(&dc->lock);
+
 	return true;
 
 fail:
+	mutex_unlock(&dc->lock);
+
 	hdmi->eld_retrieved = false;
 #ifdef CONFIG_SWITCH
 	switch_set_state(&hdmi->hpd_switch, 0);
@@ -926,7 +936,7 @@ static void tegra_dc_hdmi_detect_worker(struct work_struct *work)
 	/* Set default videomode on dc before enabling it*/
 	tegra_dc_set_default_videomode(dc);
 #endif
-	if (!tegra_dc_hdmi_detect(dc)) {
+	if (!tegra_dc_hdmi_detect(dc) && dc->connected) {
 		dev_dbg(&dc->ndev->dev, "HDMI disconnect\n");
 		dc->connected = false;
 		tegra_dc_disable(dc);
