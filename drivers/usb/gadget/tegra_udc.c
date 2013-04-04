@@ -1460,6 +1460,8 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 {
 	struct tegra_udc *udc = container_of(gadget, struct tegra_udc, gadget);
 	unsigned long flags;
+
+	mutex_lock(&udc->sync_lock);
 	DBG("%s(%d) turn VBUS state from %s to %s", __func__, __LINE__,
 		udc->vbus_active ? "on" : "off", is_active ? "on" : "off");
 
@@ -1495,6 +1497,7 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		    (udc->connect_type == CONNECT_TYPE_CDP))
 			dr_controller_run(udc);
 	}
+	mutex_unlock(&udc->sync_lock);
 
 	return 0;
 }
@@ -2801,6 +2804,7 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		goto err_phy;
 	}
 	spin_lock_init(&udc->lock);
+	mutex_init(&udc->sync_lock);
 	udc->stopped = 1;
 	udc->pdev = pdev;
 	udc->has_hostpc = pdata->has_hostpc;
@@ -2960,6 +2964,7 @@ static int __exit tegra_udc_remove(struct platform_device *pdev)
 	udc->done = &done;
 
 	cancel_delayed_work(&udc->non_std_charger_work);
+	cancel_work_sync(&udc->irq_work);
 #ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
 	cancel_work_sync(&udc->boost_cpufreq_work);
 #endif
@@ -2969,7 +2974,6 @@ static int __exit tegra_udc_remove(struct platform_device *pdev)
 
 	if (udc->transceiver)
 		otg_set_peripheral(udc->transceiver->otg, NULL);
-
 
 	/* Free allocated memory */
 	dma_free_coherent(&pdev->dev, STATUS_BUFFER_SIZE,
@@ -2983,6 +2987,7 @@ static int __exit tegra_udc_remove(struct platform_device *pdev)
 	iounmap(udc->regs);
 	release_mem_region(res->start, res->end - res->start + 1);
 
+	mutex_destroy(&udc->sync_lock);
 	device_unregister(&udc->gadget.dev);
 	/* Free udc -- wait for the release() finished */
 	wait_for_completion(&done);
