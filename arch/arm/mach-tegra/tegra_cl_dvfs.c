@@ -569,8 +569,7 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 	 *  - at least specified time after the last calibration attempt
 	 */
 	if ((cld->mode != TEGRA_CL_DVFS_CLOSED_LOOP) ||
-	    ((cld->last_req.scale == (SCALE_MAX - 1)) &&
-	     (cld->last_req.cap > out_min)))
+	    (cld->last_req.rate > cld->dvco_rate_min))
 		return;
 
 	now = ktime_get();
@@ -699,7 +698,7 @@ static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld)
 
 	/* dvco min rate is under-estimated - skewed range up */
 	cld->calibration_range_min = cld->dvco_rate_min - 2 * RATE_STEP(cld);
-	cld->calibration_range_max = cld->dvco_rate_min + 6 * RATE_STEP(cld);
+	cld->calibration_range_max = cld->dvco_rate_min + 8 * RATE_STEP(cld);
 }
 
 static struct voltage_reg_map *find_vdd_map_entry(
