@@ -43,7 +43,7 @@
 #define WLAN_WOW_STR	"bcmsdh_sdmmc"
 #if defined(CONFIG_BCMDHD_EDP_SUPPORT)
 /* Wifi power levels */
-#define ON  2401 /* 2401mW */
+#define ON  1080 /* 1080 mW */
 #define OFF 0
 static unsigned int wifi_states[] = {ON, OFF};
 #endif
