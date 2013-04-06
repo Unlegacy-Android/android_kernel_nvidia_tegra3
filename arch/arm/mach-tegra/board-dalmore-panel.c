@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-dalmore-panel.c
  *
- * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -236,6 +236,47 @@ static void dalmore_hdmi_hotplug_report(bool state)
 	}
 }
 
+/* Electrical characteristics for HDMI, all modes must be declared here */
+struct tmds_config dalmore_tmds_config[] = {
+	{ /* 480p : 27 MHz and below */
+		.pclk = 27000000,
+		.pll0 = 0x01003010,
+		.pll1 = 0x00301b00,
+		.drive_current = 0x23232323,
+		.pe_current = 0x00000000,
+		.peak_current = 0x00000000,
+	},
+	{ /* 720p : 74.25MHz modes */
+		.pclk = 74250000,
+		.pll0 = 0x01003110,
+		.pll1 = 0x00301b00,
+		.drive_current = 0x25252525,
+		.pe_current = 0x00000000,
+		.peak_current = 0x03030303,
+	},
+	{ /* 1080p : 148.5MHz modes */
+		.pclk = 148500000,
+		.pll0 = 0x01003310,
+		.pll1 = 0x00301b00,
+		.drive_current = 0x27272727,
+		.pe_current = 0x00000000,
+		.peak_current = 0x03030303,
+	},
+	{ /* 4K : 297MHz modes */
+		.pclk = INT_MAX,
+		.pll0 = 0x01003f10,
+		.pll1 = 0x00300f00,
+		.drive_current = 0x303f3f3f,
+		.pe_current = 0x00000000,
+		.peak_current = 0x040f0f0f,
+	},
+};
+
+struct tegra_hdmi_out dalmore_hdmi_out = {
+	.tmds_config = dalmore_tmds_config,
+	.n_tmds_config = ARRAY_SIZE(dalmore_tmds_config),
+};
+
 static struct tegra_dc_out dalmore_disp2_out = {
 	.type		= TEGRA_DC_OUT_HDMI,
 	.flags		= TEGRA_DC_OUT_HOTPLUG_HIGH,
@@ -243,6 +284,7 @@ static struct tegra_dc_out dalmore_disp2_out = {
 
 	.dcc_bus	= 3,
 	.hotplug_gpio	= dalmore_hdmi_hpd,
+	.hdmi_out	= &dalmore_hdmi_out,
 
 	.max_pixclock	= KHZ2PICOS(297000),
 
