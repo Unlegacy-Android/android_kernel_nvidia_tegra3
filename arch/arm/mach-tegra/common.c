@@ -35,7 +35,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/sys_soc.h>
 #include <linux/export.h>
-
+#include <linux/bootmem.h>
 #include <trace/events/nvsecurity.h>
 
 #include <asm/soc.h>
@@ -1642,14 +1642,22 @@ int __init tegra_register_fuse(void)
 void __init tegra_release_bootloader_fb(void)
 {
 	/* Since bootloader fb is reserved in common.c, it is freed here. */
-	if (tegra_bootloader_fb_size)
+	if (tegra_bootloader_fb_size) {
 		if (memblock_free(tegra_bootloader_fb_start,
 						tegra_bootloader_fb_size))
 			pr_err("Failed to free bootloader fb.\n");
-	if (tegra_bootloader_fb2_size)
+		else
+			free_bootmem_late(tegra_bootloader_fb_start,
+						tegra_bootloader_fb_size);
+	}
+	if (tegra_bootloader_fb2_size) {
 		if (memblock_free(tegra_bootloader_fb2_start,
 						tegra_bootloader_fb2_size))
 			pr_err("Failed to free bootloader fb2.\n");
+		else
+			free_bootmem_late(tegra_bootloader_fb2_start,
+						tegra_bootloader_fb2_size);
+	}
 }
 
 static struct platform_device *pinmux_devices[] = {
