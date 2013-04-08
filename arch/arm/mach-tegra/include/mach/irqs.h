@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/include/mach/irqs.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (c) 2009-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -445,6 +445,7 @@
 #define INT_USB3_DEV_PME		(INT_SEC_BASE + 25)
 #define INT_SE				(INT_SEC_BASE + 26)
 #define INT_SPI_1			(INT_SEC_BASE + 27)
+#define INT_DTV			INT_SPI_1
 #define INT_APB_DMA_COP			(INT_SEC_BASE + 28)
 #define INT_AHB_DMA_COP			(INT_SEC_BASE + 29)
 /* unused				(INT_SEC_BASE + 30) */
