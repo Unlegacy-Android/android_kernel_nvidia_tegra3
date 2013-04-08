@@ -228,7 +228,7 @@ static int tegratab_ov5693_power_off(struct ov5693_power_rail *pw)
 }
 
 static struct nvc_gpio_pdata ov5693_gpio_pdata[] = {
-	{ OV5693_GPIO_TYPE_PWRDN, CAM_RSTN, true, 0, },
+	{ OV5693_GPIO_TYPE_PWRDN, CAM1_POWER_DWN_GPIO, true, 0, },
 };
 static struct ov5693_platform_data tegratab_ov5693_pdata = {
 	.num		= 0,
@@ -244,7 +244,6 @@ static int tegratab_ad5823_power_on(struct ad5823_platform_data *pdata)
 	int err = 0;
 
 	pr_info("%s\n", __func__);
-	err = gpio_request_one(pdata->gpio, GPIOF_OUT_INIT_LOW, "af_pwdn");
 
 	gpio_set_value_cansleep(pdata->gpio, 1);
 
@@ -255,7 +254,6 @@ static int tegratab_ad5823_power_off(struct ad5823_platform_data *pdata)
 {
 	pr_info("%s\n", __func__);
 	gpio_set_value_cansleep(pdata->gpio, 0);
-	gpio_free(pdata->gpio);
 	return 0;
 }
 
