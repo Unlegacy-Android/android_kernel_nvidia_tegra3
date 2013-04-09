@@ -94,6 +94,7 @@ struct bq2419x_chip {
 	int				suspended;
 	int				chg_restart_timeout;
 	int				chg_restart_time;
+	int				chg_enable;
 };
 
 static enum power_supply_property bq2419x_psy_props[] = {
@@ -115,9 +116,17 @@ static int bq2419x_charger_enable(struct bq2419x_chip *bq2419x)
 {
 	int ret;
 
-	dev_info(bq2419x->dev, "Charging enabled\n");
-	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
-			BQ2419X_ENABLE_CHARGE_MASK, BQ2419X_ENABLE_CHARGE);
+	if (bq2419x->chg_enable) {
+		dev_info(bq2419x->dev, "Charging enabled\n");
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
+				BQ2419X_ENABLE_CHARGE_MASK,
+				BQ2419X_ENABLE_CHARGE);
+	} else {
+		dev_info(bq2419x->dev, "Charging disabled\n");
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
+				BQ2419X_ENABLE_CHARGE_MASK,
+				BQ2419X_DISABLE_CHARGE);
+	}
 	if (ret < 0)
 		dev_err(bq2419x->dev, "register update failed, err %d\n", ret);
 	return ret;
@@ -800,12 +809,18 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 	}
 
 	bq2419x->dev = &client->dev;
-	bq2419x->use_usb = pdata->bcharger_pdata->use_usb;
-	bq2419x->use_mains =  pdata->bcharger_pdata->use_mains;
-	bq2419x->update_status =  pdata->bcharger_pdata->update_status;
-	bq2419x->rtc_alarm_time =  pdata->bcharger_pdata->rtc_alarm_time;
-	bq2419x->wdt_time_sec = pdata->bcharger_pdata->wdt_timeout;
-	bq2419x->chg_restart_time = pdata->bcharger_pdata->chg_restart_time;
+
+	if (pdata->bcharger_pdata) {
+		bq2419x->use_usb	= pdata->bcharger_pdata->use_usb;
+		bq2419x->use_mains	= pdata->bcharger_pdata->use_mains;
+		bq2419x->update_status	= pdata->bcharger_pdata->update_status;
+		bq2419x->rtc_alarm_time	= pdata->bcharger_pdata->rtc_alarm_time;
+		bq2419x->wdt_time_sec	= pdata->bcharger_pdata->wdt_timeout;
+		bq2419x->chg_restart_time =
+					pdata->bcharger_pdata->chg_restart_time;
+		bq2419x->chg_enable	= true;
+	}
+
 	bq2419x->wdt_refresh_timeout = 25;
 	i2c_set_clientdata(client, bq2419x);
 	bq2419x->irq = client->irq;
