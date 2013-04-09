@@ -340,6 +340,7 @@ int wldev_miracast_tuning(
 {
 	int error = 0;
 	int mode = 0;
+	int ampdu_mpdu;
 	int roam_off;
 
 	if (sscanf(command, "%*s %d", &mode) != 1) {
@@ -351,6 +352,7 @@ int wldev_miracast_tuning(
 
 	if (mode == 0) {
 		/* Normal mode: restore everything to default */
+		ampdu_mpdu = -1;
 #if defined(ROAM_ENABLE)
 		roam_off = 0;	/* roam enable */
 #elif defined(DISABLE_BUILTIN_ROAM)
@@ -359,18 +361,28 @@ int wldev_miracast_tuning(
 	}
 	else if (mode == 1) {
 		/* Miracast source mode */
+		ampdu_mpdu = 8;
 #if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
 		roam_off = 1; /* roam disable */
 #endif
 	}
 	else if (mode == 2) {
 		/* Miracast sink/PC Gaming mode */
+		ampdu_mpdu = 8;
 #if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
 		roam_off = 1; /* roam disable */
 #endif
 	}
 	else {
 		WLDEV_ERROR(("Unknown mode: %d\n", mode));
+		return -1;
+	}
+
+	/* Update ampdu_mpdu */
+	error = wldev_iovar_setint(dev, "ampdu_mpdu", ampdu_mpdu);
+	if (error) {
+		WLDEV_ERROR(("Failed to set ampdu_mpdu: mode:%d, error:%d\n",
+			mode, error));
 		return -1;
 	}
 
