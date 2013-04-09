@@ -215,6 +215,7 @@ static struct regulator_consumer_supply palmas_ldo4_supply[] = {
 static struct regulator_consumer_supply palmas_ldo5_supply[] = {
 	REGULATOR_SUPPLY("vdd_af_cam1", NULL),
 	REGULATOR_SUPPLY("vdd", "2-000c"),
+	REGULATOR_SUPPLY("vana", "2-0048"),
 };
 
 static struct regulator_consumer_supply palmas_ldo6_supply[] = {
@@ -432,6 +433,7 @@ static struct regulator_consumer_supply fixed_reg_vddio_sd_slot_supply[] = {
 
 static struct regulator_consumer_supply fixed_reg_vd_cam_1v8_supply[] = {
 	REGULATOR_SUPPLY("dovdd", "2-0010"),
+	REGULATOR_SUPPLY("vif2", "2-0048"),
 };
 
 /* Macro for defining fixed regulator sub device data */

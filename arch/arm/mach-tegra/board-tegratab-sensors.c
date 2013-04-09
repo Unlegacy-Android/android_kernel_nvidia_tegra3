@@ -43,6 +43,7 @@
 #include <mach/pinmux.h>
 #include <media/ov5693.h>
 #include <media/ad5823.h>
+#include <media/mt9m114.h>
 #include <generated/mach-types.h>
 #include <linux/power/sbs-battery.h>
 
@@ -138,10 +139,10 @@ static struct tegra_pingroup_config mclk_enable =
 
 static struct tegra_pingroup_config pbb0_disable =
 	VI_PINMUX(GPIO_PBB0, VI, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
-/*
+
 static struct tegra_pingroup_config pbb0_enable =
 	VI_PINMUX(GPIO_PBB0, VI_ALT3, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
-*/
+
 /*
  * As a workaround, tegratab_vcmvdd need to be allocated to activate the
  * sensor devices. This is due to the focuser device(AD5823) will hook up
@@ -263,6 +264,65 @@ static struct ad5823_platform_data tegratab_ad5823_pdata = {
 	.power_off	= tegratab_ad5823_power_off,
 };
 
+static int tegratab_mt9m114_power_on(struct mt9m114_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
+		return -EFAULT;
+
+	gpio_set_value(CAM_RSTN, 0);
+	usleep_range(1000, 1020);
+
+	err = regulator_enable(pw->iovdd);
+	if (unlikely(err))
+		goto mt9m114_iovdd_fail;
+	usleep_range(300, 320);
+
+	err = regulator_enable(pw->avdd);
+	if (unlikely(err))
+		goto mt9m114_avdd_fail;
+
+	usleep_range(1000, 1020);
+	gpio_set_value(CAM_RSTN, 1);
+
+	usleep_range(1000, 1020);
+	tegra_pinmux_config_table(&pbb0_enable, 1);
+	usleep_range(200, 220);
+
+	/* return 1 to skip the in-driver power_on swquence */
+	return 1;
+
+mt9m114_avdd_fail:
+	regulator_disable(pw->iovdd);
+
+mt9m114_iovdd_fail:
+	gpio_set_value(CAM_RSTN, 0);
+	return -ENODEV;
+}
+
+static int tegratab_mt9m114_power_off(struct mt9m114_power_rail *pw)
+{
+	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
+		return -EFAULT;
+
+	usleep_range(100, 120);
+	tegra_pinmux_config_table(&pbb0_disable, 1);
+	usleep_range(100, 120);
+	gpio_set_value(CAM_RSTN, 0);
+	usleep_range(100, 120);
+	regulator_disable(pw->avdd);
+	usleep_range(100, 120);
+	regulator_disable(pw->iovdd);
+
+	return 1;
+}
+
+struct mt9m114_platform_data tegratab_mt9m114_pdata = {
+	.power_on = tegratab_mt9m114_power_on,
+	.power_off = tegratab_mt9m114_power_off,
+};
+
 static struct i2c_board_info tegratab_i2c_board_info_e1599[] = {
 	{
 		I2C_BOARD_INFO("ov5693", 0x10),
@@ -271,6 +331,10 @@ static struct i2c_board_info tegratab_i2c_board_info_e1599[] = {
 	{
 		I2C_BOARD_INFO("ad5823", 0x0c),
 		.platform_data = &tegratab_ad5823_pdata,
+	},
+	{
+		I2C_BOARD_INFO("mt9m114", 0x48),
+		.platform_data = &tegratab_mt9m114_pdata,
 	},
 };
 
