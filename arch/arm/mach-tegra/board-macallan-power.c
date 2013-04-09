@@ -540,8 +540,6 @@ int __init macallan_palmas_regulator_init(void)
 
 	i2c_register_board_info(4, palma_device,
 			ARRAY_SIZE(palma_device));
-	i2c_register_board_info(0, bq2419x_boardinfo,
-			ARRAY_SIZE(bq2419x_boardinfo));
 
 	return 0;
 }
@@ -663,6 +661,13 @@ int __init macallan_regulator_init(void)
 	macallan_cl_dvfs_init();
 #endif
 	macallan_palmas_regulator_init();
+
+	/* forced make null to prevent charging. */
+	macallan_bq2419x_pdata.bcharger_pdata = NULL;
+
+	bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
+	i2c_register_board_info(0, bq2419x_boardinfo,
+			ARRAY_SIZE(bq2419x_boardinfo));
 
 	platform_device_register(&macallan_pda_power_device);
 

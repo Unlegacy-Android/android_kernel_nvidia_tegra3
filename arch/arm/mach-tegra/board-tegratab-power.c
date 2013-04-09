@@ -659,6 +659,7 @@ int __init tegratab_regulator_init(void)
 	if (get_power_supply_type() != POWER_SUPPLY_TYPE_BATTERY)
 		tegratab_bq2419x_pdata.bcharger_pdata = NULL;
 
+	tegratab_bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
 	i2c_register_board_info(0, tegratab_bq2419x_boardinfo, 1);
 
 	platform_device_register(&tegratab_pda_power_device);
