@@ -644,6 +644,10 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		bq2419x->chg_restart_timeout = bq2419x->chg_restart_time /
 						bq2419x->wdt_refresh_timeout;
 		dev_info(bq2419x->dev, "Charging completed\n");
+		bq2419x->status = 4;
+		if (bq2419x->update_status)
+			bq2419x->update_status
+				(bq2419x->status, 2);
 	}
 
 	/*
