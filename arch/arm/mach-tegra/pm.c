@@ -117,7 +117,10 @@ static unsigned long iram_save_size;
 static void __iomem *iram_code = IO_ADDRESS(TEGRA_IRAM_CODE_AREA);
 static void __iomem *clk_rst = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+static void __iomem *tmrus_reg_base = IO_ADDRESS(TEGRA_TMR1_BASE);
 static int tegra_last_pclk;
+static u64 resume_time;
+static u64 resume_entry_time;
 #endif
 
 struct suspend_context tegra_sctx;
@@ -232,6 +235,15 @@ static const char *tegra_suspend_name[TEGRA_MAX_SUSPEND_MODE] = {
 	[TEGRA_SUSPEND_LP1]	= "lp1",
 	[TEGRA_SUSPEND_LP0]	= "lp0",
 };
+
+void tegra_log_resume_time(void)
+{
+	u64 resume_end_time = readl(tmrus_reg_base + TIMERUS_CNTR_1US);
+
+	if (resume_entry_time > resume_end_time)
+		resume_end_time |= 1ull<<32;
+	resume_time = resume_end_time - resume_entry_time;
+}
 
 unsigned long tegra_cpu_power_good_time(void)
 {
@@ -1040,6 +1052,10 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	else
 		tegra_sleep_core(mode, PHYS_OFFSET - PAGE_OFFSET);
 
+	resume_entry_time = 0;
+	if (mode != TEGRA_SUSPEND_LP0)
+		resume_entry_time = readl(tmrus_reg_base + TIMERUS_CNTR_1US);
+
 	tegra_init_cache(true);
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
@@ -1192,6 +1208,16 @@ bad_name:
 
 static struct kobj_attribute suspend_mode_attribute =
 	__ATTR(mode, 0644, suspend_mode_show, suspend_mode_store);
+
+static ssize_t suspend_resume_time_show(struct kobject *kobj,
+					struct kobj_attribute *attr,
+					char *buf)
+{
+	return sprintf(buf, "%ums\n", ((u32)resume_time / 1000));
+}
+
+static struct kobj_attribute suspend_resume_time_attribute =
+	__ATTR(resume_time, 0444, suspend_resume_time_show, 0);
 
 static struct kobject *suspend_kobj;
 
@@ -1394,6 +1420,10 @@ out:
 		if (sysfs_create_file(suspend_kobj, \
 						&suspend_mode_attribute.attr))
 			pr_err("%s: sysfs_create_file suspend type failed!\n",
+								__func__);
+		if (sysfs_create_file(suspend_kobj, \
+					&suspend_resume_time_attribute.attr))
+			pr_err("%s: sysfs_create_file resume_time failed!\n",
 								__func__);
 	}
 

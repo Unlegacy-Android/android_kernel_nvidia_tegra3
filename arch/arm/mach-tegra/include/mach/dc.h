@@ -762,4 +762,9 @@ int tegra_dc_get_panel_sync_rate(void);
 
 int tegra_dc_get_out(const struct tegra_dc *dc);
 
+#ifdef CONFIG_PM_SLEEP
+void tegra_log_resume_time(void);
+#else
+#define tegra_log_resume_time()
+#endif
 #endif
