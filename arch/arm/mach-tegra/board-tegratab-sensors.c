@@ -290,11 +290,6 @@ static struct mpu_platform_data mpu6050_gyro_data = {
 	.level_shifter	= 0,
 	/* Located in board_[platformname].h */
 	.orientation	= MPU_GYRO_ORIENTATION,
-	.sec_slave_type	= SECONDARY_SLAVE_TYPE_COMPASS,
-	.sec_slave_id	= COMPASS_ID_AK8975,
-	.secondary_i2c_addr	= MPU_COMPASS_ADDR,
-	.secondary_read_reg	= 0x06,
-	.secondary_orientation	= MPU_COMPASS_ORIENTATION,
 	.key		= {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
 			   0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
 };
@@ -305,19 +300,6 @@ static struct mpu_platform_data mpu6050_gyro_data = {
 		.label = _label,				\
 		.value = _value,				\
 	}
-
-static struct cm3217_platform_data tegratab_cm3217_pdata = {
-	.levels = {10, 160, 225, 320, 640, 1280, 2600, 5800, 8000, 10240},
-	.golden_adc = 0,
-	.power = 0,
-};
-
-static struct i2c_board_info tegratab_i2c0_board_info_cm3217[] = {
-	{
-		I2C_BOARD_INFO("cm3217", 0x10),
-		.platform_data = &tegratab_cm3217_pdata,
-	},
-};
 
 static struct i2c_board_info __initdata inv_mpu6050_i2c2_board_info[] = {
 	{
@@ -551,9 +533,6 @@ int __init tegratab_sensors_init(void)
 
 	tegratab_camera_init();
 	mpuirq_init();
-
-	i2c_register_board_info(0, tegratab_i2c0_board_info_cm3217,
-				ARRAY_SIZE(tegratab_i2c0_board_info_cm3217));
 
 	return 0;
 }

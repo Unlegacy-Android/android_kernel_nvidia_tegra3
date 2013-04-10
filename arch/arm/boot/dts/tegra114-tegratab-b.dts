@@ -17,34 +17,3 @@
 /dts-v1/;
 
 /include/ "tegra114-tegratab-common.dtsi"
-
-/ {
-	host1x {
-		status = "okay";
-		hdmi {
-			status = "okay";
-		};
-	};
-
-	/* GEN1 */
-	i2c@7000c000 {
-		status = "okay";
-		clock-frequency = <100000>;
-
-		/* ALS sensor */
-		cm3217@10 {
-			compatible = "capella,cm3217";
-			reg = <0x10>;
-			levels = <10 160 225 320 640 1280 2600 5800 8000 10240>;
-			golden_adc = <0>;
-		};
-
-		/* Compass sensor */
-		akm8963@0d {
-			compatible = "ak,ak8963";
-			reg = <0x0d>;
-			orientation = [00 01 00 ff 00 00 00 00 01];
-			config = "mpu";
-		};
-	};
-};

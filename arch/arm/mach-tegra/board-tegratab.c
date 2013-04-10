@@ -212,21 +212,6 @@ static struct i2c_board_info __initdata rt5640_board_info = {
 
 static void tegratab_i2c_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-	tegra11_i2c_device1.dev.platform_data = &tegratab_i2c1_platform_data;
-	tegra11_i2c_device2.dev.platform_data = &tegratab_i2c2_platform_data;
-	tegra11_i2c_device3.dev.platform_data = &tegratab_i2c3_platform_data;
-	tegra11_i2c_device4.dev.platform_data = &tegratab_i2c4_platform_data;
-	tegra11_i2c_device5.dev.platform_data = &tegratab_i2c5_platform_data;
-
-	platform_device_register(&tegra11_i2c_device5);
-	platform_device_register(&tegra11_i2c_device4);
-	platform_device_register(&tegra11_i2c_device3);
-	platform_device_register(&tegra11_i2c_device2);
-	platform_device_register(&tegra11_i2c_device1);
-
 	i2c_register_board_info(0, &rt5640_board_info, 1);
 }
 
@@ -346,9 +331,6 @@ static struct platform_device *tegratab_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
 	&tegra_udc_device,
-#if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
-	&tegra_smmu_device,
-#endif
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
@@ -647,15 +629,36 @@ static int __init tegratab_touch_init(void)
 	return 0;
 }
 
-static void __init tegra_tegratab_init(void)
+static void __init tegra_tegratab_early_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_display_board_info(&board_info);
 	tegra_clk_init_from_table(tegratab_clk_init_table);
 	tegra_clk_verify_parents();
 	tegra_soc_device_init("tegratab");
-	tegra_enable_pinmux();
+#if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
+	platform_device_register(&tegra_smmu_device);
+#endif
+}
+
+struct of_dev_auxdata tegratab_auxdata_lookup[] __initdata = {
+	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c000, "tegra11-i2c.0",
+		&tegratab_i2c1_platform_data),
+	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c400, "tegra11-i2c.1",
+		&tegratab_i2c2_platform_data),
+	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c500, "tegra11-i2c.2",
+		&tegratab_i2c3_platform_data),
+	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c700, "tegra11-i2c.3",
+		&tegratab_i2c4_platform_data),
+	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000d000, "tegra11-i2c.4",
+		&tegratab_i2c5_platform_data),
+	{},
+};
+
+static void __init tegra_tegratab_late_init(void)
+{
+	struct board_info board_info;
+	tegra_get_display_board_info(&board_info);
+
+	platform_device_register(&tegra_pinmux_device);
 	tegratab_pinmux_init();
 	tegratab_i2c_init();
 	tegratab_spi_init();
@@ -696,12 +699,14 @@ static void __init tegratab_ramconsole_reserve(unsigned long size)
 
 static void __init tegra_tegratab_dt_init(void)
 {
+	tegra_tegratab_early_init();
+
 #ifdef CONFIG_USE_OF
-	of_platform_populate(NULL,
-		of_default_bus_match_table, NULL, NULL);
+	of_platform_populate(NULL, of_default_bus_match_table,
+		tegratab_auxdata_lookup, &platform_bus);
 #endif
 
-	tegra_tegratab_init();
+	tegra_tegratab_late_init();
 }
 
 static void __init tegra_tegratab_reserve(void)
@@ -726,7 +731,7 @@ MACHINE_START(TEGRATAB, "tegratab")
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_tegratab_reserve,
 	.init_early	= tegra11x_init_early,
-	.init_irq	= tegra_init_irq,
+	.init_irq	= tegra_dt_init_irq,
 	.handle_irq	= gic_handle_irq,
 	.timer		= &tegra_timer,
 	.init_machine	= tegra_tegratab_dt_init,

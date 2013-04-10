@@ -191,7 +191,6 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("vddio_gmi", NULL),
 	REGULATOR_SUPPLY("vlogic", "0-0069"),
 	REGULATOR_SUPPLY("vid", "0-000d"),
-	REGULATOR_SUPPLY("vddio", "0-0078"),
 };
 
 static struct regulator_consumer_supply palmas_smps9_supply[] = {
@@ -236,6 +235,8 @@ static struct regulator_consumer_supply palmas_ldo5_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldo6_supply[] = {
+	REGULATOR_SUPPLY("vdd", "0-0069"),
+	REGULATOR_SUPPLY("vdd", "0-000d"),
 };
 
 static struct regulator_consumer_supply palmas_ldo7_supply[] = {
