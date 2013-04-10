@@ -150,77 +150,10 @@ static bool is_dsi_panel(void)
 
 static int cardhu_backlight_init(struct device *dev)
 {
-	int ret = 0;
-
-	if (WARN_ON(ARRAY_SIZE(cardhu_bl_output_measured) != 256))
-		pr_err("bl_output array does not have 256 elements\n");
-
-	if (!is_dsi_panel()) {
-		ret = gpio_request(cardhu_bl_enb, "backlight_enb");
-		if (ret < 0)
-			return ret;
-
-		ret = gpio_direction_output(cardhu_bl_enb, 1);
-		if (ret < 0)
-			gpio_free(cardhu_bl_enb);
-	} else if (is_panel_218) {
-		/* Enable back light for DSIa panel */
-		ret = gpio_request(cardhu_dsia_bl_enb, "dsia_bl_enable");
-		if (ret < 0)
-			return ret;
-
-		ret = gpio_direction_output(cardhu_dsia_bl_enb, 1);
-		if (ret < 0)
-			gpio_free(cardhu_dsia_bl_enb);
-
-		/* Enable back light for DSIb panel */
-		ret = gpio_request(cardhu_dsib_bl_enb, "dsib_bl_enable");
-		if (ret < 0)
-			return ret;
-
-		ret = gpio_direction_output(cardhu_dsib_bl_enb, 1);
-		if (ret < 0)
-			gpio_free(cardhu_dsib_bl_enb);
-	} else if (is_panel_219) {
-		/* Enable back light for DSIa panel */
-		ret = gpio_request(cardhu_dsia_bl_enb, "dsia_bl_enable");
-		if (ret < 0)
-			return ret;
-
-		ret = gpio_direction_output(cardhu_dsia_bl_enb, 1);
-		if (ret < 0)
-			gpio_free(cardhu_dsia_bl_enb);
-	}
-
-	return ret;
-};
-
-static void cardhu_backlight_exit(struct device *dev)
-{
-	if (!is_dsi_panel()) {
-		/* int ret; */
-		/*ret = gpio_request(cardhu_bl_enb, "backlight_enb");*/
-		gpio_set_value(cardhu_bl_enb, 0);
-		gpio_free(cardhu_bl_enb);
-	} else if (is_panel_218) {
-		/* Disable back light for DSIa panel */
-		gpio_set_value(cardhu_dsia_bl_enb, 0);
-		gpio_free(cardhu_dsia_bl_enb);
-
-		/* Disable back light for DSIb panel */
-		gpio_set_value(cardhu_dsib_bl_enb, 0);
-		gpio_free(cardhu_dsib_bl_enb);
-
-		gpio_set_value(cardhu_lvds_shutdown, 1);
-		mdelay(20);
-	} else if (is_panel_219) {
-		/* Disable back light for DSIa panel */
-		gpio_set_value(cardhu_dsia_bl_enb, 0);
-		gpio_free(cardhu_dsia_bl_enb);
-
-		gpio_set_value(cardhu_lvds_shutdown, 1);
-		mdelay(20);
-	}
+	if (is_dsi_panel())
+		return atomic_read(&display_ready);
+	else
+		return true;
 }
 
 static int cardhu_backlight_notify(struct device *unused, int brightness)
@@ -265,7 +198,6 @@ static struct platform_pwm_backlight_data cardhu_backlight_data = {
 	.dft_brightness	= 224,
 	.pwm_period_ns	= 1000000,
 	.init		= cardhu_backlight_init,
-	.exit		= cardhu_backlight_exit,
 	.notify		= cardhu_backlight_notify,
 	/* Only toggle backlight on fb blank notifications for disp1 */
 	.check_fb	= cardhu_disp1_check_fb,
@@ -1320,12 +1252,17 @@ static void cardhu_dual_dsi_init(void)
 #endif
 static void cardhu_panel_preinit(void)
 {
+	int ret;
+
 	if (display_board_info.board_id == BOARD_DISPLAY_E1213)
 		is_panel_218 = true;
 	else if (display_board_info.board_id == BOARD_DISPLAY_E1253)
 		is_panel_219 = true;
 	else if (display_board_info.board_id == BOARD_DISPLAY_E1506)
 		is_panel_1506 = true;
+
+	if (WARN_ON(ARRAY_SIZE(cardhu_bl_output_measured) != 256))
+		pr_err("bl_output array does not have 256 elements\n");
 
 	if (!is_dsi_panel()) {
 		cardhu_disp1_out.parent_clk_backup = "pll_d2_out0";
@@ -1341,6 +1278,19 @@ static void cardhu_panel_preinit(void)
 		cardhu_disp1_out.width = 223;
 
 		cardhu_disp1_pdata.fb = &cardhu_fb_data;
+
+		/* Enable back light */
+		ret = gpio_request(cardhu_bl_enb, "backlight_enb");
+		if (!ret) {
+			ret = gpio_direction_output(cardhu_bl_enb, 1);
+			if (ret < 0) {
+				gpio_free(cardhu_bl_enb);
+				pr_err("Error in setting backlight_enb\n");
+			}
+		} else {
+			pr_err("Error in gpio request for backlight_enb\n");
+		}
+
 	} else {
 		cardhu_disp1_out.flags = DC_CTRL_MODE;
 		cardhu_disp1_out.type = TEGRA_DC_OUT_DSI;
@@ -1363,6 +1313,34 @@ static void cardhu_panel_preinit(void)
 			/* Set height and width in mm. */
 			cardhu_disp1_out.height = 47;
 			cardhu_disp1_out.width = 84;
+
+			/* Enable back light for DSIa panel */
+			ret = gpio_request(cardhu_dsia_bl_enb,
+							"dsia_bl_enable");
+			if (!ret) {
+				ret = gpio_direction_output(cardhu_dsia_bl_enb,
+									1);
+				if (ret < 0) {
+					gpio_free(cardhu_dsia_bl_enb);
+					pr_err("Error in setting dsia_bl_enable\n");
+				}
+			} else {
+				pr_err("Error in gpio request for dsia_bl_enable\n");
+			}
+			/* Enable back light for DSIb panel */
+			ret = gpio_request(cardhu_dsib_bl_enb,
+							"dsib_bl_enable");
+			if (!ret) {
+				ret = gpio_direction_output(cardhu_dsib_bl_enb,
+									1);
+				if (ret < 0) {
+					gpio_free(cardhu_dsib_bl_enb);
+					pr_err("Error in setting dsib_bl_enable\n");
+				}
+			} else {
+				pr_err("Error in gpio request for dsib_bl_enable\n");
+			}
+
 #ifdef CONFIG_TEGRA_CARDHU_DUAL_DSI_PANEL
 			cardhu_dual_dsi_init();
 #endif
@@ -1375,6 +1353,21 @@ static void cardhu_panel_preinit(void)
 			/* Set height and width in mm. */
 			cardhu_disp1_out.height = 95;
 			cardhu_disp1_out.width = 53;
+
+			/* Enable back light for DSIa panel */
+			ret = gpio_request(cardhu_dsia_bl_enb,
+							"dsia_bl_enable");
+			if (!ret) {
+				ret = gpio_direction_output(cardhu_dsia_bl_enb,
+									1);
+				if (ret < 0) {
+					gpio_free(cardhu_dsia_bl_enb);
+					pr_err("Error in setting dsia_bl_enable\n");
+				}
+			} else {
+				pr_err("Error in gpio request for dsia_bl_enable\n");
+			}
+
 		} else if (is_panel_1506) {
 			cardhu_disp1_out.modes	= cardhu_dsi_modes_1506;
 			cardhu_disp1_out.n_modes =

@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu.h
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -272,5 +272,11 @@ extern struct tegra_uart_platform_data cardhu_irda_pdata;
 enum tegra_bb_type {
 	TEGRA_BB_TANGO = 1,
 };
+
+#ifdef CONFIG_TEGRA_DC
+	extern atomic_t display_ready;
+#else
+	static __maybe_unused atomic_t display_ready = ATOMIC_INIT(1);
+#endif
 
 #endif
