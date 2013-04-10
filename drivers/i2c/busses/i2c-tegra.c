@@ -1081,7 +1081,7 @@ static struct tegra_i2c_chipdata tegra11_i2c_chipdata = {
 
 /* Match table for of_platform binding */
 static const struct of_device_id tegra_i2c_of_match[] __devinitconst = {
-	{ .compatible = "nvidia,tegra11-i2c", .data = &tegra11_i2c_chipdata, },
+	{ .compatible = "nvidia,tegra114-i2c", .data = &tegra11_i2c_chipdata, },
 	{ .compatible = "nvidia,tegra20-i2c", .data = &tegra20_i2c_chipdata, },
 	{ .compatible = "nvidia,tegra20-i2c-dvc", .data = &tegra20_i2c_chipdata, },
 	{},
