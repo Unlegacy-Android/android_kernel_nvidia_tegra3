@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-roth-pinmux.c
  *
- * Copyright (C) 2012 NVIDIA Corporation
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -177,7 +177,8 @@ static __initdata struct tegra_drive_pingroup_config roth_drive_pinmux[] = {
 	SET_DRIVE(SDIO3, DISABLE, DISABLE, DIV_1, 22, 36, FASTEST, FASTEST),
 
 	/* SDMMC4 */
-	SET_DRIVE_WITH_TYPE(GMA, DISABLE, DISABLE, DIV_1, 2, 1, FASTEST, FASTEST, 1),
+	SET_DRIVE_WITH_TYPE(GMA, DISABLE, DISABLE, DIV_1, 2, 2, FASTEST,
+								FASTEST, 1),
 };
 
 /* Initially setting all used GPIO's to non-TRISTATE */

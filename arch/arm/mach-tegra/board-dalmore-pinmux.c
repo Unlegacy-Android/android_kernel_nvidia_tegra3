@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-dalmore-pinmux.c
  *
- * Copyright (c) 2012-2013 NVIDIA Corporation
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
