@@ -34,6 +34,7 @@
 #include "gpio-names.h"
 #include "board.h"
 #include "board-tegratab.h"
+#include "dvfs.h"
 
 #define TEGRATAB_SD_CD	TEGRA_GPIO_PV2
 #define TEGRATAB_WLAN_PWR	TEGRA_GPIO_PCC5
@@ -140,8 +141,9 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.trim_delay = 0x3,
 	.ddr_clk_limit = 41000000,
 	.max_clk_limit = 82000000,
-	.sd_detect_in_suspend = 1,
 	.uhs_mask = MMC_UHS_MASK_DDR50,
+	.edp_support = true,
+	.edp_states = {966, 0},
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
@@ -150,13 +152,15 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.power_gpio = -1,
 	.is_8bit = 1,
 	.tap_delay = 0x5,
-	.trim_delay = 0,
+	.trim_delay = 0xA,
 	.ddr_clk_limit = 41000000,
 	.max_clk_limit = 156000000,
 	.mmc_data = {
 		.built_in = 1,
 		.ocr_mask = MMC_OCR_1V8_MASK,
 	},
+	.edp_support = true,
+	.edp_states = {966, 0},
 };
 
 static struct platform_device tegra_sdhci_device0 = {
@@ -260,8 +264,33 @@ static int __init tegratab_wifi_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_TEGRA_PREPOWER_WIFI
+static int __init tegratab_wifi_prepower(void)
+{
+	if (!machine_is_tegratab())
+		return 0;
+
+	tegratab_wifi_power(1);
+
+	return 0;
+}
+
+subsys_initcall_sync(tegratab_wifi_prepower);
+#endif
+
 int __init tegratab_sdhci_init(void)
 {
+	int nominal_core_mv;
+
+	nominal_core_mv =
+		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
+	if (nominal_core_mv > 0) {
+		tegra_sdhci_platform_data0.nominal_vcore_uV = nominal_core_mv *
+			1000;
+		tegra_sdhci_platform_data3.nominal_vcore_uV = nominal_core_mv *
+			1000;
+	}
+
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);
