@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu-panel.c
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -244,15 +244,15 @@ static int cardhu_backlight_notify(struct device *unused, int brightness)
 		gpio_set_value(e1506_bl_enb, !!brightness);
 	}
 
+	/* SD brightness is a percentage, 8-bit value. */
+	brightness = (brightness * cur_sd_brightness) / 255;
+
 	/* Apply any backlight response curve */
 	if (brightness > 255) {
 		pr_info("Error: Brightness > 255!\n");
 	} else {
 		brightness = bl_output[brightness];
 	}
-
-	/* SD brightness is a percentage, 8-bit value. */
-	brightness = (brightness * cur_sd_brightness) / 255;
 
 	return brightness;
 }
