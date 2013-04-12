@@ -32,6 +32,8 @@
 #include <linux/module.h>
 #include <linux/hwmon-sysfs.h>
 #include <linux/suspend.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 
 struct therm_estimator {
 	struct thermal_zone_device *thz;
@@ -694,6 +696,262 @@ static int therm_est_pm_notify(struct notifier_block *nb,
 }
 #endif
 
+#ifdef CONFIG_OF
+static int __parse_dt_trip(struct device_node *np,
+			   struct thermal_trip_info *trips)
+{
+	const char *str;
+	u32 val;
+	int ret;
+
+	ret = of_property_read_string(np, "cdev-type", &str);
+	if (ret < 0)
+		return ret;
+	trips->cdev_type = (char *)str;
+
+	ret = of_property_read_string(np, "trip-type", &str);
+	if (ret < 0)
+		return ret;
+
+	if (!strcasecmp("active", str))
+		trips->trip_type = THERMAL_TRIP_ACTIVE;
+	else if (!strcasecmp("passive", str))
+		trips->trip_type = THERMAL_TRIP_PASSIVE;
+	else if (!strcasecmp("hot", str))
+		trips->trip_type = THERMAL_TRIP_HOT;
+	else if (!strcasecmp("critical", str))
+		trips->trip_type = THERMAL_TRIP_CRITICAL;
+	else
+		return -EINVAL;
+
+	ret = of_property_read_u32(np, "trip-temp", &val);
+	if (ret < 0)
+		return ret;
+	trips->trip_temp = val;
+
+	trips->hysteresis = 0;
+	if (of_property_read_u32(np, "hysteresis", &val) == 0)
+		trips->hysteresis = val;
+
+	trips->upper = THERMAL_NO_LIMIT;
+	if (of_property_read_string(np, "upper", &str) == 0) {
+		if (kstrtou32(str, 10, &val) == 0)
+			trips->upper = val;
+	}
+
+	trips->lower = THERMAL_NO_LIMIT;
+	if (of_property_read_string(np, "lower", &str) == 0) {
+		if (kstrtou32(str, 10, &val) == 0)
+			trips->lower = val;
+	}
+
+	return 0;
+}
+
+static int __parse_dt_subdev(struct device_node *np,
+			     struct therm_est_subdevice *subdev)
+{
+	const char *str;
+	char *sbegin;
+	int i = 0;
+	int ret;
+
+	subdev->dev_data = (void *)of_get_property(np, "dev-data", NULL);
+	if (!subdev->dev_data)
+		return -ENODATA;
+
+	ret = of_property_read_string(np, "coeffs", &str);
+	if (ret < 0)
+		return ret;
+
+	while (str && (i < HIST_LEN)) {
+		str = skip_spaces(str);
+		sbegin = strsep((char **)&str, " ");
+		if (!sbegin || (kstrtol((const char *)sbegin, 10,
+				&subdev->coeffs[i++]) < 0))
+			break;
+	}
+
+	if (i != HIST_LEN)
+		return -EINVAL;
+
+	return 0;
+}
+
+static int __parse_dt_tzp(struct device_node *np,
+			  struct thermal_zone_params *tzp)
+{
+	const char *str;
+
+	if (of_property_read_string(np, "governor", &str) == 0)
+		strncpy(tzp->governor_name, str, THERMAL_NAME_LENGTH);
+
+	return 0;
+}
+
+static int __parse_dt_timer_trip(struct device_node *np,
+				 struct therm_est_timer_trip_info *timer_info)
+{
+	struct device_node *ch;
+	u32 val;
+	int n_timers;
+	int ret;
+
+	ret = of_property_read_u32(np, "trip", &val);
+	if (ret < 0)
+		return ret;
+	timer_info->trip = val;
+
+	n_timers = 0;
+	for_each_child_of_node(np, ch) {
+		if (!of_device_is_compatible(ch, "nvidia,therm-est-timer"))
+			continue;
+
+		ret = of_property_read_u32(ch, "time-after", &val);
+		if (ret < 0)
+			return ret;
+		timer_info->timers[n_timers].time_after = val;
+
+		ret = of_property_read_u32(ch, "trip-temp", &val);
+		if (ret < 0)
+			return ret;
+		timer_info->timers[n_timers].trip_temp = val;
+
+		timer_info->timers[n_timers].hysteresis = 0;
+		if (of_property_read_u32(ch, "hysteresis", &val) == 0)
+			timer_info->timers[n_timers].hysteresis = val;
+
+		n_timers++;
+	}
+
+	timer_info->num_timers = n_timers;
+
+	return 0;
+}
+
+static struct therm_est_data *therm_est_get_pdata(struct device *dev)
+{
+	struct therm_est_data *data;
+	struct device_node *np;
+	struct device_node *ch;
+	u32 val;
+	int i, j, k, l;
+	int ret;
+
+	np = of_find_compatible_node(NULL, NULL, "nvidia,therm-est");
+	if (!np)
+		return dev->platform_data;
+
+	data = devm_kzalloc(dev, sizeof(struct therm_est_data), GFP_KERNEL);
+	if (!data)
+		return ERR_PTR(-ENOMEM);
+
+	ret = of_property_read_u32(np, "toffset", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	data->toffset = val;
+
+	ret = of_property_read_u32(np, "polling-period", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	data->polling_period = val;
+
+	ret = of_property_read_u32(np, "passive-delay", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	data->passive_delay = val;
+
+	ret = of_property_read_u32(np, "tc1", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	data->tc1 = val;
+
+	ret = of_property_read_u32(np, "tc2", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	data->tc2 = val;
+
+	i = j = k = l = 0;
+	for_each_child_of_node(np, ch) {
+		if (of_device_is_compatible(ch, "nvidia,therm-est-trip"))
+			i++;
+		else if (of_device_is_compatible(ch, "nvidia,therm-est-subdev"))
+			j++;
+		else if (of_device_is_compatible(ch, "nvidia,therm-est-tzp"))
+			k++;
+		else if (of_device_is_compatible(ch,
+						 "nvidia,therm-est-timer-trip"))
+			l++;
+	}
+
+	/* trip point information and subdevices are must required data. */
+	if ((i == 0) || (j == 0))
+		return ERR_PTR(-ENOENT);
+
+	data->trips = devm_kzalloc(dev, sizeof(struct thermal_trip_info) * i,
+				   GFP_KERNEL);
+	if (!data->trips)
+		return ERR_PTR(-ENOMEM);
+
+	data->devs = devm_kzalloc(dev, sizeof(struct therm_est_subdevice) * j,
+				  GFP_KERNEL);
+	if (!data->devs)
+		return ERR_PTR(-ENOMEM);
+
+	/* thermal zone params is optional data. */
+	if (k > 0) {
+		data->tzp = devm_kzalloc(dev,
+			sizeof(struct thermal_zone_params) * k, GFP_KERNEL);
+		if (!data->tzp)
+			return ERR_PTR(-ENOMEM);
+	}
+
+	/* timer trip point information is optional data. */
+	if (l > 0) {
+		data->timer_trips = devm_kzalloc(dev,
+				sizeof(struct therm_est_timer_trip_info) * l,
+				GFP_KERNEL);
+		if (!data->timer_trips)
+			return ERR_PTR(-ENOMEM);
+	}
+
+	i = j = l = 0;
+	for_each_child_of_node(np, ch) {
+		if (of_device_is_compatible(ch, "nvidia,therm-est-trip")) {
+			ret = __parse_dt_trip(ch, &data->trips[i++]);
+			if (ret < 0)
+				return ERR_PTR(ret);
+		} else if (of_device_is_compatible(ch,
+						   "nvidia,therm-est-subdev")) {
+			ret = __parse_dt_subdev(ch, &data->devs[j++]);
+			if (ret < 0)
+				return ERR_PTR(ret);
+		} else if (of_device_is_compatible(ch,
+						   "nvidia,therm-est-tzp")) {
+			ret = __parse_dt_tzp(ch, data->tzp);
+			if (ret < 0)
+				return ERR_PTR(ret);
+		} else if (of_device_is_compatible(ch,
+					"nvidia,therm-est-timer-trip")) {
+			ret = __parse_dt_timer_trip(ch, &data->timer_trips[l]);
+			if (!ret)
+				l++;
+		}
+	}
+
+	data->num_trips = i;
+	data->ndevs = j;
+	data->num_timer_trips = l;
+
+	return data;
+}
+#else
+static struct therm_est_data *therm_est_get_pdata(struct device *dev)
+{
+	return dev->platform_data;
+}
+#endif /* CONFIG_OF */
+
 static int __devinit therm_est_probe(struct platform_device *pdev)
 {
 	int i;
@@ -706,7 +964,7 @@ static int __devinit therm_est_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, est);
 
-	data = pdev->dev.platform_data;
+	data = therm_est_get_pdata(&pdev->dev);
 
 	est->devs = data->devs;
 	est->ndevs = data->ndevs;
