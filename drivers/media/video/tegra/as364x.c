@@ -120,6 +120,7 @@ const struct as364x_config default_cfg = {
 	.freq_switch_on = 0,
 	.led_off_when_vin_low = 0,
 	.max_peak_current_mA = 900,
+	.max_torch_current_mA = 900,
 	.max_sustained_current_mA = 0,
 	.max_peak_duration_ms = 0,
 	.min_current_mA = 0,
@@ -381,6 +382,9 @@ static void as364x_config_init(struct as364x_info *info)
 	if (pcfg_cust->max_peak_current_mA)
 		pcfg->max_peak_current_mA = pcfg_cust->max_peak_current_mA;
 
+	if (pcfg_cust->max_torch_current_mA)
+		pcfg->max_torch_current_mA = pcfg_cust->max_torch_current_mA;
+
 	if (pcfg_cust->max_peak_duration_ms)
 		pcfg->max_peak_duration_ms = pcfg_cust->max_peak_duration_ms;
 
@@ -456,7 +460,7 @@ static int as364x_configure(struct as364x_info *info, bool update)
 
 	if (pcfg->max_peak_current_mA > pcap->max_peak_curr_mA ||
 		!pcfg->max_peak_current_mA) {
-		dev_warn(&info->i2c_client->dev,
+		dev_notice(&info->i2c_client->dev,
 				"max_peak_current_mA of %d invalid"
 				"changing to %d\n",
 				pcfg->max_peak_current_mA,
@@ -476,7 +480,7 @@ static int as364x_configure(struct as364x_info *info, bool update)
 
 	if (pcfg->max_sustained_current_mA > pcap->max_assist_curr_mA ||
 		!pcfg->max_sustained_current_mA) {
-		dev_warn(&info->i2c_client->dev,
+		dev_notice(&info->i2c_client->dev,
 				"max_sustained_current_mA of %d invalid"
 				"changing to %d\n",
 				pcfg->max_sustained_current_mA,
@@ -486,19 +490,28 @@ static int as364x_configure(struct as364x_info *info, bool update)
 	}
 	if ((1000 * pcfg->min_current_mA) < pcap->curr_step_uA) {
 		pcfg->min_current_mA = pcap->curr_step_uA / 1000;
-		dev_warn(&info->i2c_client->dev,
+		dev_notice(&info->i2c_client->dev,
 				"min_current_mA lower than possible, icreasing"
 				" to %d\n",
 				pcfg->min_current_mA);
 	}
 	if (pcfg->min_current_mA > pcap->max_indicator_curr_mA) {
-		dev_warn(&info->i2c_client->dev,
+		dev_notice(&info->i2c_client->dev,
 				"min_current_mA of %d higher than possible,"
 				" reducing to %d",
 				pcfg->min_current_mA,
 				pcap->max_indicator_curr_mA);
 		pcfg->min_current_mA =
 			pcap->max_indicator_curr_mA;
+	}
+
+	if (pcfg->max_torch_current_mA > pcfg->max_peak_current_mA) {
+		dev_notice(&info->i2c_client->dev,
+				"max_torch_current_mA of %d invalid"
+				"changing to %d\n",
+				pcfg->max_torch_current_mA,
+				pcfg->max_peak_current_mA);
+		pcfg->max_torch_current_mA = pcfg->max_peak_current_mA;
 	}
 
 	if (pcfg->boost_mode)
@@ -521,7 +534,7 @@ static int as364x_configure(struct as364x_info *info, bool update)
 
 	for (i = 0; i < AS364X_MAX_TORCH_LEVEL; i++) {
 		ptcap->guidenum[i] = pfcap->levels[i].guidenum;
-		if (ptcap->guidenum[i] > pcfg->max_peak_current_mA) {
+		if (ptcap->guidenum[i] > pcfg->max_torch_current_mA) {
 			ptcap->guidenum[i] = 0;
 			break;
 		}
@@ -1259,6 +1272,7 @@ static int as364x_status_show(struct seq_file *s, void *data)
 		"    Flash TimeOut    = 0x%02x\n"
 		"    Flash Strobe     = 0x%02x\n"
 		"    Max_Peak_Current = 0x%04dmA\n"
+		"    Max_Torch_Current = 0x%04dmA\n"
 		"    Use_TxMask       = 0x%02x\n"
 		"    TxMask_Current   = 0x%04dmA\n"
 		"    Freq_Switch_on   = %s\n"
@@ -1277,6 +1291,7 @@ static int as364x_status_show(struct seq_file *s, void *data)
 		k_info->flash_mode, k_info->regs.ftime,
 		pcfg->strobe_type,
 		pcfg->max_peak_current_mA,
+		pcfg->max_torch_current_mA,
 		pcfg->use_tx_mask,
 		pcfg->txmasked_current_mA,
 		pcfg->freq_switch_on ? "TRUE" : "FALSE",
@@ -1347,9 +1362,9 @@ set_attr:
 			k_info->regs.led2_curr);
 		break;
 	case 't': /* change txmask/torch settings */
-		k_info->config.use_tx_mask = (val >> 4) & 1;
-		k_info->config.txmasked_current_mA = val & 0x0f;
-		val = (val >> 8) & 0xffff;
+		k_info->config.use_tx_mask = (val >> 12) & 1;
+		k_info->config.txmasked_current_mA = val & 0x0fff;
+		val = (val >> 16) & 0xffff;
 		if (val)
 			k_info->config.I_limit_mA = val;
 		as364x_set_txmask(k_info);
@@ -1365,6 +1380,9 @@ set_attr:
 	case 'k':
 		if (val & 0xffff)
 			k_info->config.max_peak_current_mA = val & 0xffff;
+		val >>= 16;
+		if (val)
+			k_info->config.max_torch_current_mA = val & 0xffff;
 		as364x_configure(k_info, true);
 		break;
 	case 'x':
