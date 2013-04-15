@@ -41,8 +41,8 @@
 #include <mach/gpio-tegra.h>
 #include <mach/pinmux-t11.h>
 #include <mach/pinmux.h>
-#include <media/ov5693.h>
 #ifndef CONFIG_USE_OF
+#include <media/ov5693.h>
 #include <media/ad5823.h>
 #endif
 #include <media/mt9m114.h>
@@ -133,11 +133,13 @@ static struct i2c_board_info tegratab_i2c4_nct1008_board_info[] = {
 		.ioreset	= TEGRA_PIN_IO_RESET_##_ioreset	\
 }
 
+#ifndef CONFIG_USE_OF
 static struct tegra_pingroup_config mclk_disable =
 	VI_PINMUX(CAM_MCLK, VI, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
 
 static struct tegra_pingroup_config mclk_enable =
 	VI_PINMUX(CAM_MCLK, VI_ALT3, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
+#endif
 
 static struct tegra_pingroup_config pbb0_disable =
 	VI_PINMUX(GPIO_PBB0, VI, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
@@ -145,6 +147,7 @@ static struct tegra_pingroup_config pbb0_disable =
 static struct tegra_pingroup_config pbb0_enable =
 	VI_PINMUX(GPIO_PBB0, VI_ALT3, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
 
+#ifndef CONFIG_USE_OF
 /*
  * As a workaround, tegratab_vcmvdd need to be allocated to activate the
  * sensor devices. This is due to the focuser device(AD5823) will hook up
@@ -242,7 +245,6 @@ static struct ov5693_platform_data tegratab_ov5693_pdata = {
 	.power_off	= tegratab_ov5693_power_off,
 };
 
-#ifndef CONFIG_USE_OF
 static int tegratab_ad5823_power_on(struct ad5823_platform_data *pdata)
 {
 	int err = 0;
@@ -328,11 +330,11 @@ struct mt9m114_platform_data tegratab_mt9m114_pdata = {
 };
 
 static struct i2c_board_info tegratab_i2c_board_info_e1599[] = {
+#ifndef CONFIG_USE_OF
 	{
 		I2C_BOARD_INFO("ov5693", 0x10),
 		.platform_data = &tegratab_ov5693_pdata,
 	},
-#ifndef CONFIG_USE_OF
 	{
 		I2C_BOARD_INFO("ad5823", 0x0c),
 		.platform_data = &tegratab_ad5823_pdata,
@@ -346,7 +348,9 @@ static struct i2c_board_info tegratab_i2c_board_info_e1599[] = {
 
 static int tegratab_camera_init(void)
 {
+#ifndef CONFIG_USE_OF
 	tegra_pinmux_config_table(&mclk_disable, 1);
+#endif
 	tegra_pinmux_config_table(&pbb0_disable, 1);
 
 	i2c_register_board_info(2, tegratab_i2c_board_info_e1599,

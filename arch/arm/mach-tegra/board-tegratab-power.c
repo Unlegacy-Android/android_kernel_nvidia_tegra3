@@ -218,7 +218,11 @@ static struct regulator_consumer_supply palmas_ldo4_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldo5_supply[] = {
+#ifdef CONFIG_USE_OF
+	REGULATOR_SUPPLY("ext_vcm_vdd", "2-0010"),
+#else
 	REGULATOR_SUPPLY("vdd_af_cam1", NULL),
+#endif
 	REGULATOR_SUPPLY("vdd", "2-000c"),
 	REGULATOR_SUPPLY("vana", "2-0048"),
 };
