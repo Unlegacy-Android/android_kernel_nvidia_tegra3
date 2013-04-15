@@ -47,4 +47,14 @@
 			config = "mpu";
 		};
 	};
+
+	/* CAM */
+	i2c@7000c500 {
+		status = "okay";
+		ad5823@0c {
+			compatible = "nvidia,ad5823";
+			reg = <0x0c>;
+			af-pwdn-gpios = <&gpio 223 0>; /* gpio PBB7 */
+		};
+	};
 };

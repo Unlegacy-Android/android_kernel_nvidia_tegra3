@@ -42,7 +42,9 @@
 #include <mach/pinmux-t11.h>
 #include <mach/pinmux.h>
 #include <media/ov5693.h>
+#ifndef CONFIG_USE_OF
 #include <media/ad5823.h>
+#endif
 #include <media/mt9m114.h>
 #include <generated/mach-types.h>
 #include <linux/power/sbs-battery.h>
@@ -240,6 +242,7 @@ static struct ov5693_platform_data tegratab_ov5693_pdata = {
 	.power_off	= tegratab_ov5693_power_off,
 };
 
+#ifndef CONFIG_USE_OF
 static int tegratab_ad5823_power_on(struct ad5823_platform_data *pdata)
 {
 	int err = 0;
@@ -263,6 +266,7 @@ static struct ad5823_platform_data tegratab_ad5823_pdata = {
 	.power_on	= tegratab_ad5823_power_on,
 	.power_off	= tegratab_ad5823_power_off,
 };
+#endif
 
 static int tegratab_mt9m114_power_on(struct mt9m114_power_rail *pw)
 {
@@ -328,10 +332,12 @@ static struct i2c_board_info tegratab_i2c_board_info_e1599[] = {
 		I2C_BOARD_INFO("ov5693", 0x10),
 		.platform_data = &tegratab_ov5693_pdata,
 	},
+#ifndef CONFIG_USE_OF
 	{
 		I2C_BOARD_INFO("ad5823", 0x0c),
 		.platform_data = &tegratab_ad5823_pdata,
 	},
+#endif
 	{
 		I2C_BOARD_INFO("mt9m114", 0x48),
 		.platform_data = &tegratab_mt9m114_pdata,
