@@ -1345,6 +1345,7 @@ static __devinit int palmas_probe(struct platform_device *pdev)
 	for (id = 0; id < PALMAS_REG_LDO1; id++) {
 		bool ramp_delay_support = false;
 
+		reg_init = NULL;
 		reg_data = pdata->reg_data[id];
 
 		/*
@@ -1413,10 +1414,9 @@ static __devinit int palmas_probe(struct platform_device *pdev)
 		pmic->desc[id].owner = THIS_MODULE;
 
 		/* Initialise sleep/init values from platform data */
-		if (pdata && pdata->reg_init) {
+		if (pdata && reg_data && pdata->reg_init) {
 			reg_init = pdata->reg_init[id];
 			if (reg_init) {
-				pmic->roof_floor[id] = reg_init->roof_floor;
 				ret = palmas_smps_init(palmas, id, reg_init);
 				if (ret)
 					goto err_unregister_regulator;
@@ -1457,6 +1457,9 @@ static __devinit int palmas_probe(struct platform_device *pdev)
 			ret = PTR_ERR(rdev);
 			goto err_unregister_regulator;
 		}
+
+		if (reg_init && reg_data)
+			pmic->roof_floor[id] = reg_init->roof_floor;
 
 		/* Save regulator for cleanup */
 		pmic->rdev[id] = rdev;
@@ -1503,7 +1506,7 @@ static __devinit int palmas_probe(struct platform_device *pdev)
 		pmic->rdev[id] = rdev;
 
 		/* Initialise sleep/init values from platform data */
-		if (pdata->reg_init) {
+		if (reg_data && pdata->reg_init) {
 			reg_init = pdata->reg_init[id];
 			if (reg_init) {
 				pmic->roof_floor[id] = reg_init->roof_floor;
