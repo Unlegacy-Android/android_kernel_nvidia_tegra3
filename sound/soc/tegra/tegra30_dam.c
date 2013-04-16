@@ -341,7 +341,7 @@ int tegra30_dam_resume(int ifc)
 	int i = 0;
 	struct tegra30_dam_context *dam;
 
-	if (ifc >= TEGRA30_NR_DAM_IFC)
+	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
 		return -EINVAL;
 
 	dam = dams_cont_info[ifc];
@@ -369,7 +369,7 @@ void tegra30_dam_disable_clock(int ifc)
 {
 	struct tegra30_dam_context *dam;
 
-	if (ifc >= TEGRA30_NR_DAM_IFC)
+	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
 		return;
 
 	dam =  dams_cont_info[ifc];
@@ -381,7 +381,7 @@ int tegra30_dam_enable_clock(int ifc)
 {
 	struct tegra30_dam_context *dam;
 
-	if (ifc >= TEGRA30_NR_DAM_IFC)
+	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
 		return -EINVAL;
 
 	dam =  dams_cont_info[ifc];
@@ -486,7 +486,8 @@ int tegra30_dam_allocate_channel(int ifc, int chid)
 {
 	struct tegra30_dam_context *dam = NULL;
 
-	if (ifc >= TEGRA30_NR_DAM_IFC)
+	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC) ||
+		(chid < dam_ch_in0) || (chid >= dam_ch_maxnum))
 		return -EINVAL;
 
 	dam =  dams_cont_info[ifc];
@@ -503,7 +504,8 @@ int tegra30_dam_free_channel(int ifc, int chid)
 {
 	struct tegra30_dam_context *dam = NULL;
 
-	if (ifc >= TEGRA30_NR_DAM_IFC)
+	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC) ||
+		(chid < dam_ch_in0) || (chid >= dam_ch_maxnum))
 		return -EINVAL;
 
 	dam =  dams_cont_info[ifc];
@@ -520,7 +522,7 @@ int tegra30_dam_free_controller(int ifc)
 {
 	struct tegra30_dam_context *dam = NULL;
 
-	if (ifc >= TEGRA30_NR_DAM_IFC)
+	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
 		return -EINVAL;
 
 	dam =  dams_cont_info[ifc];
@@ -538,7 +540,7 @@ void tegra30_dam_set_samplerate(int ifc, int chid, int samplerate)
 {
 	struct tegra30_dam_context *dam = dams_cont_info[ifc];
 
-	if (ifc >= TEGRA30_NR_DAM_IFC)
+	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
 		return;
 
 	switch (chid) {
@@ -646,7 +648,7 @@ void tegra30_dam_ch0_set_step(struct tegra30_dam_context *dam, int step)
 int tegra30_dam_set_gain(int ifc, int chid, int gain)
 {
 
-	if (ifc >= TEGRA30_NR_DAM_IFC)
+	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
 		return -EINVAL;
 
 	switch (chid) {
@@ -672,7 +674,7 @@ int tegra30_dam_set_acif(int ifc, int chid, unsigned int audio_channels,
 	unsigned int reg;
 	unsigned int value = 0;
 
-	if (ifc >= TEGRA30_NR_DAM_IFC)
+	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
 		return -EINVAL;
 
 #ifndef CONFIG_ARCH_TEGRA_3x_SOC
@@ -726,7 +728,7 @@ void tegra30_dam_write_coeff_ram(int ifc, int fsin, int fsout)
 	u32 val;
 	int i, *coefRam = NULL;
 
-	if (ifc >= TEGRA30_NR_DAM_IFC)
+	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
 		return;
 
 	tegra30_dam_writel(dams_cont_info[ifc], 0x00002000,
@@ -783,7 +785,7 @@ void tegra30_dam_set_farrow_param(int ifc, int fsin, int fsout)
 {
 	u32 val = TEGRA30_FARROW_PARAM_RESET;
 
-	if (ifc >= TEGRA30_NR_DAM_IFC)
+	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
 		return;
 
 	switch(fsin) {
@@ -831,7 +833,7 @@ void tegra30_dam_set_biquad_fixed_coef(int ifc)
 {
 	u32 val = TEGRA30_DAM_CH0_BIQUAD_FIXED_COEF_0_VAL;
 
-	if (ifc >= TEGRA30_NR_DAM_IFC)
+	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
 		return;
 
 	tegra30_dam_writel(dams_cont_info[ifc], val,
@@ -842,7 +844,7 @@ void tegra30_dam_enable_coeff_ram(int ifc)
 {
 	u32 val;
 
-	if (ifc >= TEGRA30_NR_DAM_IFC)
+	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
 		return;
 
 	val = tegra30_dam_readl(dams_cont_info[ifc], TEGRA30_DAM_CH0_CTRL);
@@ -856,7 +858,7 @@ void tegra30_dam_set_filter_stages(int ifc, int fsin, int fsout)
 	u32 val;
 	int filt_stages = 0;
 
-	if (ifc >= TEGRA30_NR_DAM_IFC)
+	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
 		return;
 
 	val = tegra30_dam_readl(dams_cont_info[ifc], TEGRA30_DAM_CH0_CTRL);
@@ -907,7 +909,7 @@ void tegra30_dam_enable_stereo_mixing(int ifc)
 {
 	u32 val;
 
-	if (ifc >= TEGRA30_NR_DAM_IFC)
+	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
 		return;
 
 	val = tegra30_dam_readl(dams_cont_info[ifc], TEGRA30_DAM_CTRL);
@@ -922,10 +924,13 @@ void tegra30_dam_enable(int ifc, int on, int chid)
 	u32 old_val, val, enreg;
 	u32 old_val_dam, val_dam;
 	int dcnt = 10;
-	struct tegra30_dam_context *dam = dams_cont_info[ifc];
+	struct tegra30_dam_context *dam;
 
-	if (ifc >= TEGRA30_NR_DAM_IFC)
+	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC) ||
+	    (chid < dam_ch_in0) || (chid >= dam_ch_maxnum))
 		return;
+
+	dam = dams_cont_info[ifc];
 
 	if (chid == dam_ch_in0)
 		enreg = TEGRA30_DAM_CH0_CTRL;
