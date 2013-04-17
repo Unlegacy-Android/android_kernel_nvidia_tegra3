@@ -84,6 +84,7 @@ struct bq2419x_charger_platform_data tegratab_bq2419x_charger_pdata = {
 	.wdt_timeout    = 40,
 };
 
+#ifndef CONFIG_OF
 struct max17048_battery_model tegratab_max17048_mdata = {
 	.rcomp		= 152,
 	.soccheck_A	= 206,
@@ -121,6 +122,7 @@ static struct i2c_board_info __initdata tegratab_max17048_boardinfo[] = {
 		.platform_data	= &tegratab_max17048_pdata,
 	},
 };
+#endif
 
 struct bq2419x_platform_data tegratab_bq2419x_pdata = {
 	.vbus_pdata = &tegratab_bq2419x_vbus_pdata,
@@ -658,9 +660,9 @@ int __init tegratab_regulator_init(void)
 	tegratab_cl_dvfs_init();
 #endif
 	tegratab_palmas_regulator_init();
-
+#ifndef CONFIG_OF
 	i2c_register_board_info(0, tegratab_max17048_boardinfo, 1);
-
+#endif
 	/* Disable charger when adapter is power source. */
 	if (get_power_supply_type() != POWER_SUPPLY_TYPE_BATTERY)
 		tegratab_bq2419x_pdata.bcharger_pdata = NULL;
