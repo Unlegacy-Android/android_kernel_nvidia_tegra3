@@ -211,6 +211,7 @@ static int max_core_current;
 static int emc_max_dvfs;
 static unsigned int memory_type;
 static int usb_port_owner_info;
+static int pmic_rst_reason;
 
 /* WARNING: There is implicit client of pllp_out3 like i2c, uart, dsi
  * and so this clock (pllp_out3) should never be disabled.
@@ -1330,6 +1331,20 @@ int tegra_get_commchip_id(void)
 }
 
 __setup("commchip_id=", tegra_commchip_id);
+
+int tegra_get_pmic_rst_reason(void)
+{
+	return pmic_rst_reason;
+}
+
+static int __init tegra_pmic_rst_reason(char *id)
+{
+	char *p = id;
+	pmic_rst_reason = memparse(p, &p);
+	return 1;
+}
+
+__setup("pmic_rst_reason=", tegra_pmic_rst_reason);
 
 /*
  * Tegra has a protected aperture that prevents access by most non-CPU
