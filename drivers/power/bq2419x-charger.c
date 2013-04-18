@@ -217,38 +217,41 @@ static int bq2419x_usb_get_property(struct power_supply *psy,
 
 static int bq2419x_init(struct bq2419x_chip *bq2419x)
 {
-	int val, ret = 0;
+	int val = 0;
+	int ret = 0;
+	int floor = 0;
+
+	/* Configure input voltage to 4.52 in case of NV charger */
+	if (bq2419x->in_current_limit == 2000)
+		val |= BQ2419x_NVCHARGER_INPUT_VOL_SEL;
+	else
+		val |= BQ2419x_DEFAULT_INPUT_VOL_SEL;
 
 	/* Clear EN_HIZ */
-	ret = regmap_update_bits(bq2419x->regmap,
-			BQ2419X_INPUT_SRC_REG, BQ2419X_EN_HIZ, 0);
+	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_INPUT_SRC_REG,
+			BQ2419X_EN_HIZ | BQ2419x_INPUT_VOLTAGE_MASK, val);
 	if (ret < 0) {
-		dev_err(bq2419x->dev, "error reading reg: 0x%x\n",
-			BQ2419X_INPUT_SRC_REG);
+		dev_err(bq2419x->dev, "INPUT_SRC_REG update failed %d\n", ret);
 		return ret;
 	}
 
 	/* Configure input current limit */
 	val = current_to_reg(iinlim, ARRAY_SIZE(iinlim),
 				bq2419x->in_current_limit);
-	if (val < 0)
+
+	/* Start from 500mA and then step to val */
+	floor = current_to_reg(iinlim, ARRAY_SIZE(iinlim), 500);
+	if (val < 0 || floor < 0)
 		return 0;
 
-	val &= ~(BQ2419x_INPUT_VOLTAGE_MASK);
-	/* Configure inout voltage to 4.52 in case of NV
-	*  NV charger.
-	*/
-	if (bq2419x->in_current_limit == 2000)
-		val |= BQ2419x_NVCHARGER_INPUT_VOL_SEL;
-	else
-		val |= BQ2419x_DEFAULT_INPUT_VOL_SEL;
-
-	ret = regmap_update_bits(bq2419x->regmap,
-			BQ2419X_INPUT_SRC_REG, BQ2419x_CONFIG_MASK |
-			BQ2419x_INPUT_VOLTAGE_MASK, val);
-	if (ret < 0)
-		dev_err(bq2419x->dev, "error reading reg: 0x%x\n",
-			BQ2419X_INPUT_SRC_REG);
+	for (; floor <= val; floor++) {
+		udelay(BQ2419x_CHARGING_CURRENT_STEP_DELAY_US);
+		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_INPUT_SRC_REG,
+				BQ2419x_CONFIG_MASK, floor);
+		if (ret < 0)
+			dev_err(bq2419x->dev,
+				"INPUT_SRC_REG update failed: %d\n", ret);
+	}
 	return ret;
 }
 
