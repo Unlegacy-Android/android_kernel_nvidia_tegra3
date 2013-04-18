@@ -303,6 +303,7 @@ struct palmas_pmic {
 
 	int smps123;
 	int smps457;
+	bool smps10_regulator_enabled;
 
 	unsigned int ramp_delay[PALMAS_NUM_REGS];
 	unsigned int current_mode_reg[PALMAS_NUM_REGS];

@@ -603,6 +603,8 @@ static int palmas_enable_smps10(struct regulator_dev *dev)
 	if (ret < 0)
 		dev_err(pmic->palmas->dev,
 			"Error in writing smps10 control reg\n");
+
+	pmic->smps10_regulator_enabled = true;
 	return ret;
 }
 
@@ -627,6 +629,7 @@ static int palmas_disable_smps10(struct regulator_dev *dev)
 	if (ret < 0)
 		dev_err(pmic->palmas->dev,
 			"Error in writing smps10 control reg\n");
+	pmic->smps10_regulator_enabled = false;
 	return ret;
 }
 
@@ -1506,13 +1509,15 @@ static int __devexit palmas_remove(struct platform_device *pdev)
 static int palmas_suspend(struct device *dev)
 {
 	struct palmas *palmas = dev_get_drvdata(dev->parent);
+	struct palmas_pmic *pmic = dev_get_drvdata(dev);
 	struct palmas_pmic_platform_data *pdata = dev_get_platdata(dev);
 
 	/* Check if LDO8 is in tracking mode disable in suspend or not */
 	if (pdata->enable_ldo8_tracking && pdata->disabe_ldo8_tracking_suspend)
 		palmas_disable_ldo8_track(palmas);
 
-	if (pdata->disable_smps10_boost_suspend)
+	if (pdata->disable_smps10_boost_suspend &&
+			!pmic->smps10_regulator_enabled)
 		palmas_disable_smps10_boost(palmas);
 	return 0;
 }
@@ -1520,13 +1525,15 @@ static int palmas_suspend(struct device *dev)
 static int palmas_resume(struct device *dev)
 {
 	struct palmas *palmas = dev_get_drvdata(dev->parent);
+	struct palmas_pmic *pmic = dev_get_drvdata(dev);
 	struct palmas_pmic_platform_data *pdata = dev_get_platdata(dev);
 
 	/* Check if LDO8 is in tracking mode disable in suspend or not */
 	if (pdata->enable_ldo8_tracking && pdata->disabe_ldo8_tracking_suspend)
 		palmas_enable_ldo8_track(palmas);
 
-	if (pdata->disable_smps10_boost_suspend)
+	if (pdata->disable_smps10_boost_suspend &&
+			!pmic->smps10_regulator_enabled)
 		palmas_enable_smps10_boost(palmas);
 	return 0;
 }
