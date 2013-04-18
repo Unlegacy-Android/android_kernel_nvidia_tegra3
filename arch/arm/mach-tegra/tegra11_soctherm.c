@@ -20,7 +20,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/list.h>
-#include <linux/spinlock.h>
+#include <linux/mutex.h>
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/gpio.h>
@@ -453,7 +453,7 @@ static const void __iomem *clk_reset_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 	(soctherm_suspended ? 0 :	\
 		__raw_readl((u32)reg_soctherm_base + (reg)))
 
-static DEFINE_SPINLOCK(soctherm_suspend_resume_lock);
+static DEFINE_MUTEX(soctherm_suspend_resume_lock);
 
 static int soctherm_suspend(void);
 static int soctherm_resume(void);
@@ -1850,7 +1850,7 @@ static int soctherm_init_platform_data(void)
 
 static int soctherm_suspend(void)
 {
-	spin_lock(&soctherm_suspend_resume_lock);
+	mutex_lock(&soctherm_suspend_resume_lock);
 
 	if (!soctherm_suspended) {
 		soctherm_writel((u32)-1, TH_INTR_DISABLE);
@@ -1862,13 +1862,13 @@ static int soctherm_suspend(void)
 		soctherm_suspended = true;
 	}
 
-	spin_unlock(&soctherm_suspend_resume_lock);
+	mutex_unlock(&soctherm_suspend_resume_lock);
 	return 0;
 }
 
 static int soctherm_resume(void)
 {
-	spin_lock(&soctherm_suspend_resume_lock);
+	mutex_lock(&soctherm_suspend_resume_lock);
 
 	if (soctherm_suspended) {
 		soctherm_suspended = false;
@@ -1880,7 +1880,7 @@ static int soctherm_resume(void)
 		enable_irq(INT_EDP);
 	}
 
-	spin_unlock(&soctherm_suspend_resume_lock);
+	mutex_unlock(&soctherm_suspend_resume_lock);
 	return 0;
 }
 
