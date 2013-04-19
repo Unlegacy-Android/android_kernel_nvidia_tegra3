@@ -443,33 +443,29 @@ void nvhost_scale3d_deinit(struct platform_device *dev)
  * int FXDIV(int x, int y)
  *****************************************************************************/
 
-int FXMUL(unsigned int x, unsigned int y)
+int FXMUL(int x, int y)
 {
-	return ((unsigned long long) x * (unsigned long long) y) >> 12;
+	return ((long long) x * (long long) y) >> FXFRAC;
 }
 
-int FXDIV(unsigned int x, unsigned int y)
+int FXDIV(int x, int y)
 {
 	/* long long div operation not supported, must shift manually. This
 	 * would have been
 	 *
-	 *    return (((long long) x) << 12) / (long long) y;
+	 *    return (((long long) x) << FXFRAC) / (long long) y;
 	 */
-
 	int pos, t;
 	if (x == 0)
 		return 0;
 
-	/* count leading zeros (up to 12) */
-	pos = 0;
-	t = x > 0 ? x : -x;
+	/* find largest allowable right shift to numerator, limit to FXFRAC */
+	t = x < 0 ? -x : x;
+	pos = 31 - fls(t); /* fls can't be 32 if x != 0 */
+	if (pos > FXFRAC)
+		pos = FXFRAC;
 
-	while (((t & 0x80000000) == 0) && pos < 12) {
-		pos++;
-		t <<= 1;
-	}
-
-	y >>= 12 - pos;
+	y >>= FXFRAC - pos;
 	if (y == 0)
 		return 0x7FFFFFFF; /* overflow, return MAX_FIXED */
 
