@@ -143,6 +143,7 @@
 #define   UTMIP_XCVR_LSBIAS_SEL			(1 << 21)
 #define   UTMIP_XCVR_SETUP_MSB(x)		(((x) & 0x7) << 22)
 #define   UTMIP_XCVR_HSSLEW_MSB(x)		(((x) & 0x7f) << 25)
+#define   UTMIP_XCVR_HSSLEW_LSB(x)		(((x) & 0x3) << 4)
 #define   UTMIP_XCVR_MAX_OFFSET		2
 #define   UTMIP_XCVR_SETUP_MAX_VALUE	0x7f
 #define   UTMIP_XCVR_SETUP_MIN_VALUE	0
@@ -1096,6 +1097,8 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val |= UTMIP_XCVR_LSRSLEW(config->xcvr_lsrslew);
 	if (!config->xcvr_use_lsb)
 		val |= UTMIP_XCVR_HSSLEW_MSB(0x3);
+	if (config->xcvr_hsslew_lsb)
+		val |= UTMIP_XCVR_HSSLEW_LSB(config->xcvr_hsslew_lsb);
 	writel(val, base + UTMIP_XCVR_CFG0);
 
 	val = readl(base + UTMIP_XCVR_CFG1);
