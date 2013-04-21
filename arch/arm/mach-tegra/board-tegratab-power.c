@@ -162,6 +162,7 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("avdd_osc", NULL),
 	REGULATOR_SUPPLY("vddio_sys", NULL),
 	REGULATOR_SUPPLY("vddio_bb", NULL),
+	REGULATOR_SUPPLY("pwrdet_bb", NULL),
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.0"),
 	REGULATOR_SUPPLY("pwrdet_sdmmc1", NULL),
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.3"),
@@ -172,12 +173,15 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("vddio_uart", NULL),
 	REGULATOR_SUPPLY("pwrdet_uart", NULL),
 	REGULATOR_SUPPLY("vddio_gmi", NULL),
+	REGULATOR_SUPPLY("pwrdet_nand", NULL),
 	REGULATOR_SUPPLY("vlogic", "0-0069"),
 	REGULATOR_SUPPLY("vid", "0-000d"),
 };
 
 static struct regulator_consumer_supply palmas_smps9_supply[] = {
 	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.3"),
+	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
+	REGULATOR_SUPPLY("pwrdet_hv", NULL),
 };
 
 static struct regulator_consumer_supply palmas_smps10_supply[] = {
@@ -202,6 +206,7 @@ static struct regulator_consumer_supply palmas_ldo2_supply[] = {
 	REGULATOR_SUPPLY("avdd_dsi_csi", "vi"),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("pwrdet_mipi", NULL),
 };
 
 static struct regulator_consumer_supply palmas_ldo3_supply[] = {
@@ -427,6 +432,8 @@ static struct regulator_consumer_supply fixed_reg_vddio_sd_slot_supply[] = {
 static struct regulator_consumer_supply fixed_reg_vd_cam_1v8_supply[] = {
 	REGULATOR_SUPPLY("dovdd", "2-0010"),
 	REGULATOR_SUPPLY("vif2", "2-0048"),
+	REGULATOR_SUPPLY("vddio_cam", "vi"),
+	REGULATOR_SUPPLY("pwrdet_cam", NULL),
 };
 
 /* Macro for defining fixed regulator sub device data */
