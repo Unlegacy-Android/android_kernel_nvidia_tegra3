@@ -254,7 +254,7 @@ static __initdata struct tegra_pingroup_config tegratab_pinmux_common[] = {
 	GPIO_PINMUX(GPIO_PU5, PULL_UP, NORMAL, INPUT, DISABLE),
 	GPIO_PINMUX(GPIO_PU6, NORMAL, NORMAL, INPUT, DISABLE),
 	GPIO_PINMUX(HDMI_INT, PULL_DOWN, NORMAL, INPUT, DEFAULT),
-	GPIO_PINMUX(SPDIF_IN, NORMAL, NORMAL, OUTPUT, DISABLE),
+	GPIO_PINMUX(SPDIF_IN, PULL_UP, NORMAL, OUTPUT, DISABLE),
 };
 
 static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
