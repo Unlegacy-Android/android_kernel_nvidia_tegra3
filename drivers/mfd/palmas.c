@@ -890,6 +890,15 @@ static void palmas_power_off(void)
 	palmas_control_update(palmas_dev, PALMAS_DEV_CTRL, 1, 0);
 }
 
+void palmas_reset(void)
+{
+	if (!palmas_dev)
+		return;
+
+	palmas_control_update(palmas_dev, PALMAS_DEV_CTRL, 2, 2);
+}
+EXPORT_SYMBOL(palmas_reset);
+
 static int palmas_read_version_information(struct palmas *palmas)
 {
 	unsigned int sw_rev, des_rev;

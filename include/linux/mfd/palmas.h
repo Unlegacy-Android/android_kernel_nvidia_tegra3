@@ -2937,4 +2937,6 @@ static inline int palmas_is_es_version_or_less(struct palmas *palmas,
 
 	return false;
 }
+
+extern void palmas_reset(void);
 #endif /*  __LINUX_MFD_PALMAS_H */
