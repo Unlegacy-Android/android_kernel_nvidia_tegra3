@@ -761,6 +761,9 @@ static int bq2419x_wakealarm(struct bq2419x_chip *bq2419x, int time_sec)
 	struct rtc_wkalrm alm;
 	int alarm_time = time_sec;
 
+	if (!alarm_time)
+		return 0;
+
 	alm.enabled = true;
 	ret = rtc_read_time(bq2419x->rtc, &alm.time);
 	if (ret < 0) {
@@ -769,8 +772,6 @@ static int bq2419x_wakealarm(struct bq2419x_chip *bq2419x, int time_sec)
 	}
 	rtc_tm_to_time(&alm.time, &now);
 
-	if (!alarm_time)
-		alarm_time = 3600;
 	rtc_time_to_tm(now + alarm_time, &alm.time);
 	ret = rtc_set_alarm(bq2419x->rtc, &alm);
 	if (ret < 0) {
@@ -824,7 +825,10 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 	bq2419x->wdt_refresh_timeout = 25;
 	i2c_set_clientdata(client, bq2419x);
 	bq2419x->irq = client->irq;
-	bq2419x->rtc = alarmtimer_get_rtcdev();
+
+	if (bq2419x->rtc_alarm_time)
+		bq2419x->rtc = alarmtimer_get_rtcdev();
+
 	mutex_init(&bq2419x->mutex);
 	bq2419x->suspended = 0;
 	bq2419x->chg_restart_timeout = 0;
@@ -950,10 +954,10 @@ static void bq2419x_shutdown(struct i2c_client *client)
 	if (bq2419x->irq)
 		disable_irq(bq2419x->irq);
 
-	if (!bq2419x->rtc)
+	if (alarm_time && !bq2419x->rtc)
 		bq2419x->rtc = alarmtimer_get_rtcdev();
 
-	if (bq2419x->in_current_limit > 500) {
+	if (alarm_time && (bq2419x->in_current_limit > 500)) {
 		dev_info(bq2419x->dev, "HighCurrent %dmA charger is connectd\n",
 			bq2419x->in_current_limit);
 		ret = bq2419x_reset_wdt(bq2419x, "shutdown");
@@ -971,7 +975,7 @@ static void bq2419x_shutdown(struct i2c_client *client)
 	if (ret < 0)
 		dev_err(bq2419x->dev, "Charger enable failed %d", ret);
 
-	if (bq2419x->in_current_limit <= 500) {
+	if (alarm_time && (bq2419x->in_current_limit <= 500)) {
 		/* Configure charging current to 500mA */
 		ret = regmap_write(bq2419x->regmap,
 				BQ2419X_INPUT_SRC_REG, 0x32);
