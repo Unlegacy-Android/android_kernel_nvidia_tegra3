@@ -89,6 +89,7 @@
 #define MDM_COLDBOOT		TEGRA_GPIO_PO5
 
 int tegratab_regulator_init(void);
+int tegratab_power_off_init(void);
 int tegratab_suspend_init(void);
 int tegratab_sdhci_init(void);
 int tegratab_pinmux_init(void);

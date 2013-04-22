@@ -675,6 +675,15 @@ int __init tegratab_regulator_init(void)
 	return 0;
 }
 
+int __init tegratab_power_off_init(void)
+{
+	/* Use PMU reset only when battery is exist. */
+	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY)
+		pm_power_off = palmas_reset;
+
+	return 0;
+}
+
 int __init tegratab_suspend_init(void)
 {
 	tegra_init_suspend(&tegratab_suspend_data);

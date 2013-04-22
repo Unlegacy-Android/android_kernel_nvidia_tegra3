@@ -680,6 +680,7 @@ static void __init tegra_tegratab_late_init(void)
 	tegra_ram_console_debug_init();
 	tegra_io_dpd_init();
 	tegratab_regulator_init();
+	tegratab_power_off_init();
 	tegratab_sdhci_init();
 	tegratab_suspend_init();
 	tegratab_emc_init();
