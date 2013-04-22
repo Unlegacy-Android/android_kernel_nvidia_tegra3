@@ -2,7 +2,7 @@
  * tegra_rt5640.c - Tegra machine ASoC driver for boards using ALC5640 codec.
  *
  * Author: Johnny Qiu <joqiu@nvidia.com>
- * Copyright (C) 2011-2012, NVIDIA, Inc.
+ * Copyright (C) 2011-2013, NVIDIA, Inc.
  *
  * Based on code copyright/by:
  *
@@ -551,9 +551,11 @@ static const struct snd_soc_dapm_route cardhu_audio_map[] = {
 	{"Int Spk", NULL, "SPOLP"},
 	{"Int Spk", NULL, "SPOLN"},
 	{"micbias1", NULL, "Mic Jack"},
+#if !defined(CONFIG_MACH_TEGRATAB)
 	{"IN1P", NULL, "micbias1"},
 	{"IN1N", NULL, "micbias1"},
 	{"micbias1", NULL, "Int Mic"},
+#endif
 	{"IN2P", NULL, "micbias1"},
 	{"DMIC L1", NULL, "Int Mic"},
 	{"DMIC L2", NULL, "Int Mic"},
