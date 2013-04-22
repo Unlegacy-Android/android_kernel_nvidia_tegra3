@@ -351,7 +351,7 @@ static struct nvmap_platform_data tegratab_nvmap_data = {
 	.carveouts	= tegratab_carveouts,
 	.nr_carveouts	= ARRAY_SIZE(tegratab_carveouts),
 };
-static struct platform_device tegratab_nvmap_device __initdata = {
+static struct platform_device tegratab_nvmap_device = {
 	.name	= "tegra-nvmap",
 	.id	= -1,
 	.dev	= {
