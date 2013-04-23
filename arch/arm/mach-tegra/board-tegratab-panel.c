@@ -31,6 +31,8 @@
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/dc.h>
+#include <mach/pinmux.h>
+#include <mach/pinmux-t11.h>
 
 #include "board.h"
 #include "devices.h"
@@ -228,6 +230,21 @@ static int tegratab_hdmi_hotplug_init(struct device *dev)
 	return 0;
 }
 
+static void tegratab_hdmi_hotplug_report(bool state)
+{
+	if (state) {
+		tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_DDC_SDA,
+						TEGRA_PUPD_PULL_DOWN);
+		tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_DDC_SCL,
+						TEGRA_PUPD_PULL_DOWN);
+	} else {
+		tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_DDC_SDA,
+						TEGRA_PUPD_NORMAL);
+		tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_DDC_SCL,
+						TEGRA_PUPD_NORMAL);
+	}
+}
+
 static struct tegra_dc_out tegratab_disp2_out = {
 	.type		= TEGRA_DC_OUT_HDMI,
 	.flags		= TEGRA_DC_OUT_HOTPLUG_HIGH,
@@ -245,6 +262,7 @@ static struct tegra_dc_out tegratab_disp2_out = {
 	.disable	= tegratab_hdmi_disable,
 	.postsuspend	= tegratab_hdmi_postsuspend,
 	.hotplug_init	= tegratab_hdmi_hotplug_init,
+	.hotplug_report	= tegratab_hdmi_hotplug_report,
 };
 
 static struct tegra_fb_data tegratab_disp1_fb_data = {
