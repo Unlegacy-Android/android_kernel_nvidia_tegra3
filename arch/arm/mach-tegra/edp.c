@@ -490,7 +490,7 @@ static unsigned int edp_calculate_maxf(
 		voltage_mV = freq_voltage_lut[f].voltage_mV;
 
 		/* Constrain Volt-Temp. Eg. at Tj >= 70C, no VDD_CPU > 1.24V */
-		if (temp_C >= params->volt_temp_cap.temperature &&
+		if (temp_C > params->volt_temp_cap.temperature &&
 		    voltage_mV > params->volt_temp_cap.voltage_limit_mV)
 			continue;
 
