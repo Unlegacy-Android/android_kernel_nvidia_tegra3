@@ -112,4 +112,6 @@ void tegra_usb_phy_memory_prefetch_on(struct tegra_usb_phy *phy);
 
 void tegra_usb_phy_memory_prefetch_off(struct tegra_usb_phy *phy);
 
+void tegra_usb_enable_vbus(struct tegra_usb_phy *phy, bool enable);
+
 #endif /* __MACH_USB_PHY_H */
