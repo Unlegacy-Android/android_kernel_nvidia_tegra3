@@ -60,7 +60,7 @@
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
 #define TPS65090_CHARGER_INT	TEGRA_GPIO_PJ0
-#define POWER_CONFIG2	0x01
+#define POWER_CONFIG2	0x03
 
 /*TPS65090 consumer rails */
 static struct regulator_consumer_supply tps65090_dcdc1_supply[] = {
