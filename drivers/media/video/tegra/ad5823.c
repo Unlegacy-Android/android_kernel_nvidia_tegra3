@@ -78,6 +78,7 @@ static long ad5823_ioctl(struct file *file,
 			unsigned int cmd, unsigned long arg)
 {
 	struct ad5823_info *info = file->private_data;
+	struct ad5823_cal_data cal;
 
 	switch (cmd) {
 	case AD5823_IOCTL_GET_CONFIG:
@@ -94,6 +95,19 @@ static long ad5823_ioctl(struct file *file,
 	}
 	case AD5823_IOCTL_SET_POSITION:
 		return ad5823_set_position(info, (u32) arg);
+
+	case AD5823_IOCTL_SET_CAL_DATA:
+		if (copy_from_user(&cal, (const void __user *)arg,
+					sizeof(struct ad5823_cal_data))) {
+			dev_err(&info->i2c_client->dev,
+				"%s:Failed to get mode from user.\n",
+				__func__);
+			return -EFAULT;
+		}
+		info->config.pos_low = cal.pos_low;
+		info->config.pos_high = cal.pos_high;
+		break;
+
 	default:
 		return -EINVAL;
 	}

@@ -21,6 +21,7 @@
 
 #define AD5823_IOCTL_GET_CONFIG   _IOR('o', 1, struct ad5823_config)
 #define AD5823_IOCTL_SET_POSITION _IOW('o', 2, u32)
+#define AD5823_IOCTL_SET_CAL_DATA _IOW('0', 2, struct ad5823_cal_data)
 
 /* address */
 #define AD5823_RESET                (0x1)
@@ -39,6 +40,11 @@ struct ad5823_config {
 	float focal_length;
 	float fnumber;
 	float max_aperture;
+};
+
+struct ad5823_cal_data {
+	__u32 pos_low;
+	__u32 pos_high;
 };
 
 struct ad5823_platform_data {
