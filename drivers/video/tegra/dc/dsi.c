@@ -1997,6 +1997,81 @@ static void tegra_dsi_pad_enable(struct tegra_dc_dsi_data *dsi)
 		tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL);
 	}
 }
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+static void tegra_dsi_mipi_calibration_11x(struct tegra_dc_dsi_data *dsi)
+{
+	u32 val;
+	/* Calibration settings begin */
+	val = (DSI_PAD_SLEWUPADJ(0x7) | DSI_PAD_SLEWDNADJ(0x7) |
+		DSI_PAD_LPUPADJ(0x1) | DSI_PAD_LPDNADJ(0x1) |
+		DSI_PAD_OUTADJCLK(0x0));
+	tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL_2_VS1);
+
+	if (!dsi->controller_index) {
+		val = tegra_mipi_cal_read(dsi->mipi_cal,
+			MIPI_CAL_DSIA_MIPI_CAL_CONFIG_0);
+		val = MIPI_CAL_OVERIDEDSIA(0x0) |
+			MIPI_CAL_SELDSIA(0x1) |
+			MIPI_CAL_HSPDOSDSIA(0x0) |
+			MIPI_CAL_HSPUOSDSIA(0x4) |
+			MIPI_CAL_TERMOSDSIA(0x5);
+		tegra_mipi_cal_write(dsi->mipi_cal, val,
+			MIPI_CAL_DSIA_MIPI_CAL_CONFIG_0);
+		tegra_mipi_cal_write(dsi->mipi_cal, val,
+			MIPI_CAL_DSIB_MIPI_CAL_CONFIG_0);
+
+		/* Deselect PAD C */
+		val = tegra_mipi_cal_read(dsi->mipi_cal,
+			MIPI_CAL_DSIC_MIPI_CAL_CONFIG_0);
+		val &= ~(MIPI_CAL_SELDSIC(0x1));
+		tegra_mipi_cal_write(dsi->mipi_cal, val,
+			MIPI_CAL_DSIC_MIPI_CAL_CONFIG_0);
+
+		/* Deselect PAD D */
+		val = tegra_mipi_cal_read(dsi->mipi_cal,
+			MIPI_CAL_DSID_MIPI_CAL_CONFIG_0);
+		val &= ~(MIPI_CAL_SELDSID(0x1));
+		tegra_mipi_cal_write(dsi->mipi_cal, val,
+			MIPI_CAL_DSID_MIPI_CAL_CONFIG_0);
+	} else {
+		val = tegra_mipi_cal_read(dsi->mipi_cal,
+			MIPI_CAL_DSIC_MIPI_CAL_CONFIG_0);
+		val = MIPI_CAL_OVERIDEDSIC(0x0) |
+			MIPI_CAL_SELDSIC(0x1) |
+			MIPI_CAL_HSPDOSDSIC(0x0) |
+			MIPI_CAL_HSPUOSDSIC(0x4) |
+			MIPI_CAL_TERMOSDSIC(0x5);
+		tegra_mipi_cal_write(dsi->mipi_cal, val,
+			MIPI_CAL_DSIC_MIPI_CAL_CONFIG_0);
+		tegra_mipi_cal_write(dsi->mipi_cal, val,
+			MIPI_CAL_DSID_MIPI_CAL_CONFIG_0);
+
+		/* Deselect PAD A */
+		val = tegra_mipi_cal_read(dsi->mipi_cal,
+			MIPI_CAL_DSIA_MIPI_CAL_CONFIG_0);
+		val &= ~(MIPI_CAL_SELDSIA(0x1));
+		tegra_mipi_cal_write(dsi->mipi_cal, val,
+			MIPI_CAL_DSIA_MIPI_CAL_CONFIG_0);
+
+		/* Deselect PAD B */
+		val = tegra_mipi_cal_read(dsi->mipi_cal,
+			MIPI_CAL_DSIB_MIPI_CAL_CONFIG_0);
+		val &= ~(MIPI_CAL_SELDSIB(0x1));
+		tegra_mipi_cal_write(dsi->mipi_cal, val,
+			MIPI_CAL_DSIB_MIPI_CAL_CONFIG_0);
+	}
+
+	val = tegra_mipi_cal_read(dsi->mipi_cal,
+		MIPI_CAL_MIPI_CAL_CTRL_0);
+	val = MIPI_CAL_NOISE_FLT(0xa) |
+		  MIPI_CAL_PRESCALE(0x2) |
+		  MIPI_CAL_CLKEN_OVR(0x1) |
+		  MIPI_CAL_AUTOCAL_EN(0x0);
+	tegra_mipi_cal_write(dsi->mipi_cal, val,
+		MIPI_CAL_MIPI_CAL_CTRL_0);
+
+}
+#endif
 
 static void tegra_dsi_pad_calibration(struct tegra_dc_dsi_data *dsi)
 {
@@ -2021,83 +2096,9 @@ static void tegra_dsi_pad_calibration(struct tegra_dc_dsi_data *dsi)
 			PAD_PDVREG(0x0),
 			MIPI_CAL_MIPI_BIAS_PAD_CFG2_0);
 
-		/* Calibration settings begin */
-		val = (DSI_PAD_SLEWUPADJ(0x7) | DSI_PAD_SLEWDNADJ(0x7) |
-			DSI_PAD_LPUPADJ(0x1) | DSI_PAD_LPDNADJ(0x1) |
-			DSI_PAD_OUTADJCLK(0x0));
-		tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL_2_VS1);
-
-		tegra_mipi_cal_write(dsi->mipi_cal,
-			PAD_VCLAMP_LEVEL(0x0),
-			MIPI_CAL_MIPI_BIAS_PAD_CFG2_0);
-
-		if (!dsi->controller_index) {
-			val = tegra_dsi_readl(dsi,
-				MIPI_CAL_DSIA_MIPI_CAL_CONFIG_0);
-			val = MIPI_CAL_OVERIDEDSIA(0x0) |
-				MIPI_CAL_SELDSIA(0x1) |
-				MIPI_CAL_HSPDOSDSIA(0x2) |
-				MIPI_CAL_HSPUOSDSIA(0x0) |
-				MIPI_CAL_TERMOSDSIA(0x5);
-			tegra_mipi_cal_write(dsi->mipi_cal, val,
-				MIPI_CAL_DSIA_MIPI_CAL_CONFIG_0);
-			tegra_mipi_cal_write(dsi->mipi_cal, val,
-				MIPI_CAL_DSIB_MIPI_CAL_CONFIG_0);
-
-			/* Deselect PAD C */
-			val = tegra_mipi_cal_read(dsi->mipi_cal,
-				MIPI_CAL_DSIC_MIPI_CAL_CONFIG_0);
-			val &= ~(MIPI_CAL_SELDSIC(0x1));
-			tegra_mipi_cal_write(dsi->mipi_cal, val,
-				MIPI_CAL_DSIC_MIPI_CAL_CONFIG_0);
-
-			/* Deselect PAD D */
-			val = tegra_mipi_cal_read(dsi->mipi_cal,
-				MIPI_CAL_DSID_MIPI_CAL_CONFIG_0);
-			val &= ~(MIPI_CAL_SELDSID(0x1));
-			tegra_mipi_cal_write(dsi->mipi_cal, val,
-				MIPI_CAL_DSID_MIPI_CAL_CONFIG_0);
-		} else {
-			val = tegra_dsi_readl(dsi,
-				MIPI_CAL_DSIC_MIPI_CAL_CONFIG_0);
-			val = MIPI_CAL_OVERIDEDSIC(0x0) |
-				MIPI_CAL_SELDSIC(0x1) |
-				MIPI_CAL_HSPDOSDSIC(0x2) |
-				MIPI_CAL_HSPUOSDSIC(0x0) |
-				MIPI_CAL_TERMOSDSIC(0x5);
-			tegra_mipi_cal_write(dsi->mipi_cal, val,
-				MIPI_CAL_DSIC_MIPI_CAL_CONFIG_0);
-			tegra_mipi_cal_write(dsi->mipi_cal, val,
-				MIPI_CAL_DSID_MIPI_CAL_CONFIG_0);
-
-			/* Deselect PAD A */
-			val = tegra_mipi_cal_read(dsi->mipi_cal,
-				MIPI_CAL_DSIA_MIPI_CAL_CONFIG_0);
-			val &= ~(MIPI_CAL_SELDSIA(0x1));
-			tegra_mipi_cal_write(dsi->mipi_cal, val,
-				MIPI_CAL_DSIA_MIPI_CAL_CONFIG_0);
-
-			/* Deselect PAD B */
-			val = tegra_mipi_cal_read(dsi->mipi_cal,
-				MIPI_CAL_DSIB_MIPI_CAL_CONFIG_0);
-			val &= ~(MIPI_CAL_SELDSIB(0x1));
-			tegra_mipi_cal_write(dsi->mipi_cal, val,
-				MIPI_CAL_DSIB_MIPI_CAL_CONFIG_0);
-		}
-
-		val = tegra_mipi_cal_read(dsi->mipi_cal,
-			MIPI_CAL_MIPI_CAL_CTRL_0);
-		val = MIPI_CAL_NOISE_FLT(0xa) |
-			  MIPI_CAL_PRESCALE(0x2) |
-			  MIPI_CAL_CLKEN_OVR(0x1) |
-			  MIPI_CAL_AUTOCAL_EN(0x0) |
-			  MIPI_CAL_STARTCAL(0x0);
-		tegra_mipi_cal_write(dsi->mipi_cal, val,
-			MIPI_CAL_MIPI_CAL_CTRL_0);
-
-		/* Time period */
-		tegra_mipi_cal_write(dsi->mipi_cal, 0xFFFFFFFF,
-			MIPI_CAL_MIPI_CAL_AUTOCAL_CTRL0_0);
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+		tegra_dsi_mipi_calibration_11x(dsi);
+#endif
 
 		/* Start calibration */
 		val = tegra_mipi_cal_read(dsi->mipi_cal,
