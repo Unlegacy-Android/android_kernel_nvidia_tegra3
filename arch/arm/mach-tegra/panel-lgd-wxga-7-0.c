@@ -36,7 +36,8 @@
 
 #define DSI_PANEL_RESET		0
 #define DSI_PANEL_BL_PWM	TEGRA_GPIO_PH1
-#define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
+#define DC_CTRL_MODE	(TEGRA_DC_OUT_CONTINUOUS_MODE | \
+			TEGRA_DC_OUT_INITIALIZED_MODE)
 
 /*
  * TODO: This flag and continuous video clk mode
@@ -46,7 +47,6 @@
 #define VIDEO_CLK_MODE_TX_ONLY		1
 
 static bool reg_requested;
-static bool gpio_requested;
 static struct platform_device *disp_device;
 static struct regulator *avdd_lcd_3v3;
 static struct regulator *vdd_lcd_bl_en;
@@ -142,26 +142,6 @@ fail:
 	return err;
 }
 
-static int tegratab_dsi_gpio_get(void)
-{
-	int err = 0;
-
-	if (gpio_requested)
-		return 0;
-
-	/* free pwm GPIO */
-	err = gpio_request(DSI_PANEL_BL_PWM, "panel pwm");
-	if (err < 0) {
-		pr_err("panel pwm gpio request failed\n");
-		goto fail;
-	}
-	gpio_free(DSI_PANEL_BL_PWM);
-	gpio_requested = true;
-	return 0;
-fail:
-	return err;
-}
-
 static int dsi_lgd_wxga_7_0_enable(struct device *dev)
 {
 	int err = 0;
@@ -170,13 +150,6 @@ static int dsi_lgd_wxga_7_0_enable(struct device *dev)
 
 	if (err < 0) {
 		pr_err("dsi regulator get failed\n");
-		goto fail;
-	}
-
-	err = tegratab_dsi_gpio_get();
-
-	if (err < 0) {
-		pr_err("dsi gpio request failed\n");
 		goto fail;
 	}
 
@@ -321,6 +294,7 @@ static struct platform_pwm_backlight_data dsi_lgd_wxga_7_0_bl_data = {
 	.notify		= dsi_lgd_wxga_7_0_bl_notify,
 	/* Only toggle backlight on fb blank notifications for disp1 */
 	.check_fb	= dsi_lgd_wxga_7_0_check_fb,
+	.pwm_gpio	= DSI_PANEL_BL_PWM,
 };
 
 static struct platform_device __maybe_unused
