@@ -6730,7 +6730,7 @@ dhdsdio_probe_attach(struct dhd_bus *bus, osl_t *osh, void *sdh, void *regsva,
 	}
 
 #ifdef DHD_DEBUG
-	DHD_ERROR(("F1 signature read @0x18000000=0x%4x\n",
+	DHD_INFO(("F1 signature read @0x18000000=0x%4x\n",
 	       bcmsdh_reg_read(bus->sdh, SI_ENUM_BASE, 4)));
 
 #endif /* DHD_DEBUG */
