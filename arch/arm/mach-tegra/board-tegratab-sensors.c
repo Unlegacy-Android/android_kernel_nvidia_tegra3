@@ -46,6 +46,7 @@
 #include <media/ad5823.h>
 #endif
 #include <media/mt9m114.h>
+#include <media/ov7695.h>
 #include <generated/mach-types.h>
 #include <linux/power/sbs-battery.h>
 
@@ -329,6 +330,67 @@ struct mt9m114_platform_data tegratab_mt9m114_pdata = {
 	.power_off = tegratab_mt9m114_power_off,
 };
 
+static int tegratab_ov7695_power_on(struct ov7695_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
+		return -EFAULT;
+
+	gpio_set_value(CAM2_POWER_DWN_GPIO, 0);
+	usleep_range(1000, 1020);
+
+	err = regulator_enable(pw->iovdd);
+	if (unlikely(err))
+		goto ov7695_iovdd_fail;
+	usleep_range(300, 320);
+
+	err = regulator_enable(pw->avdd);
+	if (unlikely(err))
+		goto ov7695_avdd_fail;
+	usleep_range(1000, 1020);
+
+	gpio_set_value(CAM2_POWER_DWN_GPIO, 1);
+	usleep_range(1000, 1020);
+
+	tegra_pinmux_config_table(&pbb0_enable, 1);
+	usleep_range(200, 220);
+
+	return 0;
+
+ov7695_avdd_fail:
+	regulator_disable(pw->iovdd);
+
+ov7695_iovdd_fail:
+	gpio_set_value(CAM_RSTN, 0);
+	return -ENODEV;
+}
+
+static int tegratab_ov7695_power_off(struct ov7695_power_rail *pw)
+{
+	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
+		return -EFAULT;
+	usleep_range(100, 120);
+
+	tegra_pinmux_config_table(&pbb0_disable, 1);
+	usleep_range(100, 120);
+
+	gpio_set_value(CAM2_POWER_DWN_GPIO, 0);
+	usleep_range(100, 120);
+
+	regulator_disable(pw->avdd);
+	usleep_range(100, 120);
+
+	regulator_disable(pw->iovdd);
+
+	return 0;
+}
+
+struct ov7695_platform_data tegratab_ov7695_pdata = {
+	.power_on = tegratab_ov7695_power_on,
+	.power_off = tegratab_ov7695_power_off,
+};
+
 static struct i2c_board_info tegratab_i2c_board_info_e1599[] = {
 #ifndef CONFIG_USE_OF
 	{
@@ -343,6 +405,10 @@ static struct i2c_board_info tegratab_i2c_board_info_e1599[] = {
 	{
 		I2C_BOARD_INFO("mt9m114", 0x48),
 		.platform_data = &tegratab_mt9m114_pdata,
+	},
+	{
+		I2C_BOARD_INFO("ov7695", 0x21),
+		.platform_data = &tegratab_ov7695_pdata,
 	},
 };
 
