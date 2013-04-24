@@ -92,9 +92,11 @@ static void broadcast_tlb_a15_erratum(void)
 	if (!erratum_a15_798181())
 		return;
 
+	preempt_disable();
 	dummy_flush_tlb_a15_erratum();
 	smp_call_function_many(cpu_online_mask, ipi_flush_tlb_a15_erratum,
 			       NULL, 1);
+	preempt_enable_no_resched();
 }
 
 static void broadcast_tlb_mm_a15_erratum(struct mm_struct *mm)
@@ -105,6 +107,7 @@ static void broadcast_tlb_mm_a15_erratum(struct mm_struct *mm)
 	if (!erratum_a15_798181())
 		return;
 
+	preempt_disable();
 	dummy_flush_tlb_a15_erratum();
 	for_each_online_cpu(cpu) {
 		if (cpu == smp_processor_id())
@@ -121,6 +124,7 @@ static void broadcast_tlb_mm_a15_erratum(struct mm_struct *mm)
 			cpumask_set_cpu(cpu, &mask);
 	}
 	smp_call_function_many(&mask, ipi_flush_tlb_a15_erratum, NULL, 1);
+	preempt_enable_no_resched();
 }
 
 void flush_tlb_all(void)
