@@ -316,7 +316,7 @@ static int dsi_lgd_wxga_7_0_check_fb(struct device *dev, struct fb_info *info)
 static struct platform_pwm_backlight_data dsi_lgd_wxga_7_0_bl_data = {
 	.pwm_id		= 1,
 	.max_brightness	= 255,
-	.dft_brightness	= 224,
+	.dft_brightness	= 60,
 	.pwm_period_ns	= 1000000,
 	.notify		= dsi_lgd_wxga_7_0_bl_notify,
 	/* Only toggle backlight on fb blank notifications for disp1 */
