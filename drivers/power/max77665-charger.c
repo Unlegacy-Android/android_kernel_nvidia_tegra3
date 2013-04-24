@@ -786,13 +786,45 @@ static ssize_t max77665_show_battery_oc_count(struct device *dev,
 	struct max77665_charger *charger = dev_get_drvdata(dev);
 	return sprintf(buf, "%u\n", charger->oc_count);
 }
-
 static DEVICE_ATTR(oc_count, 0444, max77665_show_battery_oc_count, NULL);
+
+static ssize_t max77665_show_battery_charging_state(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct max77665_charger *charger = dev_get_drvdata(dev);
+	char *state_string[] = {
+		"PREQUALIFICATION MODE",		/* 0X0 */
+		"FAST CONSTANT CURRENT MODE",		/* 0X1 */
+		"FAST CONSTANT VOLTAGE MODE",		/* 0X2 */
+		"TOP OFF MODE",				/* 0X3 */
+		"DONE MODE",				/* 0X4 */
+		"HIGH TEMP CHG MODE",			/* 0X5 */
+		"TIME FAULT MODE",			/* 0X6 */
+		"THERMISTOR SUSPEND FAULT MODE",	/* 0X7 */
+		"CHG OFF INPUT INVALID",		/* 0X8 */
+		"RSVD",					/* 0X9 */
+		"CHG OFF JUNCT TEMP",			/* 0XA */
+		"CHG OFF WDT EXPIRE",			/* 0XB */
+	};
+	int val;
+
+	if (0 > max77665_read_reg(charger, MAX77665_CHG_DTLS_01, &val))
+		return -EINVAL;
+
+	val = CHG_DTLS_MASK(val);
+	if (val >= ARRAY_SIZE(state_string))
+		return -EINVAL;
+
+	return sprintf(buf, "%s(%d)\n", state_string[val], val);
+}
+static DEVICE_ATTR(charging_state, 0444,
+		max77665_show_battery_charging_state, NULL);
 
 static struct attribute *max77665_chg_attributes[] = {
 	&dev_attr_oc_threshold.attr,
 	&dev_attr_oc_state.attr,
 	&dev_attr_oc_count.attr,
+	&dev_attr_charging_state.attr,
 	NULL,
 };
 
