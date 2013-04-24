@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host Driver Entrypoint
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -90,7 +90,7 @@ static inline struct nvhost_master *nvhost_get_host(
 {
 	struct platform_device *pdev;
 
-	if (_dev->dev.parent) {
+	if (_dev->dev.parent && _dev->dev.parent != &platform_bus) {
 		pdev = to_platform_device(_dev->dev.parent);
 		return nvhost_get_private_data(pdev);
 	} else
@@ -100,7 +100,8 @@ static inline struct nvhost_master *nvhost_get_host(
 static inline struct platform_device *nvhost_get_parent(
 	struct platform_device *_dev)
 {
-	return _dev->dev.parent ? to_platform_device(_dev->dev.parent) : NULL;
+	return (_dev->dev.parent && _dev->dev.parent != &platform_bus)
+		? to_platform_device(_dev->dev.parent) : NULL;
 }
 
 void nvhost_host1x_update_clk(struct platform_device *pdev);

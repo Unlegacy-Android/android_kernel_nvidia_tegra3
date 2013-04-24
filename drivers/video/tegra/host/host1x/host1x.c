@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host Driver Entrypoint
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -27,6 +27,9 @@
 #include <linux/hrtimer.h>
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_platform.h>
 
 #include "dev.h"
 #include <trace/events/nvhost.h>
@@ -40,6 +43,9 @@
 #include "nvhost_channel.h"
 #include "nvhost_job.h"
 #include "chip_support.h"
+#include "t20/t20.h"
+#include "t30/t30.h"
+#include "t114/t114.h"
 
 #define DRIVER_NAME		"host1x"
 
@@ -402,14 +408,37 @@ void nvhost_host1x_update_clk(struct platform_device *pdev)
 	actmon_op().update_sample_period(host);
 }
 
+static struct of_device_id tegra_host1x_of_match[] __devinitdata = {
+	{ .compatible = "nvidia,tegra20-host1x",
+		.data = (struct nvhost_device_data *)&t20_host1x_info },
+	{ .compatible = "nvidia,tegra30-host1x",
+		.data = (struct nvhost_device_data *)&t30_host1x_info },
+	{ .compatible = "nvidia,tegra114-host1x",
+		.data = (struct nvhost_device_data *)&t11_host1x_info },
+	{ },
+};
+
 static int __devinit nvhost_probe(struct platform_device *dev)
 {
 	struct nvhost_master *host;
 	struct resource *regs, *intr0, *intr1;
 	int i, err;
-	struct nvhost_device_data *pdata =
-		(struct nvhost_device_data *)dev->dev.platform_data;
+	struct nvhost_device_data *pdata = NULL;
 
+	if (dev->dev.of_node) {
+		const struct of_device_id *match;
+
+		match = of_match_device(tegra_host1x_of_match, &dev->dev);
+		if (match)
+			pdata = (struct nvhost_device_data *)match->data;
+	} else
+		pdata = (struct nvhost_device_data *)dev->dev.platform_data;
+
+	WARN_ON(!pdata);
+	if (!pdata) {
+		dev_info(&dev->dev, "no platform data\n");
+		return -ENODATA;
+	}
 	regs = platform_get_resource(dev, IORESOURCE_MEM, 0);
 	intr0 = platform_get_resource(dev, IORESOURCE_IRQ, 0);
 	intr1 = platform_get_resource(dev, IORESOURCE_IRQ, 1);
@@ -550,7 +579,10 @@ static struct platform_driver platform_driver = {
 	.resume = nvhost_resume,
 	.driver = {
 		.owner = THIS_MODULE,
-		.name = DRIVER_NAME
+		.name = DRIVER_NAME,
+#ifdef CONFIG_OF
+		.of_match_table = tegra_host1x_of_match,
+#endif
 	},
 };
 

@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host Syncpoints
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -513,7 +513,7 @@ u32 nvhost_syncpt_incr_max_ext(struct platform_device *dev, u32 id, u32 incrs)
 	struct platform_device *pdev;
 	struct nvhost_syncpt *sp;
 
-	BUG_ON(!dev->dev.parent);
+	BUG_ON(!nvhost_get_parent(dev));
 
 	/* get the parent */
 	pdev = to_platform_device(dev->dev.parent);
@@ -527,7 +527,7 @@ void nvhost_syncpt_cpu_incr_ext(struct platform_device *dev, u32 id)
 	struct platform_device *pdev;
 	struct nvhost_syncpt *sp;
 
-	BUG_ON(!dev->dev.parent);
+	BUG_ON(!nvhost_get_parent(dev));
 
 	/* get the parent */
 	pdev = to_platform_device(dev->dev.parent);
@@ -541,7 +541,7 @@ u32 nvhost_syncpt_read_ext(struct platform_device *dev, u32 id)
 	struct platform_device *pdev;
 	struct nvhost_syncpt *sp;
 
-	BUG_ON(!dev->dev.parent);
+	BUG_ON(!nvhost_get_parent(dev));
 
 	/* get the parent */
 	pdev = to_platform_device(dev->dev.parent);
@@ -556,7 +556,7 @@ int nvhost_syncpt_wait_timeout_ext(struct platform_device *dev, u32 id,
 	struct platform_device *pdev;
 	struct nvhost_syncpt *sp;
 
-	BUG_ON(!dev->dev.parent);
+	BUG_ON(!nvhost_get_parent(dev));
 
 	/* get the parent */
 	pdev = to_platform_device(dev->dev.parent);
