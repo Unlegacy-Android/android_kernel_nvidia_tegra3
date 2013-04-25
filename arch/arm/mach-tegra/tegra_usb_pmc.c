@@ -122,7 +122,7 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	/* config debouncer */
 	val = readl(pmc_base + PMC_USB_DEBOUNCE);
 	val &= ~UTMIP_LINE_DEB_CNT(~0);
-	val |= UTMIP_LINE_DEB_CNT(4);
+	val |= UTMIP_LINE_DEB_CNT(1);
 	val |= PMC_USB_DEBOUNCE_VAL(2);
 	writel(val, pmc_base + PMC_USB_DEBOUNCE);
 
