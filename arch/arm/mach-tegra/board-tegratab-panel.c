@@ -279,7 +279,7 @@ static struct tegra_fb_data tegratab_disp2_fb_data = {
 };
 
 static struct tegra_dc_platform_data tegratab_disp2_pdata = {
-	.flags		= TEGRA_DC_FLAG_ENABLED,
+	.flags		= 0,
 	.default_out	= &tegratab_disp2_out,
 	.fb		= &tegratab_disp2_fb_data,
 	.emc_clk_rate	= 300000000,
