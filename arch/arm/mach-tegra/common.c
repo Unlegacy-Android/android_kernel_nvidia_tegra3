@@ -317,7 +317,11 @@ static __initdata struct tegra_clk_init_table tegra30_clk_init_table[] = {
 	{ "sbc4.sclk",	NULL,		40000000,	false},
 	{ "sbc5.sclk",	NULL,		40000000,	false},
 	{ "sbc6.sclk",	NULL,		40000000,	false},
+#ifdef CONFIG_TEGRA_PCI
+	{ "mselect",	"pll_p",	204000000,	true },
+#else
 	{ "mselect",	"pll_p",	102000000,	true },
+#endif
 	{ NULL,		NULL,		0,		0},
 };
 static __initdata struct tegra_clk_init_table tegra30_cbus_init_table[] = {

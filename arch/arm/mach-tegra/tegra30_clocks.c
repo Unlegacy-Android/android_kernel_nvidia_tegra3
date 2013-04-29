@@ -4410,8 +4410,11 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("pcie",	"tegra-pcie",		"pcie",	70,	0,	250000000, mux_clk_m, 			0),
 	PERIPH_CLK("afi",	"tegra-pcie",		"afi",	72,	0,	250000000, mux_clk_m, 			0),
 	PERIPH_CLK("se",	"se",			NULL,	127,	0x42c,	625000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
+#ifdef CONFIG_TEGRA_PCI
+	PERIPH_CLK("mselect",	"mselect",		NULL,	99,	0x3b4,	204000000, mux_pllp_clkm,		MUX | DIV_U71),
+#else
 	PERIPH_CLK("mselect",	"mselect",		NULL,	99,	0x3b4,	108000000, mux_pllp_clkm,		MUX | DIV_U71),
-
+#endif
 	SHARED_CLK("avp.sclk",	"tegra-avp",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("bsea.sclk",	"tegra-aes",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("usbd.sclk",	"tegra-udc.0",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
@@ -4962,11 +4965,19 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 			return -ENODEV;
 	}
 
+#ifdef CONFIG_TEGRA_PCI
+	/* Vote on mselect frequency based on cpu frequency:
+	   keep mselect at cpu rate up to 204 MHz;
+	   cpu rate is in kHz, mselect rate is in Hz */
+	mselect_rate = cpu_rate * 1000;
+	mselect_rate = min(mselect_rate, 204000000UL);
+#else
 	/* Vote on mselect frequency based on cpu frequency:
 	   keep mselect at half of cpu rate up to 102 MHz;
 	   cpu rate is in kHz, mselect rate is in Hz */
 	mselect_rate = DIV_ROUND_UP(cpu_rate, 2) * 1000;
 	mselect_rate = min(mselect_rate, 102000000UL);
+#endif
 
 	if (mselect_rate != clk_get_rate(mselect))
 		return clk_set_rate(mselect, mselect_rate);
