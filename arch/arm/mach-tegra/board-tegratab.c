@@ -100,7 +100,13 @@ static struct platform_device btwilink_device = {
 
 static noinline void __init tegratab_bt_st(void)
 {
+	struct board_info board_info;
+
 	pr_info("tegratab_bt_st");
+	tegra_get_board_info(&board_info);
+
+	if (board_info.board_id == BOARD_P1640)
+		tegratab_wilink_pdata.nshutdown_gpio = TEGRA_GPIO_PR1;
 
 	platform_device_register(&wl128x_device);
 	platform_device_register(&btwilink_device);

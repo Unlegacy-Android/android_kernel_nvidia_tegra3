@@ -48,6 +48,12 @@ static struct gpio_keys_button tegratab_e1569_keys[] = {
 	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PR1, 0),
 };
 
+static struct gpio_keys_button tegratab_p1640_keys[] = {
+	[0] = GPIO_KEY(KEY_POWER, PQ0, 1),
+	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
+	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PQ2, 0),
+};
+
 static int tegratab_wakeup_key(void)
 {
 	int wakeup_key;
@@ -64,23 +70,32 @@ static int tegratab_wakeup_key(void)
 	return wakeup_key;
 }
 
-static struct gpio_keys_platform_data tegratab_e1569_keys_pdata = {
+static struct gpio_keys_platform_data tegratab_keys_pdata = {
 	.buttons	= tegratab_e1569_keys,
 	.nbuttons	= ARRAY_SIZE(tegratab_e1569_keys),
 	.wakeup_key	= tegratab_wakeup_key,
 };
 
-static struct platform_device tegratab_e1569_keys_device = {
+static struct platform_device tegratab_keys_device = {
 	.name	= "gpio-keys",
 	.id	= 0,
 	.dev	= {
-		.platform_data  = &tegratab_e1569_keys_pdata,
+		.platform_data  = &tegratab_keys_pdata,
 	},
 };
 
 int __init tegratab_kbc_init(void)
 {
-	platform_device_register(&tegratab_e1569_keys_device);
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+
+	if (board_info.board_id == BOARD_P1640) {
+		tegratab_keys_pdata.buttons = tegratab_p1640_keys;
+		tegratab_keys_pdata.nbuttons = ARRAY_SIZE(tegratab_p1640_keys);
+	}
+
+	platform_device_register(&tegratab_keys_device);
 
 	return 0;
 }
