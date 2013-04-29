@@ -49,8 +49,8 @@
 #include "dvfs.h"
 #include "pm.h"
 
-#define NTC_10K_TGAIN   0xE6A2
-#define NTC_10K_TOFF    0x2694
+#define NTC_10K_TGAIN   0xBC94
+#define NTC_10K_TOFF    0x84BA
 
 static struct nvc_gpio_pdata imx091_gpio_pdata[] = {
 	{IMX091_GPIO_RESET, CAM_RSTN, true, false},
