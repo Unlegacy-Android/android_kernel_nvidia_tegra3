@@ -36,7 +36,12 @@
 #include <media/imx091.h>
 #include <media/imx132.h>
 #include <media/ad5816.h>
+#include <media/ov5693.h>
+#include <media/ad5823.h>
 #include <media/ov5640.h>
+#include <media/imx135.h>
+#include <media/ar0833.h>
+#include <media/dw9718.h>
 #include <asm/mach-types.h>
 
 #include "gpio-names.h"
@@ -376,6 +381,73 @@ static struct i2c_board_info pluto_i2c4_nct1008_board_info[] = {
 		.ioreset	= TEGRA_PIN_IO_RESET_##_ioreset	\
 }
 
+static int pluto_dw9718_power_on(struct dw9718_power_rail *pw)
+{
+	int err;
+	pr_debug("%s ++\n", __func__);
+
+	if (unlikely(!pw || !pw->vdd || !pw->vdd_i2c))
+		return -EFAULT;
+
+	err = regulator_enable(pw->vdd);
+	if (unlikely(err))
+		goto dw9718_vdd_fail;
+
+	err = regulator_enable(pw->vdd_i2c);
+	if (unlikely(err))
+		goto dw9718_i2c_fail;
+
+	usleep_range(1000, 1020);
+
+	/* return 1 to skip the in-driver power_on sequence */
+	pr_debug("%s --\n", __func__);
+	return 1;
+
+dw9718_i2c_fail:
+	regulator_disable(pw->vdd);
+
+dw9718_vdd_fail:
+	pr_err("%s FAILED\n", __func__);
+	return -ENODEV;
+}
+
+static int pluto_dw9718_power_off(struct dw9718_power_rail *pw)
+{
+	if (unlikely(!pw || !pw->vdd || !pw->vdd_i2c))
+		return -EFAULT;
+
+	regulator_disable(pw->vdd);
+	regulator_disable(pw->vdd_i2c);
+
+	return 1;
+}
+
+static u16 dw9718_devid;
+static int pluto_dw9718_detect(void *buf, size_t size)
+{
+	dw9718_devid = 0x9718;
+	return 0;
+}
+
+static struct nvc_focus_cap dw9718_cap = {
+	.settle_time = 30,
+	.slew_rate = 0x3A200C,
+	.focus_macro = 700,
+	.focus_infinity = 360,
+	.focus_hyper = 360,
+};
+
+static struct dw9718_platform_data pluto_dw9718_pdata = {
+	.cfg = NVC_CFG_NODEV,
+	.num = 1,
+	.sync = 0,
+	.dev_name = "focuser",
+	.cap = &dw9718_cap,
+	.power_on = pluto_dw9718_power_on,
+	.power_off = pluto_dw9718_power_off,
+	.detect = pluto_dw9718_detect,
+};
+
 static int pluto_focuser_power_on(struct ad5816_power_rail *pw)
 {
 	int err;
@@ -413,6 +485,19 @@ static int pluto_focuser_power_off(struct ad5816_power_rail *pw)
 	return 0;
 }
 
+static u16 ad5816_devid;
+static int pluto_focuser_detect(void *buf, size_t size)
+{
+	if (!buf)
+		return -EFAULT;
+	if (size > sizeof(ad5816_devid))
+		return -EINVAL;
+
+	ad5816_devid = *(u16 *)buf;
+
+	return 0;
+}
+
 static struct tegra_pingroup_config mclk_disable =
 	VI_PINMUX(CAM_MCLK, VI, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
 
@@ -434,6 +519,104 @@ static struct tegra_pingroup_config pbb0_enable =
 */
 static struct regulator *pluto_vcmvdd;
 static struct regulator *pluto_i2cvdd;
+
+static int pluto_get_vcmvdd(void)
+{
+	if (!pluto_vcmvdd) {
+		pluto_vcmvdd = regulator_get(NULL, "vdd_af_cam1");
+		if (unlikely(WARN_ON(IS_ERR(pluto_vcmvdd)))) {
+			pr_err("%s: can't get regulator vcmvdd: %ld\n",
+				__func__, PTR_ERR(pluto_vcmvdd));
+			pluto_vcmvdd = NULL;
+			return -ENODEV;
+		}
+	}
+	return 0;
+}
+
+static int pluto_ar0833_power_on(struct ar0833_power_rail *pw)
+{
+	int err;
+	pr_debug("%s ++\n", __func__);
+
+	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
+		return -EFAULT;
+
+	if (pluto_get_vcmvdd())
+		goto ar0833_get_vcmvdd_fail;
+
+	gpio_set_value(CAM_RSTN, 0);
+	usleep_range(1000, 1020);
+
+	err = regulator_enable(pw->iovdd);
+	if (unlikely(err))
+		goto ar0833_iovdd_fail;
+	usleep_range(300, 320);
+
+	err = regulator_enable(pw->dvdd);
+	if (unlikely(err))
+		goto ar0833_dvdd_fail;
+	usleep_range(300, 320);
+
+	err = regulator_enable(pw->avdd);
+	if (unlikely(err))
+		goto ar0833_avdd_fail;
+
+	usleep_range(1000, 1020);
+	gpio_set_value(CAM_RSTN, 1);
+
+	tegra_pinmux_config_table(&mclk_enable, 1);
+	usleep_range(200, 220);
+
+	err = regulator_enable(pluto_vcmvdd);
+	if (unlikely(err))
+		goto ar0833_vcmvdd_fail;
+
+	/* return 1 to skip the in-driver power_on sequence */
+	pr_debug("%s --\n", __func__);
+	return 1;
+
+ar0833_vcmvdd_fail:
+	regulator_disable(pw->avdd);
+
+ar0833_avdd_fail:
+	regulator_disable(pw->dvdd);
+
+ar0833_dvdd_fail:
+	regulator_disable(pw->iovdd);
+
+ar0833_iovdd_fail:
+	gpio_set_value(CAM_RSTN, 0);
+
+ar0833_get_vcmvdd_fail:
+	pr_err("%s FAILED\n", __func__);
+	return -ENODEV;
+}
+
+static int pluto_ar0833_power_off(struct ar0833_power_rail *pw)
+{
+	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
+		return -EFAULT;
+
+	usleep_range(100, 120);
+	tegra_pinmux_config_table(&mclk_disable, 1);
+	usleep_range(100, 120);
+	gpio_set_value(CAM_RSTN, 0);
+	regulator_disable(pluto_vcmvdd);
+	usleep_range(100, 120);
+	regulator_disable(pw->avdd);
+	usleep_range(100, 120);
+	regulator_disable(pw->dvdd);
+	usleep_range(100, 120);
+	regulator_disable(pw->iovdd);
+
+	return 1;
+}
+
+struct ar0833_platform_data pluto_ar0833_pdata = {
+	.power_on		= pluto_ar0833_power_on,
+	.power_off		= pluto_ar0833_power_off,
+};
 
 static int pluto_get_extra_regulators(void)
 {
@@ -460,6 +643,94 @@ static int pluto_get_extra_regulators(void)
 	return 0;
 }
 
+static int pluto_imx135_power_on(struct imx135_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(WARN_ON(!pw || !pw->dvdd || !pw->iovdd || !pw->avdd)))
+		return -EFAULT;
+
+	if (pluto_get_extra_regulators())
+		goto imx135_poweron_fail;
+
+	gpio_set_value(CAM_RSTN, 0);
+	gpio_set_value(CAM_AF_PWDN, 1);
+	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
+	usleep_range(10, 20);
+
+	err = regulator_enable(pw->avdd);
+	if (unlikely(err))
+		goto imx135_avdd_fail;
+
+	err = regulator_enable(pw->dvdd);
+	if (unlikely(err))
+		goto imx135_dvdd_fail;
+
+	err = regulator_enable(pw->iovdd);
+	if (unlikely(err))
+		goto imx135_iovdd_fail;
+
+	udelay(2);
+	gpio_set_value(CAM_RSTN, 1);
+	gpio_set_value(CAM1_POWER_DWN_GPIO, 1);
+
+	tegra_pinmux_config_table(&mclk_enable, 1);
+	err = regulator_enable(pluto_i2cvdd);
+	if (unlikely(err))
+		goto imx135_i2c_fail;
+
+	err = regulator_enable(pluto_vcmvdd);
+	if (unlikely(err))
+		goto imx135_vcm_fail;
+	usleep_range(300, 310);
+
+	return 0;
+
+imx135_vcm_fail:
+	regulator_disable(pluto_i2cvdd);
+
+imx135_i2c_fail:
+	tegra_pinmux_config_table(&mclk_disable, 1);
+	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
+	regulator_disable(pw->iovdd);
+
+imx135_iovdd_fail:
+	regulator_disable(pw->dvdd);
+
+imx135_dvdd_fail:
+	regulator_disable(pw->avdd);
+
+imx135_avdd_fail:
+imx135_poweron_fail:
+	pr_err("%s FAILED\n", __func__);
+	return -ENODEV;
+}
+
+static int pluto_imx135_power_off(struct imx135_power_rail *pw)
+{
+	if (unlikely(WARN_ON(!pw || !pluto_i2cvdd || !pluto_vcmvdd ||
+					!pw->dvdd || !pw->iovdd || !pw->avdd)))
+		return -EFAULT;
+
+	udelay(2);
+	tegra_pinmux_config_table(&mclk_disable, 1);
+	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
+	udelay(2);
+
+	regulator_disable(pw->iovdd);
+	regulator_disable(pw->dvdd);
+	regulator_disable(pw->avdd);
+	regulator_disable(pluto_i2cvdd);
+	regulator_disable(pluto_vcmvdd);
+
+	return 0;
+}
+
+static struct imx135_platform_data imx135_pdata = {
+	.power_on		= pluto_imx135_power_on,
+	.power_off		= pluto_imx135_power_off,
+};
+
 static int pluto_imx091_power_on(struct nvc_regulator *vreg)
 {
 	int err;
@@ -485,7 +756,7 @@ static int pluto_imx091_power_on(struct nvc_regulator *vreg)
 	if (unlikely(err))
 		goto imx091_iovdd_fail;
 
-	usleep_range(1, 2);
+	udelay(2);
 	gpio_set_value(CAM1_POWER_DWN_GPIO, 1);
 
 	tegra_pinmux_config_table(&mclk_enable, 1);
@@ -525,10 +796,10 @@ static int pluto_imx091_power_off(struct nvc_regulator *vreg)
 	if (unlikely(WARN_ON(!vreg)))
 		return -EFAULT;
 
-	usleep_range(1, 2);
+	udelay(2);
 	tegra_pinmux_config_table(&mclk_disable, 1);
 	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
-	usleep_range(1, 2);
+	udelay(2);
 
 	regulator_disable(vreg[IMX091_VREG_IOVDD].vreg);
 	regulator_disable(vreg[IMX091_VREG_DVDD].vreg);
@@ -629,7 +900,7 @@ static int pluto_imx132_power_on(struct imx132_power_rail *pw)
 	if (unlikely(err))
 		goto imx132_iovdd_fail;
 
-	usleep_range(1, 2);
+	udelay(2);
 
 	gpio_set_value(CAM2_POWER_DWN_GPIO, 1);
 
@@ -663,7 +934,7 @@ static int pluto_imx132_power_off(struct imx132_power_rail *pw)
 
 	gpio_set_value(CAM2_POWER_DWN_GPIO, 0);
 
-	usleep_range(1, 2);
+	udelay(2);
 
 	regulator_disable(pw->iovdd);
 	regulator_disable(pw->dvdd);
@@ -683,12 +954,13 @@ struct imx132_platform_data pluto_imx132_data = {
 };
 
 static struct ad5816_platform_data pluto_ad5816_pdata = {
-	.cfg		= 0,
+	.cfg		= NVC_CFG_NODEV,
 	.num		= 0,
 	.sync		= 0,
 	.dev_name	= "focuser",
 	.power_on	= pluto_focuser_power_on,
 	.power_off	= pluto_focuser_power_off,
+	.detect		= pluto_focuser_detect,
 };
 
 static struct regulator *dvdd_1v8;
@@ -782,18 +1054,151 @@ static struct i2c_board_info pluto_board_info_ov5640[] = {
 	}
 };
 
+/* Because ov9772 already allocated a 'avdd' regulator alias at
+ * max77663_ldo8_supply, ov5693 cannot allocate another 'avdd'
+ * alias at max77663_ldo7_supply, which will cause boot up hang.
+ * as a workaround, we request the regulator using its common name.
+ */
+static struct regulator *ov5693_avdd;
+static int pluto_ov5693_power_on(struct ov5693_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(!pw || !pw->dovdd))
+		return -EFAULT;
+
+	if (!ov5693_avdd) {
+		ov5693_avdd = regulator_get(NULL, "avdd_cam1");
+		if (unlikely(WARN_ON(IS_ERR(ov5693_avdd)))) {
+			pr_err("%s: can't get regulator avdd: %ld\n",
+				__func__, PTR_ERR(ov5693_avdd));
+			ov5693_avdd = NULL;
+			return -ENODEV;
+		}
+	}
+
+	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
+	usleep_range(10, 20);
+
+	err = regulator_enable(ov5693_avdd);
+	if (err)
+		goto ov5693_avdd_fail;
+
+	err = regulator_enable(pw->dovdd);
+	if (err)
+		goto ov5693_iovdd_fail;
+
+	udelay(2);
+	gpio_set_value(CAM1_POWER_DWN_GPIO, 1);
+
+	tegra_pinmux_config_table(&mclk_enable, 1);
+	usleep_range(300, 310);
+
+	return 0;
+
+ov5693_iovdd_fail:
+	regulator_disable(ov5693_avdd);
+
+ov5693_avdd_fail:
+	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
+
+	pr_err("%s FAILED\n", __func__);
+	return -ENODEV;
+}
+
+static int pluto_ov5693_power_off(struct ov5693_power_rail *pw)
+{
+	if (unlikely(!pw || !pw->dovdd || !ov5693_avdd))
+		return -EFAULT;
+
+	usleep_range(21, 25);
+	tegra_pinmux_config_table(&mclk_disable, 1);
+	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
+	udelay(2);
+
+	regulator_disable(pw->dovdd);
+	regulator_disable(ov5693_avdd);
+
+	return 0;
+}
+
+static struct nvc_gpio_pdata ov5693_gpio_pdata[] = {
+	{ OV5693_GPIO_TYPE_PWRDN, CAM_RSTN, true, 0, },
+};
+static struct ov5693_platform_data pluto_ov5693_pdata = {
+	.num		= 5693,
+	.dev_name	= "camera",
+	.gpio_count	= ARRAY_SIZE(ov5693_gpio_pdata),
+	.gpio		= ov5693_gpio_pdata,
+	.power_on	= pluto_ov5693_power_on,
+	.power_off	= pluto_ov5693_power_off,
+};
+
+static int pluto_ad5823_power_on(struct ad5823_platform_data *pdata)
+{
+	int err = 0;
+
+	pr_info("%s\n", __func__);
+	err = gpio_request_one(pdata->gpio, GPIOF_OUT_INIT_LOW, "af_pwdn");
+
+	gpio_set_value_cansleep(pdata->gpio, 1);
+
+	return err;
+}
+
+static int pluto_ad5823_power_off(struct ad5823_platform_data *pdata)
+{
+	pr_info("%s\n", __func__);
+	gpio_set_value_cansleep(pdata->gpio, 0);
+	gpio_free(pdata->gpio);
+	return 0;
+}
+
+
+static struct ad5823_platform_data pluto_ad5823_pdata = {
+	.gpio = CAM_AF_PWDN,
+	.power_on	= pluto_ad5823_power_on,
+	.power_off	= pluto_ad5823_power_off,
+};
+
+static struct i2c_board_info pluto_i2c_board_info_ov5693 = {
+		I2C_BOARD_INFO("ov5693", 0x10),
+		.platform_data = &pluto_ov5693_pdata,
+};
+
+static struct i2c_board_info pluto_i2c_board_info_ad5823 = {
+		I2C_BOARD_INFO("ad5823", 0x0c),
+		.platform_data = &pluto_ad5823_pdata,
+};
+
+static struct i2c_board_info pluto_i2c_board_info_imx091 = {
+	I2C_BOARD_INFO("imx091", 0x10),
+	.platform_data = &imx091_pdata,
+};
+
+static struct i2c_board_info pluto_i2c_board_info_imx135 = {
+	I2C_BOARD_INFO("imx135", 0x10),
+	.platform_data = &imx135_pdata,
+};
+
+static struct i2c_board_info pluto_i2c_board_info_ar0833 = {
+	I2C_BOARD_INFO("ar0833", 0x36),
+	.platform_data = &pluto_ar0833_pdata,
+};
+
+static struct i2c_board_info pluto_i2c_board_info_imx132 = {
+	I2C_BOARD_INFO("imx132", 0x36),
+	.platform_data = &pluto_imx132_data,
+};
+
 static struct i2c_board_info pluto_i2c_board_info_e1625[] = {
-	{
-		I2C_BOARD_INFO("imx091", 0x10),
-		.platform_data = &imx091_pdata,
-	},
-	{
-		I2C_BOARD_INFO("imx132", 0x36),
-		.platform_data = &pluto_imx132_data,
-	},
 	{
 		I2C_BOARD_INFO("ad5816", 0x0E),
 		.platform_data = &pluto_ad5816_pdata,
+	},
+	{
+		I2C_BOARD_INFO("dw9718", 0x0c),
+		.platform_data = &pluto_dw9718_pdata,
 	},
 };
 
@@ -1154,3 +1559,62 @@ int __init pluto_sensors_init(void)
 
 	return 0;
 }
+
+static int pluto_chk_conflict(struct device *dev, void *addrp)
+{
+	struct i2c_client	*client = i2c_verify_client(dev);
+	unsigned short		addr = *(unsigned short *)addrp;
+
+	if (!client)
+		return 0;
+
+	pr_info("%s: %s %x - %x\n", __func__, client->name, client->addr, addr);
+	if (client->addr == addr)
+		i2c_unregister_device(client);
+	return 0;
+}
+
+static int camera_auto_detect(void)
+{
+	struct i2c_adapter *adap = i2c_get_adapter(2);
+
+	pr_info("%s ++ %04x - %04x\n", __func__, ad5816_devid, dw9718_devid);
+
+	if ((ad5816_devid & 0xff00) == 0x2400) {
+		if ((ad5816_devid & 0xff) >= 0x6) {
+			/* IMX135 found */
+			i2c_new_device(adap, &pluto_i2c_board_info_imx135);
+		} else {
+			/* IMX091 found*/
+			i2c_new_device(adap, &pluto_i2c_board_info_imx091);
+		}
+	} else if (dw9718_devid) {
+		/* AR0833 found */
+		i2c_new_device(adap, &pluto_i2c_board_info_ar0833);
+	} else { /* default using ov5693 + ad5823 */
+		device_for_each_child(&adap->dev,
+			&pluto_i2c_board_info_ad5823.addr,
+			pluto_chk_conflict);
+		i2c_new_device(adap, &pluto_i2c_board_info_ov5693);
+		i2c_new_device(adap, &pluto_i2c_board_info_ad5823);
+	}
+	i2c_new_device(adap, &pluto_i2c_board_info_imx132);
+
+	pr_info("%s --\n", __func__);
+	return 0;
+}
+
+int __init pluto_camera_late_init(void)
+{
+	if (board_info.board_id != BOARD_E1580)	{
+		pr_debug("%s: Pluto not found!\n", __func__);
+		return 0;
+	}
+
+	camera_auto_detect();
+
+	return 0;
+}
+
+
+late_initcall(pluto_camera_late_init);
