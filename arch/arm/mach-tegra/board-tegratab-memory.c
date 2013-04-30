@@ -1903,7 +1903,7 @@ static struct tegra11_emc_table e1569_mt41k128m16_125_table[] = {
 		},
 		{
 			0x00000000, /* EMC_CDB_CNTL_1 */
-			0x00000004, /* EMC_FBIO_CFG6 */
+			0x00000006, /* EMC_FBIO_CFG6 */
 			0x0000000a, /* EMC_QUSE */
 			0x00000008, /* EMC_EINPUT */
 			0x00000004, /* EMC_EINPUT_DURATION */
@@ -1935,7 +1935,7 @@ static struct tegra11_emc_table e1569_mt41k128m16_125_table[] = {
 		},
 		{
 			0x00000000, /* EMC_CDB_CNTL_1 */
-			0x00000004, /* EMC_FBIO_CFG6 */
+			0x00000006, /* EMC_FBIO_CFG6 */
 			0x0000000a, /* EMC_QUSE */
 			0x00000008, /* EMC_EINPUT */
 			0x00000004, /* EMC_EINPUT_DURATION */
