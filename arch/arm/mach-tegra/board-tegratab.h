@@ -22,6 +22,7 @@
 
 #include <mach/gpio.h>
 #include <mach/irqs.h>
+#include <linux/mpu.h>
 #include "gpio-names.h"
 
 #define PMC_WAKE_STATUS 0x14
@@ -74,16 +75,18 @@
 #define TOUCH_GPIO_RST_MAXIM_STI_SPI    TEGRA_GPIO_PK4
 
 /* Invensense MPU Definitions */
-#define MPU_GYRO_NAME           "mpu6050"
-#define MPU_GYRO_IRQ_GPIO       TEGRA_GPIO_PR3
-#define MPU_GYRO_ADDR           0x69
-#define MPU_GYRO_BUS_NUM        0
-#define MPU_GYRO_ORIENTATION    { 1, 0, 0, 0, 1, 0, 0, 0, 1 }
-#define MPU_COMPASS_NAME        "ak8975"
-#define MPU_COMPASS_IRQ_GPIO    0
-#define MPU_COMPASS_ADDR        0x0D
-#define MPU_COMPASS_BUS_NUM     0
-#define MPU_COMPASS_ORIENTATION { 1, 0, 0, 0, 1, 0, 0, 0, 1 }
+#define MPU_GYRO_NAME                 "mpu6050"
+#define MPU_GYRO_IRQ_GPIO             TEGRA_GPIO_PR3
+#define MPU_GYRO_ADDR                 0x69
+#define MPU_GYRO_BUS_NUM              0
+#define MPU_GYRO_ORIENTATION_E1569    MTMAT_TOP_CCW_180
+#define MPU_GYRO_ORIENTATION          MTMAT_TOP_CCW_0
+#define MPU_COMPASS_NAME              "ak8975"
+#define MPU_COMPASS_IRQ_GPIO          0
+#define MPU_COMPASS_ADDR              0x0D
+#define MPU_COMPASS_BUS_NUM           0
+#define MPU_COMPASS_ORIENTATION_E1569 MTMAT_TOP_CCW_180
+#define MPU_COMPASS_ORIENTATION       MTMAT_BOT_CCW_90
 
 /* Modem related GPIOs */
 #define MODEM_EN		TEGRA_GPIO_PP2
