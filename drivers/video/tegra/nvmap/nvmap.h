@@ -34,6 +34,7 @@
 #include <linux/nvmap.h>
 #include "nvmap_heap.h"
 #include <linux/workqueue.h>
+#include <asm/tlbflush.h>
 
 struct nvmap_device;
 struct page;
@@ -306,5 +307,14 @@ struct nvmap_handle_ref *nvmap_alloc_iovm(struct nvmap_client *client,
 	size_t size, size_t align, unsigned int flags, unsigned int iova_start);
 
 void nvmap_free_iovm(struct nvmap_client *client, struct nvmap_handle_ref *r);
+
+static inline void nvmap_flush_tlb_kernel_page(unsigned long kaddr)
+{
+#ifdef CONFIG_ARM_ERRATA_798181
+	flush_tlb_kernel_page_skip_errata_798181(kaddr);
+#else
+	flush_tlb_kernel_page(kaddr);
+#endif
+}
 
 #endif /* __VIDEO_TEGRA_NVMAP_NVMAP_H */

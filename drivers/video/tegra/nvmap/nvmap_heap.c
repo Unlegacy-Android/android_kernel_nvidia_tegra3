@@ -669,11 +669,11 @@ static int do_heap_copy_listblock(struct nvmap_device *dev,
 
 		set_pte_at(&init_mm, kaddr_src, *pte_src,
 				pfn_pte(pfn_src, prot));
-		flush_tlb_kernel_page(kaddr_src);
+		nvmap_flush_tlb_kernel_page(kaddr_src);
 
 		set_pte_at(&init_mm, kaddr_dst, *pte_dst,
 				pfn_pte(pfn_dst, prot));
-		flush_tlb_kernel_page(kaddr_dst);
+		nvmap_flush_tlb_kernel_page(kaddr_dst);
 
 		memcpy(addr_dst, addr_src, PAGE_SIZE);
 	}
