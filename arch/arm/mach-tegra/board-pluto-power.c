@@ -247,7 +247,7 @@ static struct regulator_consumer_supply palmas_regen2_supply[] = {
 };
 
 PALMAS_REGS_PDATA(smps123, 900,  1300, NULL, 0, 0, 0, NORMAL,
-		0, PALMAS_EXT_CONTROL_ENABLE1, 0, 0, 0);
+		0, PALMAS_EXT_CONTROL_ENABLE1, 0, 3, 0);
 PALMAS_REGS_PDATA(smps45, 900,  1400, NULL, 0, 0, 0, NORMAL,
 		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REGS_PDATA(smps6, 850,  850, NULL, 0, 0, 1, NORMAL,
@@ -539,7 +539,7 @@ static struct platform_device *pfixed_reg_devs[] = {
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* board parameters for cpu dfll */
 static struct tegra_cl_dvfs_cfg_param pluto_cl_dvfs_param = {
-	.sample_rate = 12500,
+	.sample_rate = 11500,
 
 	.force_mode = TEGRA_CL_DVFS_FORCE_FIXED,
 	.cf = 10,
