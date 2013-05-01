@@ -1124,9 +1124,12 @@ static int tegra2_periph_clk_enable(struct clk *c)
 
 	clk_writel(PERIPH_CLK_TO_ENB_BIT(c),
 		CLK_OUT_ENB_SET + PERIPH_CLK_TO_ENB_SET_REG(c));
-	if (!(c->flags & PERIPH_NO_RESET) && !(c->flags & PERIPH_MANUAL_RESET))
+	if (!(c->flags & PERIPH_NO_RESET) &&
+	    !(c->flags & PERIPH_MANUAL_RESET)) {
+		udelay(RESET_PROPAGATION_DELAY);
 		clk_writel(PERIPH_CLK_TO_ENB_BIT(c),
 			RST_DEVICES_CLR + PERIPH_CLK_TO_ENB_SET_REG(c));
+	}
 	if (c->flags & PERIPH_EMC_ENB) {
 		/* The EMC peripheral clock has 2 extra enable bits */
 		/* FIXME: Do they need to be disabled? */
@@ -2925,6 +2928,8 @@ static void tegra_clk_resume(void)
 		clk_writel(*ctx++, off);
 	}
 	wmb();
+
+	udelay(RESET_PROPAGATION_DELAY);
 
 	off = RST_DEVICES;
 	for (i = 0; i < RST_DEVICES_NUM; i++, off += 4)
