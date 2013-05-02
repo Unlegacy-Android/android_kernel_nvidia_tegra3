@@ -69,5 +69,7 @@ struct tegra_xusb_platform_data {
 
 #define TEGRA_XUSB_NEED_HS_DISCONNECT_SW_WAR BIT(0)
 
-extern void tegra_xusb_init(struct tegra_xusb_board_data *bdata);
+extern struct tegra_xusb_platform_data *tegra_xusb_init(
+				struct tegra_xusb_board_data *bdata);
+extern void tegra_xusb_register(void);
 #endif /* _XUSB_H */

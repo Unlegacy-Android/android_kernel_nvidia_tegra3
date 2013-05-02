@@ -147,9 +147,12 @@ struct tegra_usb_platform_data {
 struct tegra_usb_otg_data {
 	struct platform_device *ehci_device;
 	struct tegra_usb_platform_data *ehci_pdata;
+	struct platform_device *xhci_device;
+	struct tegra_xusb_platform_data *xhci_pdata;
 	char *vbus_extcon_dev_name;
 	char *id_extcon_dev_name;
 	int id_det_gpio;
+	bool is_xhci;
 };
 
 #endif /* _TEGRA_USB_H_ */

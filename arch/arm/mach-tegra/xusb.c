@@ -45,7 +45,8 @@ static void tegra_xusb_read_usb_calib(void)
 	tegra_xusb_plat_data.hs_curr_level_pad1 = (usb_calib0 >> 15) & 0x3f;
 }
 
-void tegra_xusb_init(struct tegra_xusb_board_data *bdata)
+struct tegra_xusb_platform_data *tegra_xusb_init(
+			struct tegra_xusb_board_data *bdata)
 {
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	tegra_xusb_plat_data.quirks |= TEGRA_XUSB_NEED_HS_DISCONNECT_SW_WAR;
@@ -59,6 +60,11 @@ void tegra_xusb_init(struct tegra_xusb_board_data *bdata)
 #endif
 	tegra_xusb_read_usb_calib();
 	tegra_xusb_plat_data.bdata = bdata;
+	return &tegra_xusb_plat_data;
+}
+
+void tegra_xusb_register(void)
+{
 	tegra_xhci_device.dev.platform_data = &tegra_xusb_plat_data;
 	platform_device_register(&tegra_xhci_device);
 }

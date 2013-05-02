@@ -735,6 +735,12 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	},
 };
 
+static struct tegra_xusb_board_data xusb_bdata = {
+	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0,
+	/* ss_portmap[0:3] = SS0 map, ss_portmap[4:7] = SS1 map */
+	.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0),
+};
+
 static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_device = &tegra_ehci1_device,
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
@@ -1032,14 +1038,21 @@ static struct platform_device tegra_baseband_xmm_power2_device = {
 static void pluto_usb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
+	struct tegra_xusb_platform_data *xusb_pdata;
 
-	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
-		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
-		platform_device_register(&tegra_otg_device);
-
-		/* Setup the udc platform data */
-		tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+	if ((usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
+		xusb_pdata = tegra_xusb_init(&xusb_bdata);
+		tegra_otg_pdata.is_xhci = true;
+		tegra_otg_pdata.xhci_device = &tegra_xhci_device;
+		tegra_otg_pdata.xhci_pdata = xusb_pdata;
+	} else {
+		tegra_otg_pdata.is_xhci = false;
 	}
+	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
+	platform_device_register(&tegra_otg_device);
+
+	/* Setup the udc platform data */
+	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 }
 
 static void pluto_modem_init(void)
@@ -1132,23 +1145,9 @@ static void pluto_modem_init(void)
 	}
 }
 
-static struct tegra_xusb_board_data xusb_bdata = {
-	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0,
-	/* ss_portmap[0:3] = SS0 map, ss_portmap[4:7] = SS1 map */
-	.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0),
-};
-
-static void pluto_xusb_init(void)
-{
-	int usb_port_owner_info = tegra_get_usb_port_owner_info();
-
-	if (usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)
-		tegra_xusb_init(&xusb_bdata);
-}
 #else
 static void pluto_usb_init(void) { }
 static void pluto_modem_init(void) { }
-static void pluto_xusb_init(void) { }
 #endif
 
 static void pluto_audio_init(void)
@@ -1269,7 +1268,6 @@ static void __init tegra_pluto_init(void)
 	pluto_i2c_init();
 	pluto_spi_init();
 	pluto_usb_init();
-	pluto_xusb_init();
 	pluto_uart_init();
 	pluto_audio_init();
 	platform_add_devices(pluto_devices, ARRAY_SIZE(pluto_devices));

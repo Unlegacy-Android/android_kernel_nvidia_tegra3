@@ -559,8 +559,10 @@ static void dalmore_xusb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
-	if (usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)
+	if (usb_port_owner_info & UTMI2_PORT_OWNER_XUSB) {
 		tegra_xusb_init(&xusb_bdata);
+		tegra_xusb_register();
+	}
 }
 
 static struct gpio modem_gpios[] = { /* Nemo modem */
