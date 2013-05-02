@@ -90,7 +90,7 @@ enum dhd_op_flags {
 
 /* max sequential rxcntl timeouts to set HANG event */
 #ifndef MAX_CNTL_TIMEOUT
-#define MAX_CNTL_TIMEOUT  2
+#define MAX_CNTL_TIMEOUT  5
 #endif
 
 #define DHD_SCAN_ASSOC_ACTIVE_TIME	40 /* ms: Embedded default Active setting from DHD */
