@@ -228,9 +228,9 @@ static struct max77665_charger_cable maxim_cable[] = {
 };
 
 static struct max77665_charger_plat_data max77665_charger = {
-	.fast_chg_cc = 1500, /* fast charger current*/
-	.term_volt = 3700, /* charger termination voltage */
-	.curr_lim = 1500, /* input current limit */
+	.fast_chg_cc = 2000, /* fast charger current*/
+	.term_volt = 4200, /* charger termination voltage */
+	.curr_lim = 2000, /* input current limit */
 	.num_cables = MAX_CABLES,
 	.cables = maxim_cable,
 	.extcon_name = "tegra-udc",
