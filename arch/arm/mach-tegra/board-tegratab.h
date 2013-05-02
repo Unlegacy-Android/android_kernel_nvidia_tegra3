@@ -70,6 +70,8 @@
 /* Touchscreen definitions */
 #define TOUCH_GPIO_IRQ_RAYDIUM_SPI      TEGRA_GPIO_PK2
 #define TOUCH_GPIO_RST_RAYDIUM_SPI      TEGRA_GPIO_PK4
+#define TOUCH_GPIO_IRQ_MAXIM_STI_SPI    TEGRA_GPIO_PK2
+#define TOUCH_GPIO_RST_MAXIM_STI_SPI    TEGRA_GPIO_PK4
 
 /* Invensense MPU Definitions */
 #define MPU_GYRO_NAME           "mpu6050"

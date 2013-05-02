@@ -34,6 +34,7 @@
 #include <linux/platform_data/tegra_usb_modem_power.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/rm31080a_ts.h>
+#include <linux/maxim_sti.h>
 #include <linux/tegra_uart.h>
 #include <linux/memblock.h>
 #include <linux/spi-tegra.h>
@@ -69,6 +70,7 @@
 #include "board-touch-raydium.h"
 #include "board.h"
 #include "board-common.h"
+#include "board-touch-maxim_sti.h"
 #include "clock.h"
 #include "board-tegratab.h"
 #include "devices.h"
@@ -587,6 +589,37 @@ static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 	{ NULL,         NULL,           0,              0},
 };
 
+#if defined(CONFIG_TOUCHSCREEN_MAXIM_STI) || \
+	defined(CONFIG_TOUCHSCREEN_MAXIM_STI_MODULE)
+struct maxim_sti_pdata maxim_sti_pdata = {
+	.touch_fusion         = "/vendor/bin/touch_fusion",
+	.config_file          = "/vendor/firmware/touch_fusion.cfg",
+	.nl_family            = TF_FAMILY_NAME,
+	.nl_mc_groups         = 5,
+	.chip_access_method   = 2,
+	.default_reset_state  = 1,
+	.tx_buf_size          = 4100,
+	.rx_buf_size          = 4100,
+	.gpio_reset           = TOUCH_GPIO_RST_MAXIM_STI_SPI,
+	.gpio_irq             = TOUCH_GPIO_IRQ_MAXIM_STI_SPI
+};
+
+static struct tegra_spi_device_controller_data dev_cdata = {
+	.rx_clk_tap_delay = 0,
+	.is_hw_based_cs = true,
+	.tx_clk_tap_delay = 0,
+};
+
+struct spi_board_info maxim_sti_spi_board = {
+	.modalias = MAXIM_STI_NAME,
+	.bus_num = 0,
+	.chip_select = 0,
+	.max_speed_hz = 12 * 1000 * 1000,
+	.mode = SPI_MODE_0,
+	.platform_data = &maxim_sti_pdata,
+	.controller_data = &dev_cdata
+};
+#else
 struct rm_spi_ts_platform_data rm31080ts_tegratab_data = {
 	.gpio_reset = TOUCH_GPIO_RST_RAYDIUM_SPI,
 	.config = 0,
@@ -597,7 +630,7 @@ struct rm_spi_ts_platform_data rm31080ts_tegratab_data = {
 
 static struct tegra_spi_device_controller_data dev_cdata = {
 	.rx_clk_tap_delay = 0,
-	.tx_clk_tap_delay = 16,
+	.tx_clk_tap_delay = 0,
 };
 
 struct spi_board_info rm31080a_tegratab_spi_board[1] = {
@@ -611,6 +644,7 @@ struct spi_board_info rm31080a_tegratab_spi_board[1] = {
 	 .platform_data = &rm31080ts_tegratab_data,
 	 },
 };
+#endif
 
 static int __init tegratab_touch_init(void)
 {
@@ -618,6 +652,10 @@ static int __init tegratab_touch_init(void)
 
 	tegra_get_display_board_info(&board_info);
 	tegra_clk_init_from_table(touch_clk_init_table);
+#if defined(CONFIG_TOUCHSCREEN_MAXIM_STI) || \
+	defined(CONFIG_TOUCHSCREEN_MAXIM_STI_MODULE)
+	(void)touch_init_maxim_sti(&maxim_sti_spi_board);
+#else
 	rm31080ts_tegratab_data.platform_id = RM_PLATFORM_D010;
 	mdelay(20);
 	rm31080a_tegratab_spi_board[0].irq =
@@ -627,6 +665,7 @@ static int __init tegratab_touch_init(void)
 				&rm31080ts_tegratab_data,
 				&rm31080a_tegratab_spi_board[0],
 				ARRAY_SIZE(rm31080a_tegratab_spi_board));
+#endif
 	return 0;
 }
 
