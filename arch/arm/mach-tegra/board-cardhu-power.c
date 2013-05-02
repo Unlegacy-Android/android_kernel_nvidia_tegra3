@@ -39,6 +39,7 @@
 #include <mach/edp.h>
 #include <mach/gpio-tegra.h>
 #include <mach/pinmux-tegra30.h>
+#include <mach/hardware.h>
 
 #include "gpio-names.h"
 #include "board.h"
@@ -1310,7 +1311,12 @@ int __init cardhu_edp_init(void)
 
 	regulator_mA = get_maximum_cpu_current_supported();
 	if (!regulator_mA) {
-		regulator_mA = 6000; /* regular T30/s */
+		if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA3) {
+			if (tegra_get_minor_rev() == 0x03) /* T33 */
+				regulator_mA = 10000;
+			else
+				regulator_mA = 6000; /* regular T30/s */
+		}
 	}
 	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
 
