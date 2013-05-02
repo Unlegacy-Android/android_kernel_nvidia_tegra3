@@ -100,6 +100,7 @@ int roth_panel_init(void);
 int macallan_kbc_init(void);
 int macallan_pmon_init(void);
 int macallan_soctherm_init(void);
+void macallan_sysedp_init(void);
 
 /* UART port which is used by bluetooth*/
 #define BLUETOOTH_UART_DEV_NAME "/dev/ttyHS2"

@@ -671,6 +671,7 @@ static void __init tegra_macallan_init(void)
 {
 	struct board_info board_info;
 
+	macallan_sysedp_init();
 	tegra_get_display_board_info(&board_info);
 	tegra_clk_init_from_table(macallan_clk_init_table);
 	tegra_clk_verify_parents();
