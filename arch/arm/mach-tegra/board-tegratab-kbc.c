@@ -42,6 +42,18 @@
 		.debounce_interval = 10,        \
 	}
 
+#define GPIO_SW(_id, _gpio, _active_low, _iswake)   \
+	{                                           \
+		.code = _id,                        \
+		.gpio = TEGRA_GPIO_##_gpio,         \
+		.irq = -1,                          \
+		.type = EV_SW,                      \
+		.desc = #_id,                       \
+		.active_low = _active_low,          \
+		.wakeup = _iswake,                  \
+		.debounce_interval = 0,             \
+	}
+
 static struct gpio_keys_button tegratab_e1569_keys[] = {
 	[0] = GPIO_KEY(KEY_POWER, PQ0, 1),
 	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
@@ -52,6 +64,8 @@ static struct gpio_keys_button tegratab_p1640_keys[] = {
 	[0] = GPIO_KEY(KEY_POWER, PQ0, 1),
 	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
 	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PQ2, 0),
+	[3] = GPIO_SW(SW_LID, PC7, 1, 1),
+	[4] = GPIO_SW(SW_TABLET_MODE, PQ1, 0, 0),
 };
 
 static int tegratab_wakeup_key(void)
@@ -62,7 +76,7 @@ static int tegratab_wakeup_key(void)
 		+ PMC_WAKE2_STATUS) << 32;
 	if (status & ((u64)1 << TEGRA_WAKE_GPIO_PQ0))
 		wakeup_key = KEY_POWER;
-	else if (status & ((u64)1 << TEGRA_WAKE_GPIO_PS0))
+	else if (status & ((u64)1 << TEGRA_WAKE_GPIO_PC7))
 		wakeup_key = SW_LID;
 	else
 		wakeup_key = KEY_RESERVED;
