@@ -26,6 +26,7 @@
 #include <linux/usb/gadget.h>
 #include <linux/platform_device.h>
 #include <linux/platform_data/tegra_usb.h>
+#include <mach/xusb.h>
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/delay.h>
@@ -218,29 +219,37 @@ static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
 static void tegra_start_host(struct tegra_otg_data *tegra)
 {
 	struct tegra_usb_otg_data *pdata = tegra->pdata;
-	struct platform_device *pdev, *ehci_device = pdata->ehci_device;
+	struct platform_device *pdev, *host_device;
 	int val;
 
 	DBG("%s(%d) Begin\n", __func__, __LINE__);
 
 	if (tegra->pdev)
 		return;
+	if (pdata->is_xhci)
+		host_device = pdata->xhci_device;
+	else
+		host_device = pdata->ehci_device;
 
 	/* prepare device structure for registering host*/
-	pdev = platform_device_alloc(ehci_device->name, ehci_device->id);
+	pdev = platform_device_alloc(host_device->name, host_device->id);
 	if (!pdev)
 		return ;
 
-	val = platform_device_add_resources(pdev, ehci_device->resource,
-			ehci_device->num_resources);
+	val = platform_device_add_resources(pdev, host_device->resource,
+			host_device->num_resources);
 	if (val)
 		goto error;
 
-	pdev->dev.dma_mask = ehci_device->dev.dma_mask;
-	pdev->dev.coherent_dma_mask = ehci_device->dev.coherent_dma_mask;
+	pdev->dev.dma_mask = host_device->dev.dma_mask;
+	pdev->dev.coherent_dma_mask = host_device->dev.coherent_dma_mask;
 
-	val = platform_device_add_data(pdev, pdata->ehci_pdata,
-			sizeof(struct tegra_usb_platform_data));
+	if (pdata->is_xhci)
+		val = platform_device_add_data(pdev, pdata->xhci_pdata,
+				sizeof(struct tegra_xusb_platform_data));
+	else
+		val = platform_device_add_data(pdev, pdata->ehci_pdata,
+				sizeof(struct tegra_usb_platform_data));
 	if (val)
 		goto error;
 

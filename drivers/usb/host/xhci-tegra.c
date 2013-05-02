@@ -314,15 +314,7 @@ static void update_speed(struct tegra_xhci_hcd *tegra, u8 port)
 		pmc_data.port_speed = USB_PMC_PORT_SPEED_UNKNOWN;
 }
 
-static void setup_wake_detect(bool setup_wake)
-{
-	if (setup_wake)
-		pmc_data.pmc_ops->setup_pmc_wake_detect(&pmc_data);
-	else
-		pmc_data.pmc_ops->disable_pmc_bus_ctrl(&pmc_data);
-}
-
-static void pmc_init(struct tegra_xhci_hcd *tegra, bool setup_wake)
+static void pmc_init(struct tegra_xhci_hcd *tegra)
 {
 	u32 portmap = tegra->bdata->portmap;
 
@@ -332,7 +324,6 @@ static void pmc_init(struct tegra_xhci_hcd *tegra, bool setup_wake)
 		pmc_data.phy_type = TEGRA_USB_PHY_INTF_UTMI;
 		update_speed(tegra, PMC_PORT_UTMIP_P0);
 		tegra_usb_pmc_init(&pmc_data);
-		setup_wake_detect(setup_wake);
 	}
 	if (portmap & TEGRA_XUSB_USB2_P1) {
 		/* XUSB_USB2_P1 is PMC UTMI_P2 */
@@ -340,14 +331,12 @@ static void pmc_init(struct tegra_xhci_hcd *tegra, bool setup_wake)
 		pmc_data.phy_type = TEGRA_USB_PHY_INTF_UTMI;
 		update_speed(tegra, PMC_PORT_UTMIP_P2);
 		tegra_usb_pmc_init(&pmc_data);
-		setup_wake_detect(setup_wake);
 	}
 	if (portmap & TEGRA_XUSB_HSIC_P0) {
 		pmc_data.instance = PMC_PORT_UHSIC_P0;
 		pmc_data.phy_type = TEGRA_USB_PHY_INTF_HSIC;
 		update_speed(tegra, PMC_PORT_UHSIC_P0);
 		tegra_usb_pmc_init(&pmc_data);
-		setup_wake_detect(setup_wake);
 	}
 }
 
@@ -1659,7 +1648,8 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 	/* STEP 1.1: Do a context save of XUSB and IPFS registers */
 	tegra_xhci_save_xusb_ctx(tegra);
 
-	pmc_init(tegra, 1);
+	pmc_init(tegra);
+	pmc_data.pmc_ops->setup_pmc_wake_detect(&pmc_data);
 
 	tegra_xhci_hs_wake_on_interrupts(tegra, true);
 	xhci_dbg(xhci, "%s: PMC_UTMIP_UHSIC_SLEEP_CFG_0 = %x\n", __func__,
@@ -1884,7 +1874,7 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 	 * XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD_TRK = 1
 	 */
 	reg = readl(tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
-	reg |= (1 << 12) | (1 << 13);
+	reg |= (1 << 13);
 	writel(reg, tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
 
 	/* Program these values into PMC regiseter and program the
@@ -2020,7 +2010,8 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 		goto out;
 	}
 
-	pmc_init(tegra, 0);
+	pmc_init(tegra);
+	pmc_data.pmc_ops->disable_pmc_bus_ctrl(&pmc_data);
 
 	tegra->hc_in_elpg = false;
 	ret = xhci_resume(tegra->xhci, 0);
@@ -2950,6 +2941,8 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	tegra_xhci_debug_read_pads(tegra);
 	utmi_phy_pad_enable();
 	utmi_phy_iddq_override(false);
+	pmc_init(tegra);
+	pmc_data.pmc_ops->powerup_pmc_wake_detect(&pmc_data);
 
 	return 0;
 
@@ -2986,6 +2979,7 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	xhci = tegra->xhci;
 	hcd = xhci_to_hcd(xhci);
 
+	tegra_xhci_release_port_ownership(tegra, true);
 	devm_free_irq(&pdev->dev, tegra->usb3_irq, tegra);
 	devm_free_irq(&pdev->dev, tegra->padctl_irq, tegra);
 	devm_free_irq(&pdev->dev, tegra->smi_irq, tegra);
