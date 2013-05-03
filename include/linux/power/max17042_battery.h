@@ -222,6 +222,7 @@ struct max17042_platform_data {
 
 	struct max17042_rbat_map *rbat_map;
 	struct edp_client *edp_client;
+	bool is_battery_present;
 };
 
 #ifdef CONFIG_BATTERY_MAX17042
