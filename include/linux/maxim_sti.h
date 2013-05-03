@@ -1,5 +1,7 @@
 /* drivers/input/touchscreen/maxim_sti.c
  *
+ * Maxim SmartTouch Imager Touchscreen Driver
+ *
  * Copyright (c)2013 Maxim Integrated Products, Inc.
  * Copyright (C) 2013, NVIDIA Corporation.  All Rights Reserved.
  *
@@ -25,29 +27,33 @@
 #include "genetlink.h"
 #endif
 
-#define DRIVER_VERSION  "0.0.1"
+#define DRIVER_VERSION  "1.1.0"
+#define DRIVER_RELEASE  "May 2, 2013"
 
 /****************************************************************************\
 * Netlink: common kernel/user space macros                                   *
 \****************************************************************************/
 
 #define NL_BUF_SIZE  8192
+
 #define NL_ATTR_FIRST(nptr) \
 	((struct nlattr *)((void *)nptr + NLMSG_HDRLEN + GENL_HDRLEN))
 #define NL_ATTR_LAST(nptr) \
 	((struct nlattr *)((void *)nptr + \
 			NLMSG_ALIGN(((struct nlmsghdr *)nptr)->nlmsg_len)))
-#define NL_SIZE(nptr) NLMSG_ALIGN(((struct nlmsghdr *)nptr)->nlmsg_len)
-#define NL_TYPE(nptr)            (((struct nlmsghdr *)nptr)->nlmsg_type)
-#define NL_SEQ(nptr)             (((struct nlmsghdr *)nptr)->nlmsg_seq)
-#define NL_OK(nptr) (NL_TYPE(nptr) >= NLMSG_MIN_TYPE)
-#define NL_ATTR_VAL(aptr, type) ((type *)((void *)aptr + NLA_HDRLEN))
+#define NL_SIZE(nptr)   NLMSG_ALIGN(((struct nlmsghdr *)nptr)->nlmsg_len)
+#define NL_TYPE(nptr)              (((struct nlmsghdr *)nptr)->nlmsg_type)
+#define NL_SEQ(nptr)               (((struct nlmsghdr *)nptr)->nlmsg_seq)
+#define NL_OK(nptr)              (NL_TYPE(nptr) >= NLMSG_MIN_TYPE)
+#define NL_ATTR_VAL(aptr, type)  ((type *)((void *)aptr + NLA_HDRLEN))
 #define NL_ATTR_NEXT(aptr) \
 	((struct nlattr *)((void *)aptr + \
 			NLA_ALIGN(((struct nlattr *)aptr)->nla_len)))
-#define GENL_CMP(name1, name2) strncmp(name1, name2, GENL_NAMSIZ)
+#define GENL_CMP(name1, name2)  strncmp(name1, name2, GENL_NAMSIZ)
 #define GENL_COPY(name1, name2) strncpy(name1, name2, GENL_NAMSIZ)
-#define GENL_CHK(name) (strlen(name) > (GENL_NAMSIZ - 1))
+#define GENL_CHK(name)          (strlen(name) > (GENL_NAMSIZ - 1))
+#define MSG_TYPE(nptr)          NL_ATTR_FIRST(nptr)->nla_type
+#define MSG_PAYLOAD(nptr)       NL_ATTR_VAL(NL_ATTR_FIRST(nptr), void)
 
 /****************************************************************************\
 * Netlink: common kernel/user space inline functions                         *
@@ -101,7 +107,7 @@ nl_add_attr(void *buf, __u16 type, void *ptr, __u16 len)
 enum {
 	MC_DRIVER,
 	MC_FUSION,
-	MC_REQUIRED_GROUPS
+	MC_REQUIRED_GROUPS,
 };
 
 #define MC_DRIVER_NAME     "driver"
@@ -134,17 +140,24 @@ enum {
 };
 
 enum {
+	DR_ADD_MC_GROUP,
 	DR_ECHO_REQUEST,
 	DR_CHIP_READ,
 	DR_CHIP_WRITE,
 	DR_CHIP_RESET,
 	DR_GET_IRQLINE,
 	DR_DELAY,
+	DR_CHIP_ACCESS_METHOD,
 	DR_CONFIG_IRQ,
 	DR_CONFIG_INPUT,
 	DR_DECONFIG,
 	DR_INPUT,
 	DR_LEGACY_FWDL,
+};
+
+struct __attribute__ ((__packed__)) dr_add_mc_group {
+	__u8  number;
+	char  name[GENL_NAMSIZ];
 };
 
 struct __attribute__ ((__packed__)) dr_echo_request {
@@ -168,6 +181,10 @@ struct __attribute__ ((__packed__)) dr_chip_reset {
 
 struct __attribute__ ((__packed__)) dr_delay {
 	__u32  period;
+};
+
+struct __attribute__ ((__packed__)) dr_chip_access_method {
+	__u8  method;
 };
 
 #define MAX_IRQ_PARAMS  20
@@ -202,6 +219,7 @@ enum {
 	FU_CHIP_READ_RESULT,
 	FU_IRQLINE_STATUS,
 	FU_ASYNC_DATA,
+	FU_RESUME,
 };
 
 struct __attribute__ ((__packed__)) fu_echo_response {

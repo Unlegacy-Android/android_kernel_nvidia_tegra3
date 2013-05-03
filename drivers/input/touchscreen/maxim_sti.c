@@ -1,5 +1,7 @@
 /* drivers/input/touchscreen/maxim_sti.c
  *
+ * Maxim SmartTouch Imager Touchscreen Driver
+ *
  * Copyright (c)2013 Maxim Integrated Products, Inc.
  * Copyright (C) 2013, NVIDIA Corporation.  All Rights Reserved.
  *
@@ -23,11 +25,29 @@
 #include <linux/interrupt.h>
 #include <linux/input.h>
 #include <linux/maxim_sti.h>
-#include <asm/byteorder.h>  /* must include this header to get byte order */
+#include <asm/byteorder.h>  /* MUST include this header to get byte order */
+
+/****************************************************************************\
+* Custom features                                                            *
+\****************************************************************************/
+
+#define INPUT_ENABLE_DISABLE  1
+#define CPU_BOOST             1
+
+#if CPU_BOOST
+#include <linux/pm_qos.h>
+#endif
 
 /****************************************************************************\
 * Device context structure, globals, and macros                              *
 \****************************************************************************/
+
+struct dev_data;
+
+struct chip_access_method {
+	int (*read)(struct dev_data *dd, u16 address, u8 *buf, u16 len);
+	int (*write)(struct dev_data *dd, u16 address, u8 *buf, u16 len);
+};
 
 struct dev_data {
 	u8                           *tx_buf;
@@ -43,6 +63,7 @@ struct dev_data {
 	char                         input_phys[128];
 	struct input_dev             *input_dev;
 	struct completion            suspend_resume;
+	struct chip_access_method    chip;
 	struct spi_device            *spi;
 	struct genl_family           nl_family;
 	struct genl_ops              *nl_ops;
@@ -52,266 +73,260 @@ struct dev_data {
 	struct task_struct           *thread;
 	struct sched_param           thread_sched;
 	struct list_head             dev_list;
-	int                          (*chip_read)(struct dev_data *dd,
-						  u16 address, u8 *buf,
-						  u16 len);
-	int                          (*chip_write)(struct dev_data *dd,
-						   u16 address, u8 *buf,
-						   u16 len);
+#if CPU_BOOST
+	struct pm_qos_request        cpus_req;
+	struct pm_qos_request        freq_req;
+	unsigned long                boost_freq;
+#endif
 };
+
 static struct list_head  dev_list;
 static spinlock_t        dev_lock;
 
 static irqreturn_t irq_handler(int irq, void *context);
 
-#define ERROR(d, e...) printk(KERN_ERR "%s driver(ERROR:%s:%d): " d "\n", \
-			      dd->nl_family.name, __func__, __LINE__, ##e)
-#define INFO(d, e...) printk(KERN_INFO "%s driver" d "\n", \
-			     dd->nl_family.name, ##e)
+#define ERROR(a, b...) printk(KERN_ERR "%s driver(ERROR:%s:%d): " a "\n", \
+			      dd->nl_family.name, __func__, __LINE__, ##b)
+#define INFO(a, b...) printk(KERN_INFO "%s driver: " a "\n", \
+			     dd->nl_family.name, ##b)
 
 /****************************************************************************\
 * Chip access methods                                                        *
 \****************************************************************************/
 
-static int spi_read_1(struct dev_data *dd, u16 address, u8 *buf, u16 len)
+static inline int
+spi_read_123(struct dev_data *dd, u16 address, u8 *buf, u16 len, bool add_len)
 {
 	struct spi_message   message;
 	struct spi_transfer  transfer;
 	u16                  *tx_buf = (u16 *)dd->tx_buf;
 	u16                  *rx_buf = (u16 *)dd->rx_buf;
-	u16                  *ptr1 = (u16 *)buf, *ptr2 = rx_buf + 2;
-	u16                  i, words = len / sizeof(u16);
+	u16                  words = len / sizeof(u16), header_len = 1;
+	u16                  *ptr2 = rx_buf + 1;
+#ifdef __LITTLE_ENDIAN
+	u16                  *ptr1 = (u16 *)buf, i;
+#endif
 	int                  ret;
 
 	if (tx_buf == NULL || rx_buf == NULL)
 		return -ENOMEM;
 
 	tx_buf[0] = (address << 1) | 0x0001;
-	tx_buf[1] = words;
 #ifdef __LITTLE_ENDIAN
-	for (i = 0; i < 2; i++)
-		tx_buf[i] = (tx_buf[i] << 8) | (tx_buf[i] >> 8);
+	tx_buf[0] = (tx_buf[0] << 8) | (tx_buf[0] >> 8);
 #endif
+
+	if (add_len) {
+		tx_buf[1] = words;
+#ifdef __LITTLE_ENDIAN
+		tx_buf[1] = (tx_buf[1] << 8) | (tx_buf[1] >> 8);
+#endif
+		ptr2++;
+		header_len++;
+	}
 
 	spi_message_init(&message);
 	memset(&transfer, 0, sizeof(transfer));
 
-	transfer.len = len + 2 * sizeof(u16);
+	transfer.len = len + header_len * sizeof(u16);
 	transfer.tx_buf = tx_buf;
 	transfer.rx_buf = rx_buf;
 	spi_message_add_tail(&transfer, &message);
 
-	ret = spi_sync(dd->spi, &message);
+	do {
+		ret = spi_sync(dd->spi, &message);
+	} while (ret == -EAGAIN);
+
 #ifdef __LITTLE_ENDIAN
 	for (i = 0; i < words; i++)
-		*ptr1++ = (ptr2[i] << 8) | (ptr2[i] >> 8);
+		ptr1[i] = (ptr2[i] << 8) | (ptr2[i] >> 8);
 #else
-	memcpy(buf, rx_buf + 2, len);
+	memcpy(buf, ptr2, len);
 #endif
 	return ret;
 }
 
-static int spi_write_1(struct dev_data *dd, u16 address, u8 *buf, u16 len)
+static inline int
+spi_write_123(struct dev_data *dd, u16 address, u8 *buf, u16 len,
+	      bool add_len)
 {
-	struct spi_message   message;
-	struct spi_transfer  transfer;
-	u16                  *tx_buf = (u16 *)dd->tx_buf;
-	u16                  i, words = len / sizeof(u16);
-	int                  ret;
+	u16  *tx_buf = (u16 *)dd->tx_buf;
+	u16  words = len / sizeof(u16), header_len = 1;
+#ifdef __LITTLE_ENDIAN
+	u16  i;
+#endif
+	int  ret;
 
 	if (tx_buf == NULL)
 		return -ENOMEM;
 
 	tx_buf[0] = address << 1;
-	tx_buf[1] = words;
-	memcpy(tx_buf + 2, buf, len);
+	if (add_len) {
+		tx_buf[1] = words;
+		header_len++;
+	}
+	memcpy(tx_buf + header_len, buf, len);
 #ifdef __LITTLE_ENDIAN
-	for (i = 0; i < (words + 2); i++)
+	for (i = 0; i < (words + header_len); i++)
 		tx_buf[i] = (tx_buf[i] << 8) | (tx_buf[i] >> 8);
 #endif
 
-	spi_message_init(&message);
-	memset(&transfer, 0, sizeof(transfer));
+	do {
+		ret = spi_write(dd->spi, tx_buf,
+				len + header_len * sizeof(u16));
+	} while (ret == -EAGAIN);
 
-	transfer.len = len + 2 * sizeof(u16);
-	transfer.tx_buf = tx_buf;
-	spi_message_add_tail(&transfer, &message);
-	ret = spi_sync(dd->spi, &message);
 	memset(dd->tx_buf, 0xFF, sizeof(dd->tx_buf));
 	return ret;
 }
 
 /* ======================================================================== */
 
-#define SPI_2_WORD_LIMIT  250
-
-static int spi_read_2_page(struct spi_device *spi, u16 address, u16 *buf,
-			   u16 len)
+static int
+spi_read_1(struct dev_data *dd, u16 address, u8 *buf, u16 len)
 {
-	struct spi_message   message;
-	struct spi_transfer  transfer[2];
-	u16  tx_buf[4] = {0x0000, 0xFEDC, (address << 1) | 0x0001, len};
-	u16  status, i, tx_address;
+	return spi_read_123(dd, address, buf, len, true);
+}
+
+static int
+spi_write_1(struct dev_data *dd, u16 address, u8 *buf, u16 len)
+{
+	return spi_write_123(dd, address, buf, len, true);
+}
+
+/* ======================================================================== */
+
+static inline int
+spi_rw_2_poll_status(struct dev_data *dd)
+{
+	u16  status, i;
 	int  ret;
 
-	/* write what we want to get */
-#ifdef __LITTLE_ENDIAN
-	for (i = 0; i < ARRAY_SIZE(tx_buf); i++)
-		tx_buf[i] = (tx_buf[i] << 8) | (tx_buf[i] >> 8);
-#endif
-	ret = spi_write(spi, tx_buf, sizeof(tx_buf));
-	if (ret != 0)
+	for (i = 0; i < 200; i++) {
+		ret = spi_read_123(dd, 0x0000, (u8 *)&status, sizeof(status),
+				   false);
+		if (ret < 0)
+			return -1;
+		if (status == 0xABCD)
+			return 0;
+	}
+
+	return -2;
+}
+
+static inline int
+spi_read_2_page(struct dev_data *dd, u16 address, u8 *buf, u16 len)
+{
+	u16  request[] = {0xFEDC, (address << 1) | 0x0001, len / sizeof(u16)};
+	int  ret;
+
+	/* write read request header */
+	ret = spi_write_123(dd, 0x0000, (u8 *)request, sizeof(request),
+			    false);
+	if (ret < 0)
 		return -1;
 
 	/* poll status */
-	tx_address = 0x0000;
-	tx_address = (tx_address << 1) | 0x0001;
-#ifdef __LITTLE_ENDIAN
-	tx_address = (tx_address << 8) | (tx_address >> 8);
-#endif
-	spi_message_init(&message);
-	memset(transfer, 0, sizeof(transfer));
+	ret = spi_rw_2_poll_status(dd);
+	if (ret < 0)
+		return ret;
 
-	transfer[0].len = sizeof(tx_address);
-	transfer[0].tx_buf = &tx_address;
-	spi_message_add_tail(&transfer[0], &message);
-
-	transfer[1].len = sizeof(status);
-	transfer[1].rx_buf = &status;
-	spi_message_add_tail(&transfer[1], &message);
-
-	for (i = 0; i < 200; i++) {
-		ret = spi_sync(spi, &message);
-#ifdef __LITTLE_ENDIAN
-		status = (status << 8) | (status >> 8);
-#endif
-		if (ret != 0 || status == 0xABCD)
-			break;
-	}
-	if (i == 200)
-		return -2;
-
-	/* final read transaction */
-	tx_address = 0x0003;
-	tx_address = (tx_address << 1) | 0x0001;
-#ifdef __LITTLE_ENDIAN
-	tx_address = (tx_address << 8) | (tx_address >> 8);
-#endif
-
-	spi_message_init(&message);
-	memset(transfer, 0, sizeof(transfer));
-
-	transfer[0].len = sizeof(tx_address);
-	transfer[0].tx_buf = &tx_address;
-	spi_message_add_tail(&transfer[0], &message);
-
-	transfer[1].len = len * sizeof(u16);
-	transfer[1].rx_buf = buf;
-	spi_message_add_tail(&transfer[1], &message);
-
-	ret = spi_sync(spi, &message);
-#ifdef __LITTLE_ENDIAN
-	for (i = 0; i < len; i++)
-		buf[i] = (buf[i] << 8) | (buf[i] >> 8);
-#endif
+	/* read data */
+	ret = spi_read_123(dd, 0x0003, (u8 *)buf, len, false);
 	return ret;
 }
 
-static int spi_write_2_page(struct spi_device *spi, u16 address, u16 *buf,
-			    u16 len)
+static inline int
+spi_write_2_page(struct dev_data *dd, u16 address, u8 *buf, u16 len)
 {
-	struct spi_message   message;
-	struct spi_transfer  transfer[2];
-	u16  tx_buf[4] = {0x0000, 0xFEDC, address << 1, len};
-	u16  status, i, tx_address = 0x0001;
+	u16  page[253];
 	int  ret;
-	static u16 buf_copy[2048];
 
-	memcpy(buf_copy, buf, len * sizeof(u16));
-	/* write what we want to get */
-#ifdef __LITTLE_ENDIAN
-	for (i = 0; i < ARRAY_SIZE(tx_buf); i++)
-		tx_buf[i] = (tx_buf[i] << 8) | (tx_buf[i] >> 8);
-	for (i = 0; i < len; i++)
-		buf_copy[i] = (buf_copy[i] << 8) | (buf_copy[i] >> 8);
-#endif
-	spi_message_init(&message);
-	memset(transfer, 0, sizeof(transfer));
+	page[0] = 0xFEDC;
+	page[1] = address << 1;
+	page[2] = len / sizeof(u16);
+	memcpy(page + 3, buf, len);
 
-	transfer[0].len = sizeof(tx_buf);
-	transfer[0].tx_buf = &tx_buf;
-	spi_message_add_tail(&transfer[0], &message);
-
-	transfer[1].len = len * sizeof(u16);
-	transfer[1].tx_buf = buf_copy;
-	spi_message_add_tail(&transfer[1], &message);
-
-	ret = spi_sync(spi, &message);
-	if (ret != 0)
+	/* write data with write request header */
+	ret = spi_write_123(dd, 0x0000, (u8 *)page, len + 3 * sizeof(u16),
+			    false);
+	if (ret < 0)
 		return -1;
 
 	/* poll status */
-#ifdef __LITTLE_ENDIAN
-	tx_address = (tx_address << 8) | (tx_address >> 8);
-#endif
-	spi_message_init(&message);
-	memset(transfer, 0, sizeof(transfer));
-
-	transfer[0].len = sizeof(tx_address);
-	transfer[0].tx_buf = &tx_address;
-	spi_message_add_tail(&transfer[0], &message);
-
-	transfer[1].len = sizeof(status);
-	transfer[1].rx_buf = &status;
-	spi_message_add_tail(&transfer[1], &message);
-
-	for (i = 0; i < 200; i++) {
-		ret = spi_sync(spi, &message);
-#ifdef __LITTLE_ENDIAN
-		status = (status << 8) | (status >> 8);
-#endif
-		if (ret != 0 || status == 0xABCD)
-			break;
-	}
-	if (i == 200)
-		return -2;
-
-	return ret;
+	return spi_rw_2_poll_status(dd);
 }
 
-static int spi_read_2(struct dev_data *dd, u16 address, u8 *buf, u16 len)
+static inline int
+spi_rw_2(struct dev_data *dd, u16 address, u8 *buf, u16 len,
+	 int (*func)(struct dev_data *dd, u16 address, u8 *buf, u16 len))
 {
-	u16  rx_len, offset = 0, wlen = len / sizeof(u16);
+	u16  rx_len, rx_limit = 250 * sizeof(u16), offset = 0;
 	int  ret;
 
-	while (wlen > 0) {
-		rx_len = (wlen > SPI_2_WORD_LIMIT) ? SPI_2_WORD_LIMIT : wlen;
-		ret = spi_read_2_page(dd->spi, address + offset,
-				      (u16 *)buf + offset, rx_len);
-		if (ret != 0)
+	while (len > 0) {
+		rx_len = (len > rx_limit) ? rx_limit : len;
+		ret = func(dd, address + (offset / sizeof(u16)), buf + offset,
+			   rx_len);
+		if (ret < 0)
 			return ret;
 		offset += rx_len;
-		wlen -= rx_len;
+		len -= rx_len;
 	}
 
 	return 0;
 }
 
-static int spi_write_2(struct dev_data *dd, u16 address, u8 *buf, u16 len)
+static int
+spi_read_2(struct dev_data *dd, u16 address, u8 *buf, u16 len)
 {
-	u16  rx_len, offset = 0, wlen = len / sizeof(u16);
-	int  ret;
+	return spi_rw_2(dd, address, buf, len, spi_read_2_page);
+}
 
-	while (wlen > 0) {
-		rx_len = (wlen > SPI_2_WORD_LIMIT) ? SPI_2_WORD_LIMIT : wlen;
-		ret = spi_write_2_page(dd->spi, address + offset,
-				       (u16 *)buf + offset, rx_len);
-		if (ret != 0)
-			return ret;
-		offset += rx_len;
-		wlen -= rx_len;
-	}
+static int
+spi_write_2(struct dev_data *dd, u16 address, u8 *buf, u16 len)
+{
+	return spi_rw_2(dd, address, buf, len, spi_write_2_page);
+}
 
+/* ======================================================================== */
+
+static int
+spi_read_3(struct dev_data *dd, u16 address, u8 *buf, u16 len)
+{
+	return spi_read_123(dd, address, buf, len, false);
+}
+
+static int
+spi_write_3(struct dev_data *dd, u16 address, u8 *buf, u16 len)
+{
+	return spi_write_123(dd, address, buf, len, false);
+}
+
+/* ======================================================================== */
+
+static struct chip_access_method chip_access_methods[] = {
+	{
+		.read = spi_read_1,
+		.write = spi_write_1,
+	},
+	{
+		.read = spi_read_2,
+		.write = spi_write_2,
+	},
+	{
+		.read = spi_read_3,
+		.write = spi_write_3,
+	},
+};
+
+static int
+set_chip_access_method(struct dev_data *dd, u8 method)
+{
+	if (method == 0 || method > ARRAY_SIZE(chip_access_methods))
+		return -1;
+
+	memcpy(&dd->chip, &chip_access_methods[method - 1], sizeof(dd->chip));
 	return 0;
 }
 
@@ -320,96 +335,13 @@ static int spi_write_2(struct dev_data *dd, u16 address, u8 *buf, u16 len)
 #define FLASH_BLOCK_SIZE  64      /* flash write buffer in words */
 #define FIRMWARE_SIZE     0xC000  /* fixed 48Kbytes */
 
-static inline int
-spi_read_local(struct spi_device *spi, void *buf, size_t len, u16 address)
-{
-	struct spi_message   message;
-	struct spi_transfer  transfer[2];
-	/* shift address up 1 bit and set LSB for write transaction */
-	int ret;
-
-	address = (address << 1) | 0x0001;
-#ifdef __LITTLE_ENDIAN
-	address = (address << 8) | (address >> 8);
-#endif
-	len &= 0xFFFF;
-	spi_message_init(&message);
-	memset(transfer, 0, sizeof(transfer));
-	memset(buf, 0, len);
-
-	transfer[0].len = 2;
-	transfer[0].tx_buf = &address;
-	spi_message_add_tail(&transfer[0], &message);
-
-	transfer[1].len = len;
-	transfer[1].rx_buf = buf;
-	spi_message_add_tail(&transfer[1], &message);
-
-	ret = spi_sync(spi, &message);
-	return (ret == 0) ? len : ret;
-}
-
-static inline int
-spi_write_local(struct spi_device *spi, const void *buf, size_t len)
-{
-	int  ret;
-	u16  *address = (u16 *)buf;
-
-	*address <<= 1;
-#ifdef __LITTLE_ENDIAN
-	*address = (*address << 8) | (*address >> 8);
-#endif
-	ret = spi_write(spi, buf, len);
-	return (ret == 0) ? len : ret;
-}
-
-static int bus_tx(struct dev_data *dd, u16 *buf, u16 len)
-{
-	int  i, ret;
-
-#ifdef __LITTLE_ENDIAN
-	for (i = 1; i < len; i++)
-		buf[i] = (buf[i] << 8) | (buf[i] >> 8);
-#endif
-	do {
-		ret = spi_write_local(dd->spi, (char *)buf, len * 2);
-	} while (ret == -EAGAIN);
-
-	if (ret < 0)
-		return ret;
-	if ((ret % sizeof(u16)) != 0)
-		return -1;
-
-	return ret / sizeof(u16);
-}
-
-static int bus_rx(struct dev_data *dd, u16 *buf, u16 len, u16 address)
-{
-	int  i, ret;
-
-	do {
-		ret = spi_read_local(dd->spi, (char *)buf, len * 2, address);
-	} while (ret == -EAGAIN);
-
-	if (ret < 0)
-		return ret;
-	if ((ret % sizeof(u16)) != 0)
-		return -1;
-
-#ifdef __LITTLE_ENDIAN
-	for (i = 0; i < len; i++)
-		buf[i] = (buf[i] << 8) | (buf[i] >> 8);
-#endif
-
-	return ret / sizeof(u16);
-}
-
 static int bootloader_wait_ready(struct dev_data *dd)
 {
 	u16  status, i;
 
 	for (i = 0; i < 15; i++) {
-		if (bus_rx(dd, &status, 1, 0x00FF) != 1)
+		if (spi_read_3(dd, 0x00FF, (u8 *)&status,
+			       sizeof(status)) != 0)
 			return -1;
 		if (status == 0xABCC)
 			return 0;
@@ -422,19 +354,16 @@ static int bootloader_wait_ready(struct dev_data *dd)
 
 static int bootloader_complete(struct dev_data *dd)
 {
-	u16  complete[] = {0x00FF, 0x5432};
+	u16  value = 0x5432;
 
-	if (bus_tx(dd, complete, 2) != 2)
-		return -1;
-
-	return 0;
+	return spi_write_3(dd, 0x00FF, (u8 *)&value, sizeof(value));
 }
 
 static int bootloader_read_data(struct dev_data *dd, u16 *value)
 {
 	u16  buffer[2];
 
-	if (bus_rx(dd, buffer, 2, 0x00FE) != 2)
+	if (spi_read_3(dd, 0x00FE, (u8 *)buffer, sizeof(buffer)) != 0)
 		return -1;
 	if (buffer[1] != 0xABCC)
 		return -1;
@@ -445,13 +374,11 @@ static int bootloader_read_data(struct dev_data *dd, u16 *value)
 
 static int bootloader_write_data(struct dev_data *dd, u16 value)
 {
-	u16  buffer[3] = {0x00FE, value, 0x5432};
+	u16  buffer[2] = {value, 0x5432};
 
 	if (bootloader_wait_ready(dd) != 0)
 		return -1;
-	if (bus_tx(dd, buffer, 3) != 3)
-		return -1;
-	return 0;
+	return spi_write_3(dd, 0x00FE, (u8 *)buffer, sizeof(buffer));
 }
 
 static int bootloader_wait_command(struct dev_data *dd)
@@ -470,11 +397,11 @@ static int bootloader_wait_command(struct dev_data *dd)
 static int bootloader_enter(struct dev_data *dd)
 {
 	int i;
-	u16 enter[3][2] = {{0x7F00, 0x0047}, {0x7F00, 0x00C7},
-			{0x7F00, 0x0007} };
+	u16 enter[3] = {0x0047, 0x00C7, 0x0007};
 
 	for (i = 0; i < 3; i++) {
-		if (bus_tx(dd, enter[i], 2) != 2)
+		if (spi_write_3(dd, 0x7F00, (u8 *)&enter[i],
+				sizeof(enter[i])) != 0)
 			return -1;
 	}
 
@@ -485,13 +412,11 @@ static int bootloader_enter(struct dev_data *dd)
 
 static int bootloader_exit(struct dev_data *dd)
 {
-	u16 exit[2] = {0x7F00, 0x0000};
+	u16  value = 0x0000;
 
 	if (bootloader_write_data(dd, 0x0001) != 0)
 		return -1;
-	if (bus_tx(dd, exit, 2) != 2)
-		return -1;
-	return 0;
+	return spi_write_3(dd, 0x7F00, (u8 *)&value, sizeof(value));
 }
 
 static int bootloader_get_crc(struct dev_data *dd, u16 *crc16, u16 len)
@@ -539,7 +464,7 @@ static int bootloader_erase_flash(struct dev_data *dd)
 static int bootloader_write_flash(struct dev_data *dd, u16 *image, u16 len)
 {
 	u16  command[] = {0x00F0, 0x0000, len >> 8, 0x0000, 0x0000};
-	u16  i, buffer[FLASH_BLOCK_SIZE + 1]; /* extra address word */
+	u16  i, buffer[FLASH_BLOCK_SIZE];
 
 	for (i = 0; i < ARRAY_SIZE(command); i++)
 		if (bootloader_write_data(dd, command[i]) != 0)
@@ -548,12 +473,10 @@ static int bootloader_write_flash(struct dev_data *dd, u16 *image, u16 len)
 	for (i = 0; i < ((len / sizeof(u16)) / FLASH_BLOCK_SIZE); i++) {
 		if (bootloader_wait_ready(dd) != 0)
 			return -1;
-		buffer[0] = ((i % 2) == 0) ? 0x0000 : 0x0040;
-		memcpy((void *)(buffer + 1),
-			(void *)(image + i * FLASH_BLOCK_SIZE),
-			FLASH_BLOCK_SIZE * sizeof(u16));
-		if (bus_tx(dd, buffer, ARRAY_SIZE(buffer)) !=
-							ARRAY_SIZE(buffer))
+		memcpy(buffer, (void *)(image + i * FLASH_BLOCK_SIZE),
+			sizeof(buffer));
+		if (spi_write_3(dd, ((i % 2) == 0) ? 0x0000 : 0x0040,
+				(u8 *)buffer, sizeof(buffer)) != 0)
 			return -1;
 		if (bootloader_complete(dd) != 0)
 			return -1;
@@ -570,7 +493,7 @@ static int device_fw_load(struct dev_data *dd, const struct firmware *fw)
 	u16  fw_crc16, chip_crc16;
 
 	fw_crc16 = crc16(0, fw->data, fw->size);
-	INFO(": firmware size (%d) CRC16(0x%04X)", fw->size, fw_crc16);
+	INFO("firmware size (%d) CRC16(0x%04X)", fw->size, fw_crc16);
 	if (bootloader_enter(dd) != 0) {
 		ERROR("failed to enter bootloader");
 		return -1;
@@ -579,25 +502,25 @@ static int device_fw_load(struct dev_data *dd, const struct firmware *fw)
 		ERROR("failed to get CRC16 from the chip");
 		return -1;
 	}
-	INFO(": chip CRC16(0x%04X)", chip_crc16);
+	INFO("chip CRC16(0x%04X)", chip_crc16);
 	if (fw_crc16 != chip_crc16) {
-		INFO(": will reprogram chip");
+		INFO("will reprogram chip");
 		if (bootloader_erase_flash(dd) != 0) {
 			ERROR("failed to erase chip flash");
 			return -1;
 		}
-		INFO(": flash erase OK");
+		INFO("flash erase OK");
 		if (bootloader_set_byte_mode(dd) != 0) {
 			ERROR("failed to set byte mode");
 			return -1;
 		}
-		INFO(": byte mode OK");
+		INFO("byte mode OK");
 		if (bootloader_write_flash(dd, (u16 *)fw->data,
 							fw->size) != 0) {
 			ERROR("failed to write flash");
 			return -1;
 		}
-		INFO(": flash write OK");
+		INFO("flash write OK");
 		if (bootloader_get_crc(dd, &chip_crc16, fw->size) != 0) {
 			ERROR("failed to get CRC16 from the chip");
 			return -1;
@@ -607,7 +530,7 @@ static int device_fw_load(struct dev_data *dd, const struct firmware *fw)
 			      chip_crc16);
 			return -1;
 		}
-		INFO(": chip programmed successfully, new chip CRC16(0x%04X)",
+		INFO("chip programmed successfully, new chip CRC16(0x%04X)",
 			chip_crc16);
 	}
 	if (bootloader_exit(dd) != 0) {
@@ -646,13 +569,13 @@ static void stop_scan_canned(struct dev_data *dd)
 	u16  value;
 
 	value = dd->irq_param[9];
-	(void)dd->chip_write(dd, dd->irq_param[8], (u8 *)&value,
+	(void)dd->chip.write(dd, dd->irq_param[8], (u8 *)&value,
 			     sizeof(value));
 	value = dd->irq_param[7];
-	(void)dd->chip_write(dd, dd->irq_param[0], (u8 *)&value,
+	(void)dd->chip.write(dd, dd->irq_param[0], (u8 *)&value,
 			     sizeof(value));
 	usleep_range(dd->irq_param[11], dd->irq_param[11] + 1000);
-	(void)dd->chip_write(dd, dd->irq_param[0], (u8 *)&value,
+	(void)dd->chip.write(dd, dd->irq_param[0], (u8 *)&value,
 			     sizeof(value));
 }
 
@@ -661,7 +584,7 @@ static void start_scan_canned(struct dev_data *dd)
 	u16  value;
 
 	value = dd->irq_param[10];
-	(void)dd->chip_write(dd, dd->irq_param[8], (u8 *)&value,
+	(void)dd->chip.write(dd, dd->irq_param[8], (u8 *)&value,
 			     sizeof(value));
 }
 
@@ -701,19 +624,21 @@ static const struct dev_pm_ops pm_ops = {
 	.resume = resume,
 };
 
-int input_disable(struct input_dev *dev)
+#if INPUT_ENABLE_DISABLE
+static int input_disable(struct input_dev *dev)
 {
 	struct dev_data *dd = input_get_drvdata(dev);
 
 	return suspend(&dd->spi->dev);
 }
 
-int input_enable(struct input_dev *dev)
+static int input_enable(struct input_dev *dev)
 {
 	struct dev_data *dd = input_get_drvdata(dev);
 
 	return resume(&dd->spi->dev);
 }
+#endif
 #endif
 
 /****************************************************************************\
@@ -733,24 +658,53 @@ nl_msg_new(struct dev_data *dd, u8 dst)
 	return 0;
 }
 
+static int
+nl_callback_noop(struct sk_buff *skb, struct genl_info *info)
+{
+	return 0;
+}
+
 static inline bool
 nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 {
-	struct maxim_sti_pdata      *pdata = dd->spi->dev.platform_data;
-	struct dr_echo_request      *echo_msg;
-	struct fu_echo_response     *echo_response;
-	struct dr_chip_read         *read_msg;
-	struct fu_chip_read_result  *read_result;
-	struct dr_chip_write        *write_msg;
-	struct dr_delay             *delay_msg;
-	struct fu_irqline_status    *irqline_status;
-	struct dr_config_irq        *config_irq_msg;
-	struct dr_config_input      *config_input_msg;
-	struct dr_input             *input_msg;
-	u8                          i;
-	int                         ret;
+	struct maxim_sti_pdata        *pdata = dd->spi->dev.platform_data;
+	struct dr_add_mc_group        *add_mc_group_msg;
+	struct dr_echo_request        *echo_msg;
+	struct fu_echo_response       *echo_response;
+	struct dr_chip_read           *read_msg;
+	struct fu_chip_read_result    *read_result;
+	struct dr_chip_write          *write_msg;
+	struct dr_chip_access_method  *chip_access_method_msg;
+	struct dr_delay               *delay_msg;
+	struct fu_irqline_status      *irqline_status;
+	struct dr_config_irq          *config_irq_msg;
+	struct dr_config_input        *config_input_msg;
+	struct dr_input               *input_msg;
+	u8                            i;
+	int                           ret;
 
 	switch (msg_id) {
+	case DR_ADD_MC_GROUP:
+		add_mc_group_msg = msg;
+		if (add_mc_group_msg->number >= pdata->nl_mc_groups) {
+			ERROR("invalid multicast group number %d (%d)",
+			      add_mc_group_msg->number, pdata->nl_mc_groups);
+			return false;
+		}
+		dd->nl_ops[add_mc_group_msg->number].cmd =
+						add_mc_group_msg->number;
+		dd->nl_ops[add_mc_group_msg->number].doit = nl_callback_noop;
+		ret = genl_register_ops(&dd->nl_family,
+				&dd->nl_ops[add_mc_group_msg->number]);
+		if (ret < 0)
+			ERROR("failed to add multicast group op (%d)", ret);
+		GENL_COPY(dd->nl_mc_groups[add_mc_group_msg->number].name,
+			  add_mc_group_msg->name);
+		ret = genl_register_mc_group(&dd->nl_family,
+				&dd->nl_mc_groups[add_mc_group_msg->number]);
+		if (ret < 0)
+			ERROR("failed to add multicast group (%d)", ret);
+		return false;
 	case DR_ECHO_REQUEST:
 		echo_msg = msg;
 		echo_response = nl_alloc_attr(dd->outgoing_skb->data,
@@ -769,21 +723,15 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 			goto alloc_attr_failure;
 		read_result->address = read_msg->address;
 		read_result->length = read_msg->length;
-		do {
-			ret = dd->chip_read(dd, read_msg->address,
-					    read_result->data,
-					    read_msg->length);
-		} while (ret == -EAGAIN);
+		ret = dd->chip.read(dd, read_msg->address, read_result->data,
+				    read_msg->length);
 		if (ret < 0)
 			ERROR("failed to read from chip (%d)", ret);
 		return true;
 	case DR_CHIP_WRITE:
 		write_msg = msg;
-		do {
-			ret = dd->chip_write(dd, write_msg->address,
-					     write_msg->data,
-					     write_msg->length);
-		} while (ret == -EAGAIN);
+		ret = dd->chip.write(dd, write_msg->address, write_msg->data,
+				     write_msg->length);
 		if (ret < 0)
 			ERROR("failed to write chip (%d)", ret);
 		return false;
@@ -804,6 +752,14 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 			msleep(delay_msg->period / 1000);
 		usleep_range(delay_msg->period % 1000,
 			    (delay_msg->period % 1000) + 10);
+		return false;
+	case DR_CHIP_ACCESS_METHOD:
+		chip_access_method_msg = msg;
+		ret = set_chip_access_method(dd,
+					     chip_access_method_msg->method);
+		if (ret < 0)
+			ERROR("failed to set chip access method (%d) (%d)",
+			      ret, chip_access_method_msg->method);
 		return false;
 	case DR_CONFIG_IRQ:
 		config_irq_msg = msg;
@@ -835,7 +791,7 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 			dd->input_dev->name = pdata->nl_family;
 			dd->input_dev->phys = dd->input_phys;
 			dd->input_dev->id.bustype = BUS_SPI;
-#ifdef CONFIG_PM_SLEEP
+#if defined(CONFIG_PM_SLEEP) && INPUT_ENABLE_DISABLE
 			dd->input_dev->enable = input_enable;
 			dd->input_dev->disable = input_disable;
 			dd->input_dev->enabled = true;
@@ -920,7 +876,7 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 		if (ret < 0)
 			ERROR("firmware download failed (%d)", ret);
 		else
-			INFO(": firmware download OK");
+			INFO("firmware download OK");
 		return false;
 	default:
 		ERROR("unexpected message %d", msg_id);
@@ -1003,7 +959,7 @@ nl_callback_driver(struct sk_buff *skb, struct genl_info *info)
 }
 
 static int
-nl_callback_noop(struct sk_buff *skb, struct genl_info *info)
+nl_callback_fusion(struct sk_buff *skb, struct genl_info *info)
 {
 	struct dev_data  *dd;
 	unsigned long    flags;
@@ -1039,24 +995,26 @@ static irqreturn_t irq_handler(int irq, void *context)
 static void service_irq(struct dev_data *dd)
 {
 	struct fu_async_data  *async_data;
-	u16                   value, test, address, xbuf;
-	u16                   size = dd->irq_param[3];
-	int                   ret;
+	u16                   status, test, address, xbuf;
+	int                   ret, ret2;
 
-	do {
-		ret = dd->chip_read(dd, dd->irq_param[0], (u8 *)&value,
-				    sizeof(value));
-	} while (ret == -EAGAIN);
+#if CPU_BOOST
+	pm_qos_update_request_timeout(&dd->cpus_req, 1, 10000);
+	pm_qos_update_request_timeout(&dd->freq_req, dd->boost_freq, 10000);
+#endif
+
+	ret = dd->chip.read(dd, dd->irq_param[0], (u8 *)&status,
+			    sizeof(status));
 	if (ret < 0) {
 		ERROR("can't read IRQ status (%d)", ret);
 		return;
 	}
 
-	test = value & (dd->irq_param[5] | dd->irq_param[6]);
+	test = status & (dd->irq_param[5] | dd->irq_param[6]);
 	if (test == 0)
 		return;
 	else if (test == (dd->irq_param[5] | dd->irq_param[6]))
-		xbuf = ((value & dd->irq_param[4]) == 0) ? 0 : 1;
+		xbuf = ((status & dd->irq_param[4]) == 0) ? 0 : 1;
 	else if (test == dd->irq_param[5])
 		xbuf = 0;
 	else if (test == dd->irq_param[6])
@@ -1066,19 +1024,23 @@ static void service_irq(struct dev_data *dd)
 		return;
 	}
 	address = xbuf ? dd->irq_param[2] : dd->irq_param[1];
-	value = xbuf ? dd->irq_param[6] : dd->irq_param[5];
+	status = xbuf ? dd->irq_param[6] : dd->irq_param[5];
 
 	async_data = nl_alloc_attr(dd->outgoing_skb->data, FU_ASYNC_DATA,
-				   sizeof(*async_data) + size);
+				   sizeof(*async_data) + dd->irq_param[3]);
 	if (async_data == NULL) {
 		ERROR("can't add data to async IRQ buffer");
 		return;
 	}
 	async_data->address = address;
-	async_data->length = size;
-	do {
-		ret = dd->chip_read(dd, address, async_data->data, size);
-	} while (ret == -EAGAIN);
+	async_data->length = dd->irq_param[3];
+	ret = dd->chip.read(dd, address, async_data->data, dd->irq_param[3]);
+
+	ret2 = dd->chip.write(dd, dd->irq_param[0], (u8 *)&status,
+			     sizeof(status));
+	if (ret2 < 0)
+		ERROR("can't clear IRQ status (%d)", ret2);
+
 	if (ret < 0) {
 		ERROR("can't read IRQ buffer (%d)", ret);
 	} else {
@@ -1093,13 +1055,6 @@ static void service_irq(struct dev_data *dd)
 		if (ret < 0)
 			ERROR("could not allocate outgoing skb (%d)", ret);
 	}
-
-	do {
-		ret = dd->chip_write(dd, dd->irq_param[0], (u8 *)&value,
-				     sizeof(value));
-	} while (ret == -EAGAIN);
-	if (ret < 0)
-		ERROR("can't read IRQ status (%d)", ret);
 }
 
 /****************************************************************************\
@@ -1121,7 +1076,7 @@ static int processing_thread(void *arg)
 	while (!kthread_should_stop()) {
 		set_current_state(TASK_INTERRUPTIBLE);
 
-		/* insure that we have outgoing skb */
+		/* ensure that we have outgoing skb */
 		if (dd->outgoing_skb == NULL)
 			if (nl_msg_new(dd, MC_FUSION) < 0) {
 				schedule();
@@ -1168,6 +1123,22 @@ static int processing_thread(void *arg)
 			dd->resume_in_progress = false;
 			dd->suspend_in_progress = false;
 			complete(&dd->suspend_resume);
+
+			ret = nl_add_attr(dd->outgoing_skb->data, FU_RESUME,
+					  NULL, 0);
+			if (ret < 0)
+				ERROR("can't add data to resume buffer");
+			(void)skb_put(dd->outgoing_skb,
+				      NL_SIZE(dd->outgoing_skb->data));
+			ret = genlmsg_multicast(dd->outgoing_skb, 0,
+					dd->nl_mc_groups[MC_FUSION].id,
+					GFP_KERNEL);
+			if (ret < 0)
+				ERROR("can't send resume message %d", ret);
+			ret = nl_msg_new(dd, MC_FUSION);
+			if (ret < 0)
+				ERROR("could not allocate outgoing skb (%d)",
+				      ret);
 		}
 
 		/* priority 3: service interrupt */
@@ -1199,8 +1170,8 @@ static int probe(struct spi_device *spi)
 		pdata->config_file == NULL || pdata->nl_family == NULL ||
 		GENL_CHK(pdata->nl_family) ||
 		pdata->nl_mc_groups < MC_REQUIRED_GROUPS ||
-		pdata->chip_access_method < 1 ||
-		pdata->chip_access_method > 2 ||
+		pdata->chip_access_method == 0 ||
+		pdata->chip_access_method > ARRAY_SIZE(chip_access_methods) ||
 		pdata->default_reset_state > 1)
 			return -EINVAL;
 
@@ -1232,16 +1203,7 @@ static int probe(struct spi_device *spi)
 	dd->nl_seq = 1;
 	init_completion(&dd->suspend_resume);
 	memset(dd->tx_buf, 0xFF, sizeof(dd->tx_buf));
-	switch (pdata->chip_access_method) {
-	case 1:
-		dd->chip_read = spi_read_1;
-		dd->chip_write = spi_write_1;
-		break;
-	case 2:
-		dd->chip_read = spi_read_2;
-		dd->chip_write = spi_write_2;
-		break;
-	}
+	(void)set_chip_access_method(dd, pdata->chip_access_method);
 
 	/* initialize platform */
 	ret = pdata->init(pdata, true);
@@ -1270,6 +1232,7 @@ static int probe(struct spi_device *spi)
 		dd->nl_ops[i].doit = nl_callback_noop;
 	}
 	dd->nl_ops[MC_DRIVER].doit = nl_callback_driver;
+	dd->nl_ops[MC_FUSION].doit = nl_callback_fusion;
 	for (i = 0; i < MC_REQUIRED_GROUPS; i++) {
 		ret = genl_register_ops(&dd->nl_family, &dd->nl_ops[i]);
 		if (ret < 0)
@@ -1292,6 +1255,15 @@ static int probe(struct spi_device *spi)
 	if (ret < 0)
 		goto nl_failure;
 
+#if CPU_BOOST
+	/* initialize PM QOS */
+	dd->boost_freq = pm_qos_request(PM_QOS_CPU_FREQ_MAX);
+	pm_qos_add_request(&dd->cpus_req, PM_QOS_MIN_ONLINE_CPUS,
+			   PM_QOS_DEFAULT_VALUE);
+	pm_qos_add_request(&dd->freq_req, PM_QOS_CPU_FREQ_MIN,
+			   PM_QOS_DEFAULT_VALUE);
+#endif
+
 	/* Netlink: initialize incoming skb queue */
 	skb_queue_head_init(&dd->incoming_skb_queue);
 
@@ -1306,7 +1278,8 @@ static int probe(struct spi_device *spi)
 	/* start up Touch Fusion */
 	dd->start_fusion = true;
 	wake_up_process(dd->thread);
-	INFO(": driver loaded");
+	INFO("driver loaded; version %s; release date %s", DRIVER_VERSION,
+	     DRIVER_RELEASE);
 
 	return 0;
 
@@ -1326,12 +1299,6 @@ static int remove(struct spi_device *spi)
 	struct dev_data         *dd = spi_get_drvdata(spi);
 	unsigned long           flags;
 
-	if (dd->input_dev)
-		input_unregister_device(dd->input_dev);
-
-	if (dd->irq_registered)
-		free_irq(dd->spi->irq, dd);
-
 	/* BEWARE: tear-down sequence below is carefully staged:            */
 	/* 1) first the feeder of Netlink messages to the processing thread */
 	/*    is turned off                                                 */
@@ -1347,6 +1314,19 @@ static int remove(struct spi_device *spi)
 	kfree_skb(dd->outgoing_skb);
 	skb_queue_purge(&dd->incoming_skb_queue);
 
+	if (dd->input_dev)
+		input_unregister_device(dd->input_dev);
+
+	if (dd->irq_registered)
+		free_irq(dd->spi->irq, dd);
+
+#if CPU_BOOST
+	if (dd->boost_freq != 0) {
+		pm_qos_remove_request(&dd->freq_req);
+		pm_qos_remove_request(&dd->cpus_req);
+	}
+#endif
+
 	stop_scan_canned(dd);
 
 	spin_lock_irqsave(&dev_lock, flags);
@@ -1356,7 +1336,7 @@ static int remove(struct spi_device *spi)
 	kfree(dd);
 
 	pdata->init(pdata, false);
-	INFO(": driver unloaded");
+	INFO("driver unloaded");
 	return 0;
 }
 
