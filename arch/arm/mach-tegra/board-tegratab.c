@@ -168,6 +168,12 @@ static __initdata struct tegra_clk_init_table tegratab_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
+static __initdata struct tegra_clk_init_table P1640_wifi_clk_init_table[] = {
+	{ "extern3",	"clk_32k",	32768,		true},
+	{ "clk_out_3",	"extern3",	32768,		true},
+	{ NULL,		NULL,		0,		0},
+};
+
 static struct tegra_i2c_platform_data tegratab_i2c1_platform_data = {
 	.adapter_nr	= 0,
 	.bus_count	= 1,
@@ -689,7 +695,14 @@ static int __init tegratab_touch_init(void)
 
 static void __init tegra_tegratab_early_init(void)
 {
+	struct board_info board_info;
+
 	tegra_clk_init_from_table(tegratab_clk_init_table);
+	/* enable clk3_out for comm */
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_P1640 &&
+			board_info.fab == BOARD_FAB_A00)
+		tegra_clk_init_from_table(P1640_wifi_clk_init_table);
 	tegra_clk_verify_parents();
 	tegra_soc_device_init("tegratab");
 #if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
