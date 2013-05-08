@@ -116,6 +116,26 @@ static inline int clk_to_idx(struct clk *clk)
 }
 
 /*******************************************************************************
+ * Export load info in sysfs
+ ******************************************************************************/
+
+static ssize_t nvhost_scale3d_load_show(struct device *dev,
+				      struct device_attribute *attr,
+				      char *buf)
+{
+	struct nvhost_master *host = nvhost_get_host(to_platform_device(dev));
+	u32 avg;
+	ssize_t res;
+
+	actmon_op().read_avg_norm(host, &avg);
+	res = snprintf(buf, PAGE_SIZE, "%u\n", avg);
+
+	return res;
+}
+
+static DEVICE_ATTR(load, S_IRUGO, nvhost_scale3d_load_show, NULL);
+
+/*******************************************************************************
  * nvhost_scale3d_notify(dev, busy)
  *
  * Calling this function informs that gr3d is idling (..or busy). This data is
@@ -411,6 +431,9 @@ void nvhost_scale3d_actmon_init(struct platform_device *dev)
 
 	nvhost_scale3d_calibrate_emc();
 
+	if (device_create_file(&dev->dev, &dev_attr_load))
+		goto err_create_sysfs_entry;
+
 	/* Start using devfreq */
 	pdata->power_manager = devfreq_add_device(&dev->dev,
 				&nvhost_scale3d_devfreq_profile,
@@ -420,6 +443,7 @@ void nvhost_scale3d_actmon_init(struct platform_device *dev)
 	power_profile.init = 1;
 	return;
 
+err_create_sysfs_entry:
 err_devfreq_ext_stat_alloc:
 	kfree(power_profile.dev_stat);
 err_devfreq_alloc:
@@ -444,6 +468,8 @@ void nvhost_scale3d_actmon_deinit(struct platform_device *dev)
 
 	if (pdata->power_manager)
 		devfreq_remove_device(pdata->power_manager);
+
+	device_remove_file(&dev->dev, &dev_attr_load);
 
 	kfree(power_profile.dev_stat->private_data);
 	kfree(power_profile.dev_stat);
