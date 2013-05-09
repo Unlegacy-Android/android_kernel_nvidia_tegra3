@@ -3,7 +3,7 @@
  *
  * Tegra3 SOC-specific power and cluster management
  *
- * Copyright (c) 2009-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2009-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -613,12 +613,6 @@ void tegra_lp0_cpu_mode(bool enter)
 #define PMC_DPD_SAMPLE			0x20
 
 static struct tegra_io_dpd tegra_list_io_dpd[] = {
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC) && defined(CONFIG_TEGRA_IO_DPD)
-	/* sd dpd bits in dpd2 register */
-	IO_DPD_INFO("sdhci-tegra.0",	1,	1), /* SDMMC1 */
-#endif
-	IO_DPD_INFO("sdhci-tegra.2",	1,	2), /* SDMMC3 */
-	IO_DPD_INFO("sdhci-tegra.3",	1,	3), /* SDMMC4 */
 };
 #endif
 
@@ -653,10 +647,9 @@ void tegra_io_dpd_enable(struct tegra_io_dpd *hnd)
 	unsigned int dpd_status;
 	unsigned int dpd_enable_lsb;
 
-	if ((!hnd)) {
-		pr_warn("SD IO DPD handle NULL in %s\n", __func__);
+	if (!hnd)
 		return;
-	}
+
 	spin_lock(&tegra_io_dpd_lock);
 	dpd_enable_lsb = (hnd->io_dpd_reg_index) ? APBDEV_DPD2_ENABLE_LSB :
 						APBDEV_DPD_ENABLE_LSB;
@@ -686,10 +679,9 @@ void tegra_io_dpd_disable(struct tegra_io_dpd *hnd)
 	unsigned int dpd_status;
 	unsigned int dpd_enable_lsb;
 
-	if ((!hnd)) {
-		pr_warn("SD IO DPD handle NULL in %s\n", __func__);
+	if (!hnd)
 		return;
-	}
+
 	spin_lock(&tegra_io_dpd_lock);
 	dpd_enable_lsb = (hnd->io_dpd_reg_index) ? APBDEV_DPD2_ENABLE_LSB :
 						APBDEV_DPD_ENABLE_LSB;
