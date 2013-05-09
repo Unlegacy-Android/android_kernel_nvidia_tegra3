@@ -289,7 +289,7 @@ static int dsi_lgd_wxga_7_0_check_fb(struct device *dev, struct fb_info *info)
 static struct platform_pwm_backlight_data dsi_lgd_wxga_7_0_bl_data = {
 	.pwm_id		= 1,
 	.max_brightness	= 255,
-	.dft_brightness	= 60,
+	.dft_brightness	= 224,
 	.pwm_period_ns	= 1000000,
 	.notify		= dsi_lgd_wxga_7_0_bl_notify,
 	/* Only toggle backlight on fb blank notifications for disp1 */
@@ -315,6 +315,11 @@ static struct platform_device __maybe_unused
 static int  __init dsi_lgd_wxga_7_0_register_bl_dev(void)
 {
 	int err = 0;
+
+#ifdef CONFIG_ANDROID
+	if (get_androidboot_mode_charger())
+		dsi_lgd_wxga_7_0_bl_data.dft_brightness = 60;
+#endif
 	err = platform_add_devices(dsi_lgd_wxga_7_0_bl_devices,
 				ARRAY_SIZE(dsi_lgd_wxga_7_0_bl_devices));
 	if (err) {
