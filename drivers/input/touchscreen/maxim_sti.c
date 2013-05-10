@@ -691,6 +691,8 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 			      add_mc_group_msg->number, pdata->nl_mc_groups);
 			return false;
 		}
+		if (dd->nl_mc_groups[add_mc_group_msg->number].id != 0)
+			return false;
 		dd->nl_ops[add_mc_group_msg->number].cmd =
 						add_mc_group_msg->number;
 		dd->nl_ops[add_mc_group_msg->number].doit = nl_callback_noop;
