@@ -68,7 +68,6 @@
 #define AHB_ARBITRATION_PRIORITY_CTRL		0x4
 #define   AHB_PRIORITY_WEIGHT(x)	(((x) & 0x7) << 29)
 #define   PRIORITY_SELECT_USB	BIT(6)
-#define PRIORITY_SELECT_SDMMC4	BIT(12)
 #define   PRIORITY_SELECT_USB2	BIT(18)
 #define   PRIORITY_SELECT_USB3	BIT(17)
 #define   PRIORITY_SELECT_SE BIT(14)
@@ -82,7 +81,6 @@
 #define   FORCED_RECOVERY_MODE	BIT(1)
 
 #define AHB_GIZMO_USB		0x1c
-#define AHB_GIZMO_SDMMC4	0x44
 #define AHB_GIZMO_USB2		0x78
 #define AHB_GIZMO_USB3		0x7c
 #define AHB_GIZMO_SE		0x4c
@@ -637,10 +635,6 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	gizmo_writel(val, AHB_GIZMO_USB3);
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	val = gizmo_readl(AHB_GIZMO_SDMMC4);
-	val |= IMMEDIATE;
-	gizmo_writel(val, AHB_GIZMO_SDMMC4);
-
 	val = gizmo_readl(AHB_GIZMO_SE);
 	val |= IMMEDIATE;
 	gizmo_writel(val, AHB_GIZMO_SE);
@@ -650,7 +644,7 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	val |= PRIORITY_SELECT_USB | PRIORITY_SELECT_USB2 | PRIORITY_SELECT_USB3
 				| AHB_PRIORITY_WEIGHT(7);
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	val |= PRIORITY_SELECT_SE | PRIORITY_SELECT_SDMMC4;
+	val |= PRIORITY_SELECT_SE;
 #endif
 	gizmo_writel(val, AHB_ARBITRATION_PRIORITY_CTRL);
 
@@ -681,8 +675,7 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG5);
 	val &= ~MST_ID(~0);
-	val |= PREFETCH_ENB | SDMMC4_MST_ID | ADDR_BNDRY(0xc) |
-		INACTIVITY_TIMEOUT(0x1000);
+	val |= PREFETCH_ENB | SDMMC4_MST_ID;
 	gizmo_writel(val, AHB_MEM_PREFETCH_CFG5);
 
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG6);
