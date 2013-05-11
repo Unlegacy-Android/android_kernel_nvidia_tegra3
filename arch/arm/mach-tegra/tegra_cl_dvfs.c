@@ -197,6 +197,7 @@ struct tegra_cl_dvfs {
 
 	u8				lut_min;
 	u8				lut_max;
+	u8				force_out_min;
 	int				therm_cap_idx;
 	int				therm_floor_idx;
 	struct dfll_rate_req		last_req;
@@ -518,6 +519,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 	if (req->output == cld->safe_output)
 		req->output++;
 	out_max = max((u8)(req->output + 1), cld->minimax_output);
+	out_max = max((u8)(out_max), cld->force_out_min);
 
 #if CL_DVFS_DYNAMIC_OUTPUT_CFG
 	val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
@@ -646,9 +648,15 @@ static void calibration_timer_cb(unsigned long data)
 
 static void set_request(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 {
-	u32 val;
+	u32 val, f;
 	int force_val = req->output - cld->safe_output;
 	int coef = 128; /* FIXME: cld->p_data->cfg_param->cg_scale? */;
+
+	/* If going down apply force output floor */
+	val = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ);
+	f = (val & CL_DVFS_FREQ_REQ_FREQ_MASK) >> CL_DVFS_FREQ_REQ_FREQ_SHIFT;
+	if ((f > req->freq) &&  (cld->force_out_min > req->output))
+		force_val = cld->force_out_min - cld->safe_output;
 
 	force_val = force_val * coef / cld->p_data->cfg_param->cg;
 	force_val = clamp(force_val, FORCE_MIN, FORCE_MAX);
@@ -658,7 +666,6 @@ static void set_request(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 	 * bit (if not set already). Use same CL_DVFS_FREQ_REQ register read
 	 * (not other cl_dvfs register) plus explicit delay as a fence.
 	 */
-	val = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ);
 	val &= CL_DVFS_FREQ_REQ_FORCE_ENABLE;
 	val |= req->freq << CL_DVFS_FREQ_REQ_FREQ_SHIFT;
 	val |= req->scale << CL_DVFS_FREQ_REQ_SCALE_SHIFT;
@@ -747,6 +754,25 @@ static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld)
 	/* dvco min rate is under-estimated - skewed range up */
 	cld->calibration_range_min = cld->dvco_rate_min - 2 * RATE_STEP(cld);
 	cld->calibration_range_max = cld->dvco_rate_min + 8 * RATE_STEP(cld);
+}
+
+static void cl_dvfs_set_force_out_min(struct tegra_cl_dvfs *cld)
+{
+	u8 force_out_min = 0;
+	int force_mv_min = cld->p_data->pmu_undershoot_gb;
+
+	if (!force_mv_min) {
+		cld->force_out_min = 0;
+		return;
+	}
+
+	if (cld->therm_floor_idx < cld->therm_floors_num)
+		force_out_min = cld->thermal_out_floors[cld->therm_floor_idx];
+	force_mv_min += cld->out_map[force_out_min]->reg_uV / 1000;
+	force_out_min = find_mv_out_cap(cld, force_mv_min);
+	if (force_out_min == cld->safe_output)
+		force_out_min++;
+	cld->force_out_min = force_out_min;
 }
 
 static struct voltage_reg_map *find_vdd_map_entry(
@@ -954,6 +980,7 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 	cld->therm_cap_idx = cld->therm_caps_num;
 	cld->therm_floor_idx = 0;
 	cl_dvfs_set_dvco_rate_min(cld);
+	cl_dvfs_set_force_out_min(cld);
 #if CL_DVFS_DYNAMIC_OUTPUT_CFG
 	out_min = get_output_min(cld);
 	out_max = get_output_cap(cld, NULL);
@@ -1216,6 +1243,7 @@ static int tegra_cl_dvfs_set_vmin_cdev_state(
 	if (cld->therm_floor_idx != cur_state) {
 		cld->therm_floor_idx = cur_state;
 		cl_dvfs_set_dvco_rate_min(cld);
+		cl_dvfs_set_force_out_min(cld);
 		if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
 			tegra_cl_dvfs_request_rate(cld,
 				tegra_cl_dvfs_request_get(cld));
@@ -1287,6 +1315,7 @@ static int tegra_cl_dvfs_suspend_cl(struct device *dev)
 		cld->vmin_cdev->updated = false;
 	cld->therm_floor_idx = 0;
 	cl_dvfs_set_dvco_rate_min(cld);
+	cl_dvfs_set_force_out_min(cld);
 	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
 		set_cl_config(cld, &cld->last_req);
 		set_request(cld, &cld->last_req);
@@ -1730,6 +1759,27 @@ static int calibr_delay_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(calibr_delay_fops, calibr_delay_get, calibr_delay_set,
 			"%llu\n");
 
+static int undershoot_get(void *data, u64 *val)
+{
+	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
+	*val = cld->p_data->pmu_undershoot_gb;
+	return 0;
+}
+static int undershoot_set(void *data, u64 val)
+{
+	unsigned long flags;
+	struct clk *c = (struct clk *)data;
+	struct tegra_cl_dvfs *cld = c->u.dfll.cl_dvfs;
+
+	clk_lock_save(c, &flags);
+	cld->p_data->pmu_undershoot_gb = val;
+	cl_dvfs_set_force_out_min(cld);
+	clk_unlock_restore(c, &flags);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(undershoot_fops, undershoot_get, undershoot_set,
+			"%llu\n");
+
 static int cl_register_show(struct seq_file *s, void *data)
 {
 	u32 offs;
@@ -1843,6 +1893,10 @@ int __init tegra_cl_dvfs_debug_init(struct clk *dfll_clk)
 
 	if (!debugfs_create_file("calibr_delay", S_IRUGO,
 		cl_dvfs_dentry, dfll_clk, &calibr_delay_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("pmu_undershoot_gb", S_IRUGO,
+		cl_dvfs_dentry, dfll_clk, &undershoot_fops))
 		goto err_out;
 
 	if (!debugfs_create_file("registers", S_IRUGO | S_IWUSR,
