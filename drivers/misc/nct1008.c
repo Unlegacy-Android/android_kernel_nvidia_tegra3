@@ -1141,15 +1141,15 @@ static int __devinit nct1008_probe(struct i2c_client *client,
 		mask |= (1 << i);
 
 	if (data->plat_data.loc_name) {
-		strcpy(nct_int_name, "nct_int_");
-		strcpy(nct_ext_name, "nct_ext_");
+		strcpy(nct_int_name, "Tdiode_");
+		strcpy(nct_ext_name, "Tboard_");
 		strncat(nct_int_name, data->plat_data.loc_name,
-			(THERMAL_NAME_LENGTH - strlen("nct_int_")) - 1);
+			(THERMAL_NAME_LENGTH - strlen("Tdiode_")) - 1);
 		strncat(nct_ext_name, data->plat_data.loc_name,
-			(THERMAL_NAME_LENGTH - strlen("nct_ext_")) - 1);
+			(THERMAL_NAME_LENGTH - strlen("Tboard_")) - 1);
 	} else {
-		strcpy(nct_int_name, "nct_int");
-		strcpy(nct_ext_name, "nct_ext");
+		strcpy(nct_int_name, "Tdiode");
+		strcpy(nct_ext_name, "Tboard");
 	}
 
 	data->nct_int = thermal_zone_device_register(nct_int_name,
