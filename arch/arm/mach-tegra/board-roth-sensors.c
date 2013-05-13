@@ -304,7 +304,7 @@ static struct thermal_trip_info skin_trips[] = {
 
 static struct therm_est_subdevice skin_devs[] = {
 	{
-		.dev_data = "nct_ext",
+		.dev_data = "Tdiode",
 		.coeffs = {
 			2, 1, 1, 1,
 			1, 1, 1, 1,
@@ -314,7 +314,7 @@ static struct therm_est_subdevice skin_devs[] = {
 		},
 	},
 	{
-		.dev_data = "nct_int",
+		.dev_data = "Tboard",
 		.coeffs = {
 			-11, -7, -5, -3,
 			-3, -2, -1, 0,
@@ -439,7 +439,7 @@ static struct therm_fan_est_data fan_est_data = {
 	.ndevs = 2,
 	.devs = {
 			{
-				.dev_data = "nct_ext_soc",
+				.dev_data = "Tdiode_soc",
 				.get_temp = roth_fan_est_get_temp,
 				.coeffs = {
 					100, 0, 0, 0,
@@ -450,7 +450,7 @@ static struct therm_fan_est_data fan_est_data = {
 				},
 			},
 			{
-				.dev_data = "nct_int_soc",
+				.dev_data = "Tboard_soc",
 				.get_temp = roth_fan_est_get_temp,
 				.coeffs = {
 					0, 0, 0, 0,
