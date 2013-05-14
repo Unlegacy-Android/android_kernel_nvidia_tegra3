@@ -277,15 +277,8 @@ static struct tegra_dc_platform_data tegratab_disp1_pdata = {
 	.default_out	= &tegratab_disp1_out,
 	.fb		= &tegratab_disp1_fb_data,
 	.emc_clk_rate	= 204000000,
-	/*
-	 * In early panel bring-up stage, we will not
-	 * enable CMU. Check if CONFIG_TEGRA_DC_CMU is
-	 * removed in early bring-up stage as well.
-	 * TODO...enable CMU later.
-	 */
 #ifdef CONFIG_TEGRA_DC_CMU
-	.cmu_enable	= 0,
-	/*.cmu_enable	= 1,*/
+	.cmu_enable	= 1,
 #endif
 };
 
