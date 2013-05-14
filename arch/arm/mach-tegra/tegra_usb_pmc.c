@@ -345,7 +345,7 @@ static void utmip_powerup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	/* Disable PMC master mode by clearing MASTER_EN */
 	val = readl(pmc_base + PMC_SLEEP_CFG);
 	/* WAR for xusb */
-	if (pmc_data->controller_type != TEGRA_USB_3_0)
+	if (pmc_data->controller_type == TEGRA_USB_3_0)
 		val |= UTMIP_RCTRL_USE_PMC(inst) | UTMIP_TCTRL_USE_PMC(inst);
 	else
 		val &= ~(UTMIP_RCTRL_USE_PMC(inst) |
