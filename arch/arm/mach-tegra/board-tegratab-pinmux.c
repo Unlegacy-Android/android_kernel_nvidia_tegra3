@@ -23,6 +23,7 @@
 #include "board-tegratab.h"
 #include "devices.h"
 #include "gpio-names.h"
+#include "tegra-board-id.h"
 
 #include <mach/pinmux-t11.h>
 
@@ -227,9 +228,17 @@ static void __init tegratab_gpio_init_configure(void)
 	int len;
 	int i;
 	struct gpio_init_pin_info *pins_info;
+	struct board_info board_info;
 
-	len = ARRAY_SIZE(init_gpio_mode_tegratab_common);
-	pins_info = init_gpio_mode_tegratab_common;
+	tegra_get_board_info(&board_info);
+
+	if (board_info.board_id == BOARD_P1640) {
+		len = ARRAY_SIZE(init_gpio_mode_tegratab_ffd_common);
+		pins_info = init_gpio_mode_tegratab_ffd_common;
+	} else { /* ERS */
+		len = ARRAY_SIZE(init_gpio_mode_tegratab_common);
+		pins_info = init_gpio_mode_tegratab_common;
+	}
 
 	for (i = 0; i < len; ++i) {
 		tegra_gpio_init_configure(pins_info->gpio_nr,
@@ -240,14 +249,26 @@ static void __init tegratab_gpio_init_configure(void)
 
 int __init tegratab_pinmux_init(void)
 {
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
 	tegratab_gpio_init_configure();
 
-	tegra_pinmux_config_table(tegratab_pinmux_common,
-					ARRAY_SIZE(tegratab_pinmux_common));
 	tegra_drive_pinmux_config_table(tegratab_drive_pinmux,
 					ARRAY_SIZE(tegratab_drive_pinmux));
-	tegra_pinmux_config_table(unused_pins_lowpower,
-		ARRAY_SIZE(unused_pins_lowpower));
+
+	if (board_info.board_id == BOARD_P1640) {
+		tegra_pinmux_config_table(tegratab_ffd_pinmux_common,
+					ARRAY_SIZE(tegratab_ffd_pinmux_common));
+		tegra_pinmux_config_table(ffd_unused_pins_lowpower,
+					ARRAY_SIZE(ffd_unused_pins_lowpower));
+	} else { /* ERS */
+		tegra_pinmux_config_table(tegratab_pinmux_common,
+					ARRAY_SIZE(tegratab_pinmux_common));
+		tegra_pinmux_config_table(unused_pins_lowpower,
+					ARRAY_SIZE(unused_pins_lowpower));
+	}
+
 	tegra_pinmux_config_table(manual_config_pinmux,
 		ARRAY_SIZE(manual_config_pinmux));
 
