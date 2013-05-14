@@ -33,6 +33,7 @@
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/tegra_usb_pmc.h>
 #include <mach/mc.h>
+#include <mach/xusb.h>
 #include "xhci-tegra.h"
 #include "xhci.h"
 
@@ -201,6 +202,8 @@ struct tegra_xhci_hcd {
 	void __iomem *fpci_base;
 	void __iomem *ipfs_base;
 
+	struct tegra_xusb_platform_data *pdata;
+	struct tegra_xusb_board_data *bdata;
 	struct tegra_xusb_pad_data *xusb_padctl;
 
 	/* mailbox variables */
@@ -2662,7 +2665,9 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	if (ret)
 		dev_err(&pdev->dev, "could not unpowergate xusbc partition\n");
 
-	tegra->xusb_padctl = dev_get_platdata(&pdev->dev);
+	tegra->pdata = dev_get_platdata(&pdev->dev);
+	tegra->bdata = tegra->pdata->bdata;
+	tegra->xusb_padctl = tegra->bdata->padctl_data;
 
 	/* reset the pointer back to NULL. driver uses it */
 	/* platform_set_drvdata(pdev, NULL); */
