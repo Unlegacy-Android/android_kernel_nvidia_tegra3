@@ -1,15 +1,19 @@
 /*
  * Copyright (c) 2011, Google, Inc.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/kernel.h>
@@ -22,6 +26,7 @@
 #include <mach/irqs.h>
 
 #include "gpio-names.h"
+#include "pm-irq.h"
 
 /* TODO: We could populate the other table from this one at runtime
  * instead of always searching twice */
@@ -94,6 +99,18 @@ static int tegra_wake_event_irq[] = {
 };
 
 static int last_gpio = -1;
+
+inline void tegra_get_internal_any_wake_list(u8 *wake_count,
+	u8 **any_wake, u8 *remote_usb_index)
+{
+	*wake_count = 0;
+}
+
+inline int get_vbus_id_cable_connect_state(bool *is_vbus_connected,
+	bool *is_id_connected)
+{
+	return -EIO;
+}
 
 int tegra_gpio_to_wake(int gpio)
 {
