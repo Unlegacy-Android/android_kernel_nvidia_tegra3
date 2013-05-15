@@ -236,6 +236,22 @@ static int __devexit palmas_extcon_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void palmas_extcon_shutdown(struct platform_device *pdev)
+{
+	struct palmas_extcon *palma_econ = dev_get_drvdata(&pdev->dev);
+	int ret;
+
+	ret = palmas_update_bits(palma_econ->palmas,
+			PALMAS_USB_OTG_BASE,
+			PALMAS_USB_WAKEUP,
+			PALMAS_USB_WAKEUP_ID_WK_UP_COMP, 0);
+
+	if (ret < 0) {
+		dev_err(palma_econ->dev,
+			"USB_WAKEUP write failed: %d at shutdown\n", ret);
+	}
+}
+
 #ifdef CONFIG_PM_SLEEP
 static int palmas_extcon_suspend(struct device *dev)
 {
@@ -272,6 +288,7 @@ static const struct dev_pm_ops palmas_pm_ops = {
 static struct platform_driver palmas_extcon_driver = {
 	.probe = palmas_extcon_probe,
 	.remove = __devexit_p(palmas_extcon_remove),
+	.shutdown = palmas_extcon_shutdown,
 	.driver = {
 		.name = "palmas-extcon",
 		.owner = THIS_MODULE,
