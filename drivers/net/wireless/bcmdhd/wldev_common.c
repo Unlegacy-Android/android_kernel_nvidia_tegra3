@@ -342,6 +342,10 @@ int wldev_miracast_tuning(
 	int mode = 0;
 	int ampdu_mpdu;
 	int roam_off;
+#ifdef VSDB_BW_ALLOCATE_ENABLE
+	int mchan_algo;
+	int mchan_bw;
+#endif /* VSDB_BW_ALLOCATE_ENABLE */
 
 	if (sscanf(command, "%*s %d", &mode) != 1) {
 		WLDEV_ERROR(("Failed to get mode\n"));
@@ -358,6 +362,10 @@ int wldev_miracast_tuning(
 #elif defined(DISABLE_BUILTIN_ROAM)
 		roam_off = 1;	/* roam disable */
 #endif
+#ifdef VSDB_BW_ALLOCATE_ENABLE
+		mchan_algo = 0;	/* Default */
+		mchan_bw = 50;	/* 50:50 */
+#endif /* VSDB_BW_ALLOCATE_ENABLE */
 	}
 	else if (mode == 1) {
 		/* Miracast source mode */
@@ -365,6 +373,10 @@ int wldev_miracast_tuning(
 #if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
 		roam_off = 1; /* roam disable */
 #endif
+#ifdef VSDB_BW_ALLOCATE_ENABLE
+		mchan_algo = 1;	/* BW based */
+		mchan_bw = 25;	/* 25:75 */
+#endif /* VSDB_BW_ALLOCATE_ENABLE */
 	}
 	else if (mode == 2) {
 		/* Miracast sink/PC Gaming mode */
@@ -372,6 +384,10 @@ int wldev_miracast_tuning(
 #if defined(ROAM_ENABLE) || defined(DISABLE_BUILTIN_ROAM)
 		roam_off = 1; /* roam disable */
 #endif
+#ifdef VSDB_BW_ALLOCATE_ENABLE
+		mchan_algo = 0;	/* Default */
+		mchan_bw = 50;	/* 50:50 */
+#endif /* VSDB_BW_ALLOCATE_ENABLE */
 	}
 	else {
 		WLDEV_ERROR(("Unknown mode: %d\n", mode));
@@ -394,6 +410,22 @@ int wldev_miracast_tuning(
 		return -1;
 	}
 #endif /* ROAM_ENABLE || DISABLE_BUILTIN_ROAM */
+
+#ifdef VSDB_BW_ALLOCATE_ENABLE
+	error = wldev_iovar_setint(dev, "mchan_algo", mchan_algo);
+	if (error) {
+		WLDEV_ERROR(("Failed to set mchan_algo: mode:%d, error:%d\n",
+			mode, error));
+		return -1;
+	}
+
+	error = wldev_iovar_setint(dev, "mchan_bw", mchan_bw);
+	if (error) {
+		WLDEV_ERROR(("Failed to set mchan_bw: mode:%d, error:%d\n",
+			mode, error));
+		return -1;
+	}
+#endif /* VSDB_BW_ALLOCATE_ENABLE */
 
 	return error;
 }

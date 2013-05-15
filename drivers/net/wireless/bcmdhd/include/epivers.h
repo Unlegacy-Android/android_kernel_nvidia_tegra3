@@ -32,17 +32,17 @@
 
 #define	EPI_RC_NUMBER		28
 
-#define	EPI_INCREMENTAL_NUMBER	1
+#define	EPI_INCREMENTAL_NUMBER	2
 
 #define EPI_BUILD_NUMBER	1
 
-#define	EPI_VERSION		1, 28, 28, 1
+#define	EPI_VERSION		1, 28, 28, 2
 
 #define	EPI_VERSION_NUM		0x011c1c01
 
 #define EPI_VERSION_DEV		1.28.28
 
 /* Driver Version String, ASCII, 32 chars max */
-#define	EPI_VERSION_STR		"1.28.28.1 (r388498)"
+#define	EPI_VERSION_STR		"1.28.28.2 (r388498)"
 
 #endif /* _epivers_h_ */

@@ -188,9 +188,6 @@ static const struct ieee80211_regdomain brcm_regdom = {
 #define WL_AKM_SUITE_MFP_PSK 0x000FAC06
 #endif /* MFP */
 
-#ifndef RSSI_OFFSET
-#define RSSI_OFFSET	0
-#endif
 /*
  * cfg80211_ops api/callback list
  */
@@ -480,6 +477,18 @@ wl_sdo_proto_t wl_sdo_protos [] = {
 	{ "wsd", SVC_RPOTYPE_WSD },
 	{ "vendor", SVC_RPOTYPE_VENDOR },
 };
+#endif
+
+#ifdef RSSI_OFFSET
+static s32 wl_rssi_offset(s32 rssi)
+{
+	rssi += RSSI_OFFSET;
+	if (rssi > 0)
+		rssi = 0;
+	return rssi;
+}
+#else
+#define wl_rssi_offset(x)	x
 #endif
 
 #define CHECK_SYS_UP(wlpriv)						\
@@ -3635,7 +3644,7 @@ wl_cfg80211_get_station(struct wiphy *wiphy, struct net_device *dev,
 			WL_ERR(("Could not get rssi (%d)\n", err));
 			goto get_station_err;
 		}
-		rssi = dtoh32(scb_val.val) + RSSI_OFFSET;
+		rssi = wl_rssi_offset(dtoh32(scb_val.val));
 		sinfo->filled |= STATION_INFO_SIGNAL;
 		sinfo->signal = rssi;
 		WL_DBG(("RSSI %d dBm\n", rssi));
@@ -6341,7 +6350,7 @@ static s32 wl_inform_single_bss(struct wl_priv *wl, struct wl_bss_info *bi, u8 i
 		kfree(notif_bss_info);
 		return -EINVAL;
 	}
-	notif_bss_info->rssi = dtoh16(bi->RSSI) + RSSI_OFFSET;
+	notif_bss_info->rssi = wl_rssi_offset(dtoh16(bi->RSSI));
 	memcpy(mgmt->bssid, &bi->BSSID, ETHER_ADDR_LEN);
 	mgmt_type = wl->active_scan ?
 		IEEE80211_STYPE_PROBE_RESP : IEEE80211_STYPE_BEACON;
@@ -8354,6 +8363,15 @@ static s32 wl_escan_handler(struct wl_priv *wl,
 
 	}
 	else if (status == WLC_E_STATUS_SUCCESS) {
+#ifdef P2P_DISCOVERY_WAR
+		if (wl->p2p_net && wl->scan_request &&
+			wl->scan_request->dev == wl->p2p_net &&
+			!wl->p2p->vif_created) {
+			if (wldev_iovar_setint(wl_to_prmry_ndev(wl), "mpc", 1) < 0) {
+				WL_ERR(("mpc enabling back failed\n"));
+			}
+		}
+#endif
 		wl->escan_info.escan_state = WL_ESCAN_STATE_IDLE;
 		if (wl_get_drv_status_all(wl, FINDING_COMMON_CHANNEL)) {
 			WL_INFO(("ACTION FRAME SCAN DONE\n"));
@@ -8373,6 +8391,15 @@ static s32 wl_escan_handler(struct wl_priv *wl,
 		}
 	}
 	else if (status == WLC_E_STATUS_ABORT) {
+#ifdef P2P_DISCOVERY_WAR
+		if (wl->p2p_net && wl->scan_request &&
+			wl->scan_request->dev == wl->p2p_net &&
+			!wl->p2p->vif_created) {
+			if (wldev_iovar_setint(wl_to_prmry_ndev(wl), "mpc", 1) < 0) {
+				WL_ERR(("mpc enabling back failed\n"));
+			}
+		}
+#endif
 		wl->escan_info.escan_state = WL_ESCAN_STATE_IDLE;
 		if (wl_get_drv_status_all(wl, FINDING_COMMON_CHANNEL)) {
 			WL_INFO(("ACTION FRAME SCAN DONE\n"));
@@ -9950,7 +9977,7 @@ wl_notify_device_discovery(struct wl_priv *wl, struct net_device *ndev,
 		channel = bi->ctl_ch ? bi->ctl_ch :
 			CHSPEC_CHANNEL(wl_chspec_driver_to_host(bi->chanspec));
 		info.freq = wl_cfg80211_channel_to_freq(channel);
-		info.rssi = dtoh16(bi->RSSI) + RSSI_OFFSET;
+		info.rssi = wl_rssi_offset(dtoh16(bi->RSSI));
 		memcpy(info.bssid, &bi->BSSID, ETH_ALEN);
 		info.ie_len = buflen;
 
