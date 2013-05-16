@@ -24,6 +24,7 @@
 #include <linux/crc16.h>
 #include <linux/interrupt.h>
 #include <linux/input.h>
+#include <linux/regulator/consumer.h>
 #include <linux/maxim_sti.h>
 #include <asm/byteorder.h>  /* MUST include this header to get byte order */
 
@@ -78,6 +79,8 @@ struct dev_data {
 	struct pm_qos_request        freq_req;
 	unsigned long                boost_freq;
 #endif
+	struct regulator             *reg_avdd;
+	struct regulator             *reg_dvdd;
 };
 
 static struct list_head  dev_list;
@@ -588,6 +591,63 @@ static void start_scan_canned(struct dev_data *dd)
 			     sizeof(value));
 }
 
+static int regulator_control(struct dev_data *dd, bool on)
+{
+	int ret;
+
+	if (!dd->reg_avdd || !dd->reg_dvdd)
+		return 0;
+
+	if (on) {
+		ret = regulator_enable(dd->reg_dvdd);
+		if (ret < 0) {
+			ERROR("Failed to enable regulator dvdd: %d", ret);
+			return ret;
+		}
+		usleep_range(1000, 1020);
+
+		ret = regulator_enable(dd->reg_avdd);
+		if (ret < 0) {
+			ERROR("Failed to enable regulator avdd: %d", ret);
+			regulator_disable(dd->reg_dvdd);
+			return ret;
+		}
+	} else {
+		ret = regulator_disable(dd->reg_avdd);
+		if (ret < 0) {
+			ERROR("Failed to disable regulator avdd: %d", ret);
+			return ret;
+		}
+
+		ret = regulator_disable(dd->reg_dvdd);
+		if (ret < 0) {
+			ERROR("Failed to disable regulator dvdd: %d", ret);
+			regulator_enable(dd->reg_avdd);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static void regulator_init(struct dev_data *dd)
+{
+	dd->reg_avdd = devm_regulator_get(&dd->spi->dev, "avdd");
+	if (IS_ERR(dd->reg_avdd))
+		goto err_null_regulator;
+
+	dd->reg_dvdd = devm_regulator_get(&dd->spi->dev, "dvdd");
+	if (IS_ERR(dd->reg_dvdd))
+		goto err_null_regulator;
+
+	return;
+
+err_null_regulator:
+	dd->reg_avdd = NULL;
+	dd->reg_dvdd = NULL;
+	dev_warn(&dd->spi->dev, "Failed to init regulators\n");
+}
+
 /****************************************************************************\
 * Suspend/resume processing                                                  *
 \****************************************************************************/
@@ -596,6 +656,8 @@ static void start_scan_canned(struct dev_data *dd)
 static int suspend(struct device *dev)
 {
 	struct dev_data  *dd = spi_get_drvdata(to_spi_device(dev));
+	struct maxim_sti_pdata *pdata = dev->platform_data;
+	int ret;
 
 	if (dd->suspend_in_progress)
 		return 0;
@@ -603,15 +665,35 @@ static int suspend(struct device *dev)
 	dd->suspend_in_progress = true;
 	wake_up_process(dd->thread);
 	wait_for_completion(&dd->suspend_resume);
+
+	/* reset-low and power-down */
+	pdata->reset(pdata, 0);
+	usleep_range(100, 120);
+	ret = regulator_control(dd, false);
+	if (ret < 0) {
+		pdata->reset(pdata, 1);
+		return ret;
+	}
+
 	return 0;
 }
 
 static int resume(struct device *dev)
 {
 	struct dev_data  *dd = spi_get_drvdata(to_spi_device(dev));
+	struct maxim_sti_pdata *pdata = dev->platform_data;
+	int ret;
 
 	if (!dd->suspend_in_progress)
 		return 0;
+
+	/* power-up and reset-high */
+	ret = regulator_control(dd, true);
+	if (ret < 0)
+		return ret;
+
+	usleep_range(300, 400);
+	pdata->reset(pdata, 1);
 
 	dd->resume_in_progress = true;
 	wake_up_process(dd->thread);
@@ -1207,6 +1289,14 @@ static int probe(struct spi_device *spi)
 	memset(dd->tx_buf, 0xFF, sizeof(dd->tx_buf));
 	(void)set_chip_access_method(dd, pdata->chip_access_method);
 
+	/* initialize regulators */
+	regulator_init(dd);
+
+	/* power up */
+	ret = regulator_control(dd, true);
+	if (ret < 0)
+		goto platform_failure;
+
 	/* initialize platform */
 	ret = pdata->init(pdata, true);
 	if (ret < 0)
@@ -1290,6 +1380,9 @@ nl_failure:
 nl_family_failure:
 	(void)kthread_stop(dd->thread);
 platform_failure:
+	pdata->reset(pdata, 0);
+	usleep_range(100, 120);
+	regulator_control(dd, false);
 	pdata->init(pdata, false);
 	kfree(dd);
 	return ret;
@@ -1335,9 +1428,13 @@ static int remove(struct spi_device *spi)
 	list_del(&dd->dev_list);
 	spin_unlock_irqrestore(&dev_lock, flags);
 
+	pdata->reset(pdata, 0);
+	usleep_range(100, 120);
+	regulator_control(dd, false);
+	pdata->init(pdata, false);
+
 	kfree(dd);
 
-	pdata->init(pdata, false);
 	INFO("driver unloaded");
 	return 0;
 }
