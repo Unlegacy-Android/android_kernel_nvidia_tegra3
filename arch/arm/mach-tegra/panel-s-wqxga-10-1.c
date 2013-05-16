@@ -99,6 +99,13 @@ static struct tegra_dsi_cmd dsi_s_wqxga_10_1_init_cmd[] = {
 	DSI_DLY_MS(20),
 };
 
+static struct tegra_dsi_cmd dsi_s_wqxga_10_1_suspend_cmd[] = {
+	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_SET_DISPLAY_OFF, 0x0),
+	DSI_DLY_MS(67),	/* 3 frame duration per the panel datasheet */
+	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_ENTER_SLEEP_MODE, 0x0),
+	DSI_DLY_MS(17), /* 1 frame duration per the panel datasheet */
+};
+
 static struct tegra_dsi_out dsi_s_wqxga_10_1_pdata = {
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	.n_data_lanes = 2,
@@ -123,6 +130,8 @@ static struct tegra_dsi_out dsi_s_wqxga_10_1_pdata = {
 	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
 	.dsi_init_cmd = dsi_s_wqxga_10_1_init_cmd,
 	.n_init_cmd = ARRAY_SIZE(dsi_s_wqxga_10_1_init_cmd),
+	.n_suspend_cmd = ARRAY_SIZE(dsi_s_wqxga_10_1_suspend_cmd),
+	.dsi_suspend_cmd = dsi_s_wqxga_10_1_suspend_cmd,
 };
 
 static int dalmore_dsi_regulator_get(struct device *dev)
