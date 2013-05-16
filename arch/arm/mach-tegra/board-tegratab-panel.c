@@ -142,15 +142,7 @@ static struct tegra_dc_sd_settings sd_settings;
 
 static struct tegra_dc_out tegratab_disp1_out = {
 	.type		= TEGRA_DC_OUT_DSI,
-	/*
-	 * In the early bring-up stage, we will not enable
-	 * PRISM.
-	 * TODO. enable PRISM later.
-	 */
-	.sd_settings	= NULL,
-	/*
-	 * .sd_settings	= &sd_settings,
-	 */
+	.sd_settings	= &sd_settings,
 };
 
 static int tegratab_hdmi_enable(struct device *dev)
@@ -354,13 +346,7 @@ static struct platform_device tegratab_nvmap_device = {
 };
 
 static struct tegra_dc_sd_settings tegratab_sd_settings = {
-	/*
-	 * In early panel bring-up stage,
-	 * we will disable PRISM.
-	 * TODO. enable PRISM later.
-	 */
-	.enable = 0,
-	/*.enable = 1, */ /* enabled by default. */
+	.enable = 1,
 	.use_auto_pwm = false,
 	.hw_update_delay = 0,
 	.bin_width = -1,
