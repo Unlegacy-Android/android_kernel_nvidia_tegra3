@@ -200,7 +200,6 @@ static int get_ls_adc_value(uint16_t *als_step, bool resume)
 {
 	uint8_t lsb, msb;
 	int ret = 0;
-	struct cm3217_info *lpi = lp_info;
 
 	if (als_step == NULL)
 		return -EFAULT;
@@ -233,7 +232,7 @@ static int get_ls_adc_value(uint16_t *als_step, bool resume)
 static void report_lsensor_input_event(struct cm3217_info *lpi, bool resume)
 {
 	uint16_t adc_value = 0;
-	int level = 0, i, ret = 0;
+	int level = 0, i = 0, ret = 0;
 
 	mutex_lock(&lpi->get_adc_lock);
 
@@ -356,7 +355,7 @@ static int lightsensor_enable(struct cm3217_info *lpi)
 		pr_err("[LS][CM3217 error]%s: set auto light sensor fail\n",
 		       __func__);
 
-	queue_work(lpi->lp_wq, &report_work);
+	queue_work(lpi->lp_wq, &report_work.work);
 	lpi->als_enable = 1;
 
 	mutex_unlock(&lpi->enable_lock);
