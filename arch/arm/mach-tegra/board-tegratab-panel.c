@@ -20,6 +20,7 @@
 #include <linux/ioport.h>
 #include <linux/fb.h>
 #include <linux/nvmap.h>
+#include <linux/of.h>
 #include <linux/nvhost.h>
 #include <linux/init.h>
 #include <linux/delay.h>
@@ -452,7 +453,9 @@ int __init tegratab_panel_init(void)
 {
 	int err = 0;
 	struct resource __maybe_unused *res;
-	struct platform_device *phost1x;
+	struct platform_device *phost1x = NULL;
+
+	bool is_dt = of_have_populated_dt();
 
 	sd_settings = tegratab_sd_settings;
 
@@ -471,7 +474,11 @@ int __init tegratab_panel_init(void)
 	}
 #endif
 
-	phost1x = tegratab_host1x_init();
+	if (!is_dt)
+		phost1x = tegratab_host1x_init();
+	else
+		phost1x = to_platform_device(bus_find_device_by_name(
+			&platform_bus_type, NULL, "host1x"));
 	if (!phost1x) {
 		pr_err("host1x devices registration failed\n");
 		return -EINVAL;
