@@ -80,7 +80,7 @@ static int __exit vi_remove(struct platform_device *dev)
 #ifdef CONFIG_TEGRA_CAMERA
 	int err = 0;
 	struct nvhost_device_data *pdata =
-		(struct nvhost_device_data *)dev->dev.platform_data;
+		(struct nvhost_device_data *)platform_get_drvdata(dev);
 	struct vi *tegra_vi = (struct vi *)pdata->private_data;
 #endif
 
@@ -100,7 +100,7 @@ static int vi_suspend(struct platform_device *dev, pm_message_t state)
 {
 #ifdef CONFIG_TEGRA_CAMERA
 	struct nvhost_device_data *pdata =
-		(struct nvhost_device_data *)dev->dev.platform_data;
+		(struct nvhost_device_data *)platform_get_drvdata(dev);
 	struct vi *tegra_vi = (struct vi *)pdata->private_data;
 #endif
 
@@ -117,7 +117,7 @@ static int vi_resume(struct platform_device *dev)
 {
 #ifdef CONFIG_TEGRA_CAMERA
 	struct nvhost_device_data *pdata =
-		(struct nvhost_device_data *)dev->dev.platform_data;
+		(struct nvhost_device_data *)platform_get_drvdata(dev);
 
 	struct vi *tegra_vi = (struct vi *)pdata->private_data;
 #endif
