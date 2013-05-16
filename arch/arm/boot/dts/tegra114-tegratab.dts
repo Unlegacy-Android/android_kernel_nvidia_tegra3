@@ -20,7 +20,6 @@
 
 / {
 	host1x {
-		status = "okay";
 		hdmi {
 			status = "okay";
 		};
