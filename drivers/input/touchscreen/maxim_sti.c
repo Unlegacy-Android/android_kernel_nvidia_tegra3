@@ -33,11 +33,7 @@
 \****************************************************************************/
 
 #define INPUT_ENABLE_DISABLE  1
-#define CPU_BOOST             1
-
-#if CPU_BOOST
-#include <linux/pm_qos.h>
-#endif
+#define NV_ENABLE_CPU_BOOST   1
 
 /****************************************************************************\
 * Device context structure, globals, and macros                              *
@@ -75,11 +71,6 @@ struct dev_data {
 	struct task_struct           *thread;
 	struct sched_param           thread_sched;
 	struct list_head             dev_list;
-#if CPU_BOOST
-	struct pm_qos_request        cpus_req;
-	struct pm_qos_request        freq_req;
-	unsigned long                boost_freq;
-#endif
 	struct regulator             *reg_avdd;
 	struct regulator             *reg_dvdd;
 };
@@ -1096,9 +1087,8 @@ static void service_irq(struct dev_data *dd)
 	u16                   status, test, address, xbuf;
 	int                   ret, ret2;
 
-#if CPU_BOOST
-	pm_qos_update_request_timeout(&dd->cpus_req, 1, 10000);
-	pm_qos_update_request_timeout(&dd->freq_req, dd->boost_freq, 10000);
+#ifdef NV_ENABLE_CPU_BOOST
+	input_event(dd->input_dev, EV_MSC, MSC_ACTIVITY, 1);
 #endif
 
 	ret = dd->chip.read(dd, dd->irq_param[0], (u8 *)&status,
@@ -1361,15 +1351,6 @@ static int probe(struct spi_device *spi)
 	if (ret < 0)
 		goto nl_failure;
 
-#if CPU_BOOST
-	/* initialize PM QOS */
-	dd->boost_freq = pm_qos_request(PM_QOS_CPU_FREQ_MAX);
-	pm_qos_add_request(&dd->cpus_req, PM_QOS_MIN_ONLINE_CPUS,
-			   PM_QOS_DEFAULT_VALUE);
-	pm_qos_add_request(&dd->freq_req, PM_QOS_CPU_FREQ_MIN,
-			   PM_QOS_DEFAULT_VALUE);
-#endif
-
 	/* Netlink: initialize incoming skb queue */
 	skb_queue_head_init(&dd->incoming_skb_queue);
 
@@ -1428,13 +1409,6 @@ static int remove(struct spi_device *spi)
 
 	if (dd->irq_registered)
 		free_irq(dd->spi->irq, dd);
-
-#if CPU_BOOST
-	if (dd->boost_freq != 0) {
-		pm_qos_remove_request(&dd->freq_req);
-		pm_qos_remove_request(&dd->cpus_req);
-	}
-#endif
 
 	stop_scan_canned(dd);
 
