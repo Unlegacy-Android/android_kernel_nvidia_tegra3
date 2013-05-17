@@ -1070,7 +1070,7 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	struct smmu_client *client, *c;
 	u64 map;
 	int err;
-
+#if 0
 	map = tegra_smmu_of_get_swgids(dev);
 	if (!map) {
 		map = tegra_smmu_fixup_swgids(dev);
@@ -1079,7 +1079,9 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	}
 
 	map &= smmu->swgids;
-
+#else
+	map = smmu->swgids;
+#endif
 	client = devm_kzalloc(smmu->dev, sizeof(*c), GFP_KERNEL);
 	if (!client)
 		return -ENOMEM;
