@@ -7868,7 +7868,7 @@ static void tegra11_clk_resume(void)
 			p = p->parent;
 	}
 	tegra_emc_timing_invalidate();
-
+	tegra11_pllm_clk_init(&tegra_pll_m); /* Re-init pll_m */
 	tegra11_pll_clk_init(&tegra_pll_u); /* Re-init utmi parameters */
 	tegra11_plle_clk_resume(&tegra_pll_e); /* Restore plle parent as pll_re_vco */
 	tegra11_pllp_clk_resume(&tegra_pll_p); /* Fire a bug if not restored */
