@@ -823,11 +823,17 @@ static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
 		if (pte) {
 			unsigned int *rest = &as->pte_count[pdn];
 			size_t bytes = sizeof(*pte) * count;
+			int i;
 
-			memset(pte, 0, bytes);
+			for (i = 0; i < count; i++) {
+				if (ptbl[ptn + i] == _PTE_VACANT(iova + i * PAGE_SIZE))
+					continue;
+
+				ptbl[ptn + i] = _PTE_VACANT(iova + i * PAGE_SIZE);
+				(*rest)--;
+			}
+
 			FLUSH_CPU_DCACHE(pte, page, bytes);
-
-			*rest -= count;
 			if (!*rest)
 				free_ptbl(as, iova, !flush_all);
 
