@@ -218,9 +218,20 @@ static struct i2c_board_info __initdata rt5640_board_info = {
 	I2C_BOARD_INFO("rt5640", 0x1c),
 };
 
+static struct i2c_board_info __initdata rt5639_board_info = {
+	I2C_BOARD_INFO("rt5639", 0x1c),
+};
+
 static void tegratab_i2c_init(void)
 {
-	i2c_register_board_info(0, &rt5640_board_info, 1);
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+
+	if (board_info.board_id == BOARD_P1640)
+		i2c_register_board_info(0, &rt5639_board_info, 1);
+	else
+		i2c_register_board_info(0, &rt5640_board_info, 1);
 }
 
 static struct platform_device *tegratab_uart_devices[] __initdata = {
@@ -528,8 +539,13 @@ static void tegratab_audio_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	tegratab_audio_pdata.codec_name = "rt5640.0-001c";
-	tegratab_audio_pdata.codec_dai_name = "rt5640-aif1";
+	if (board_info.board_id == BOARD_P1640) {
+		tegratab_audio_pdata.codec_name = "rt5639.0-001c";
+		tegratab_audio_pdata.codec_dai_name = "rt5639-aif1";
+	} else {
+		tegratab_audio_pdata.codec_name = "rt5640.0-001c";
+		tegratab_audio_pdata.codec_dai_name = "rt5640-aif1";
+	}
 }
 
 
