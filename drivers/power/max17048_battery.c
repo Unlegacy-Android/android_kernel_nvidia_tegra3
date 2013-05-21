@@ -643,8 +643,6 @@ static struct max17048_platform_data *max17048_parse_dt(struct device *dev)
 		return ERR_PTR(ret);
 
 	model_data->alert_threshold = val;
-	if (model_data->bits == 19) /* LSB is 0.5%, if 19-bit model. */
-		model_data->alert_threshold /= 2;
 
 	ret = of_property_read_u32(np, "one-percent-alerts", &val);
 	if (ret < 0)
@@ -656,12 +654,12 @@ static struct max17048_platform_data *max17048_parse_dt(struct device *dev)
 	ret = of_property_read_u32(np, "valert-max", &val);
 	if (ret < 0)
 		return ERR_PTR(ret);
-	model_data->valert = ((val / 20) & 0xFF) << 8; /* LSB is 20mV. */
+	model_data->valert = (val / 20) & 0xFF; /* LSB is 20mV. */
 
 	ret = of_property_read_u32(np, "valert-min", &val);
 	if (ret < 0)
 		return ERR_PTR(ret);
-	model_data->valert |= (val / 20) & 0xFF; /* LSB is 20mV. */
+	model_data->valert |= ((val / 20) & 0xFF) << 8; /* LSB is 20mV. */
 
 	ret = of_property_read_u32(np, "vreset-threshold", &val);
 	if (ret < 0)
