@@ -447,6 +447,11 @@ static struct regulator_consumer_supply fixed_reg_vd_cam_1v8_supply[] = {
 	REGULATOR_SUPPLY("pwrdet_cam", NULL),
 };
 
+static struct regulator_consumer_supply fixed_reg_en_lcd_1v8_supply[] = {
+	REGULATOR_SUPPLY("dvdd_lcd", NULL),
+	REGULATOR_SUPPLY("dvdd", "spi0.0"),
+};
+
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_"#_name
 #define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,	\
@@ -513,18 +518,39 @@ FIXED_REG(6,	vd_cam_1v8,	vd_cam_1v8,
 	palmas_rails(smps8),	0,	0,
 	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO6,	false,	true,	0,	1800);
 
+FIXED_REG(7,	en_lcd_1v8,	en_lcd_1v8,
+	palmas_rails(smps8),	0,	1,
+	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO4,	false,	true,	1,	1800);
+
+/*
+ * Creating the fixed regulator device tables
+ */
 #define ADD_FIXED_REG(_name)	(&fixed_reg_##_name##_dev)
 
-/* Gpio switch regulator platform data for Tegratab E1569 */
-static struct platform_device *fixed_reg_devs[] = {
-	ADD_FIXED_REG(dvdd_lcd_1v8),
-	ADD_FIXED_REG(vdd_lcd_bl_en),
-	ADD_FIXED_REG(dvdd_ts),
-	ADD_FIXED_REG(vdd_hdmi_5v0),
-	ADD_FIXED_REG(vddio_sd_slot),
+#define TEGRATAB_COMMON_FIXED_REG		\
+	ADD_FIXED_REG(vdd_lcd_bl_en),		\
+	ADD_FIXED_REG(vdd_hdmi_5v0),		\
+	ADD_FIXED_REG(vddio_sd_slot),		\
 	ADD_FIXED_REG(vd_cam_1v8),
+
+#define E1569_FIXED_REG				\
+	ADD_FIXED_REG(dvdd_lcd_1v8),		\
+	ADD_FIXED_REG(dvdd_ts),
+
+#define P1640_FIXED_REG				\
+	ADD_FIXED_REG(en_lcd_1v8),
+
+/* Gpio switch regulator platform data for Tegratab E1569 */
+static struct platform_device *fixed_reg_devs_e1569[] = {
+	TEGRATAB_COMMON_FIXED_REG
+	E1569_FIXED_REG
 };
 
+/* Gpio switch regulator platform data for Tegratab P1640 */
+static struct platform_device *fixed_reg_devs_p1640[] = {
+	TEGRATAB_COMMON_FIXED_REG
+	P1640_FIXED_REG
+};
 
 int __init tegratab_palmas_regulator_init(void)
 {
@@ -650,11 +676,22 @@ static int __init tegratab_cl_dvfs_init(void)
 
 static int __init tegratab_fixed_regulator_init(void)
 {
+	struct board_info board_info;
+	int ret;
+
 	if (!machine_is_tegratab())
 		return 0;
 
-	return platform_add_devices(fixed_reg_devs,
-			ARRAY_SIZE(fixed_reg_devs));
+	tegra_get_board_info(&board_info);
+
+	if (board_info.board_id == BOARD_P1640)
+		ret = platform_add_devices(fixed_reg_devs_p1640,
+					   ARRAY_SIZE(fixed_reg_devs_p1640));
+	else
+		ret = platform_add_devices(fixed_reg_devs_e1569,
+					   ARRAY_SIZE(fixed_reg_devs_e1569));
+
+	return ret;
 }
 subsys_initcall_sync(tegratab_fixed_regulator_init);
 
