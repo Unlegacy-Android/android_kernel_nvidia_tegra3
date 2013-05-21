@@ -21,6 +21,7 @@
 #include <linux/delay.h>
 #include <linux/power_supply.h>
 #include <linux/slab.h>
+#include <linux/interrupt.h>
 #include <linux/max17048_battery.h>
 #include <linux/jiffies.h>
 
@@ -44,6 +45,17 @@
 #define MAX17048_BATTERY_FULL	100
 #define MAX17048_BATTERY_LOW	15
 #define MAX17048_VERSION_NO	0x11
+
+/* MAX17048 ALERT interrupts */
+#define MAX17048_STATUS_RI		0x0100 /* reset */
+#define MAX17048_STATUS_VH		0x0200 /* voltage high */
+#define MAX17048_STATUS_VL		0x0400 /* voltage low */
+#define MAX17048_STATUS_VR		0x0800 /* voltage reset */
+#define MAX17048_STATUS_HD		0x1000 /* SOC low  */
+#define MAX17048_STATUS_SC		0x2000 /* 1% SOC change */
+#define MAX17048_STATUS_ENVR		0x4000 /* enable voltage reset alert */
+
+#define MAX17048_CONFIG_ALRT		0x0020 /* CONFIG.ALRT bit*/
 
 struct max17048_chip {
 	struct i2c_client		*client;
@@ -536,6 +548,70 @@ int max17048_check_battery()
 }
 EXPORT_SYMBOL_GPL(max17048_check_battery);
 
+static irqreturn_t max17048_irq(int id, void *dev)
+{
+	struct max17048_chip *chip = dev;
+	struct i2c_client *client = chip->client;
+	u16 val;
+	int ret;
+
+	val = max17048_read_word(client, MAX17048_STATUS);
+	if (val < 0) {
+		dev_err(&client->dev,
+				"%s(): Failed in reading register" \
+				"MAX17048_STATUS err %d\n",
+					__func__, val);
+		goto clear_irq;
+	}
+
+	if (val & MAX17048_STATUS_RI)
+		dev_info(&client->dev, "%s(): STATUS_RI\n", __func__);
+	if (val & MAX17048_STATUS_VH)
+		dev_info(&client->dev, "%s(): STATUS_VH\n", __func__);
+	if (val & MAX17048_STATUS_VL)
+		dev_info(&client->dev, "%s(): STATUS_VL\n", __func__);
+	if (val & MAX17048_STATUS_VR)
+		dev_info(&client->dev, "%s(): STATUS_VR\n", __func__);
+	if (val & MAX17048_STATUS_HD) {
+		max17048_get_soc(client);
+		chip->lasttime_soc = chip->soc;
+		dev_info(&client->dev,
+				"%s(): STATUS_HD, SOC: %d\n",
+				__func__, chip->soc);
+		power_supply_changed(&chip->battery);
+	}
+	if (val & MAX17048_STATUS_SC) {
+		max17048_get_soc(client);
+		chip->lasttime_soc = chip->soc;
+		dev_info(&client->dev,
+				"%s(): STATUS_SC, SOC: %d\n",
+				__func__, chip->soc);
+		power_supply_changed(&chip->battery);
+	}
+	if (val & MAX17048_STATUS_ENVR)
+		dev_info(&client->dev, "%s(): STATUS_ENVR\n", __func__);
+
+	ret = max17048_write_word(client, MAX17048_STATUS, 0x0000);
+	if (ret < 0)
+		dev_err(&client->dev, "failed clear STATUS\n");
+
+clear_irq:
+	val = max17048_read_word(client, MAX17048_CONFIG);
+	if (val < 0) {
+		dev_err(&client->dev,
+				"%s(): Failed in reading register" \
+				"MAX17048_CONFIG err %d\n",
+					__func__, val);
+		return IRQ_HANDLED;
+	}
+	val &= ~(MAX17048_CONFIG_ALRT);
+	ret = max17048_write_word(client, MAX17048_CONFIG, val);
+	if (ret < 0)
+		dev_err(&client->dev, "failed clear CONFIG.ALRT\n");
+
+	return IRQ_HANDLED;
+}
+
 #ifdef CONFIG_OF
 static struct max17048_platform_data *max17048_parse_dt(struct device *dev)
 {
@@ -658,6 +734,7 @@ static int __devinit max17048_probe(struct i2c_client *client,
 	struct max17048_chip *chip;
 	int ret;
 	uint16_t version;
+	u16 val;
 
 	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)
@@ -741,7 +818,38 @@ static int __devinit max17048_probe(struct i2c_client *client,
 	INIT_DELAYED_WORK_DEFERRABLE(&chip->work, max17048_work);
 	schedule_delayed_work(&chip->work, 0);
 
+	if (client->irq) {
+		ret = request_threaded_irq(client->irq, NULL,
+						max17048_irq,
+						IRQF_TRIGGER_FALLING,
+						chip->battery.name, chip);
+		if (!ret) {
+			ret = max17048_write_word(client, MAX17048_STATUS,
+							0x0000);
+			if (ret < 0)
+				goto irq_clear_error;
+			val = max17048_read_word(client, MAX17048_CONFIG);
+			if (val < 0)
+				goto irq_clear_error;
+			val &= ~(MAX17048_CONFIG_ALRT);
+			ret = max17048_write_word(client, MAX17048_CONFIG,
+							val);
+			if (ret < 0)
+				goto irq_clear_error;
+		} else {
+			dev_err(&client->dev,
+					"%s: request IRQ %d fail, err = %d\n",
+					__func__, client->irq, ret);
+			client->irq = 0;
+			goto irq_reg_error;
+		}
+	}
+
 	return 0;
+irq_clear_error:
+	free_irq(client->irq, chip);
+irq_reg_error:
+	cancel_delayed_work_sync(&chip->work);
 error:
 	power_supply_unregister(&chip->ac);
 error1:
@@ -756,6 +864,8 @@ static int __devexit max17048_remove(struct i2c_client *client)
 {
 	struct max17048_chip *chip = i2c_get_clientdata(client);
 
+	if (client->irq)
+		free_irq(client->irq, chip);
 	power_supply_unregister(&chip->battery);
 	power_supply_unregister(&chip->usb);
 	power_supply_unregister(&chip->ac);
@@ -769,6 +879,8 @@ static void max17048_shutdown(struct i2c_client *client)
 {
 	struct max17048_chip *chip = i2c_get_clientdata(client);
 
+	if (client->irq)
+		disable_irq(client->irq);
 	cancel_delayed_work_sync(&chip->work);
 	mutex_lock(&chip->mutex);
 	chip->shutdown_complete = 1;
@@ -784,6 +896,9 @@ static int max17048_suspend(struct i2c_client *client,
 	struct max17048_chip *chip = i2c_get_clientdata(client);
 	int ret;
 
+	if (client->irq) {
+		enable_irq_wake(chip->client->irq);
+	}
 	cancel_delayed_work_sync(&chip->work);
 	ret = max17048_write_word(client, MAX17048_HIBRT, 0xffff);
 	if (ret < 0) {
@@ -807,6 +922,9 @@ static int max17048_resume(struct i2c_client *client)
 	}
 
 	schedule_delayed_work(&chip->work, MAX17048_DELAY);
+	if (client->irq) {
+		disable_irq_wake(client->irq);
+	}
 
 	return 0;
 }
