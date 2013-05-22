@@ -378,7 +378,6 @@ static const struct file_operations sdhci_host_dfs_fops = {
 
 static u32 tegra_sdhci_readl(struct sdhci_host *host, int reg)
 {
-#ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	u32 val;
 
 	if (unlikely(reg == SDHCI_PRESENT_STATE)) {
@@ -386,7 +385,6 @@ static u32 tegra_sdhci_readl(struct sdhci_host *host, int reg)
 		val = readl(host->ioaddr + reg);
 		return val | SDHCI_WRITE_PROTECT;
 	}
-#endif
 	return readl(host->ioaddr + reg);
 }
 
@@ -649,7 +647,6 @@ static unsigned int tegra_sdhci_get_cd(struct sdhci_host *sdhci)
 	return tegra_host->card_present;
 }
 
-#ifndef CONFIG_ARCH_TEGRA_11x_SOC
 static unsigned int tegra_sdhci_get_ro(struct sdhci_host *sdhci)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
@@ -661,7 +658,6 @@ static unsigned int tegra_sdhci_get_ro(struct sdhci_host *sdhci)
 
 	return gpio_get_value(plat->wp_gpio);
 }
-#endif
 
 static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 		unsigned int uhs)
@@ -2240,9 +2236,7 @@ err_root:
 }
 
 static struct sdhci_ops tegra_sdhci_ops = {
-#ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	.get_ro     = tegra_sdhci_get_ro,
-#endif
 	.get_cd     = tegra_sdhci_get_cd,
 	.read_l     = tegra_sdhci_readl,
 	.read_w     = tegra_sdhci_readw,
