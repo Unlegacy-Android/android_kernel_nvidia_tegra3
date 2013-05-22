@@ -310,8 +310,6 @@ static int ov7695_write_table(
 	const struct ov7695_reg *next;
 	u16 val;
 
-	dev_info(&info->i2c_client->dev, "yuv %s\n", __func__);
-
 	for (next = table; next->addr != OV7695_TABLE_END; next++) {
 		if (next->addr == OV7695_WAIT_MS) {
 			msleep(next->val);
@@ -320,9 +318,6 @@ static int ov7695_write_table(
 
 		val = next->val;
 
-		dev_info(&info->i2c_client->dev,
-			"%s: addr = 0x%4x, val = 0x%2x\n",
-			__func__, next->addr, val);
 		err = ov7695_write_reg8(info->i2c_client, next->addr, val);
 		if (err)
 			return err;
@@ -339,7 +334,7 @@ static int ov7695_open(struct inode *inode, struct file *file)
 	info = container_of(miscdev, struct ov7695_info, miscdev_info);
 	/* check if the device is in use */
 	if (atomic_xchg(&info->in_use, 1)) {
-		dev_info(&info->i2c_client->dev, "%s:BUSY!\n", __func__);
+		dev_err(&info->i2c_client->dev, "%s:BUSY!\n", __func__);
 		return -EBUSY;
 	}
 
@@ -393,8 +388,6 @@ static int ov7695_power_get(struct ov7695_info *info)
 {
 	struct ov7695_power_rail *pw = &info->power;
 	int err;
-
-	dev_dbg(&info->i2c_client->dev, "ov7695: %s\n", __func__);
 
 	/* note: ov7695 uses i2c address 0x42,
 	 *
