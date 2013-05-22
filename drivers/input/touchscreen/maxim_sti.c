@@ -59,6 +59,7 @@ struct dev_data {
 	bool                         start_fusion;
 	bool                         suspend_in_progress;
 	bool                         resume_in_progress;
+	bool                         eraser_active;
 	bool                         irq_registered;
 	u16                          irq_param[MAX_IRQ_PARAMS];
 	char                         input_phys[128];
@@ -883,6 +884,8 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 #endif
 			__set_bit(EV_SYN, dd->input_dev->evbit);
 			__set_bit(EV_ABS, dd->input_dev->evbit);
+			__set_bit(EV_KEY, dd->input_dev->evbit);
+			__set_bit(BTN_TOOL_RUBBER, dd->input_dev->keybit);
 			input_set_abs_params(dd->input_dev, ABS_MT_POSITION_X,
 					     0, config_input_msg->x_range, 0,
 					     0);
@@ -918,6 +921,12 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 	case DR_INPUT:
 		input_msg = msg;
 		if (input_msg->events == 0) {
+			if (dd->eraser_active) {
+				input_report_key(dd->input_dev,
+					BTN_TOOL_RUBBER, 0);
+				dd->eraser_active = false;
+			}
+
 			input_mt_sync(dd->input_dev);
 			input_sync(dd->input_dev);
 		} else {
@@ -932,6 +941,11 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 					input_report_abs(dd->input_dev,
 							 ABS_MT_TOOL_TYPE,
 							 MT_TOOL_PEN);
+					break;
+				case DR_INPUT_ERASER:
+					input_report_key(dd->input_dev,
+						BTN_TOOL_RUBBER, 1);
+					dd->eraser_active = true;
 					break;
 				default:
 					ERROR("invalid input tool type (%d)",

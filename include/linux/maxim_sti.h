@@ -27,8 +27,8 @@
 #include "genetlink.h"
 #endif
 
-#define DRIVER_VERSION  "1.1.0"
-#define DRIVER_RELEASE  "May 2, 2013"
+#define DRIVER_VERSION  "1.2.0"
+#define DRIVER_RELEASE  "May 22, 2013"
 
 /****************************************************************************\
 * Netlink: common kernel/user space macros                                   *
@@ -132,6 +132,7 @@ enum {
 enum {
 	DR_INPUT_FINGER,
 	DR_INPUT_STYLUS,
+	DR_INPUT_ERASER,
 };
 
 enum {
