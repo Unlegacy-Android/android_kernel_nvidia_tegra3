@@ -150,7 +150,6 @@ static struct regulator_consumer_supply palmas_smps45_supply[] = {
 static struct regulator_consumer_supply palmas_smps6_supply[] = {
 	REGULATOR_SUPPLY("vdd_lcd_hv", NULL),
 	REGULATOR_SUPPLY("avdd_lcd", NULL),
-	REGULATOR_SUPPLY("avdd", "spi0.0"),
 };
 
 static struct regulator_consumer_supply palmas_smps7_supply[] = {
@@ -218,7 +217,7 @@ static struct regulator_consumer_supply palmas_ldo3_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldo4_supply[] = {
-	REGULATOR_SUPPLY("dvdd", "2-0010"),
+	REGULATOR_SUPPLY("avdd", "spi0.0"),
 };
 
 static struct regulator_consumer_supply palmas_ldo5_supply[] = {
@@ -287,7 +286,7 @@ PALMAS_REGS_PDATA(ldo2, 1200,  1200, palmas_rails(smps7), 0, 1, 1, 0,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo3, 1800,  1800, NULL, 0, 0, 1, 0,
 	0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(ldo4, 1200,  1200, palmas_rails(smps8), 0, 0, 1, 0,
+PALMAS_REGS_PDATA(ldo4, 3000,  3000, NULL, 0, 1, 1, 0,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo5, 2700,  2700, palmas_rails(smps9), 0, 0, 1, 0,
 	0, 0, 0, 0, 0);
