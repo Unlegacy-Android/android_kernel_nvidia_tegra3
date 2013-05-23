@@ -326,6 +326,7 @@ static struct tegra_asoc_platform_data tegratab_audio_pdata = {
 	.gpio_codec1 = TEGRA_GPIO_CODEC1_EN,
 	.gpio_codec2 = TEGRA_GPIO_CODEC2_EN,
 	.gpio_codec3 = TEGRA_GPIO_CODEC3_EN,
+	.micbias_gpio_absent = true,
 	.i2s_param[HIFI_CODEC]	= {
 		.audio_port_id	= 1,
 		.is_i2s_master	= 1,
