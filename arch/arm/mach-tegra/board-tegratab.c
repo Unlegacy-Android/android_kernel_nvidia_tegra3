@@ -598,13 +598,6 @@ static void __init tegratab_spi_init(void)
 		ARRAY_SIZE(tegratab_spi_devices));
 }
 
-static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
-	/* name         parent          rate            enabled */
-	{ "extern2",    "pll_p",        41000000,       false},
-	{ "clk_out_2",  "extern2",      40800000,       false},
-	{ NULL,         NULL,           0,              0},
-};
-
 #if defined(CONFIG_TOUCHSCREEN_MAXIM_STI) || \
 	defined(CONFIG_TOUCHSCREEN_MAXIM_STI_MODULE)
 struct maxim_sti_pdata maxim_sti_pdata = {
@@ -636,6 +629,13 @@ struct spi_board_info maxim_sti_spi_board = {
 	.controller_data = &dev_cdata
 };
 #else
+static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
+	/* name         parent          rate            enabled */
+	{ "extern2",    "pll_p",        41000000,       false},
+	{ "clk_out_2",  "extern2",      40800000,       false},
+	{ NULL,         NULL,           0,              0},
+};
+
 struct rm_spi_ts_platform_data rm31080ts_tegratab_data = {
 	.gpio_reset = TOUCH_GPIO_RST_RAYDIUM_SPI,
 	.config = 0,
@@ -664,14 +664,15 @@ struct spi_board_info rm31080a_tegratab_spi_board[1] = {
 
 static int __init tegratab_touch_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_display_board_info(&board_info);
-	tegra_clk_init_from_table(touch_clk_init_table);
 #if defined(CONFIG_TOUCHSCREEN_MAXIM_STI) || \
 	defined(CONFIG_TOUCHSCREEN_MAXIM_STI_MODULE)
-	(void)touch_init_maxim_sti(&maxim_sti_spi_board);
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_P1640)
+		(void)touch_init_maxim_sti(&maxim_sti_spi_board);
 #else
+	tegra_clk_init_from_table(touch_clk_init_table);
 	rm31080ts_tegratab_data.platform_id = RM_PLATFORM_D010;
 	mdelay(20);
 	rm31080a_tegratab_spi_board[0].irq =
