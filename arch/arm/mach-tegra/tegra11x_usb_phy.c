@@ -1012,7 +1012,7 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 		writel(val, base + USB_SUSP_CTRL);
 	}
 
-	utmi_phy_pad_disable(1);
+	utmi_phy_pad_disable();
 	utmi_phy_iddq_override(true);
 	phy->phy_clk_on = false;
 	phy->hw_accessible = false;
@@ -1089,7 +1089,7 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 		writel(val, base + UTMIP_BAT_CHRG_CFG0);
 	}
 
-	utmi_phy_pad_enable(1);
+	utmi_phy_pad_enable();
 
 	val = readl(base + UTMIP_XCVR_CFG0);
 	val &= ~(UTMIP_XCVR_LSBIAS_SEL | UTMIP_FORCE_PD_POWERDOWN |

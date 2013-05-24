@@ -26,7 +26,7 @@
 #define   UTMIP_HSDISCON_LEVEL(x)	(((x) & 0x3) << 2)
 #define   UTMIP_HSDISCON_LEVEL_MSB	(1 << 24)
 
-int utmi_phy_pad_disable(bool disableOTG);
-int utmi_phy_pad_enable(bool enableOTG);
+int utmi_phy_pad_disable(void);
+int utmi_phy_pad_enable(void);
 int utmi_phy_iddq_override(bool set);
 #endif

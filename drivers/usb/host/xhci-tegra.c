@@ -2263,7 +2263,7 @@ done:
 	/* pads are disabled only if usb2 root hub in xusb is idle */
 	/* pads will actually be disabled only when all usb2 ports are idle */
 	if (xhci->main_hcd == hcd) {
-		utmi_phy_pad_disable(0);
+		utmi_phy_pad_disable();
 		utmi_phy_iddq_override(true);
 	} else if (xhci->shared_hcd == hcd) {
 		/* save leakage power when SS not in use.
@@ -2309,7 +2309,7 @@ static int tegra_xhci_bus_resume(struct usb_hcd *hcd)
 	/* pads are disabled only if usb2 root hub in xusb is idle */
 	/* pads will actually be disabled only when all usb2 ports are idle */
 	if (xhci->main_hcd == hcd && tegra->usb2_rh_suspend) {
-		utmi_phy_pad_enable(0);
+		utmi_phy_pad_enable();
 		utmi_phy_iddq_override(false);
 	} else if (xhci->shared_hcd == hcd && tegra->usb3_rh_suspend) {
 		/* clear ovrd bits */
@@ -2826,7 +2826,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	writel(pmc_reg, tegra->pmc_base + PMC_UTMIP_UHSIC_SLEEP_CFG_0);
 
 	tegra_xhci_debug_read_pads(tegra);
-	utmi_phy_pad_enable(0);
+	utmi_phy_pad_enable();
 	utmi_phy_iddq_override(false);
 
 	return 0;
@@ -2878,7 +2878,7 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	tegra_usb2_clocks_deinit(tegra);
 	if (!tegra->hc_in_elpg)
 		tegra_xusb_partitions_clk_deinit(tegra);
-	utmi_phy_pad_disable(0);
+	utmi_phy_pad_disable();
 	utmi_phy_iddq_override(true);
 
 	return 0;

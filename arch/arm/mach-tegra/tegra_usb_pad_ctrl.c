@@ -44,7 +44,7 @@ out1:
 }
 EXPORT_SYMBOL_GPL(utmi_phy_iddq_override);
 
-int utmi_phy_pad_enable(bool enableOTG)
+int utmi_phy_pad_enable(void)
 {
 	unsigned long val, flags;
 	void __iomem *pad_base =  IO_ADDRESS(TEGRA_USB_BASE);
@@ -58,9 +58,7 @@ int utmi_phy_pad_enable(bool enableOTG)
 	utmip_pad_count++;
 
 	val = readl(pad_base + UTMIP_BIAS_CFG0);
-	if (enableOTG)
-		val &= ~UTMIP_OTGPD;
-	val &= ~UTMIP_BIASPD;
+	val &= ~(UTMIP_OTGPD | UTMIP_BIASPD);
 	val |= UTMIP_HSSQUELCH_LEVEL(0x2) | UTMIP_HSDISCON_LEVEL(0x1) |
 		UTMIP_HSDISCON_LEVEL_MSB;
 	writel(val, pad_base + UTMIP_BIAS_CFG0);
@@ -73,7 +71,7 @@ int utmi_phy_pad_enable(bool enableOTG)
 }
 EXPORT_SYMBOL_GPL(utmi_phy_pad_enable);
 
-int utmi_phy_pad_disable(bool disableOTG)
+int utmi_phy_pad_disable(void)
 {
 	unsigned long val, flags;
 	void __iomem *pad_base =  IO_ADDRESS(TEGRA_USB_BASE);
@@ -93,10 +91,6 @@ int utmi_phy_pad_disable(bool disableOTG)
 		val |= UTMIP_OTGPD | UTMIP_BIASPD;
 		val &= ~(UTMIP_HSSQUELCH_LEVEL(~0) | UTMIP_HSDISCON_LEVEL(~0) |
 			UTMIP_HSDISCON_LEVEL_MSB);
-		writel(val, pad_base + UTMIP_BIAS_CFG0);
-	} else if (disableOTG) {
-		val = readl(pad_base + UTMIP_BIAS_CFG0);
-		val |= UTMIP_OTGPD;
 		writel(val, pad_base + UTMIP_BIAS_CFG0);
 	}
 out:
