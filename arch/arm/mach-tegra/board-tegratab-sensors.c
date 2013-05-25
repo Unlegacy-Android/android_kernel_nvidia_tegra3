@@ -677,13 +677,10 @@ int __init tegratab_sensors_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	/* E1569 only has temp sensor. */
-	if (board_info.board_id == BOARD_E1569) {
-		err = tegratab_nct1008_init();
-		if (err) {
-			pr_err("%s: nct1008 register failed.\n", __func__);
-			return err;
-		}
+	err = tegratab_nct1008_init();
+	if (err) {
+		pr_err("%s: nct1008 register failed.\n", __func__);
+		return err;
 	}
 
 	tegratab_camera_init();
