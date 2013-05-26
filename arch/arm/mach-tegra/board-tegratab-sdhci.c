@@ -31,12 +31,14 @@
 #include <mach/io_dpd.h>
 #include <linux/wl12xx.h>
 
+#include "tegra-board-id.h"
 #include "gpio-names.h"
 #include "board.h"
 #include "board-tegratab.h"
 #include "dvfs.h"
 
 #define TEGRATAB_SD_CD	TEGRA_GPIO_PV2
+#define TEGRATAB_SD_WP	TEGRA_GPIO_PQ4
 #define TEGRATAB_WLAN_PWR	TEGRA_GPIO_PCC5
 #define TEGRATAB_WLAN_RST	TEGRA_GPIO_PX7
 #define TEGRATAB_WLAN_WOW	TEGRA_GPIO_PU5
@@ -135,7 +137,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.cd_gpio = TEGRATAB_SD_CD,
-	.wp_gpio = -1,
+	.wp_gpio = TEGRATAB_SD_WP,
 	.power_gpio = -1,
 	.tap_delay = 0x3,
 	.trim_delay = 0x3,
@@ -282,7 +284,7 @@ int __init tegratab_sdhci_init(void)
 {
 	int nominal_core_mv;
 	int min_vcore_override_mv;
-
+	struct board_info board_info;
 	nominal_core_mv =
 		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
 	if (nominal_core_mv) {
@@ -300,7 +302,9 @@ int __init tegratab_sdhci_init(void)
 		tegra_sdhci_platform_data3.min_vcore_override_mv =
 			min_vcore_override_mv;
 	}
-
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_P1640)
+		tegra_sdhci_platform_data2.wp_gpio = -1;
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);
