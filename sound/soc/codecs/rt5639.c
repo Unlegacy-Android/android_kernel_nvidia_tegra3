@@ -86,7 +86,7 @@ static struct rt5639_init_reg init_list[] = {
 	{RT5639_SPK_L_MIXER	, 0x0036},/* DACL1 -> SPKMIXL */
 	{RT5639_SPK_R_MIXER	, 0x0036},/* DACR1 -> SPKMIXR */
 	{RT5639_SPK_VOL		, 0x8b8b},/* SPKMIX -> SPKVOL */
-	{RT5639_SPO_CLSD_RATIO	, 0x0001},
+	{RT5639_SPO_CLSD_RATIO	, 0x0004},
 	{RT5639_SPO_L_MIXER	, 0xe800},/* SPKVOLL -> SPOLMIX */
 	{RT5639_SPO_R_MIXER	, 0x2800},/* SPKVOLR -> SPORMIX */
 	/*{RT5639_SPO_L_MIXER	, 0xb800},*//* DAC -> SPOLMIX */
@@ -198,6 +198,7 @@ static const u16 rt5639_reg[RT5639_VENDOR_ID2 + 1] = {
 	[RT5639_SV_ZCD1] = 0x0809,
 	[RT5639_VENDOR_ID1] = 0x10ec,
 	[RT5639_VENDOR_ID2] = 0x6231,
+	/* [RT5639_PV_DET_SPK_G] = 0xc000, */
 };
 
 static int rt5639_reset(struct snd_soc_codec *codec)
