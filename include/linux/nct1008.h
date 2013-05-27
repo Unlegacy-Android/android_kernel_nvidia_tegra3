@@ -30,7 +30,7 @@
 
 struct nct1008_data;
 
-enum nct1008_chip { NCT1008, NCT72 };
+enum nct1008_chip { NCT1008, NCT72, NCT218 };
 
 struct nct1008_platform_data {
 	bool supported_hwrev;

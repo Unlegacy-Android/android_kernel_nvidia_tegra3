@@ -101,6 +101,13 @@ struct nct1008_data {
 	struct thermal_zone_device *nct_ext;
 };
 
+static const struct i2c_device_id nct1008_id[] = {
+	{ "nct1008", NCT1008 },
+	{ "nct72", NCT72},
+	{ "nct218", NCT218 },
+	{}
+};
+
 static int conv_period_ms_table[] =
 	{16000, 8000, 4000, 2000, 1000, 500, 250, 125, 63, 32, 16};
 
@@ -742,7 +749,7 @@ static void print_reg(const char *reg_name, struct seq_file *s,
 
 static int dbg_nct1008_show(struct seq_file *s, void *unused)
 {
-	seq_printf(s, "nct1008 nct72 Registers\n");
+	seq_printf(s, "NCT Thermal Sensor Registers\n");
 	seq_printf(s, "------------------\n");
 	print_reg("Local Temp Value    ",     s, 0x00);
 	print_reg("Ext Temp Value Hi   ",     s, 0x01);
@@ -781,12 +788,12 @@ static int nct1008_debuginit(struct nct1008_data *nct)
 {
 	int err = 0;
 	struct dentry *d;
-	if (nct->chip == NCT72)
-		d = debugfs_create_file("nct72", S_IRUGO, NULL,
-				(void *)nct, &debug_fops);
-	else
-		d = debugfs_create_file("nct1008", S_IRUGO, NULL,
-				(void *)nct, &debug_fops);
+	char *name = nct1008_id[nct->chip].name;
+
+	/* create debugfs by selecting chipid */
+	d = debugfs_create_file(name, S_IRUGO, NULL,
+		(void *)nct, &debug_fops);
+
 	if ((!d) || IS_ERR(d)) {
 		dev_err(&nct->client->dev, "Error: %s debugfs_create_file"
 			" returned an error\n", __func__);
@@ -887,6 +894,8 @@ static irqreturn_t nct1008_irq(int irq, void *dev_id)
 static void nct1008_power_control(struct nct1008_data *data, bool is_enable)
 {
 	int ret;
+	char *name = nct1008_id[data->chip].name;
+
 	if (!data->nct_reg) {
 		data->nct_reg = regulator_get(&data->client->dev, "vdd");
 		if (IS_ERR_OR_NULL(data->nct_reg)) {
@@ -910,14 +919,16 @@ static void nct1008_power_control(struct nct1008_data *data, bool is_enable)
 	}
 
 	if (ret < 0)
-		dev_err(&data->client->dev, "Error in %s rail vdd_nct%s, "
+		dev_err(&data->client->dev, "Error in %s rail vdd_%s, "
 			"error %d\n", (is_enable) ? "enabling" : "disabling",
-			(data->chip == NCT72) ? "72" : "1008",
+			name,
 			ret);
 	else
 		dev_info(&data->client->dev, "success in %s rail vdd_nct%s\n",
 			(is_enable) ? "enabling" : "disabling",
-			(data->chip == NCT72) ? "72" : "1008");
+			name);
+
+
 }
 
 static int nct1008_configure_sensor(struct nct1008_data *data)
@@ -1048,8 +1059,9 @@ error:
 
 static int __devinit nct1008_configure_irq(struct nct1008_data *data)
 {
-	data->workqueue = create_singlethread_workqueue((data->chip == NCT72) \
-							? "nct72" : "nct1008");
+	char *name = nct1008_id[data->chip].name;
+
+	data->workqueue = create_singlethread_workqueue(name);
 
 	INIT_WORK(&data->work, nct1008_work_func);
 
@@ -1058,7 +1070,7 @@ static int __devinit nct1008_configure_irq(struct nct1008_data *data)
 	else
 		return request_irq(data->client->irq, nct1008_irq,
 			IRQF_TRIGGER_LOW,
-			(data->chip == NCT72) ? "nct72" : "nct1008",
+			name,
 			data);
 }
 
@@ -1354,16 +1366,11 @@ static const struct dev_pm_ops nct1008_pm_ops = {
 
 #endif
 
-static const struct i2c_device_id nct1008_id[] = {
-	{ "nct1008", NCT1008 },
-	{ "nct72", NCT72},
-	{}
-};
 MODULE_DEVICE_TABLE(i2c, nct1008_id);
 
 static struct i2c_driver nct1008_driver = {
 	.driver = {
-		.name	= "nct1008_nct72",
+		.name	= "nct_thermal",
 #ifdef CONFIG_PM_SLEEP
 		.pm = &nct1008_pm_ops,
 #endif
