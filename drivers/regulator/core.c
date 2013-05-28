@@ -3112,6 +3112,7 @@ struct regulator_dev *regulator_register(struct regulator_desc *regulator_desc,
 	struct regulator_dev *rdev;
 	int ret, i;
 	const char *supply = NULL;
+	bool parent_enable = false;
 
 	if (regulator_desc == NULL)
 		return ERR_PTR(-EINVAL);
@@ -3215,6 +3216,7 @@ struct regulator_dev *regulator_register(struct regulator_desc *regulator_desc,
 			ret = regulator_enable(rdev->supply);
 			if (ret < 0)
 				goto scrub;
+			parent_enable = true;
 		}
 	}
 
@@ -3242,6 +3244,8 @@ out:
 unset_supplies:
 	unset_regulator_supplies(rdev);
 
+	if (rdev->supply && parent_enable)
+		regulator_disable(rdev->supply);
 scrub:
 	if (rdev->supply)
 		regulator_put(rdev->supply);
@@ -3524,6 +3528,8 @@ static int __init regulator_init_complete(void)
 	 * default behaviour in the future.
 	 */
 	list_for_each_entry(rdev, &regulator_list, list) {
+		bool parent_disable = false;
+
 		ops = rdev->desc->ops;
 		c = rdev->constraints;
 
@@ -3552,6 +3558,8 @@ static int __init regulator_init_complete(void)
 			if (ret != 0) {
 				rdev_err(rdev, "couldn't disable: %d\n", ret);
 			}
+			if (ops->is_enabled)
+				parent_disable = true;
 		} else {
 			/* The intention is that in future we will
 			 * assume that full constraints are provided
@@ -3563,6 +3571,12 @@ static int __init regulator_init_complete(void)
 
 unlock:
 		mutex_unlock(&rdev->mutex);
+		if (parent_disable && rdev->supply) {
+			ret = regulator_disable(rdev->supply);
+			if (ret < 0)
+				rdev_err(rdev, "couldn't disable parent: %d\n",
+					ret);
+		}
 	}
 
 	mutex_unlock(&regulator_list_mutex);
