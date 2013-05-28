@@ -75,6 +75,7 @@
 #define AHB_GIZMO_AHB_MEM		0xc
 #define   ENB_FAST_REARBITRATE	BIT(2)
 #define   DONT_SPLIT_AHB_WR     BIT(7)
+#define   WR_WAIT_COMMIT_ON_1K	BIT(8)
 
 #define   RECOVERY_MODE	BIT(31)
 #define   BOOTLOADER_MODE	BIT(30)
@@ -621,6 +622,10 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 
 	val = gizmo_readl(AHB_GIZMO_AHB_MEM);
 	val |= ENB_FAST_REARBITRATE | IMMEDIATE | DONT_SPLIT_AHB_WR;
+
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11 &&
+		tegra_revision == TEGRA_REVISION_A02)
+		val |= WR_WAIT_COMMIT_ON_1K;
 	gizmo_writel(val, AHB_GIZMO_AHB_MEM);
 
 	val = gizmo_readl(AHB_GIZMO_USB);

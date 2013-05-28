@@ -2,6 +2,7 @@
  * arch/arm/mach-tegra/ahb.c
  *
  * Copyright (C) 2011 Google, Inc.
+ * Copyright (C) 2011-2013 NVIDIA CORPORATION. All rights reserved.
  *
  * Author:
  *	Jay Cheng <jacheng@nvidia.com>
@@ -26,6 +27,7 @@
 #include <linux/syscore_ops.h>
 
 #include <mach/iomap.h>
+#include <mach/hardware.h>
 
 #define AHB_ARBITRATION_DISABLE		0x00
 #define AHB_ARBITRATION_PRIORITY_CTRL	0x04
@@ -37,6 +39,7 @@
 #define AHB_GIZMO_AHB_MEM		0x0c
 #define   ENB_FAST_REARBITRATE BIT(2)
 #define   DONT_SPLIT_AHB_WR     BIT(7)
+#define   WR_WAIT_COMMIT_ON_1K	BIT(8)
 
 #define AHB_GIZMO_APB_DMA		0x10
 #define AHB_GIZMO_IDE			0x18
@@ -173,6 +176,10 @@ static int __init tegra_init_ahb_gizmo_settings(void)
 
 	val = gizmo_readl(AHB_GIZMO_AHB_MEM);
 	val |= ENB_FAST_REARBITRATE | IMMEDIATE | DONT_SPLIT_AHB_WR;
+
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11 &&
+		tegra_revision == TEGRA_REVISION_A02)
+		val |= WR_WAIT_COMMIT_ON_1K;
 	gizmo_writel(val, AHB_GIZMO_AHB_MEM);
 
 	val = gizmo_readl(AHB_GIZMO_USB);
