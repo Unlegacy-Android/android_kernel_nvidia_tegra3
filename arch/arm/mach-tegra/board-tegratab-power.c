@@ -277,7 +277,7 @@ PALMAS_REGS_PDATA(smps7, 1350,  1350, NULL, 0, 0, 1, NORMAL,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps8, 1800,  1800, NULL, 1, 1, 1, NORMAL,
 	0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(smps9, 2900,  2900, NULL, 1, 0, 1, NORMAL,
+PALMAS_REGS_PDATA(smps9, 2900,  2900, NULL, 0, 0, 1, NORMAL,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps10, 5000,  5000, NULL, 0, 0, 0, 0,
 	0, 0, 0, 0, 0);
@@ -714,6 +714,7 @@ int __init tegratab_regulator_init(void)
 	tegratab_bq2419x_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
 	i2c_register_board_info(0, tegratab_bq2419x_boardinfo, 1);
 
+	regulator_has_full_constraints();
 	platform_device_register(&tegratab_pda_power_device);
 
 	return 0;
