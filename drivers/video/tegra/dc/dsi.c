@@ -87,6 +87,22 @@
 #define DSI_LP_OP_READ			0x2
 
 #define DSI_HOST_IDLE_PERIOD		1000
+
+#define DSI_PAD_CONTROL_0_VS1_POWERDOWN_SET		\
+	(DSI_PAD_CONTROL_0_VS1_PAD_PDIO(0xf) |		\
+	DSI_PAD_CONTROL_0_VS1_PAD_PDIO_CLK		\
+		(TEGRA_DSI_PAD_DISABLE) |		\
+	DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_ENAB(0xf) |	\
+	DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_CLK_ENAB	\
+		(TEGRA_DSI_PAD_DISABLE))
+
+#define DSI_PAD_CONTROL_POWERDOWN_SET			\
+	(DSI_PAD_CONTROL_PAD_PDIO(0x3) |		\
+	DSI_PAD_CONTROL_PAD_PDIO_CLK			\
+		(TEGRA_DSI_PAD_DISABLE) |		\
+	DSI_PAD_CONTROL_PAD_PULLDN_ENAB			\
+		(TEGRA_DSI_PAD_DISABLE))
+
 static atomic_t dsi_syncpt_rst = ATOMIC_INIT(0);
 
 static bool enable_read_debug;
@@ -1946,25 +1962,13 @@ static void tegra_dsi_pad_disable(struct tegra_dc_dsi_data *dsi)
 
 	if (dsi->info.controller_vs == DSI_VS_1) {
 		val = tegra_dsi_readl(dsi, DSI_PAD_CONTROL_0_VS1);
-		val &= ~(DSI_PAD_CONTROL_0_VS1_PAD_PDIO(0xf) |
-			DSI_PAD_CONTROL_0_VS1_PAD_PDIO_CLK(0x1) |
-			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_ENAB(0xf) |
-			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_CLK_ENAB(0x1));
-		val |= DSI_PAD_CONTROL_0_VS1_PAD_PDIO(0xf) |
-			DSI_PAD_CONTROL_0_VS1_PAD_PDIO_CLK
-						(TEGRA_DSI_PAD_DISABLE) |
-			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_ENAB(0xf) |
-			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_CLK_ENAB
-						(TEGRA_DSI_PAD_DISABLE);
+		val &= ~DSI_PAD_CONTROL_0_VS1_POWERDOWN_SET;
+		val |= DSI_PAD_CONTROL_0_VS1_POWERDOWN_SET;
 		tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL_0_VS1);
 	} else {
 		val = tegra_dsi_readl(dsi, DSI_PAD_CONTROL);
-		val &= ~(DSI_PAD_CONTROL_PAD_PDIO(0x3) |
-			DSI_PAD_CONTROL_PAD_PDIO_CLK(0x1) |
-			DSI_PAD_CONTROL_PAD_PULLDN_ENAB(0x1));
-		val |= DSI_PAD_CONTROL_PAD_PDIO(0x3) |
-			DSI_PAD_CONTROL_PAD_PDIO_CLK(TEGRA_DSI_PAD_DISABLE) |
-			DSI_PAD_CONTROL_PAD_PULLDN_ENAB(TEGRA_DSI_PAD_DISABLE);
+		val &= ~DSI_PAD_CONTROL_POWERDOWN_SET;
+		val |= DSI_PAD_CONTROL_POWERDOWN_SET;
 		tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL);
 	}
 }
@@ -1975,10 +1979,7 @@ static void tegra_dsi_pad_enable(struct tegra_dc_dsi_data *dsi)
 
 	if (dsi->info.controller_vs == DSI_VS_1) {
 		val = tegra_dsi_readl(dsi, DSI_PAD_CONTROL_0_VS1);
-		val &= ~(DSI_PAD_CONTROL_0_VS1_PAD_PDIO(0xf) |
-			DSI_PAD_CONTROL_0_VS1_PAD_PDIO_CLK(0x1) |
-			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_ENAB(0xf) |
-			DSI_PAD_CONTROL_0_VS1_PAD_PULLDN_CLK_ENAB(0x1));
+		val &= ~DSI_PAD_CONTROL_0_VS1_POWERDOWN_SET;
 		val |= DSI_PAD_CONTROL_0_VS1_PAD_PDIO(TEGRA_DSI_PAD_ENABLE) |
 			DSI_PAD_CONTROL_0_VS1_PAD_PDIO_CLK(
 						TEGRA_DSI_PAD_ENABLE) |
@@ -1989,9 +1990,7 @@ static void tegra_dsi_pad_enable(struct tegra_dc_dsi_data *dsi)
 		tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL_0_VS1);
 	} else {
 		val = tegra_dsi_readl(dsi, DSI_PAD_CONTROL);
-		val &= ~(DSI_PAD_CONTROL_PAD_PDIO(0x3) |
-			DSI_PAD_CONTROL_PAD_PDIO_CLK(0x1) |
-			DSI_PAD_CONTROL_PAD_PULLDN_ENAB(0x1));
+		val &= ~DSI_PAD_CONTROL_POWERDOWN_SET;
 		val |= DSI_PAD_CONTROL_PAD_PDIO(TEGRA_DSI_PAD_ENABLE) |
 			DSI_PAD_CONTROL_PAD_PDIO_CLK(TEGRA_DSI_PAD_ENABLE) |
 			DSI_PAD_CONTROL_PAD_PULLDN_ENAB(TEGRA_DSI_PAD_ENABLE);
@@ -3907,11 +3906,7 @@ static int _tegra_dsi_host_suspend(struct tegra_dc *dc,
 			}
 		}
 
-		val = tegra_dsi_readl(dsi, DSI_PAD_CONTROL);
-		val |= DSI_PAD_CONTROL_PAD_PDIO(0x3) |
-				DSI_PAD_CONTROL_PAD_PDIO_CLK(0x1) |
-				DSI_PAD_CONTROL_PAD_PULLDN_ENAB(0x1);
-		tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL);
+		tegra_dsi_pad_disable(dsi);
 
 		/* Suspend core-logic */
 		val = DSI_POWER_CONTROL_LEG_DSI_ENABLE(TEGRA_DSI_DISABLE);
@@ -3941,7 +3936,6 @@ static int _tegra_dsi_host_resume(struct tegra_dc *dc,
 					struct tegra_dc_dsi_data *dsi,
 					u32 suspend_aggr)
 {
-	u32 val;
 	int err;
 
 	switch (dsi->info.suspend_aggr) {
@@ -3968,11 +3962,7 @@ static int _tegra_dsi_host_resume(struct tegra_dc *dc,
 				goto fail;
 			}
 
-			val = tegra_dsi_readl(dsi, DSI_PAD_CONTROL);
-			val &= ~(DSI_PAD_CONTROL_PAD_PDIO(0x3) |
-				DSI_PAD_CONTROL_PAD_PDIO_CLK(0x1) |
-				DSI_PAD_CONTROL_PAD_PULLDN_ENAB(0x1));
-			tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL);
+			tegra_dsi_pad_enable(dsi);
 
 			if (tegra_dsi_exit_ulpm(dsi) < 0) {
 				dev_err(&dc->ndev->dev,
@@ -4063,10 +4053,7 @@ static int tegra_dsi_deep_sleep(struct tegra_dc *dc,
 		}
 	}
 
-	val = DSI_PAD_CONTROL_PAD_PDIO(0x3) |
-		DSI_PAD_CONTROL_PAD_PDIO_CLK(0x1) |
-		DSI_PAD_CONTROL_PAD_PULLDN_ENAB(TEGRA_DSI_ENABLE);
-	tegra_dsi_writel(dsi, val, DSI_PAD_CONTROL);
+	tegra_dsi_pad_disable(dsi);
 
 	/* Suspend core-logic */
 	val = DSI_POWER_CONTROL_LEG_DSI_ENABLE(TEGRA_DSI_DISABLE);
