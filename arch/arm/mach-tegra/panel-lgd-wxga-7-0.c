@@ -52,6 +52,7 @@ static bool reg_requested;
 static struct platform_device *disp_device;
 static struct regulator *avdd_lcd_3v3;
 static struct regulator *vdd_lcd_bl_en;
+static struct regulator *dvdd_lcd_1v8;
 
 static struct tegra_dsi_cmd dsi_lgd_wxga_7_0_init_cmd[] = {
 	DSI_CMD_SHORT(0x15, 0x01, 0x0),
@@ -138,6 +139,14 @@ static int tegratab_dsi_regulator_get(struct device *dev)
 		vdd_lcd_bl_en = NULL;
 		goto fail;
 	}
+
+	dvdd_lcd_1v8 = regulator_get(dev, "dvdd_lcd");
+	if (IS_ERR_OR_NULL(dvdd_lcd_1v8)) {
+		pr_err("dvdd_lcd_1v8 regulator get failed\n");
+		err = PTR_ERR(dvdd_lcd_1v8);
+		dvdd_lcd_1v8 = NULL;
+		goto fail;
+	}
 	reg_requested = true;
 	return 0;
 fail:
@@ -179,6 +188,16 @@ static int dsi_lgd_wxga_7_0_enable(struct device *dev)
 	}
 
 	msleep(100);
+
+	if (dvdd_lcd_1v8) {
+		err = regulator_enable(dvdd_lcd_1v8);
+		if (err < 0) {
+			pr_err("dvdd_lcd_1v8 regulator enable failed\n");
+			goto fail;
+		}
+	}
+	msleep(100);
+
 #if DSI_PANEL_RESET
 /*
  * Nothing is requested.
@@ -192,6 +211,9 @@ fail:
 
 static int dsi_lgd_wxga_7_0_disable(void)
 {
+	if (dvdd_lcd_1v8)
+		regulator_disable(dvdd_lcd_1v8);
+
 	if (vdd_lcd_bl_en)
 		regulator_disable(vdd_lcd_bl_en);
 
