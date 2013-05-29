@@ -892,6 +892,18 @@ static struct soctherm_platform_data pluto_soctherm_data = {
 		},
 		[THROTTLE_OC4] = {
 			.throt_mode = BRIEF,
+			/*
+			 * Pluto is using the max77665 INTB pin to initiate
+			 * the AP throttling, INTB pin will get de-asserted
+			 * immediately after reading IRQ src; so the
+			 * throttling period is too short for max77665 to reset
+			 * OC protection timer, and causing the battery power
+			 * removed.
+			 *
+			 * We can set the throttling period to 3mS to avoid the
+			 * above failing case.
+			 */
+			.period = 3000,
 			.polarity = 1,
 			.intr = true,
 			.devs = {
