@@ -89,21 +89,22 @@ static int depl_rbat(struct depl_driver *drv)
 	unsigned int capacity;
 	int rbat;
 
+	rbat = drv->pdata->r_const;
 	capacity = depl_psy_capacity(drv);
 	p = drv->pdata->rbat_lut;
+	if (!p)
+		return rbat;
 
 	while (p->capacity > capacity)
 		p++;
 
 	if (p == drv->pdata->rbat_lut)
-		return p->rbat;
+		return rbat + p->rbat;
 
 	q = p - 1;
 
-	rbat = depl_interpolate(capacity, p->capacity, p->rbat,
+	rbat += depl_interpolate(capacity, p->capacity, p->rbat,
 			q->capacity, q->rbat);
-	rbat += drv->pdata->r_const;
-
 	pr_debug("capacity : %u\n", capacity);
 	pr_debug("rbat     : %d\n", rbat);
 
