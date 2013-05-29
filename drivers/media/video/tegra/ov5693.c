@@ -2634,7 +2634,6 @@ static int ov5693_power_off(struct ov5693_info *info)
 		if (0 > err)
 			return err;
 		info->power_on = false;
-		ov5693_gpio_pwrdn(info, 1);
 	} else {
 		dev_err(&info->i2c_client->dev,
 			"%s ERR: has no power_off function\n", __func__);
@@ -2643,7 +2642,7 @@ static int ov5693_power_off(struct ov5693_info *info)
 	return err;
 }
 
-static int ov5693_power_on(struct ov5693_info *info, bool standby)
+static int ov5693_power_on(struct ov5693_info *info)
 {
 	struct ov5693_power_rail *pw = &info->regulators;
 	int err;
@@ -2656,8 +2655,6 @@ static int ov5693_power_on(struct ov5693_info *info, bool standby)
 		if (0 > err)
 			return err;
 		info->power_on = true;
-		ov5693_gpio_pwrdn(info, standby ? 1 : 0);
-		msleep(100);
 	} else {
 		dev_err(&info->i2c_client->dev,
 			"%s ERR: has no power_on function\n", __func__);
@@ -2687,12 +2684,13 @@ static int ov5693_pm_wr(struct ov5693_info *info, int pwr)
 		break;
 
 	case NVC_PWR_STDBY:
-		err = ov5693_power_on(info, true);
+		err = ov5693_power_on(info);
+		ov5693_gpio_pwrdn(info, 1);
 		break;
 
 	case NVC_PWR_COMM:
 	case NVC_PWR_ON:
-		err = ov5693_power_on(info, false);
+		err = ov5693_power_on(info);
 		break;
 
 	default:
@@ -2755,8 +2753,6 @@ static void ov5693_pm_init(struct ov5693_info *info)
 	struct ov5693_power_rail *pw = &info->regulators;
 
 	ov5693_gpio_init(info);
-
-	ov5693_regulator_get(info, &pw->dvdd, "dvdd");
 
 	ov5693_regulator_get(info, &pw->avdd, "avdd");
 
@@ -3083,7 +3079,7 @@ static int ov5693_open(struct inode *inode, struct file *file)
 	file->private_data = info;
 	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
 
-	err = ov5693_power_on(info, false);
+	err = ov5693_power_on(info);
 	return err;
 }
 
@@ -3140,7 +3136,7 @@ static int ov5693_platform_power_on(struct ov5693_power_rail *pw)
 			goto ov5693_vcm_fail;
 	}
 
-	ov5693_gpio_wr(info, OV5693_GPIO_TYPE_PWRDN, 0);
+	ov5693_gpio_wr(info, OV5693_GPIO_TYPE_PWRDN, 1);
 	usleep_range(10, 20);
 
 	err = regulator_enable(pw->avdd);
@@ -3152,7 +3148,7 @@ static int ov5693_platform_power_on(struct ov5693_power_rail *pw)
 		goto ov5693_iovdd_fail;
 
 	usleep_range(1, 2);
-	ov5693_gpio_wr(info, OV5693_GPIO_TYPE_PWRDN, 1);
+	ov5693_gpio_wr(info, OV5693_GPIO_TYPE_PWRDN, 0);
 
 	usleep_range(300, 310);
 
@@ -3176,7 +3172,7 @@ static int ov5693_platform_power_off(struct ov5693_power_rail *pw)
 						regulators);
 
 	usleep_range(21, 25);
-	ov5693_gpio_wr(info, OV5693_GPIO_TYPE_PWRDN, 0);
+	ov5693_gpio_wr(info, OV5693_GPIO_TYPE_PWRDN, 1);
 	usleep_range(1, 2);
 
 	regulator_disable(pw->dovdd);
