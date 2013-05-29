@@ -223,6 +223,14 @@ static __initdata struct tegra_pingroup_config manual_config_pinmux[] = {
 	DEFAULT_PINMUX(ULPI_DATA7,    ULPI,        NORMAL,    NORMAL,   INPUT),
 };
 
+static __initdata struct tegra_pingroup_config dvt_a00_manual_config_pinmux[] = {
+	GPIO_PINMUX(KB_COL1, PULL_UP, NORMAL, INPUT, DISABLE), /* hall sensor input */
+};
+
+static struct gpio_init_pin_info dvt_a00_manual_gpio_mode[] = {
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PQ1, true, 0), /* hall sensor input */
+};
+
 static void __init tegratab_gpio_init_configure(void)
 {
 	int len;
@@ -245,6 +253,17 @@ static void __init tegratab_gpio_init_configure(void)
 			pins_info->is_input, pins_info->value);
 		pins_info++;
 	}
+
+	if (board_info.board_id == BOARD_P1640) {
+		len = ARRAY_SIZE(dvt_a00_manual_gpio_mode);
+		pins_info = dvt_a00_manual_gpio_mode;
+		for (i = 0; i < len; ++i) {
+			tegra_gpio_init_configure(pins_info->gpio_nr,
+				pins_info->is_input, pins_info->value);
+			pins_info++;
+		}
+	}
+
 }
 
 int __init tegratab_pinmux_init(void)
@@ -262,6 +281,8 @@ int __init tegratab_pinmux_init(void)
 					ARRAY_SIZE(tegratab_ffd_pinmux_common));
 		tegra_pinmux_config_table(ffd_unused_pins_lowpower,
 					ARRAY_SIZE(ffd_unused_pins_lowpower));
+		tegra_pinmux_config_table(dvt_a00_manual_config_pinmux,
+					ARRAY_SIZE(dvt_a00_manual_config_pinmux));
 	} else { /* ERS */
 		tegra_pinmux_config_table(tegratab_pinmux_common,
 					ARRAY_SIZE(tegratab_pinmux_common));
