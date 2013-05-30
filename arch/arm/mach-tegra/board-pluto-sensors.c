@@ -227,6 +227,10 @@ static struct max77665_charger_cable maxim_cable[] = {
 	},
 };
 
+static struct regulator_consumer_supply max77665_charger_supply[] = {
+	REGULATOR_SUPPLY("usb_bat_chg", "tegra-udc.0"),
+};
+
 static struct max77665_charger_plat_data max77665_charger = {
 	.fast_chg_cc = 2000, /* fast charger current*/
 	.term_volt = 4200, /* charger termination voltage */
@@ -236,6 +240,8 @@ static struct max77665_charger_plat_data max77665_charger = {
 	.extcon_name = "tegra-udc",
 	.update_status = max17042_update_status,
 	.is_battery_present = false, /* false as default */
+	.consumer_supplies = max77665_charger_supply,
+	.num_consumer_supplies = ARRAY_SIZE(max77665_charger_supply),
 };
 
 static struct max77665_muic_platform_data max77665_muic = {
