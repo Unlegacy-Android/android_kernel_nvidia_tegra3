@@ -7,7 +7,7 @@
  *  Copyright (C) 2009 Palm
  *  All Rights Reserved
  *
- *  Copyright (C) 2010-2011 NVIDIA Corporation
+ *  Copyright (C) 2010-2013 NVIDIA Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -100,7 +100,15 @@ static void __init setup_core_count(void)
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	u32 l2ctlr;
 
-	unsigned int cpuid = (read_cpuid_id() >> 4) & 0xFFF;
+	unsigned int cpuid;
+
+	/* T40DC is a special case */
+	if (tegra_sku_id == 0x20) {
+		number_of_cores = 2;
+		return;
+	}
+
+	cpuid = (read_cpuid_id() >> 4) & 0xFFF;
 
 	/* Cortex-A15? */
 	if (cpuid == 0xC0F) {
