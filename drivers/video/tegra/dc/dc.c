@@ -2037,6 +2037,9 @@ static void _tegra_dc_controller_disable(struct tegra_dc *dc)
 		/* disable windows */
 		w->flags &= ~TEGRA_WIN_FLAG_ENABLED;
 
+		/* set window physical address to invalid*/
+		w->phys_addr = 0;
+
 		/* flush any pending syncpt waits */
 		while (dc->syncpt[i].min < dc->syncpt[i].max) {
 			trace_display_syncpt_flush(dc, dc->syncpt[i].id,
