@@ -32,7 +32,7 @@ struct freqcap {
 	unsigned int emc;
 };
 
-static unsigned int gpu_high_threshold = 500;
+static unsigned int gpu_high_threshold = 600;
 static unsigned int gpu_window = 80;
 static unsigned int gain_factor = 130;
 static unsigned int online_cpu_count;
