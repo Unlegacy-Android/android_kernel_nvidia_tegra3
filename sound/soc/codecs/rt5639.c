@@ -4,6 +4,8 @@
  * Copyright (c) 2011-2013 REALTEK SEMICONDUCTOR CORP. All rights reserved.
  * Author: Johnny Hsu <johnnyhsu@realtek.com>
  *
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -2878,7 +2880,7 @@ static ssize_t rt5639_codec_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(codec_reg, 0666, rt5639_codec_show, rt5639_codec_store);
+static DEVICE_ATTR(codec_reg, 0644, rt5639_codec_show, rt5639_codec_store);
 
 static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 			enum snd_soc_bias_level level)
