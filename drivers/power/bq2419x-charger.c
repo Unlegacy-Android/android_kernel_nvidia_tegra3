@@ -33,7 +33,6 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/power/bq2419x-charger.h>
-#include <linux/power_supply.h>
 #include <linux/regmap.h>
 #include <linux/regmap.h>
 #include <linux/regulator/driver.h>
@@ -66,14 +65,8 @@ struct bq2419x_chip {
 	int				wdt_refresh_timeout;
 	int				wdt_time_sec;
 
-	struct power_supply		ac;
-	struct power_supply		usb;
 	struct mutex			mutex;
-	int				ac_online;
-	int				usb_online;
 	int				in_current_limit;
-	unsigned			use_mains:1;
-	unsigned			use_usb:1;
 	int				status;
 	int				rtc_alarm_time;
 	void				(*update_status)(int, int);
@@ -95,10 +88,6 @@ struct bq2419x_chip {
 	int				chg_restart_timeout;
 	int				chg_restart_time;
 	int				chg_enable;
-};
-
-static enum power_supply_property bq2419x_psy_props[] = {
-	POWER_SUPPLY_PROP_ONLINE,
 };
 
 static int current_to_reg(const unsigned int *tbl,
@@ -195,33 +184,6 @@ static struct regulator_ops bq2419x_vbus_ops = {
 	.enable_time	= bq2419x_vbus_regulator_enable_time,
 };
 
-static int bq2419x_ac_get_property(struct power_supply *psy,
-	enum power_supply_property psp, union power_supply_propval *val)
-{
-	struct bq2419x_chip *bq2419x;
-
-	bq2419x = container_of(psy, struct bq2419x_chip, ac);
-	if (psp == POWER_SUPPLY_PROP_ONLINE)
-		val->intval = bq2419x->ac_online;
-	else
-		return -EINVAL;
-	return 0;
-}
-
-static int bq2419x_usb_get_property(struct power_supply *psy,
-		enum power_supply_property psp,
-		union power_supply_propval *val)
-{
-	struct bq2419x_chip *bq2419x;
-
-	bq2419x = container_of(psy, struct bq2419x_chip, usb);
-	if (psp == POWER_SUPPLY_PROP_ONLINE)
-		val->intval = bq2419x->usb_online;
-	else
-		return -EINVAL;
-	return 0;
-}
-
 static int bq2419x_init(struct bq2419x_chip *bq2419x)
 {
 	int val = 0;
@@ -293,8 +255,6 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 
 	dev_info(bq_charger->dev, "Setting charging current %d\n", max_uA/1000);
 	msleep(200);
-	bq_charger->usb_online = 0;
-	bq_charger->ac_online = 0;
 	bq_charger->status = 0;
 
 	ret = bq2419x_charger_enable(bq_charger);
@@ -314,38 +274,26 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 	bq_charger->in_current_limit = max_uA/1000;
 	if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_UNKNOWN) {
 		bq_charger->status = 0;
-		bq_charger->usb_online = 0;
 		bq_charger->in_current_limit = 500;
 		ret = bq2419x_init(bq_charger);
 		if (ret < 0)
 			goto error;
 		if (bq_charger->update_status)
-			bq_charger->update_status
-				(bq_charger->status, 0);
+			bq_charger->update_status(bq_charger->status, 0);
 	} else if (bq_charger->in_current_limit == 500) {
 		bq_charger->status = 1;
-		bq_charger->usb_online = 1;
 		ret = bq2419x_init(bq_charger);
 		if (ret < 0)
 			goto error;
 		if (bq_charger->update_status)
-			bq_charger->update_status
-				(bq_charger->status, 2);
+			bq_charger->update_status(bq_charger->status, 0);
 	} else {
 		bq_charger->status = 1;
-		bq_charger->ac_online = 1;
 		ret = bq2419x_init(bq_charger);
 		if (ret < 0)
 			goto error;
 		if (bq_charger->update_status)
-			bq_charger->update_status
-				(bq_charger->status, 1);
-	}
-	if (ret == 0) {
-		if (bq_charger->use_mains)
-			power_supply_changed(&bq_charger->ac);
-		if (bq_charger->use_usb)
-			power_supply_changed(&bq_charger->usb);
+			bq_charger->update_status(bq_charger->status, 0);
 	}
 	return 0;
 error:
@@ -475,7 +423,6 @@ static void bq2419x_work_thread(struct kthread_work *work)
 			struct bq2419x_chip, bq_wdt_work);
 	int ret;
 	int val = 0;
-	int type;
 
 	for (;;) {
 		if (bq2419x->stop_thread)
@@ -497,13 +444,12 @@ static void bq2419x_work_thread(struct kthread_work *work)
 				/*
 				* Update Charging status based on STAT register
 				*/
-				type = bq2419x->ac_online ? 1 : 2;
 				if ((val & BQ2419x_CHRG_STATE_MASK) ==
 					BQ2419x_CHRG_STATE_NOTCHARGING) {
 					bq2419x->status = 0;
 					if (bq2419x->update_status)
 						bq2419x->update_status
-							(bq2419x->status, type);
+							(bq2419x->status, 0);
 					bq2419x->chg_restart_timeout =
 						bq2419x->chg_restart_time /
 						bq2419x->wdt_refresh_timeout;
@@ -511,7 +457,7 @@ static void bq2419x_work_thread(struct kthread_work *work)
 					bq2419x->status = 1;
 					if (bq2419x->update_status)
 						bq2419x->update_status
-							(bq2419x->status, type);
+							(bq2419x->status, 0);
 				}
 
 			}
@@ -557,7 +503,6 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 	int ret;
 	unsigned int val;
 	int check_chg_state = 0;
-	int type;
 
 	ret = regmap_read(bq2419x->regmap, BQ2419X_FAULT_REG, &val);
 	if (ret < 0) {
@@ -646,8 +591,7 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		dev_info(bq2419x->dev, "Charging completed\n");
 		bq2419x->status = 4;
 		if (bq2419x->update_status)
-			bq2419x->update_status
-				(bq2419x->status, 2);
+			bq2419x->update_status(bq2419x->status, 0);
 	}
 
 	/*
@@ -656,11 +600,9 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 	if (check_chg_state) {
 		if ((val & BQ2419x_CHRG_STATE_MASK) ==
 				BQ2419x_CHRG_STATE_NOTCHARGING) {
-			type = bq2419x->ac_online ? 1 : 2;
 			bq2419x->status = 0;
 			if (bq2419x->update_status)
-				bq2419x->update_status
-					(bq2419x->status, type);
+				bq2419x->update_status(bq2419x->status, 0);
 		}
 	}
 
@@ -786,47 +728,6 @@ scrub:
 	return ret;
 }
 
-static int bq2419x_psy_init(struct bq2419x_chip *bq2419x)
-{
-	int ret = 0;
-
-	bq2419x->ac_online = 0;
-	bq2419x->usb_online = 0;
-	bq2419x->status = 0;
-	if (bq2419x->use_mains) {
-		bq2419x->ac.name		= "bq2419x-ac";
-		bq2419x->ac.type		= POWER_SUPPLY_TYPE_MAINS;
-		bq2419x->ac.get_property	= bq2419x_ac_get_property;
-		bq2419x->ac.properties		= bq2419x_psy_props;
-		bq2419x->ac.num_properties	= ARRAY_SIZE(bq2419x_psy_props);
-		ret = power_supply_register(bq2419x->dev, &bq2419x->ac);
-		if (ret < 0) {
-			dev_err(bq2419x->dev,
-				"AC power supply register failed %d\n", ret);
-			return ret;
-		}
-	}
-
-	if (bq2419x->use_usb) {
-		bq2419x->usb.name		= "bq2419x-usb";
-		bq2419x->usb.type		= POWER_SUPPLY_TYPE_USB;
-		bq2419x->usb.get_property	= bq2419x_usb_get_property;
-		bq2419x->usb.properties		= bq2419x_psy_props;
-		bq2419x->usb.num_properties	= ARRAY_SIZE(bq2419x_psy_props);
-		ret = power_supply_register(bq2419x->dev, &bq2419x->usb);
-		if (ret) {
-			dev_err(bq2419x->dev,
-				"usb power supply register failed %d\n", ret);
-			goto scrub;
-		}
-	}
-	return ret;
-scrub:
-	if (bq2419x->use_mains)
-		power_supply_unregister(&bq2419x->ac);
-	return ret;
-}
-
 static int bq2419x_show_chip_version(struct bq2419x_chip *bq2419x)
 {
 	int ret;
@@ -905,8 +806,6 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 	bq2419x->dev = &client->dev;
 
 	if (pdata->bcharger_pdata) {
-		bq2419x->use_usb	= pdata->bcharger_pdata->use_usb;
-		bq2419x->use_mains	= pdata->bcharger_pdata->use_mains;
 		bq2419x->update_status	= pdata->bcharger_pdata->update_status;
 		bq2419x->rtc_alarm_time	= pdata->bcharger_pdata->rtc_alarm_time;
 		bq2419x->wdt_time_sec	= pdata->bcharger_pdata->wdt_timeout;
@@ -945,18 +844,11 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 		return ret;
 	}
 
-	ret = bq2419x_psy_init(bq2419x);
-	if (ret < 0) {
-		dev_err(&client->dev,
-			"Charger power supply init failed %d\n", ret);
-		goto scrub_chg_reg;
-	}
-
 	ret = bq2419x_init_vbus_regulator(bq2419x, pdata);
 	if (ret < 0) {
 		dev_err(&client->dev,
 			"VBUS regualtor init failed %d\n", ret);
-		goto scrub_psy;
+		goto scrub_chg_reg;
 	}
 
 	init_kthread_worker(&bq2419x->bq_kworker);
@@ -977,13 +869,13 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 	ret = bq2419x_watchdog_init(bq2419x, bq2419x->wdt_time_sec, "PROBE");
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "BQWDT init failed %d\n", ret);
-		return ret;
+		goto scrub_kthread;
 	}
 
 	ret = bq2419x_fault_clear_sts(bq2419x);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "fault clear status failed %d\n", ret);
-		return ret;
+		goto scrub_kthread;
 	}
 
 	ret = request_threaded_irq(bq2419x->irq, NULL,
@@ -1009,11 +901,6 @@ scrub_kthread:
 	kthread_stop(bq2419x->bq_kworker_task);
 scrub_vbus_reg:
 	regulator_unregister(bq2419x->vbus_rdev);
-scrub_psy:
-	if (bq2419x->use_usb)
-		power_supply_unregister(&bq2419x->usb);
-	if (bq2419x->use_mains)
-		power_supply_unregister(&bq2419x->ac);
 scrub_chg_reg:
 	regulator_unregister(bq2419x->chg_rdev);
 	mutex_destroy(&bq2419x->mutex);
@@ -1029,10 +916,6 @@ static int __devexit bq2419x_remove(struct i2c_client *client)
 	flush_kthread_worker(&bq2419x->bq_kworker);
 	kthread_stop(bq2419x->bq_kworker_task);
 	regulator_unregister(bq2419x->vbus_rdev);
-	if (bq2419x->use_usb)
-		power_supply_unregister(&bq2419x->usb);
-	if (bq2419x->use_mains)
-		power_supply_unregister(&bq2419x->ac);
 	regulator_unregister(bq2419x->chg_rdev);
 	mutex_destroy(&bq2419x->mutex);
 	return 0;
