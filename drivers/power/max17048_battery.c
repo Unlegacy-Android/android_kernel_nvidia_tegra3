@@ -61,13 +61,8 @@ struct max17048_chip {
 	struct i2c_client		*client;
 	struct delayed_work		work;
 	struct power_supply		battery;
-	struct power_supply		ac;
-	struct power_supply		usb;
 	struct max17048_platform_data *pdata;
 
-	/* State Of Connect */
-	int ac_online;
-	int usb_online;
 	/* battery voltage */
 	int vcell;
 	/* battery capacity */
@@ -81,8 +76,6 @@ struct max17048_chip {
 
 	int lasttime_soc;
 	int lasttime_status;
-	int use_usb:1;
-	int use_ac:1;
 	int shutdown_complete;
 	int charge_complete;
 	struct mutex mutex;
@@ -216,36 +209,6 @@ static int max17048_get_property(struct power_supply *psy,
 	return 0;
 }
 
-static int max17048_ac_get_property(struct power_supply *psy,
-				enum power_supply_property psp,
-				union power_supply_propval *val)
-{
-	struct max17048_chip *chip = container_of(psy,
-				struct max17048_chip, ac);
-
-	if (psp == POWER_SUPPLY_PROP_ONLINE)
-		val->intval = chip->ac_online;
-	else
-		return -EINVAL;
-
-	return 0;
-}
-
-static int max17048_usb_get_property(struct power_supply *psy,
-				enum power_supply_property psp,
-				union power_supply_propval *val)
-{
-	struct max17048_chip *chip = container_of(psy,
-					struct max17048_chip, usb);
-
-	if (psp == POWER_SUPPLY_PROP_ONLINE)
-		val->intval = chip->usb_online;
-	else
-		return -EINVAL;
-
-	return 0;
-}
-
 static void max17048_get_vcell(struct i2c_client *client)
 {
 	struct max17048_chip *chip = i2c_get_clientdata(client);
@@ -321,15 +284,9 @@ void max17048_battery_status(int status,
 {
 	if (!max17048_data)
 		return;
-	max17048_data->ac_online = 0;
-	max17048_data->usb_online = 0;
 
 	if (status == progress) {
 		max17048_data->status = POWER_SUPPLY_STATUS_CHARGING;
-		if (chrg_type == AC)
-			max17048_data->ac_online = 1;
-		else if (chrg_type == USB)
-			max17048_data->usb_online = 1;
 	} else if (status == 4) {
 		max17048_data->charge_complete = 1;
 		max17048_data->soc = MAX17048_BATTERY_FULL;
@@ -343,10 +300,6 @@ void max17048_battery_status(int status,
 	power_supply_changed(&max17048_data->battery);
 
 	max17048_data->lasttime_status = max17048_data->status;
-	if (max17048_data->use_usb)
-		power_supply_changed(&max17048_data->usb);
-	if (max17048_data->use_ac)
-		power_supply_changed(&max17048_data->ac);
 }
 EXPORT_SYMBOL_GPL(max17048_battery_status);
 
@@ -357,14 +310,6 @@ static enum power_supply_property max17048_battery_props[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
-};
-
-static enum power_supply_property max17048_ac_props[] = {
-	POWER_SUPPLY_PROP_ONLINE,
-};
-
-static enum power_supply_property max17048_usb_props[] = {
-	POWER_SUPPLY_PROP_ONLINE,
 };
 
 static int max17048_write_rcomp_seg(struct i2c_client *client,
@@ -719,9 +664,6 @@ static struct max17048_platform_data *max17048_parse_dt(struct device *dev)
 	for (i = 0; i < MAX17048_DATA_SIZE; i++)
 		model_data->data_tbl[i] = val_array[i];
 
-	pdata->use_ac = of_property_read_bool(np, "use-ac");
-	pdata->use_usb = of_property_read_bool(np, "use-usb");
-
 	return pdata;
 }
 #else
@@ -755,8 +697,6 @@ static int __devinit max17048_probe(struct i2c_client *client,
 			return -ENODATA;
 	}
 
-	chip->ac_online = 0;
-	chip->usb_online = 0;
 	max17048_data = chip;
 	mutex_init(&chip->mutex);
 	chip->shutdown_complete = 0;
@@ -788,34 +728,6 @@ static int __devinit max17048_probe(struct i2c_client *client,
 	if (ret) {
 		dev_err(&client->dev, "failed: power supply register\n");
 		goto error2;
-	}
-
-	if (chip->pdata->use_ac) {
-		chip->ac.name		= "maxim-ac";
-		chip->ac.type		= POWER_SUPPLY_TYPE_MAINS;
-		chip->ac.get_property	= max17048_ac_get_property;
-		chip->ac.properties	= max17048_ac_props;
-		chip->ac.num_properties	= ARRAY_SIZE(max17048_ac_props);
-
-		ret = power_supply_register(&client->dev, &chip->ac);
-		if (ret) {
-			dev_err(&client->dev, "failed: power supply register\n");
-			goto error1;
-		}
-	}
-
-	if (chip->pdata->use_usb) {
-		chip->usb.name		= "maxim-usb";
-		chip->usb.type		= POWER_SUPPLY_TYPE_USB;
-		chip->usb.get_property	= max17048_usb_get_property;
-		chip->usb.properties	= max17048_usb_props;
-		chip->usb.num_properties = ARRAY_SIZE(max17048_usb_props);
-
-		ret = power_supply_register(&client->dev, &chip->usb);
-		if (ret) {
-			dev_err(&client->dev, "failed: power supply register\n");
-			goto error;
-		}
 	}
 
 	INIT_DELAYED_WORK_DEFERRABLE(&chip->work, max17048_work);
@@ -853,9 +765,6 @@ irq_clear_error:
 	free_irq(client->irq, chip);
 irq_reg_error:
 	cancel_delayed_work_sync(&chip->work);
-error:
-	power_supply_unregister(&chip->ac);
-error1:
 	power_supply_unregister(&chip->battery);
 error2:
 	mutex_destroy(&chip->mutex);
@@ -870,8 +779,6 @@ static int __devexit max17048_remove(struct i2c_client *client)
 	if (client->irq)
 		free_irq(client->irq, chip);
 	power_supply_unregister(&chip->battery);
-	power_supply_unregister(&chip->usb);
-	power_supply_unregister(&chip->ac);
 	cancel_delayed_work_sync(&chip->work);
 	mutex_destroy(&chip->mutex);
 

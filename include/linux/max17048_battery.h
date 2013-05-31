@@ -31,8 +31,6 @@ struct max17048_battery_model {
 };
 
 struct max17048_platform_data {
-	int use_ac;
-	int use_usb;
 	struct max17048_battery_model *model_data;
 };
 
