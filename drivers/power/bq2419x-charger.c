@@ -273,28 +273,16 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 
 	bq_charger->in_current_limit = max_uA/1000;
 	if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_UNKNOWN) {
-		bq_charger->status = 0;
 		bq_charger->in_current_limit = 500;
-		ret = bq2419x_init(bq_charger);
-		if (ret < 0)
-			goto error;
-		if (bq_charger->update_status)
-			bq_charger->update_status(bq_charger->status, 0);
-	} else if (bq_charger->in_current_limit == 500) {
-		bq_charger->status = 1;
-		ret = bq2419x_init(bq_charger);
-		if (ret < 0)
-			goto error;
-		if (bq_charger->update_status)
-			bq_charger->update_status(bq_charger->status, 0);
+		bq_charger->status = 0;
 	} else {
 		bq_charger->status = 1;
-		ret = bq2419x_init(bq_charger);
-		if (ret < 0)
-			goto error;
-		if (bq_charger->update_status)
-			bq_charger->update_status(bq_charger->status, 0);
 	}
+	ret = bq2419x_init(bq_charger);
+	if (ret < 0)
+		goto error;
+	if (bq_charger->update_status)
+		bq_charger->update_status(bq_charger->status, 0);
 	return 0;
 error:
 	dev_err(bq_charger->dev, "Charger enable failed, err = %d\n", ret);
