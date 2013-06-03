@@ -518,11 +518,20 @@ static irqreturn_t max17048_irq(int id, void *dev)
 		dev_info(&client->dev, "%s(): STATUS_RI\n", __func__);
 	if (val & MAX17048_STATUS_VH)
 		dev_info(&client->dev, "%s(): STATUS_VH\n", __func__);
-	if (val & MAX17048_STATUS_VL)
+	if (val & MAX17048_STATUS_VL) {
 		dev_info(&client->dev, "%s(): STATUS_VL\n", __func__);
+		/* Forced set SOC 0 to power off */
+		chip->soc = 0;
+		chip->lasttime_soc = chip->soc;
+		chip->status = chip->lasttime_status;
+		chip->health = POWER_SUPPLY_HEALTH_DEAD;
+		chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_CRITICAL;
+		power_supply_changed(&chip->battery);
+	}
 	if (val & MAX17048_STATUS_VR)
 		dev_info(&client->dev, "%s(): STATUS_VR\n", __func__);
 	if (val & MAX17048_STATUS_HD) {
+		max17048_get_vcell(client);
 		max17048_get_soc(client);
 		chip->lasttime_soc = chip->soc;
 		dev_info(&client->dev,
@@ -531,6 +540,7 @@ static irqreturn_t max17048_irq(int id, void *dev)
 		power_supply_changed(&chip->battery);
 	}
 	if (val & MAX17048_STATUS_SC) {
+		max17048_get_vcell(client);
 		max17048_get_soc(client);
 		chip->lasttime_soc = chip->soc;
 		dev_info(&client->dev,
