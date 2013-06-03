@@ -582,6 +582,8 @@ static struct platform_pwm_backlight_data dsi_p_wuxga_10_1_bl_data = {
 	.dft_brightness	= 224,
 	.pwm_period_ns	= 1000000,
 	.notify		= dsi_p_wuxga_10_1_bl_notify,
+	.edp_states = { 3950, 2950, 1850, 940, 750, 0},
+	.edp_brightness = {255, 213, 136, 73, 60, 0},
 	/* Only toggle backlight on fb blank notifications for disp1 */
 	.check_fb	= dsi_p_wuxga_10_1_check_fb,
 	.init = dsi_p_wuxga_10_1_display_init,
