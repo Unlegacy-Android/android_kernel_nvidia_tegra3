@@ -205,7 +205,7 @@ static struct tegra11_emc_table e1580_h9ccnnn8ktmlbr_ntm_AP40_table[] = {
 			0x00000000, /* EMC_DLL_XFORM_QUSE3 */
 		},
 		{
-			0x0000000e, /* MC_PTSA_GRANT_DECREMENT */
+			0x00000007, /* MC_PTSA_GRANT_DECREMENT */
 			0x00ff00ff, /* MC_LATENCY_ALLOWANCE_G2_0 */
 			0x00ff00ff, /* MC_LATENCY_ALLOWANCE_G2_1 */
 			0x00ff00ff, /* MC_LATENCY_ALLOWANCE_NV_0 */
@@ -401,7 +401,7 @@ static struct tegra11_emc_table e1580_h9ccnnn8ktmlbr_ntm_AP40_table[] = {
 			0x00000000, /* EMC_DLL_XFORM_QUSE3 */
 		},
 		{
-			0x00000014, /* MC_PTSA_GRANT_DECREMENT */
+			0x0000000a, /* MC_PTSA_GRANT_DECREMENT */
 			0x00ff00ff, /* MC_LATENCY_ALLOWANCE_G2_0 */
 			0x00ff00ff, /* MC_LATENCY_ALLOWANCE_G2_1 */
 			0x00ff00ff, /* MC_LATENCY_ALLOWANCE_NV_0 */
@@ -597,7 +597,7 @@ static struct tegra11_emc_table e1580_h9ccnnn8ktmlbr_ntm_AP40_table[] = {
 			0x00000000, /* EMC_DLL_XFORM_QUSE3 */
 		},
 		{
-			0x0000002a, /* MC_PTSA_GRANT_DECREMENT */
+			0x00000015, /* MC_PTSA_GRANT_DECREMENT */
 			0x00b000b0, /* MC_LATENCY_ALLOWANCE_G2_0 */
 			0x00b000c4, /* MC_LATENCY_ALLOWANCE_G2_1 */
 			0x00d700eb, /* MC_LATENCY_ALLOWANCE_NV_0 */
@@ -793,7 +793,7 @@ static struct tegra11_emc_table e1580_h9ccnnn8ktmlbr_ntm_AP40_table[] = {
 			0x00000000, /* EMC_DLL_XFORM_QUSE3 */
 		},
 		{
-			0x00000046, /* MC_PTSA_GRANT_DECREMENT */
+			0x00000023, /* MC_PTSA_GRANT_DECREMENT */
 			0x00690069, /* MC_LATENCY_ALLOWANCE_G2_0 */
 			0x00690075, /* MC_LATENCY_ALLOWANCE_G2_1 */
 			0x0081008d, /* MC_LATENCY_ALLOWANCE_NV_0 */
@@ -989,7 +989,7 @@ static struct tegra11_emc_table e1580_h9ccnnn8ktmlbr_ntm_AP40_table[] = {
 			0x00000000, /* EMC_DLL_XFORM_QUSE3 */
 		},
 		{
-			0x00000068, /* MC_PTSA_GRANT_DECREMENT */
+			0x00000034, /* MC_PTSA_GRANT_DECREMENT */
 			0x00460046, /* MC_LATENCY_ALLOWANCE_G2_0 */
 			0x0046004e, /* MC_LATENCY_ALLOWANCE_G2_1 */
 			0x0056005e, /* MC_LATENCY_ALLOWANCE_NV_0 */
@@ -1185,7 +1185,7 @@ static struct tegra11_emc_table e1580_h9ccnnn8ktmlbr_ntm_AP40_table[] = {
 			0x00000000, /* EMC_DLL_XFORM_QUSE3 */
 		},
 		{
-			0x000000d0, /* MC_PTSA_GRANT_DECREMENT */
+			0x00000068, /* MC_PTSA_GRANT_DECREMENT */
 			0x00230023, /* MC_LATENCY_ALLOWANCE_G2_0 */
 			0x00230027, /* MC_LATENCY_ALLOWANCE_G2_1 */
 			0x002b002f, /* MC_LATENCY_ALLOWANCE_NV_0 */
@@ -1381,7 +1381,7 @@ static struct tegra11_emc_table e1580_h9ccnnn8ktmlbr_ntm_AP40_table[] = {
 			0x00000000, /* EMC_DLL_XFORM_QUSE3 */
 		},
 		{
-			0x00000140, /* MC_PTSA_GRANT_DECREMENT */
+			0x000000a0, /* MC_PTSA_GRANT_DECREMENT */
 			0x00170017, /* MC_LATENCY_ALLOWANCE_G2_0 */
 			0x00170019, /* MC_LATENCY_ALLOWANCE_G2_1 */
 			0x001c001e, /* MC_LATENCY_ALLOWANCE_NV_0 */
