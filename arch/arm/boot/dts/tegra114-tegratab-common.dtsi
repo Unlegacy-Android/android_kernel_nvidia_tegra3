@@ -832,7 +832,7 @@
 			alert-threshold = <1>;		/* 1% SOC */
 			one-percent-alerts = <1>;
 			valert-max = <5100>;		/* not use */
-			valert-min = <0>;		/* not use */
+			valert-min = <3240>;		/* 3.24V */
 			vreset-threshold = <2400>;
 			vreset-disable = <1>;		/* not use */
 			hib-threshold = <48>;		/* 9.984%/hr */
