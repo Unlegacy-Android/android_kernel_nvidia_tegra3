@@ -29,6 +29,7 @@
 #include <linux/regulator/tps51632-regulator.h>
 #include <linux/power/bq2419x-charger.h>
 #include <linux/max17048_battery.h>
+#include <linux/power/power_supply_extcon.h>
 #include <linux/gpio.h>
 #include <linux/regulator/userspace-consumer.h>
 
@@ -110,8 +111,6 @@ static struct bq2419x_vbus_platform_data bq2419x_vbus_pdata = {
 };
 
 struct bq2419x_charger_platform_data bq2419x_charger_pdata = {
-	.use_usb = 1,
-	.use_mains = 1,
 	.update_status = max17048_battery_status,
 	.battery_check = max17048_check_battery,
 	.max_charge_current_mA = 3000,
@@ -148,8 +147,6 @@ struct max17048_battery_model max17048_mdata = {
 };
 
 struct max17048_platform_data max17048_pdata = {
-	.use_ac = 0,
-	.use_usb = 0,
 	.model_data = &max17048_mdata,
 };
 
@@ -169,6 +166,18 @@ static struct i2c_board_info __initdata bq2419x_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("bq2419x", 0x6b),
 		.platform_data	= &bq2419x_pdata,
+	},
+};
+
+static struct power_supply_extcon_plat_data psy_extcon_pdata = {
+	.extcon_name = "tegra-udc",
+};
+
+static struct platform_device psy_extcon_device = {
+	.name = "power-supply-extcon",
+	.id = -1,
+	.dev = {
+		.platform_data = &psy_extcon_pdata,
 	},
 };
 
@@ -734,6 +743,7 @@ int __init roth_regulator_init(void)
 	i2c_register_board_info(4, tps51632_boardinfo, 1);
 	i2c_register_board_info(0, max17048_boardinfo, 1);
 	i2c_register_board_info(0, bq2419x_boardinfo, 1);
+	platform_device_register(&psy_extcon_device);
 	platform_device_register(&roth_pda_power_device);
 	return 0;
 }
