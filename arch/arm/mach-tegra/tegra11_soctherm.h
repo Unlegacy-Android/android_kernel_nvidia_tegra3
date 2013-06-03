@@ -106,7 +106,7 @@ struct soctherm_throttle {
 	u8 throt_mode;
 	u8 polarity;
 	u8 priority;
-	u8 period;
+	u32 period;
 	bool intr;
 	struct soctherm_throttle_dev devs[THROTTLE_DEV_SIZE];
 };
