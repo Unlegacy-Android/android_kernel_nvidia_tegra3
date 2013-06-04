@@ -29,11 +29,12 @@
 #include <linux/of_gpio.h>
 #include <media/ad5823.h>
 
-#define POS_LOW		(32)
-#define POS_HIGH	(850)
-#define SETTLETIME_MS	(70)
+#define POS_LOW		(150)
+#define POS_HIGH	(800)
+#define SETTLETIME_MS	(15)
 #define FOCAL_LENGTH	(4.507f)
 #define FNUMBER		(2.8f)
+#define	AD5823_MOVE_TIME_VALUE	(0x43)
 
 #define AD5823_MAX_RETRIES (3)
 
@@ -62,6 +63,8 @@ static int ad5823_set_position(struct ad5823_info *info, u32 position)
 			position = info->config.pos_high;
 	}
 
+	ret |= regmap_write(info->regmap, AD5823_VCM_MOVE_TIME,
+				AD5823_MOVE_TIME_VALUE);
 	ret |= regmap_write(info->regmap, AD5823_MODE, 0);
 	ret |= regmap_write(info->regmap, AD5823_VCM_CODE_MSB,
 		((position >> 8) & 0x3) | (1 << 2));
