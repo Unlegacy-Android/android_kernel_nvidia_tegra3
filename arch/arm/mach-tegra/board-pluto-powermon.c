@@ -18,7 +18,6 @@
  */
 
 #include <linux/i2c.h>
-#include <linux/ina219.h>
 #include <linux/platform_data/ina230.h>
 #include <linux/i2c/pca954x.h>
 
@@ -34,6 +33,7 @@
 #define PLUTO_POWER_REWORKED_CONFIG	0x10
 
 enum {
+	PM_VDD_CELL,
 	UNUSED_RAIL,
 };
 
@@ -59,8 +59,49 @@ enum {
 	VDDIO_1V8_BB,
 };
 
-static struct ina219_platform_data power_mon_info_0[] = {
-	/* All unused INA219 devices use below data*/
+static struct ina230_platform_data power_mon_info_0[] = {
+	[PM_VDD_CELL] = {
+		/*
+		 * Calibration data is calculated by:
+		 * Imax = 6A (max peak current from battery)
+		 * Current_LSB = Imax / 2^15
+		 *	       = 0.000183
+		 *	      ~= 0.0002(A per bit)
+		 *
+		 * Rshunt (on Pluto) = 0.01(Ohm)
+		 * cal = 0.00512 / (Current_LSB * Rshunt)
+		 *     = 0.00512 / (0.0002 * 0.01)
+		 *     = 2560
+		 */
+		.calibration_data = 2560,
+		.rail_name = "PM_VDD_CELL",
+		/*
+		 * Current_LSB is 0.0002A per bit (0.2mA per bit), and we use mA
+		 * as display as unit:
+		 *	current_lsb = 0.2
+		 *	power_lsb = current_lsb * POWER_LSB_TO_CURRENT_LSB_RATIO
+		 *		  = 0.2 * 25 = 5
+		 *
+		 */
+		.divisor = POWER_LSB_TO_CURRENT_LSB_RATIO,
+		.power_lsb = 5,
+		.precision_multiplier = 1,
+		/*
+		 * this value specify the battery in-serial resistor value in
+		 * the unit of mOhm.
+		 */
+		.resistor = 10,
+		.shunt_polarity_inverted = 1,
+		/*
+		 * INA230's alert pin can be used to generate the OC throttling
+		 * signal to AP. To do so set the 'current_threshold' to a
+		 * non-zero value in the unit of mA; set it to 0 will disable
+		 * the alert pin generating OC
+		 * signal.
+		 */
+		.current_threshold = 0,
+	},
+	/* All unused HPA01112 devices use below data*/
 	[UNUSED_RAIL] = {
 		.calibration_data = 0x369c,
 		.power_lsb = 3.051979018 * PRECISION_MULTIPLIER_PLUTO,
@@ -232,27 +273,27 @@ enum {
 	INA_I2C_2_2_ADDR_4C,
 };
 
-static struct i2c_board_info pluto_i2c2_0_ina219_board_info[] = {
+static struct i2c_board_info pluto_i2c2_0_ina230_board_info[] = {
 	[INA_I2C_2_0_ADDR_40] = {
-		I2C_BOARD_INFO("ina219", 0x40),
-		.platform_data = &power_mon_info_0[UNUSED_RAIL],
+		I2C_BOARD_INFO("ina230", 0x40),
+		.platform_data = &power_mon_info_0[PM_VDD_CELL],
 		.irq = -1,
 	},
 
 	[INA_I2C_2_0_ADDR_41] = {
-		I2C_BOARD_INFO("ina219", 0x41),
+		I2C_BOARD_INFO("ina230", 0x41),
 		.platform_data = &power_mon_info_0[UNUSED_RAIL],
 		.irq = -1,
 	},
 
 	[INA_I2C_2_0_ADDR_42] = {
-		I2C_BOARD_INFO("ina219", 0x42),
+		I2C_BOARD_INFO("ina230", 0x42),
 		.platform_data = &power_mon_info_0[UNUSED_RAIL],
 		.irq = -1,
 	},
 
 	[INA_I2C_2_0_ADDR_43] = {
-		I2C_BOARD_INFO("ina219", 0x43),
+		I2C_BOARD_INFO("ina230", 0x43),
 		.platform_data = &power_mon_info_0[UNUSED_RAIL],
 		.irq = -1,
 	},
@@ -434,8 +475,8 @@ int __init pluto_pmon_init(void)
 		ARRAY_SIZE(pluto_i2c2_board_info));
 
 	i2c_register_board_info(PCA954x_I2C_BUS0,
-			pluto_i2c2_0_ina219_board_info,
-			ARRAY_SIZE(pluto_i2c2_0_ina219_board_info));
+			pluto_i2c2_0_ina230_board_info,
+			ARRAY_SIZE(pluto_i2c2_0_ina230_board_info));
 
 	i2c_register_board_info(PCA954x_I2C_BUS1,
 			pluto_i2c2_1_ina230_board_info,
