@@ -440,6 +440,29 @@ static inline void tegra_hdmi_clrsetbits(struct tegra_dc_hdmi_data *hdmi,
 	tegra_hdmi_writel(hdmi, val, reg);
 }
 
+static inline void tegra_hdmi_hotplug_signal(struct tegra_dc_hdmi_data *hdmi)
+{
+	queue_delayed_work(system_nrt_wq, &hdmi->work,
+		msecs_to_jiffies(100));
+}
+
+/* disables hotplug IRQ - this must be balanced */
+static inline void tegra_hdmi_hotplug_disable(struct tegra_dc_hdmi_data *hdmi)
+{
+	struct tegra_dc *dc = hdmi->dc;
+
+	disable_irq(gpio_to_irq(dc->out->hotplug_gpio));
+}
+
+/* enables hotplug IRQ - this must be balanced */
+static inline void tegra_hdmi_hotplug_enable(struct tegra_dc_hdmi_data *hdmi)
+{
+	struct tegra_dc *dc = hdmi->dc;
+
+	enable_irq(gpio_to_irq(dc->out->hotplug_gpio));
+}
+
+
 #ifdef CONFIG_DEBUG_FS
 static int dbg_hdmi_show(struct seq_file *m, void *unused)
 {
@@ -666,8 +689,7 @@ static int dbg_hotplug_write(struct file *file, const char __user *addr,
 
 	dc->out->hotplug_state = new_state;
 
-	queue_delayed_work(system_nrt_wq, &hdmi->work,
-		msecs_to_jiffies(100));
+	tegra_hdmi_hotplug_signal(hdmi);
 
 	return len;
 }
@@ -928,9 +950,12 @@ fail:
 
 static void tegra_dc_hdmi_detect_worker(struct work_struct *work)
 {
-	struct tegra_dc_hdmi_data *hdmi =
-		container_of(to_delayed_work(work), struct tegra_dc_hdmi_data, work);
+	struct tegra_dc_hdmi_data *hdmi = container_of(to_delayed_work(work),
+		struct tegra_dc_hdmi_data, work);
 	struct tegra_dc *dc = hdmi->dc;
+
+	/* board files are expected to allow multiple calls to hotplug_init() */
+	tegra_dc_hotplug_init(dc);
 
 #ifdef CONFIG_FRAMEBUFFER_CONSOLE
 	/* Set default videomode on dc before enabling it*/
@@ -956,12 +981,7 @@ static irqreturn_t tegra_dc_hdmi_irq(int irq, void *ptr)
 	spin_lock_irqsave(&hdmi->suspend_lock, flags);
 	if (!hdmi->suspended) {
 		__cancel_delayed_work(&hdmi->work);
-		if (tegra_dc_hdmi_hpd(dc))
-			queue_delayed_work(system_nrt_wq, &hdmi->work,
-					   msecs_to_jiffies(100));
-		else
-			queue_delayed_work(system_nrt_wq, &hdmi->work,
-					   msecs_to_jiffies(30));
+		tegra_hdmi_hotplug_signal(hdmi);
 	}
 	spin_unlock_irqrestore(&hdmi->suspend_lock, flags);
 
@@ -973,6 +993,8 @@ static void tegra_dc_hdmi_suspend(struct tegra_dc *dc)
 	struct tegra_dc_hdmi_data *hdmi = tegra_dc_get_outdata(dc);
 	unsigned long flags;
 
+	/* turn off hotplug detection to avoid resume event when +5V falls */
+	tegra_hdmi_hotplug_disable(hdmi);
 	tegra_nvhdcp_suspend(hdmi->nvhdcp);
 	spin_lock_irqsave(&hdmi->suspend_lock, flags);
 	hdmi->suspended = true;
@@ -982,17 +1004,16 @@ static void tegra_dc_hdmi_suspend(struct tegra_dc *dc)
 static void tegra_dc_hdmi_resume(struct tegra_dc *dc)
 {
 	struct tegra_dc_hdmi_data *hdmi = tegra_dc_get_outdata(dc);
-	bool hpd = tegra_dc_hdmi_hpd(dc);
 	unsigned long flags;
 
 	spin_lock_irqsave(&hdmi->suspend_lock, flags);
 	hdmi->suspended = false;
-
-	queue_delayed_work(system_nrt_wq, &hdmi->work,
-			   msecs_to_jiffies(hpd ? 100 : 30));
-
 	spin_unlock_irqrestore(&hdmi->suspend_lock, flags);
+
 	tegra_nvhdcp_resume(hdmi->nvhdcp);
+	/* restore hotplug detection */
+	tegra_hdmi_hotplug_enable(hdmi);
+	tegra_hdmi_hotplug_signal(hdmi);
 }
 
 #ifdef CONFIG_SWITCH

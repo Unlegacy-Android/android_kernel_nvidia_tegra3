@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -249,6 +249,13 @@ static inline bool tegra_dc_is_powered(struct tegra_dc *dc)
 	return true;
 }
 #endif
+
+
+static inline void tegra_dc_hotplug_init(struct tegra_dc *dc)
+{
+	if (dc->out && dc->out->hotplug_init)
+		dc->out->hotplug_init(&dc->ndev->dev);
+}
 
 extern struct tegra_dc_out_ops tegra_dc_rgb_ops;
 extern struct tegra_dc_out_ops tegra_dc_hdmi_ops;
