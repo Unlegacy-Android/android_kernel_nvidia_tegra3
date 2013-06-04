@@ -417,6 +417,13 @@ static struct palmas_platform_data palmas_pdata = {
 	.extcon_pdata = &palmas_extcon_pdata,
 };
 
+struct palmas_clk32k_init_data tegratab_palmas_clk32k_idata[] = {
+	{
+		.clk32k_id = PALMAS_CLOCK32KG,
+		.enable = true,
+	}
+};
+
 static struct i2c_board_info palma_device[] = {
 	{
 		I2C_BOARD_INFO("tps65913", 0x58),
@@ -565,6 +572,7 @@ int __init tegratab_palmas_regulator_init(void)
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	u32 pmc_ctrl;
 	int i;
+	struct board_info board_info;
 
 	/* TPS65913: Normal state of INT request line is LOW.
 	 * configure the power management controller to trigger PMU
@@ -575,6 +583,14 @@ int __init tegratab_palmas_regulator_init(void)
 	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
 		pmic_platform.reg_data[i] = tegratab_reg_data[i];
 		pmic_platform.reg_init[i] = tegratab_reg_init[i];
+	}
+
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_P1640 &&
+				board_info.fab == BOARD_FAB_A01) {
+		palmas_pdata.clk32k_init_data = tegratab_palmas_clk32k_idata;
+		palmas_pdata.clk32k_init_data_size =
+				ARRAY_SIZE(tegratab_palmas_clk32k_idata);
 	}
 
 	i2c_register_board_info(4, palma_device,
