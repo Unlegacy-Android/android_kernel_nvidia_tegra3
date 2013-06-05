@@ -421,18 +421,18 @@ static s32 show_current(struct device *dev,
 	int retval;
 
 	mutex_lock(&data->mutex);
-	retval = ensure_enabled_start(client);
-	if (retval < 0) {
-		mutex_unlock(&data->mutex);
-		return retval;
-	}
-
 	/* fill calib data */
 	retval = i2c_smbus_write_word_data(client, INA230_CAL,
 		__constant_cpu_to_be16(data->pdata->calibration_data));
 	if (retval < 0) {
 		dev_err(dev, "calibration data write failed sts: 0x%x\n",
 			retval);
+		mutex_unlock(&data->mutex);
+		return retval;
+	}
+
+	retval = ensure_enabled_start(client);
+	if (retval < 0) {
 		mutex_unlock(&data->mutex);
 		return retval;
 	}
@@ -475,11 +475,6 @@ static s32 show_power(struct device *dev,
 	int retval;
 
 	mutex_lock(&data->mutex);
-	retval = ensure_enabled_start(client);
-	if (retval < 0) {
-		mutex_unlock(&data->mutex);
-		return retval;
-	}
 
 	/* fill calib data */
 	retval = i2c_smbus_write_word_data(client, INA230_CAL,
@@ -487,6 +482,12 @@ static s32 show_power(struct device *dev,
 	if (retval < 0) {
 		dev_err(dev, "calibration data write failed sts: 0x%x\n",
 			retval);
+		mutex_unlock(&data->mutex);
+		return retval;
+	}
+
+	retval = ensure_enabled_start(client);
+	if (retval < 0) {
 		mutex_unlock(&data->mutex);
 		return retval;
 	}
