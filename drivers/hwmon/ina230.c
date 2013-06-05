@@ -66,9 +66,9 @@ D15|D14 D13 D12|D11 D10 D09|D08 D07 D06|D05 D04 D03|D02 D01 D00
 rst|-   -   -  |AVG        |Vbus_CT    |Vsh_CT     |MODE
 */
 #define INA230_RESET		(1 << 15)
-#define INA230_AVG		(0 << 9) /* 0 Averages */
+#define INA230_AVG		(1 << 9) /* 4 Averages */
 #define INA230_VBUS_CT		(0 << 6) /* Vbus 140us conversion time */
-#define INA230_VSH_CT		(0 << 3) /* Vshunt 140us conversion time */
+#define INA230_VSH_CT		(3 << 3) /* Vshunt 588us conversion time */
 
 #if MEASURE_BUS_VOLT
 #define INA230_CONT_MODE	7	/* Continuous Bus and shunt measure */
