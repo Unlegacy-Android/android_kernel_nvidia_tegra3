@@ -560,8 +560,8 @@ emc_wait_audo_cal_onetime:
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	str	r1, [r0, #EMC_NOP]
 	str	r1, [r0, #EMC_NOP]
-#endif
 	str	r1, [r0, #EMC_REFRESH]
+#endif
 
 	emc_device_mask r1, r0
 
