@@ -67,11 +67,8 @@
 
 /* Max Temperature Measurements */
 #define EXTENDED_RANGE_OFFSET		64U
-#define STANDARD_RANGE_MAX		127U
-#define EXTENDED_RANGE_MAX		(150U + EXTENDED_RANGE_OFFSET)
-
-#define NCT1008_MIN_TEMP -64
-#define NCT1008_MAX_TEMP 191
+#define NCT1008_MIN_TEMP(extended)	(extended ? -64 : 0)
+#define NCT1008_MAX_TEMP(extended)	(extended ? 191 : 127)
 
 #define MAX_STR_PRINT 50
 
@@ -289,7 +286,8 @@ static ssize_t nct1008_set_temp_overheat(struct device *dev,
 			__LINE__, __func__);
 		return -EINVAL;
 	}
-	if (((int)num < NCT1008_MIN_TEMP) || ((int)num >= NCT1008_MAX_TEMP)) {
+	if (((int)num < NCT1008_MIN_TEMP(pdata->ext_range)) ||
+			((int)num >= NCT1008_MAX_TEMP(pdata->ext_range))) {
 		dev_err(dev, "\n file: %s, line=%d return %s() ", __FILE__,
 			__LINE__, __func__);
 		return -EINVAL;
@@ -368,7 +366,8 @@ static ssize_t nct1008_set_temp_alert(struct device *dev,
 			__LINE__, __func__);
 		return -EINVAL;
 	}
-	if (((int)num < NCT1008_MIN_TEMP) || ((int)num >= NCT1008_MAX_TEMP)) {
+	if (((int)num < NCT1008_MIN_TEMP(pdata->ext_range)) ||
+			((int)num >= NCT1008_MAX_TEMP(pdata->ext_range))) {
 		dev_err(dev, "\n file: %s, line=%d return %s() ", __FILE__,
 			__LINE__, __func__);
 		return -EINVAL;
@@ -490,7 +489,8 @@ static int nct1008_thermal_set_limits(struct nct1008_data *data,
 static void nct1008_update(struct nct1008_data *data)
 {
 	struct thermal_zone_device *thz = data->nct_ext;
-	long low_temp = 0, high_temp = NCT1008_MAX_TEMP * 1000;
+	long low_temp = NCT1008_MIN_TEMP(data->plat_data.ext_range) * 1000;
+	long high_temp = NCT1008_MAX_TEMP(data->plat_data.ext_range) * 1000;
 	struct thermal_trip_info *trip_state;
 	long temp, trip_temp, hysteresis_temp;
 	int count;
@@ -917,8 +917,6 @@ static int nct1008_configure_sensor(struct nct1008_data *data)
 	struct i2c_client *client = data->client;
 	struct nct1008_platform_data *pdata = client->dev.platform_data;
 	u8 value;
-	s16 temp;
-	u8 temp2;
 	int err;
 
 	if (!pdata || !pdata->supported_hwrev)
@@ -960,51 +958,33 @@ static int nct1008_configure_sensor(struct nct1008_data *data)
 	data->conv_period_ms = conv_period_ms_table[pdata->conv_rate];
 
 	/* Setup local hi and lo limits */
-	err = nct1008_write_reg(client,
-		LOCAL_TEMP_HI_LIMIT_WR, NCT1008_MAX_TEMP);
+	value = temperature_to_value(pdata->ext_range,
+				     NCT1008_MAX_TEMP(pdata->ext_range));
+	err = nct1008_write_reg(client, LOCAL_TEMP_HI_LIMIT_WR, value);
 	if (err)
 		goto error;
 
-	err = nct1008_write_reg(client, LOCAL_TEMP_LO_LIMIT_WR, 0);
+	value = temperature_to_value(pdata->ext_range,
+				     NCT1008_MIN_TEMP(pdata->ext_range));
+	err = nct1008_write_reg(client, LOCAL_TEMP_LO_LIMIT_WR, value);
 	if (err)
 		goto error;
 
 	/* Setup external hi and lo limits */
-	err = nct1008_write_reg(client, EXT_TEMP_LO_LIMIT_HI_BYTE_WR, 0);
+	value = temperature_to_value(pdata->ext_range,
+				     NCT1008_MAX_TEMP(pdata->ext_range));
+	err = nct1008_write_reg(client, EXT_TEMP_HI_LIMIT_HI_BYTE_WR, value);
 	if (err)
 		goto error;
-	err = nct1008_write_reg(client, EXT_TEMP_HI_LIMIT_HI_BYTE_WR,
-			NCT1008_MAX_TEMP);
+
+	value = temperature_to_value(pdata->ext_range,
+				     NCT1008_MIN_TEMP(pdata->ext_range));
+	err = nct1008_write_reg(client, EXT_TEMP_LO_LIMIT_HI_BYTE_WR, value);
 	if (err)
 		goto error;
 
-	/* read initial temperature */
-	value = nct1008_read_reg(client, LOCAL_TEMP_RD);
-	if (value < 0) {
-		err = value;
-		goto error;
-	}
-	temp = value_to_temperature(pdata->ext_range, value);
-	dev_dbg(&client->dev, "\n initial local temp = %d ", temp);
-
-	value = nct1008_read_reg(client, EXT_TEMP_RD_LO);
-	if (value < 0) {
-		err = value;
-		goto error;
-	}
-	temp2 = (value >> 6);
-	value = nct1008_read_reg(client, EXT_TEMP_RD_HI);
-	if (value < 0) {
-		err = value;
-		goto error;
-	}
-	temp = value_to_temperature(pdata->ext_range, value);
-
-	if (temp2 > 0)
-		dev_dbg(&client->dev, "\n initial ext temp = %d.%d deg",
-				temp, temp2 * 25);
-	else
-		dev_dbg(&client->dev, "\n initial ext temp = %d.0 deg", temp);
+	data->current_hi_limit = NCT1008_MAX_TEMP(pdata->ext_range);
+	data->current_lo_limit = NCT1008_MIN_TEMP(pdata->ext_range);
 
 	/* Remote channel offset */
 	err = nct1008_write_reg(client, OFFSET_WR, pdata->offset / 4);
@@ -1016,21 +996,6 @@ static int nct1008_configure_sensor(struct nct1008_data *data)
 					(pdata->offset % 4) << 6);
 	if (err < 0)
 		goto error;
-
-	/* Reset current hi/lo limit values with register values */
-	value = nct1008_read_reg(data->client, EXT_TEMP_LO_LIMIT_HI_BYTE_RD);
-	if (value < 0) {
-		err = value;
-		goto error;
-	}
-	data->current_lo_limit = value_to_temperature(pdata->ext_range, value);
-
-	value = nct1008_read_reg(data->client, EXT_TEMP_HI_LIMIT_HI_BYTE_RD);
-	if (value < 0) {
-		err = value;
-		goto error;
-	}
-	data->current_hi_limit = value_to_temperature(pdata->ext_range, value);
 
 	return 0;
 error:
@@ -1247,9 +1212,10 @@ static int nct1008_suspend_powerdown(struct device *dev)
 static int nct1008_suspend_wakeup(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
-	int err;
 	struct nct1008_data *data = i2c_get_clientdata(client);
+	struct nct1008_platform_data *pdata = client->dev.platform_data;
 	long ext_temp;
+	int err;
 
 	err = nct1008_get_temp(dev, &ext_temp, 0);
 	if (err)
@@ -1258,10 +1224,10 @@ static int nct1008_suspend_wakeup(struct device *dev)
 	if (ext_temp > data->plat_data.suspend_ext_limit_lo)
 		err = nct1008_thermal_set_limits(data,
 			data->plat_data.suspend_ext_limit_lo,
-			NCT1008_MAX_TEMP * 1000);
+			NCT1008_MAX_TEMP(pdata->ext_range) * 1000);
 	else
 		err = nct1008_thermal_set_limits(data,
-			NCT1008_MIN_TEMP * 1000,
+			NCT1008_MIN_TEMP(pdata->ext_range) * 1000,
 			data->plat_data.suspend_ext_limit_hi);
 
 	if (err)
