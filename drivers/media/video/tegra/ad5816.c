@@ -1,6 +1,7 @@
-/* ad5816.c - focuser device driver for AD5816
+/*
+ * ad5816.c - a NVC kernel driver for focuser device ad5816.
  *
- * Copyright (c) 2012-2013, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2011-2013 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -14,7 +15,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 /* Implementation
  * --------------
  * The board level details about the device need to be provided in the board
@@ -64,10 +64,6 @@
  * .cap = Pointer to the nvc_focus_cap structure.  This structure needs to
  *      be defined and populated if overriding the driver defaults.
  *
- * The following is specific to this NVC kernel focus driver:
- * .info = Pointer to the ad5816_pdata_info structure.  This structure does
- *       not need to be defined and populated unless overriding ROM data.
- *
  * Power Requirements:
  * The device's header file defines the voltage regulators needed with the
  * enumeration <device>_vreg.  The order these are enumerated is the order
@@ -82,7 +78,6 @@
 
 #include <linux/fs.h>
 #include <linux/i2c.h>
-#include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/uaccess.h>
@@ -95,9 +90,8 @@
 #define AD5816_ID			0x04
 #define AD5816_FOCAL_LENGTH_FLOAT	(4.570f)
 #define AD5816_FNUMBER_FLOAT		(2.8f)
-#define AD5816_FOCAL_LENGTH			(0x40923D71) /* 4.570f */
-#define AD5816_FNUMBER				(0x40333333) /* 2.8f */
-#define AD5816_SLEW_RATE		1
+#define AD5816_FOCAL_LENGTH		(0x40923D71) /* 4.570f */
+#define AD5816_FNUMBER			(0x40333333) /* 2.8f */
 #define AD5816_ACTUATOR_RANGE		1023
 #define AD5816_SETTLETIME		20
 #define AD5816_FOCUS_MACRO		536
@@ -105,51 +99,39 @@
 #define AD5816_POS_LOW_DEFAULT		0
 #define AD5816_POS_HIGH_DEFAULT		1023
 #define AD5816_POS_CLAMP		0x03ff
+
+#define AD5816_CONTROL_RING		0x02
+#define AD5816_MODE_ARC15		0x40
+#define AD5816_MODE_ARC10		0x00
+#define AD5816_MODE_ARC20		0x01
+
 /* Need to decide exact value of VCM_THRESHOLD and its use */
 /* define AD5816_VCM_THRESHOLD	20 */
 
-/* Registers values */
-#define SCL_LOW_REG_VAL			0xB6
-#define CONTROL_REG_VAL			0x02
-#define MODE_REG_VAL			0x42
-#define VCM_FREQ_REG_VAL		0x54
-
-static u8 ad5816_ids[] = {
-	0x04,
-};
-
 struct ad5816_info {
-	atomic_t in_use;
+	struct device *dev;
 	struct i2c_client *i2c_client;
 	struct ad5816_platform_data *pdata;
 	struct miscdevice miscdev;
 	struct list_head list;
-	int pwr_dev;
 	struct ad5816_power_rail power;
-	int id_minor;
-	u32 pos;
-	u8 s_mode;
-	bool reset_flag;
-	struct ad5816_info *s_info;
 	struct nvc_focus_nvc nvc;
 	struct nvc_focus_cap cap;
 	struct nv_focuser_config nv_config;
-	struct ad5816_pdata_info config;
-	unsigned long ltv_ms;
+	struct nv_focuser_config cfg_usr;
+	atomic_t in_use;
+	bool reset_flag;
+	int pwr_dev;
+	u16 pos;
+	u16 dev_id;
 };
 
 /**
  * The following are default values
  */
 
-static struct ad5816_pdata_info ad5816_default_info = {
-	.pos_low = AD5816_POS_LOW_DEFAULT,
-	.pos_high = AD5816_POS_HIGH_DEFAULT,
-};
-
 static struct nvc_focus_cap ad5816_default_cap = {
 	.version = NVC_FOCUS_CAP_VER2,
-	.slew_rate = AD5816_SLEW_RATE,
 	.actuator_range = AD5816_ACTUATOR_RANGE,
 	.settle_time = AD5816_SETTLETIME,
 	.focus_macro = AD5816_FOCUS_MACRO,
@@ -171,46 +153,6 @@ static struct ad5816_platform_data ad5816_default_pdata = {
 static LIST_HEAD(ad5816_info_list);
 static DEFINE_SPINLOCK(ad5816_spinlock);
 
-static int ad5816_i2c_rd8(struct ad5816_info *info, u8 addr, u8 reg, u8 *val)
-{
-	struct i2c_msg msg[2];
-	u8 buf[2];
-	buf[0] = reg;
-	if (addr) {
-		msg[0].addr = addr;
-		msg[1].addr = addr;
-	} else {
-		msg[0].addr = info->i2c_client->addr;
-		msg[1].addr = info->i2c_client->addr;
-	}
-	msg[0].flags = 0;
-	msg[0].len = 1;
-	msg[0].buf = &buf[0];
-	msg[1].flags = I2C_M_RD;
-	msg[1].len = 1;
-	msg[1].buf = &buf[1];
-	*val = 0;
-	if (i2c_transfer(info->i2c_client->adapter, msg, 2) != 2)
-		return -EIO;
-	*val = buf[1];
-	return 0;
-}
-
-static int ad5816_i2c_wr8(struct ad5816_info *info, u8 reg, u8 val)
-{
-	struct i2c_msg msg;
-	u8 buf[2];
-	buf[0] = reg;
-	buf[1] = val;
-	msg.addr = info->i2c_client->addr;
-	msg.flags = 0;
-	msg.len = 2;
-	msg.buf = &buf[0];
-	if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
-		return -EIO;
-	return 0;
-}
-
 static int ad5816_i2c_rd16(struct ad5816_info *info, u8 reg, u16 *val)
 {
 	struct i2c_msg msg[2];
@@ -227,6 +169,21 @@ static int ad5816_i2c_rd16(struct ad5816_info *info, u8 reg, u16 *val)
 	if (i2c_transfer(info->i2c_client->adapter, msg, 2) != 2)
 		return -EIO;
 	*val = (((u16)buf[1] << 8) | (u16)buf[2]);
+	return 0;
+}
+
+static int ad5816_i2c_wr8(struct ad5816_info *info, u8 reg, u8 val)
+{
+	struct i2c_msg msg;
+	u8 buf[2];
+	buf[0] = reg;
+	buf[1] = val;
+	msg.addr = info->i2c_client->addr;
+	msg.flags = 0;
+	msg.len = 2;
+	msg.buf = &buf[0];
+	if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
+		return -EIO;
 	return 0;
 }
 
@@ -248,39 +205,46 @@ static int ad5816_i2c_wr16(struct ad5816_info *info, u8 reg, u16 val)
 
 void ad5816_set_arc_mode(struct ad5816_info *info)
 {
+	u32 sr = info->nv_config.slew_rate;
 	int err;
 
 	/* disable SCL low detection */
-	err = ad5816_i2c_wr8(info, SCL_LOW_DETECTION, SCL_LOW_REG_VAL);
+	err = ad5816_i2c_wr8(info, SCL_LOW_DETECTION, 0xb6);
 	if (err)
-		dev_err(&info->i2c_client->dev, "%s: Low detect write failed\n",
+		dev_err(info->dev, "%s: Low detect write failed\n",
 			__func__);
 
 	/* set ARC enable */
-	err = ad5816_i2c_wr8(info, CONTROL, CONTROL_REG_VAL);
+	err = ad5816_i2c_wr8(info, CONTROL, (sr >> 16) & 0xff);
 	if (err)
-		dev_err(&info->i2c_client->dev,
-		"%s: CONTROL reg write failed\n", __func__);
+		dev_err(info->dev, "%s: CONTROL reg write failed\n", __func__);
 
-	/* set the ARC RES2 */
-	err = ad5816_i2c_wr8(info, MODE, MODE_REG_VAL);
+	/* set the ARC RES mode */
+	err = ad5816_i2c_wr8(info, MODE, (sr >> 8) & 0xff);
 	if (err)
-		dev_err(&info->i2c_client->dev,
-		"%s: MODE reg write failed\n", __func__);
+		dev_err(info->dev, "%s: MODE reg write failed\n", __func__);
 
-	/* set the VCM_FREQ : Tres = 10.86ms fres = 92Hz */
-	err = ad5816_i2c_wr8(info, VCM_FREQ, VCM_FREQ_REG_VAL);
+	/* set the VCM_FREQ */
+	err = ad5816_i2c_wr8(info, VCM_FREQ, sr & 0xff);
 	if (err)
-		dev_err(&info->i2c_client->dev,
-		"%s: VCM_FREQ reg write failed\n", __func__);
+		dev_err(info->dev, "%s: VCM_FREQ reg write failed\n", __func__);
+}
+
+static int ad5816_position_wr(struct ad5816_info *info, u16 position)
+{
+	int err = ad5816_i2c_wr16(
+		info, VCM_CODE_MSB, position & AD5816_POS_CLAMP);
+
+	if (!err)
+		info->pos = position & AD5816_POS_CLAMP;
+	return err;
 }
 
 static int ad5816_pm_wr(struct ad5816_info *info, int pwr)
 {
 	int err = 0;
 	if ((info->pdata->cfg & (NVC_CFG_OFF2STDBY | NVC_CFG_BOOT_INIT)) &&
-		(pwr == NVC_PWR_OFF ||
-		pwr == NVC_PWR_STDBY_OFF))
+		(pwr == NVC_PWR_OFF || pwr == NVC_PWR_STDBY_OFF))
 			pwr = NVC_PWR_STDBY;
 
 	if (pwr == info->pwr_dev)
@@ -303,6 +267,7 @@ static int ad5816_pm_wr(struct ad5816_info *info, int pwr)
 			info->pdata->power_on(&info->power);
 		usleep_range(1000, 1020);
 		ad5816_set_arc_mode(info);
+		ad5816_position_wr(info, (u16)info->nv_config.pos_working_low);
 		break;
 	default:
 		err = -EINVAL;
@@ -310,13 +275,12 @@ static int ad5816_pm_wr(struct ad5816_info *info, int pwr)
 	}
 
 	if (err < 0) {
-		dev_err(&info->i2c_client->dev, "%s err %d\n", __func__, err);
+		dev_err(info->dev, "%s err %d\n", __func__, err);
 		pwr = NVC_PWR_ERR;
 	}
 
 	info->pwr_dev = pwr;
-	dev_dbg(&info->i2c_client->dev, "%s pwr_dev=%d\n", __func__,
-		info->pwr_dev);
+	dev_dbg(info->dev, "%s pwr_dev=%d\n", __func__, info->pwr_dev);
 
 	return err;
 }
@@ -344,15 +308,14 @@ static int ad5816_regulator_get(struct ad5816_info *info,
 	struct regulator *reg = NULL;
 	int err = 0;
 
-	reg = regulator_get(&info->i2c_client->dev, vreg_name);
+	reg = regulator_get(info->dev, vreg_name);
 	if (unlikely(IS_ERR(reg))) {
-		dev_err(&info->i2c_client->dev, "%s %s ERR: %d\n",
+		dev_err(info->dev, "%s %s ERR: %d\n",
 			__func__, vreg_name, (int)reg);
 		err = PTR_ERR(reg);
 		reg = NULL;
 	} else
-		dev_dbg(&info->i2c_client->dev, "%s: %s\n",
-			__func__, vreg_name);
+		dev_dbg(info->dev, "%s: %s\n", __func__, vreg_name);
 
 	*vreg = reg;
 	return err;
@@ -368,20 +331,13 @@ static int ad5816_power_get(struct ad5816_info *info)
 	return 0;
 }
 
-static int ad5816_pm_dev_wr(struct ad5816_info *info, int pwr)
-{
-	if (pwr < info->pwr_dev)
-		pwr = info->pwr_dev;
-	return ad5816_pm_wr(info, pwr);
-}
-
-static void ad5816_pm_exit(struct ad5816_info *info)
+static inline void ad5816_pm_exit(struct ad5816_info *info)
 {
 	ad5816_pm_wr(info, NVC_PWR_OFF_FORCE);
 	ad5816_power_put(&info->power);
 }
 
-static void ad5816_pm_init(struct ad5816_info *info)
+static inline void ad5816_pm_init(struct ad5816_info *info)
 {
 	ad5816_power_get(info);
 }
@@ -401,88 +357,55 @@ static int ad5816_reset(struct ad5816_info *info, u32 level)
 static int ad5816_dev_id(struct ad5816_info *info)
 {
 	u16 val = 0;
-	unsigned i;
 	int err;
 
-	ad5816_pm_dev_wr(info, NVC_PWR_COMM);
 	err = ad5816_i2c_rd16(info, IC_INFO, &val);
 	if (!err) {
-		dev_dbg(&info->i2c_client->dev, "%s found devId: %x\n",
-			__func__, val);
-		info->id_minor = 0;
-		val = val & 0xff;
-		for (i = 0; i < ARRAY_SIZE(ad5816_ids); i++) {
-			if (val == ad5816_ids[i]) {
-				info->id_minor = val;
-				break;
-			}
-		}
-		if (!info->id_minor) {
+		dev_dbg(info->dev, "%s found devId: %x\n", __func__, val);
+		info->dev_id = 0;
+		if ((val & 0xff00) == 0x2400)
+			info->dev_id = val;
+
+		if (!info->dev_id) {
 			err = -ENODEV;
-			dev_dbg(&info->i2c_client->dev, "%s No devId match\n",
-				__func__);
+			dev_dbg(info->dev, "%s No devId match\n", __func__);
 		}
 	}
-
-	ad5816_pm_dev_wr(info, NVC_PWR_OFF);
-	return err;
-}
-
-/**
- * Below are device specific functions.
- */
-
-static int ad5816_position_rd(struct ad5816_info *info, unsigned *position)
-{
-
-	u16 pos = 0;
-	u8 t1 = 0;
-	int err = 0;
-
-	err = ad5816_i2c_rd8(info, 0, VCM_CODE_MSB, &t1);
-	pos = t1;
-	err  = ad5816_i2c_rd8(info, 0, VCM_CODE_LSB, &t1);
-	pos = (pos << 8) | t1;
-
-	if (pos < info->config.pos_low)
-		pos = info->config.pos_low;
-	else if (pos > info->config.pos_high)
-		pos = info->config.pos_high;
-
-	*position = pos;
 
 	return err;
 }
 
-static int ad5816_position_wr(struct ad5816_info *info, s32 position)
+static void ad5816_dump_focuser_capabilities(struct ad5816_info *info)
 {
-	struct timeval tv;
-	unsigned long tvl;
-	unsigned long dly;
-	int err;
-
-	if (position < info->config.pos_low || position > info->config.pos_high)
-		err = -EINVAL;
-	else {
-		do_gettimeofday(&tv);
-		tvl = ((unsigned long)tv.tv_sec * USEC_PER_SEC +
-			tv.tv_usec) / USEC_PER_MSEC;
-		if (tvl - info->ltv_ms < info->cap.settle_time) {
-			dly = (tvl - info->ltv_ms) * USEC_PER_MSEC;
-			dev_dbg(&info->i2c_client->dev,
-				"%s not settled(%lu uS).\n", __func__, dly);
-			usleep_range(dly, dly + 20);
-		}
-		err = ad5816_i2c_wr16(info, VCM_CODE_MSB,
-			position & AD5816_POS_CLAMP);
-	}
-
-	if (err)
-		dev_err(&info->i2c_client->dev, "%s ERROR: %d\n",
-			__func__, err);
-	else
-		info->ltv_ms = tvl;
-	return err;
+	dev_dbg(info->dev, "%s:\n", __func__);
+	dev_dbg(info->dev, "focal_length:               0x%x\n",
+		info->nv_config.focal_length);
+	dev_dbg(info->dev, "fnumber:                    0x%x\n",
+		info->nv_config.fnumber);
+	dev_dbg(info->dev, "max_aperture:               0x%x\n",
+		info->nv_config.max_aperture);
+	dev_dbg(info->dev, "pos_working_low:            %d\n",
+		info->nv_config.pos_working_low);
+	dev_dbg(info->dev, "pos_working_high:           %d\n",
+		info->nv_config.pos_working_high);
+	dev_dbg(info->dev, "pos_actual_low:             %d\n",
+		info->nv_config.pos_actual_low);
+	dev_dbg(info->dev, "pos_actual_high:            %d\n",
+		info->nv_config.pos_actual_high);
+	dev_dbg(info->dev, "slew_rate:                  0x%x\n",
+		info->nv_config.slew_rate);
+	dev_dbg(info->dev, "circle_of_confusion:        %d\n",
+		info->nv_config.circle_of_confusion);
+	dev_dbg(info->dev, "num_focuser_sets:           %d\n",
+		info->nv_config.num_focuser_sets);
+	dev_dbg(info->dev, "focuser_set[0].macro:       %d\n",
+		info->nv_config.focuser_set[0].macro);
+	dev_dbg(info->dev, "focuser_set[0].hyper:       %d\n",
+		info->nv_config.focuser_set[0].hyper);
+	dev_dbg(info->dev, "focuser_set[0].inf:         %d\n",
+		info->nv_config.focuser_set[0].inf);
+	dev_dbg(info->dev, "focuser_set[0].settle_time: %d\n",
+		info->nv_config.focuser_set[0].settle_time);
 }
 
 static void ad5816_get_focuser_capabilities(struct ad5816_info *info)
@@ -494,41 +417,101 @@ static void ad5816_get_focuser_capabilities(struct ad5816_info *info)
 	info->nv_config.max_aperture = info->nvc.fnumber;
 	info->nv_config.range_ends_reversed = 0;
 
-	info->nv_config.pos_working_low = AF_POS_INVALID_VALUE;
-	info->nv_config.pos_working_high = AF_POS_INVALID_VALUE;
+	info->nv_config.pos_working_low = info->cap.focus_infinity;
+	info->nv_config.pos_working_high = info->cap.focus_macro;
 
-	info->nv_config.pos_actual_low = info->config.pos_low;
-	info->nv_config.pos_actual_high = info->config.pos_high;
+	info->nv_config.pos_actual_low = AD5816_POS_LOW_DEFAULT;
+	info->nv_config.pos_actual_high = AD5816_POS_HIGH_DEFAULT;
 
-	info->nv_config.slew_rate = info->cap.slew_rate;
 	info->nv_config.circle_of_confusion = -1;
 	info->nv_config.num_focuser_sets = 1;
 	info->nv_config.focuser_set[0].macro = info->cap.focus_macro;
 	info->nv_config.focuser_set[0].hyper = info->cap.focus_hyper;
 	info->nv_config.focuser_set[0].inf = info->cap.focus_infinity;
 	info->nv_config.focuser_set[0].settle_time = info->cap.settle_time;
+	if (info->pdata && info->pdata->arc_mode &&
+		(info->pdata->arc_mode != 0xff)) {
+		dev_dbg(info->dev, "arc_mode: %x, freq: %d\n",
+			info->pdata->arc_mode, info->pdata->lens_freq);
+		info->nv_config.slew_rate = AD5816_CONTROL_RING << 16;
+		switch (info->pdata->arc_mode) {
+		case 1:
+			info->nv_config.slew_rate |= AD5816_MODE_ARC10 << 8;
+			break;
+		case 2:
+			info->nv_config.slew_rate |= AD5816_MODE_ARC20 << 8;
+			break;
+		case 3:
+			info->nv_config.slew_rate |= AD5816_MODE_ARC15 << 8;
+			break;
+		default:
+			info->nv_config.slew_rate = 0;
+			dev_err(info->dev,
+				"%s ERROR: unrecognized focuser arc mode %x!\n",
+				__func__, info->pdata->arc_mode);
+			break;
+		}
+		/* Fres = 1S/(51.2uS x (VCM_FREQ + 128)) */
+		/* VCM_FREQ = 1000000 / (51.2 * Fres) - 128 */
+		if (info->nv_config.slew_rate && info->pdata->lens_freq)
+			info->nv_config.slew_rate |= (800000000 / 512 +
+				info->pdata->lens_freq / 2 - 1) /
+				info->pdata->lens_freq / 8 - 128;
+	}
+
+	ad5816_dump_focuser_capabilities(info);
 }
 
 static int ad5816_set_focuser_capabilities(struct ad5816_info *info,
 					struct nvc_param *params)
 {
-	if (copy_from_user(&info->nv_config,
-		(const void __user *)params->p_value,
-		sizeof(struct nv_focuser_config))) {
-			dev_err(&info->i2c_client->dev,
-			"%s Error: copy_from_user bytes %d\n",
-			__func__, sizeof(struct nv_focuser_config));
+	if (copy_from_user(&info->cfg_usr,
+		(const void __user *)params->p_value, sizeof(info->cfg_usr))) {
+			dev_err(info->dev, "%s Err: copy_from_user bytes %d\n",
+			__func__, sizeof(info->cfg_usr));
 			return -EFAULT;
 	}
 
-	/* set pre-set value, as currently ODM sets incorrect value */
-	info->cap.settle_time = AD5816_SETTLETIME;
+	if (info->cfg_usr.focal_length)
+		info->nv_config.focal_length = info->cfg_usr.focal_length;
+	if (info->cfg_usr.fnumber)
+		info->nv_config.fnumber = info->cfg_usr.fnumber;
+	if (info->cfg_usr.max_aperture)
+		info->nv_config.max_aperture = info->cfg_usr.max_aperture;
 
-	dev_dbg(&info->i2c_client->dev,
+	if (info->cfg_usr.pos_working_low != AF_POS_INVALID_VALUE)
+		info->nv_config.pos_working_low = info->cfg_usr.pos_working_low;
+	if (info->cfg_usr.pos_working_high != AF_POS_INVALID_VALUE)
+		info->nv_config.pos_working_high =
+			info->cfg_usr.pos_working_high;
+	if (info->cfg_usr.pos_actual_low != AF_POS_INVALID_VALUE)
+		info->nv_config.pos_actual_low = info->cfg_usr.pos_actual_low;
+	if (info->cfg_usr.pos_actual_high != AF_POS_INVALID_VALUE)
+		info->nv_config.pos_actual_high = info->cfg_usr.pos_actual_high;
+
+	if (info->cfg_usr.circle_of_confusion != AF_POS_INVALID_VALUE)
+		info->nv_config.circle_of_confusion =
+			info->cfg_usr.circle_of_confusion;
+
+	if (info->cfg_usr.focuser_set[0].macro != AF_POS_INVALID_VALUE)
+		info->nv_config.focuser_set[0].macro =
+			info->cfg_usr.focuser_set[0].macro;
+	if (info->cfg_usr.focuser_set[0].hyper != AF_POS_INVALID_VALUE)
+		info->nv_config.focuser_set[0].hyper =
+			info->cfg_usr.focuser_set[0].hyper;
+	if (info->cfg_usr.focuser_set[0].inf != AF_POS_INVALID_VALUE)
+		info->nv_config.focuser_set[0].inf =
+			info->cfg_usr.focuser_set[0].inf;
+	if (info->cfg_usr.focuser_set[0].settle_time != AF_POS_INVALID_VALUE)
+		info->nv_config.focuser_set[0].settle_time =
+			info->cfg_usr.focuser_set[0].settle_time;
+
+	dev_dbg(info->dev,
 		"%s: copy_from_user bytes %d info->cap.settle_time %d\n",
 		__func__, sizeof(struct nv_focuser_config),
 		info->cap.settle_time);
 
+	ad5816_dump_focuser_capabilities(info);
 	return 0;
 }
 
@@ -537,220 +520,121 @@ static int ad5816_param_rd(struct ad5816_info *info, unsigned long arg)
 	struct nvc_param params;
 	const void *data_ptr = NULL;
 	u32 data_size = 0;
-	u32 position;
-	int err;
+	int err = 0;
+
 	if (copy_from_user(&params,
 		(const void __user *)arg,
 		sizeof(struct nvc_param))) {
-		dev_err(&info->i2c_client->dev, "%s %d copy_from_user err\n",
+		dev_err(info->dev, "%s %d copy_from_user err\n",
 			__func__, __LINE__);
 		return -EFAULT;
 	}
-	if (info->s_mode == NVC_SYNC_SLAVE)
-		info = info->s_info;
+
 	switch (params.param) {
 	case NVC_PARAM_LOCUS:
-		err = ad5816_position_rd(info, &position);
-		if (err && !(info->pdata->cfg & NVC_CFG_NOERR))
-			return err;
-		data_ptr = &position;
-		data_size = sizeof(position);
-		dev_dbg(&info->i2c_client->dev, "%s LOCUS: %d\n",
-			__func__, position);
+		data_ptr = &info->pos;
+		data_size = sizeof(info->pos);
+		dev_dbg(info->dev, "%s LOCUS: %d\n", __func__, info->pos);
 		break;
 	case NVC_PARAM_FOCAL_LEN:
-		info->nvc.focal_length = AD5816_FOCAL_LENGTH;
-		data_ptr = &info->nvc.focal_length;
-		data_size = sizeof(info->nvc.focal_length);
+		data_ptr = &info->nv_config.focal_length;
+		data_size = sizeof(info->nv_config.focal_length);
 		break;
 	case NVC_PARAM_MAX_APERTURE:
-		data_ptr = &info->nvc.max_aperature;
-		data_size = sizeof(info->nvc.max_aperature);
-		dev_dbg(&info->i2c_client->dev, "%s MAX_APERTURE: %x\n",
-				__func__, info->nvc.max_aperature);
+		data_ptr = &info->nv_config.max_aperture;
+		data_size = sizeof(info->nv_config.max_aperture);
+		dev_dbg(info->dev, "%s MAX_APERTURE: %x\n",
+			__func__, info->nv_config.max_aperture);
 		break;
 	case NVC_PARAM_FNUMBER:
-		data_ptr = &info->nvc.fnumber;
-		data_size = sizeof(info->nvc.fnumber);
-		dev_dbg(&info->i2c_client->dev, "%s FNUMBER: %u\n",
-				__func__, info->nvc.fnumber);
+		data_ptr = &info->nv_config.fnumber;
+		data_size = sizeof(info->nv_config.fnumber);
+		dev_dbg(info->dev, "%s FNUMBER: %u\n",
+			__func__, info->nv_config.fnumber);
 		break;
 	case NVC_PARAM_CAPS:
 		/* send back just what's requested or our max size */
-		ad5816_get_focuser_capabilities(info);
 		data_ptr = &info->nv_config;
 		data_size = sizeof(info->nv_config);
-		dev_err(&info->i2c_client->dev, "%s CAPS\n", __func__);
+		dev_err(info->dev, "%s CAPS\n", __func__);
 		break;
 	case NVC_PARAM_STS:
 		/*data_ptr = &info->sts;
 		data_size = sizeof(info->sts);*/
-		dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
+		dev_dbg(info->dev, "%s\n", __func__);
 		break;
 	case NVC_PARAM_STEREO:
-		data_ptr = &info->s_mode;
-		data_size = sizeof(info->s_mode);
-		dev_err(&info->i2c_client->dev, "%s STEREO: %d\n", __func__,
-			info->s_mode);
-		break;
 	default:
-		dev_err(&info->i2c_client->dev,
-			"%s unsupported parameter: %d\n",
+		dev_err(info->dev, "%s unsupported parameter: %d\n",
 			__func__, params.param);
-		return -EINVAL;
+		err = -EINVAL;
+		break;
 	}
-	if (params.sizeofvalue < data_size) {
-		dev_err(&info->i2c_client->dev,
+	if (!err && params.sizeofvalue < data_size) {
+		dev_err(info->dev,
 			"%s data size mismatch %d != %d Param: %d\n",
 			__func__, params.sizeofvalue, data_size, params.param);
 		return -EINVAL;
 	}
-	if (copy_to_user((void __user *)params.p_value, data_ptr, data_size)) {
-		dev_err(&info->i2c_client->dev, "%s copy_to_user err line %d\n",
-			__func__, __LINE__);
+	if (!err && copy_to_user((void __user *)params.p_value,
+		data_ptr, data_size)) {
+		dev_err(info->dev,
+			"%s copy_to_user err line %d\n", __func__, __LINE__);
 		return -EFAULT;
 	}
-	return 0;
-}
-
-static int ad5816_param_wr_s(struct ad5816_info *info,
-		struct nvc_param *params, s32 s32val)
-{
-	int err = 0;
-
-	switch (params->param) {
-	case NVC_PARAM_LOCUS:
-		dev_dbg(&info->i2c_client->dev, "%s LOCUS: %d\n",
-			__func__, s32val);
-		err = ad5816_position_wr(info, s32val);
-		return err;
-	case NVC_PARAM_RESET:
-		err = ad5816_reset(info, s32val);
-		dev_dbg(&info->i2c_client->dev, "%s RESET: %d\n",
-			__func__, err);
-		return err;
-	case NVC_PARAM_SELF_TEST:
-		err = 0;
-		dev_dbg(&info->i2c_client->dev, "%s SELF_TEST: %d\n",
-			__func__, err);
-		return err;
-	default:
-		dev_dbg(&info->i2c_client->dev,
-			"%s unsupported parameter: %d\n",
-			__func__, params->param);
-		return -EINVAL;
-	}
+	return err;
 }
 
 static int ad5816_param_wr(struct ad5816_info *info, unsigned long arg)
 {
 	struct nvc_param params;
 	u8 u8val;
-	s32 s32val;
+	u32 u32val;
 	int err = 0;
+
 	if (copy_from_user(&params, (const void __user *)arg,
 		sizeof(struct nvc_param))) {
-		dev_err(&info->i2c_client->dev,
-			"%s copy_from_user err line %d\n",
+		dev_err(info->dev, "%s copy_from_user err line %d\n",
 			__func__, __LINE__);
 		return -EFAULT;
 	}
-	if (copy_from_user(&s32val,
-		(const void __user *)params.p_value, sizeof(s32val))) {
-		dev_err(&info->i2c_client->dev, "%s %d copy_from_user err\n",
+	if (copy_from_user(&u32val,
+		(const void __user *)params.p_value, sizeof(u32val))) {
+		dev_err(info->dev, "%s %d copy_from_user err\n",
 			__func__, __LINE__);
 		return -EFAULT;
 	}
-	u8val = (u8)s32val;
+	u8val = (u8)u32val;
+
 	/* parameters independent of sync mode */
 	switch (params.param) {
-	case NVC_PARAM_STEREO:
-		dev_dbg(&info->i2c_client->dev, "%s STEREO: %d\n",
-			__func__, u8val);
-		if (u8val == info->s_mode)
-			return 0;
-		switch (u8val) {
-		case NVC_SYNC_OFF:
-			info->s_mode = u8val;
-			break;
-		case NVC_SYNC_MASTER:
-			info->s_mode = u8val;
-			break;
-		case NVC_SYNC_SLAVE:
-			if (info->s_info != NULL) {
-				/* default slave lens position */
-				err = ad5816_position_wr(info->s_info,
-					info->s_info->cap.focus_infinity);
-				if (!err) {
-					info->s_mode = u8val;
-					info->s_info->s_mode = u8val;
-				} else {
-					if (info->s_mode != NVC_SYNC_STEREO)
-						ad5816_pm_wr(info->s_info,
-						NVC_PWR_OFF);
-						err = -EIO;
-				}
-			} else {
-				err = -EINVAL;
-			}
-			break;
-		case NVC_SYNC_STEREO:
-			if (info->s_info != NULL) {
-				/* sync power */
-				info->s_info->pwr_dev = info->pwr_dev;
-				/* move slave lens to master position */
-				err = ad5816_position_wr(info->s_info,
-					(s32)info->pos);
-				if (!err) {
-					info->s_mode = u8val;
-					info->s_info->s_mode = u8val;
-				} else {
-					if (info->s_mode != NVC_SYNC_SLAVE)
-						ad5816_pm_wr(info->s_info,
-							NVC_PWR_OFF);
-					err = -EIO;
-				}
-			} else {
-				err = -EINVAL;
-			}
-			break;
-		default:
-			err = -EINVAL;
-		}
-		if (info->pdata->cfg & NVC_CFG_NOERR)
-			return 0;
-		return err;
-
 	case NVC_PARAM_CAPS:
 		if (ad5816_set_focuser_capabilities(info, &params)) {
-			dev_err(&info->i2c_client->dev,
+			dev_err(info->dev,
 				"%s: Error: copy_from_user bytes %d\n",
 				__func__, params.sizeofvalue);
-			return -EFAULT;
+			err = -EFAULT;
 		}
-		return 0;
-
+		break;
+	case NVC_PARAM_LOCUS:
+		dev_dbg(info->dev, "%s LOCUS: %d\n", __func__, u32val);
+		err = ad5816_position_wr(info, (u16)u32val);
+		break;
+	case NVC_PARAM_RESET:
+		err = ad5816_reset(info, u32val);
+		dev_dbg(info->dev, "%s RESET: %d\n", __func__, err);
+		break;
+	case NVC_PARAM_SELF_TEST:
+		err = 0;
+		dev_dbg(info->dev, "%s SELF_TEST: %d\n", __func__, err);
+		break;
 	default:
-		/* parameters dependent on sync mode */
-		switch (info->s_mode) {
-		case NVC_SYNC_OFF:
-		case NVC_SYNC_MASTER:
-			return ad5816_param_wr_s(info, &params, s32val);
-		case NVC_SYNC_SLAVE:
-			return ad5816_param_wr_s(info->s_info, &params, s32val);
-		case NVC_SYNC_STEREO:
-			err = ad5816_param_wr_s(info, &params, s32val);
-			if (!(info->pdata->cfg & NVC_CFG_SYNC_I2C_MUX))
-				err |= ad5816_param_wr_s(info->s_info,
-						&params,
-						s32val);
-			return err;
-		default:
-			dev_err(&info->i2c_client->dev, "%s %d internal err\n",
-					__func__, __LINE__);
-			return -EINVAL;
-		}
+		dev_dbg(info->dev, "%s unsupported parameter: %d\n",
+			__func__, params.param);
+		err = -EINVAL;
+		break;
 	}
+	return err;
 }
 
 static long ad5816_ioctl(struct file *file,
@@ -762,40 +646,29 @@ static long ad5816_ioctl(struct file *file,
 	int err = 0;
 	switch (cmd) {
 	case NVC_IOCTL_PARAM_WR:
-		ad5816_pm_dev_wr(info, NVC_PWR_ON);
 		err = ad5816_param_wr(info, arg);
-		ad5816_pm_dev_wr(info, NVC_PWR_OFF);
 		return err;
 	case NVC_IOCTL_PARAM_RD:
-		ad5816_pm_dev_wr(info, NVC_PWR_ON);
 		err = ad5816_param_rd(info, arg);
-		ad5816_pm_dev_wr(info, NVC_PWR_OFF);
 		return err;
 	case NVC_IOCTL_PWR_WR:
 		/* This is a Guaranteed Level of Service (GLOS) call */
 		pwr = (int)arg * 2;
-		dev_dbg(&info->i2c_client->dev, "%s PWR_WR: %d\n",
-				__func__, pwr);
-		err = ad5816_pm_dev_wr(info, pwr);
+		dev_dbg(info->dev, "%s PWR_WR: %d\n", __func__, pwr);
+		err = ad5816_pm_wr(info, pwr);
 		return err;
 	case NVC_IOCTL_PWR_RD:
-		if (info->s_mode == NVC_SYNC_SLAVE)
-			pwr = info->s_info->pwr_dev;
-		else
-			pwr = info->pwr_dev;
-		dev_dbg(&info->i2c_client->dev, "%s PWR_RD: %d\n",
-				__func__, pwr);
+		pwr = info->pwr_dev;
+		dev_dbg(info->dev, "%s PWR_RD: %d\n", __func__, pwr);
 		if (copy_to_user((void __user *)arg,
 			(const void *)&pwr, sizeof(pwr))) {
-			dev_err(&info->i2c_client->dev,
-				"%s copy_to_user err line %d\n",
+			dev_err(info->dev, "%s copy_to_user err line %d\n",
 				__func__, __LINE__);
 			return -EFAULT;
 		}
 		return 0;
 	default:
-		dev_dbg(&info->i2c_client->dev, "%s unsupported ioctl: %x\n",
-			__func__, cmd);
+		dev_dbg(info->dev, "%s unsupported ioctl: %x\n", __func__, cmd);
 	}
 	return -EINVAL;
 }
@@ -804,18 +677,12 @@ static long ad5816_ioctl(struct file *file,
 static void ad5816_sdata_init(struct ad5816_info *info)
 {
 	/* set defaults */
-	memcpy(&info->config, &ad5816_default_info, sizeof(info->config));
 	memcpy(&info->nvc, &ad5816_default_nvc, sizeof(info->nvc));
 	memcpy(&info->cap, &ad5816_default_cap, sizeof(info->cap));
 
-	info->config.settle_time = AD5816_SETTLETIME;
-	info->config.focal_length = AD5816_FOCAL_LENGTH_FLOAT;
-	info->config.fnumber = AD5816_FNUMBER_FLOAT;
-	info->config.pos_low = AD5816_POS_LOW_DEFAULT;
-	info->config.pos_high = AD5816_POS_HIGH_DEFAULT;
-
 	/* set to proper value */
-	info->cap.actuator_range = info->config.pos_high - info->config.pos_low;
+	info->cap.actuator_range =
+		AD5816_POS_HIGH_DEFAULT - AD5816_POS_LOW_DEFAULT;
 
 	/* set overrides if any */
 	if (info->pdata->nvc) {
@@ -842,60 +709,15 @@ static void ad5816_sdata_init(struct ad5816_info *info)
 			info->cap.focus_infinity =
 				info->pdata->cap->focus_infinity;
 	}
-}
 
-static int ad5816_sync_en(unsigned num, unsigned sync)
-{
-	struct ad5816_info *master = NULL;
-	struct ad5816_info *slave = NULL;
-	struct ad5816_info *pos = NULL;
-	rcu_read_lock();
-	list_for_each_entry_rcu(pos, &ad5816_info_list, list) {
-		if (pos->pdata->num == num) {
-			master = pos;
-			break;
-		}
-	}
-	pos = NULL;
-	list_for_each_entry_rcu(pos, &ad5816_info_list, list) {
-		if (pos->pdata->num == sync) {
-			slave = pos;
-			break;
-		}
-	}
-	rcu_read_unlock();
-	if (master != NULL)
-		master->s_info = NULL;
-	if (slave != NULL)
-		slave->s_info = NULL;
-	if (!sync)
-		return 0; /* no err if sync disabled */
-	if (num == sync)
-		return -EINVAL; /* err if sync instance is itself */
-	if ((master != NULL) && (slave != NULL)) {
-		master->s_info = slave;
-		slave->s_info = master;
-	}
-	return 0;
-}
-
-static int ad5816_sync_dis(struct ad5816_info *info)
-{
-	if (info->s_info != NULL) {
-		info->s_info->s_mode = 0;
-		info->s_info->s_info = NULL;
-		info->s_mode = 0;
-		info->s_info = NULL;
-		return 0;
-	}
-	return -EINVAL;
+	ad5816_get_focuser_capabilities(info);
 }
 
 static int ad5816_open(struct inode *inode, struct file *file)
 {
 	struct ad5816_info *info = NULL;
 	struct ad5816_info *pos = NULL;
-	int err;
+
 	rcu_read_lock();
 	list_for_each_entry_rcu(pos, &ad5816_info_list, list) {
 		if (pos->miscdev.minor == iminor(inode)) {
@@ -906,36 +728,22 @@ static int ad5816_open(struct inode *inode, struct file *file)
 	rcu_read_unlock();
 	if (!info)
 		return -ENODEV;
-	err = ad5816_sync_en(info->pdata->num, info->pdata->sync);
-	if (err == -EINVAL)
-		dev_err(&info->i2c_client->dev,
-			"%s err: invalid num (%u) and sync (%u) instance\n",
-			__func__, info->pdata->num, info->pdata->sync);
+
 	if (atomic_xchg(&info->in_use, 1))
 		return -EBUSY;
-	if (info->s_info != NULL) {
-		if (atomic_xchg(&info->s_info->in_use, 1))
-			return -EBUSY;
-	}
 	file->private_data = info;
-	ad5816_pm_dev_wr(info, NVC_PWR_ON);
-	ad5816_position_wr(info, info->cap.focus_infinity);
-	ad5816_pm_dev_wr(info, NVC_PWR_OFF);
-	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
 
+	dev_dbg(info->dev, "%s\n", __func__);
 	return 0;
 }
 
 static int ad5816_release(struct inode *inode, struct file *file)
 {
 	struct ad5816_info *info = file->private_data;
-	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
+	dev_dbg(info->dev, "%s\n", __func__);
 	ad5816_pm_wr(info, NVC_PWR_OFF);
 	file->private_data = NULL;
 	WARN_ON(!atomic_xchg(&info->in_use, 0));
-	if (info->s_info != NULL)
-		WARN_ON(!atomic_xchg(&info->s_info->in_use, 0));
-	ad5816_sync_dis(info);
 	return 0;
 }
 
@@ -949,11 +757,6 @@ static const struct file_operations ad5816_fileops = {
 static void ad5816_del(struct ad5816_info *info)
 {
 	ad5816_pm_exit(info);
-	if ((info->s_mode == NVC_SYNC_SLAVE) ||
-		(info->s_mode == NVC_SYNC_STEREO))
-		ad5816_pm_exit(info->s_info);
-
-	ad5816_sync_dis(info);
 	spin_lock(&ad5816_spinlock);
 	list_del_rcu(&info->list);
 	spin_unlock(&ad5816_spinlock);
@@ -963,7 +766,7 @@ static void ad5816_del(struct ad5816_info *info)
 static int ad5816_remove(struct i2c_client *client)
 {
 	struct ad5816_info *info = i2c_get_clientdata(client);
-	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
+	dev_dbg(info->dev, "%s\n", __func__);
 	misc_deregister(&info->miscdev);
 	ad5816_del(info);
 	return 0;
@@ -986,11 +789,12 @@ static int ad5816_probe(
 		return -ENOMEM;
 	}
 	info->i2c_client = client;
-	if (client->dev.platform_data) {
+	info->dev = &client->dev;
+	if (client->dev.platform_data)
 		info->pdata = client->dev.platform_data;
-	} else {
+	else {
 		info->pdata = &ad5816_default_pdata;
-		dev_dbg(&client->dev, "%s No platform data.  Using defaults.\n",
+		dev_dbg(info->dev, "%s No platform data. Using defaults.\n",
 			__func__);
 	}
 
@@ -1000,29 +804,34 @@ static int ad5816_probe(
 	list_add_rcu(&info->list, &ad5816_info_list);
 	spin_unlock(&ad5816_spinlock);
 	ad5816_pm_init(info);
-	ad5816_sdata_init(info);
 
 	if (info->pdata->cfg & (NVC_CFG_NODEV | NVC_CFG_BOOT_INIT)) {
+		ad5816_pm_wr(info, NVC_PWR_COMM);
 		err = ad5816_dev_id(info);
+		ad5816_pm_wr(info, NVC_PWR_OFF);
 		if (err < 0) {
-			dev_err(&client->dev, "%s device not found\n",
+			dev_err(info->dev, "%s device not found\n",
 				__func__);
-			ad5816_pm_wr(info, NVC_PWR_OFF);
 			if (info->pdata->cfg & NVC_CFG_NODEV) {
 				ad5816_del(info);
 				return -ENODEV;
 			}
 		} else {
-			dev_dbg(&client->dev, "%s device found\n", __func__);
+			dev_dbg(info->dev, "%s device found\n", __func__);
 			if (info->pdata->cfg & NVC_CFG_BOOT_INIT) {
 				/* initial move causes full initialization */
-				ad5816_pm_dev_wr(info, NVC_PWR_ON);
+				ad5816_pm_wr(info, NVC_PWR_ON);
 				ad5816_position_wr(info,
-					info->cap.focus_infinity);
-				ad5816_pm_dev_wr(info, NVC_PWR_OFF);
+					(u16)info->nv_config.pos_working_low);
+				ad5816_pm_wr(info, NVC_PWR_OFF);
 			}
+			if (info->pdata->detect)
+				info->pdata->detect(
+					&info->dev_id, sizeof(info->dev_id));
 		}
 	}
+
+	ad5816_sdata_init(info);
 
 	if (info->pdata->dev_name != 0)
 		strcpy(dname, info->pdata->dev_name);
@@ -1037,7 +846,7 @@ static int ad5816_probe(
 	info->miscdev.fops = &ad5816_fileops;
 	info->miscdev.minor = MISC_DYNAMIC_MINOR;
 	if (misc_register(&info->miscdev)) {
-		dev_err(&client->dev, "%s unable to register misc device %s\n",
+		dev_err(info->dev, "%s unable to register misc device %s\n",
 			__func__, dname);
 		ad5816_del(info);
 		return -ENODEV;
@@ -1052,7 +861,6 @@ static const struct i2c_device_id ad5816_id[] = {
 	{ },
 };
 
-
 MODULE_DEVICE_TABLE(i2c, ad5816_id);
 
 static struct i2c_driver ad5816_i2c_driver = {
@@ -1065,16 +873,5 @@ static struct i2c_driver ad5816_i2c_driver = {
 	.remove = ad5816_remove,
 };
 
-static int __init ad5816_init(void)
-{
-	return i2c_add_driver(&ad5816_i2c_driver);
-}
-
-static void __exit ad5816_exit(void)
-{
-	i2c_del_driver(&ad5816_i2c_driver);
-}
-
-module_init(ad5816_init);
-module_exit(ad5816_exit);
+module_i2c_driver(ad5816_i2c_driver);
 MODULE_LICENSE("GPL v2");
