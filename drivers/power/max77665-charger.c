@@ -835,10 +835,10 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 		goto free_irq;
 	}
 
-	/* Set OC threshold to 3250mA */
+	/* Set OC threshold */
 	ret = max77665_update_bits(charger->dev->parent,
 		MAX77665_I2C_SLAVE_PMIC, MAX77665_CHG_CNFG_12,
-		BAT_TO_SYS_OVERCURRENT_MASK, BAT_TO_SYS_OVERCURRENT_3A25);
+		BAT_TO_SYS_OVERCURRENT_MASK, charger->plat_data->oc_alert);
 	if (ret < 0) {
 		dev_err(charger->dev, "CHG_CNFG_12 update failed: %d\n", ret);
 		goto remove_sysfs;

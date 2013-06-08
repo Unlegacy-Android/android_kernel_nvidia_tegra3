@@ -103,6 +103,7 @@
 
 #define MAX77665_CHG_CNFG_12    0xc3
 #define BAT_TO_SYS_OVERCURRENT_MASK	0x7
+#define BAT_TO_SYS_OVERCURRENT_DISABLED (0x0 << 0)
 #define BAT_TO_SYS_OVERCURRENT_3A00	(0x1 << 0)
 #define BAT_TO_SYS_OVERCURRENT_3A25	(0x2 << 0)
 #define BAT_TO_SYS_OVERCURRENT_3A50	(0x3 << 0)
@@ -135,6 +136,17 @@ enum max77665_mode {
 	OTG,
 };
 
+enum max77665_oc_alert_setting {
+	OC_DISABLED = BAT_TO_SYS_OVERCURRENT_DISABLED,
+	OC_3A00 = BAT_TO_SYS_OVERCURRENT_3A00,
+	OC_3A25 = BAT_TO_SYS_OVERCURRENT_3A25,
+	OC_3A50 = BAT_TO_SYS_OVERCURRENT_3A50,
+	OC_3A75 = BAT_TO_SYS_OVERCURRENT_3A75,
+	OC_4A00 = BAT_TO_SYS_OVERCURRENT_4A00,
+	OC_4A25 = BAT_TO_SYS_OVERCURRENT_4A25,
+	OC_4A75 = BAT_TO_SYS_OVERCURRENT_4A75
+};
+
 struct max77665_muic_platform_data {
 	const char *ext_conn_name;
 };
@@ -160,6 +172,7 @@ struct max77665_charger_plat_data {
 	int num_consumer_supplies;
 	void (*update_status)(int);
 	bool is_battery_present;
+	enum max77665_oc_alert_setting oc_alert;
 };
 
 static inline bool charging_is_on(int val)
