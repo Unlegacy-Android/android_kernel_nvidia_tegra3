@@ -192,6 +192,7 @@ static struct max77665_charger_plat_data max77665_charger = {
 	.fast_chg_cc = 2000, /* fast charger current*/
 	.term_volt = 4200, /* charger termination voltage */
 	.curr_lim = 2000, /* input current limit */
+	.oc_alert = OC_3A25, /* generate OC alert at 3.25A */
 	.num_cables = MAX_CABLES,
 	.cables = maxim_cable,
 	.extcon_name = "tegra-udc",
