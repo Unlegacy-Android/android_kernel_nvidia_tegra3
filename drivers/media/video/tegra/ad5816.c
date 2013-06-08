@@ -122,7 +122,7 @@ struct ad5816_info {
 	atomic_t in_use;
 	bool reset_flag;
 	int pwr_dev;
-	u16 pos;
+	s32 pos;
 	u16 dev_id;
 };
 
@@ -808,7 +808,8 @@ static int ad5816_probe(
 	if (info->pdata->cfg & (NVC_CFG_NODEV | NVC_CFG_BOOT_INIT)) {
 		ad5816_pm_wr(info, NVC_PWR_COMM);
 		err = ad5816_dev_id(info);
-		ad5816_pm_wr(info, NVC_PWR_OFF);
+		/* TODO: fix power logic above so this can be uncommented */
+		/* ad5816_pm_wr(info, NVC_PWR_OFF); */
 		if (err < 0) {
 			dev_err(info->dev, "%s device not found\n",
 				__func__);
