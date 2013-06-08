@@ -6604,6 +6604,9 @@ static struct raw_notifier_head host1x_rate_change_nh;
 
 static struct clk tegra_clk_host1x = {
 	.name      = "host1x",
+	.lookup    = {
+		.dev_id = "host1x",
+	},
 	.ops       = &tegra_1xbus_clk_ops,
 	.reg       = 0x180,
 	.inputs    = mux_pllm_pllc_pllp_plla,
@@ -6991,8 +6994,8 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("cap.profile.cbus", "profile.cbus",	NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
 	SHARED_CLK("battery.cbus", "battery_edp",	"gpu",	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
 #endif
-	SHARED_CLK("nv_host1x",	"tegra_host1x",		"host1x", &tegra_clk_host1x, 0,  0, 0),
-	SHARED_CLK("vi_host1x",	"tegra_vi",		"host1x", &tegra_clk_host1x, 0,  0, 0),
+	SHARED_CLK("nv.host1x",	"tegra_host1x",		"host1x", &tegra_clk_host1x, NULL,  0, 0),
+	SHARED_CLK("vi.host1x",	"tegra_vi",		"host1x", &tegra_clk_host1x, NULL,  0, 0),
 };
 
 
