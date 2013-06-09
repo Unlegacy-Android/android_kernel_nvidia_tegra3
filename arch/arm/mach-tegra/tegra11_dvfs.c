@@ -40,7 +40,7 @@ static bool tegra_dvfs_core_disabled;
 static int vdd_core_vmin_trips_table[MAX_THERMAL_LIMITS] = { 20, };
 static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 950, };
 
-static int vdd_cpu_vmax_trips_table[MAX_THERMAL_LIMITS] = { 70, };
+static int vdd_cpu_vmax_trips_table[MAX_THERMAL_LIMITS] = { 64, };
 static int vdd_cpu_therm_caps_table[MAX_THERMAL_LIMITS] = { 1240, };
 
 static struct tegra_cooling_device cpu_vmax_cdev = {
