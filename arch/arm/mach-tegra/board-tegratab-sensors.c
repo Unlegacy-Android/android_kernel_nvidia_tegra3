@@ -238,7 +238,7 @@ static struct nvc_gpio_pdata ov5693_gpio_pdata[] = {
 	{ OV5693_GPIO_TYPE_PWRDN, CAM1_POWER_DWN_GPIO, true, 0, },
 };
 static struct ov5693_platform_data tegratab_ov5693_pdata = {
-	.num		= 0,
+	.num		= 5693,
 	.dev_name	= "camera",
 	.gpio_count	= ARRAY_SIZE(ov5693_gpio_pdata),
 	.gpio		= ov5693_gpio_pdata,
