@@ -59,7 +59,7 @@
 		ov5693@10 {
 			compatible = "nvidia,ov5693";
 			reg = <0x10>;
-			nvidia,num = <0>;
+			nvidia,num = <5693>;
 			nvidia,dev-name = "camera";
 			nvidia,use-vcm-vdd;
 			reset-gpios = <&gpio 221 0>; /* gpio PBB5 */
