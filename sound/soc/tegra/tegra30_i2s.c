@@ -1182,9 +1182,10 @@ static int configure_dam(struct tegra30_i2s  *i2s, int out_channel,
 	if (!i2s->dam_ch_refcount)
 		i2s->dam_ifc = tegra30_dam_allocate_controller();
 
-	if (i2s->dam_ifc < 0)
+	if (i2s->dam_ifc < 0) {
+		pr_err("Error : Failed to allocate DAM controller\n");
 		return -ENOENT;
-
+	}
 	tegra30_dam_allocate_channel(i2s->dam_ifc, TEGRA30_DAM_CHIN0_SRC);
 	i2s->dam_ch_refcount++;
 	tegra30_dam_enable_clock(i2s->dam_ifc);
@@ -1226,7 +1227,7 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 {
 	struct tegra30_i2s  *codec_i2s;
 	struct tegra30_i2s  *bb_i2s;
-	int reg;
+	int reg, ret;
 
 	codec_i2s = &i2scont[codec_info->i2s_id];
 	bb_i2s = &i2scont[bb_info->i2s_id];
@@ -1293,14 +1294,30 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 	} else {
 
 		/*configure codec dam*/
-		configure_dam(codec_i2s, codec_info->channels,
-		   codec_info->rate, codec_info->bitsize, bb_info->channels,
-		   bb_info->rate, bb_info->bitsize);
+		ret = configure_dam(codec_i2s,
+				    codec_info->channels,
+				    codec_info->rate,
+				    codec_info->bitsize,
+				    bb_info->channels,
+				    bb_info->rate,
+				    bb_info->bitsize);
+		if (ret != 0) {
+			pr_err("Error: Failed configure_dam\n");
+			return ret;
+		}
 
 		/*configure bb dam*/
-		configure_dam(bb_i2s, bb_info->channels,
-			bb_info->rate, bb_info->bitsize, codec_info->channels,
-			codec_info->rate, codec_info->bitsize);
+		ret = configure_dam(bb_i2s,
+				    bb_info->channels,
+				    bb_info->rate,
+				    bb_info->bitsize,
+				    codec_info->channels,
+				    codec_info->rate,
+				    codec_info->bitsize);
+		if (ret != 0) {
+			pr_err("Error: Failed configure_dam\n");
+			return ret;
+		}
 
 		/*make ahub connections*/
 
