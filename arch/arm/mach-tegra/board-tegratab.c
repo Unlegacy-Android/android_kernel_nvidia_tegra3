@@ -143,7 +143,6 @@ static __initdata struct tegra_clk_init_table tegratab_clk_init_table[] = {
 	{ "hda",	"pll_p",	108000000,	false},
 	{ "hda2codec_2x", "pll_p",	48000000,	false},
 	{ "pwm",	"pll_p",	3187500,	false},
-	{ "blink",	"clk_32k",	32768,		true},
 	{ "i2s1",	"pll_a_out0",	0,		false},
 	{ "i2s3",	"pll_a_out0",	0,		false},
 	{ "i2s4",	"pll_a_out0",	0,		false},
@@ -165,6 +164,11 @@ static __initdata struct tegra_clk_init_table tegratab_clk_init_table[] = {
 	{ "i2c3",	"pll_p",	3200000,	false},
 	{ "i2c4",	"pll_p",	3200000,	false},
 	{ "i2c5",	"pll_p",	3200000,	false},
+	{ NULL,		NULL,		0,		0},
+};
+
+static __initdata struct tegra_clk_init_table e1569_wifi_clk_init_table[] = {
+	{ "blink",	"clk_32k",	32768,		true},
 	{ NULL,		NULL,		0,		0},
 };
 
@@ -698,9 +702,11 @@ static void __init tegra_tegratab_early_init(void)
 	struct board_info board_info;
 
 	tegra_clk_init_from_table(tegratab_clk_init_table);
-	/* enable clk3_out for comm */
+	/* enable wifi 32K clk according to board revision */
 	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_P1640 &&
+	if (board_info.board_id == BOARD_E1569)
+		tegra_clk_init_from_table(e1569_wifi_clk_init_table);
+	else if (board_info.board_id == BOARD_P1640 &&
 			board_info.fab == BOARD_FAB_A00)
 		tegra_clk_init_from_table(P1640_wifi_clk_init_table);
 	tegra_clk_verify_parents();
