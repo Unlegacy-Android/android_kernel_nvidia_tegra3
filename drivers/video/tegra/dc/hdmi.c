@@ -440,10 +440,16 @@ static inline void tegra_hdmi_clrsetbits(struct tegra_dc_hdmi_data *hdmi,
 	tegra_hdmi_writel(hdmi, val, reg);
 }
 
+static bool tegra_dc_hdmi_hpd(struct tegra_dc *dc)
+{
+	return tegra_dc_hpd(dc);
+}
+
 static inline void tegra_hdmi_hotplug_signal(struct tegra_dc_hdmi_data *hdmi)
 {
+	tegra_dc_hpd(hdmi->dc);
 	queue_delayed_work(system_nrt_wq, &hdmi->work,
-		msecs_to_jiffies(100));
+		msecs_to_jiffies(30));
 }
 
 /* disables hotplug IRQ - this must be balanced */
@@ -807,12 +813,6 @@ static bool tegra_dc_hdmi_mode_filter(const struct tegra_dc *dc,
 				tegra_dc_calc_clock_per_frame(mode);
 	return true;
 }
-
-static bool tegra_dc_hdmi_hpd(struct tegra_dc *dc)
-{
-	return tegra_dc_hpd(dc);
-}
-
 
 void tegra_dc_hdmi_detect_config(struct tegra_dc *dc,
 						struct fb_monspecs *specs)
