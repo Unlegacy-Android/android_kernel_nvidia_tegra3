@@ -367,7 +367,7 @@ static struct tegra_dc_sd_settings pluto_sd_settings = {
 	.use_vpulse2 = true,
 };
 
-static void pluto_panel_select(void)
+static void __init pluto_panel_select(void)
 {
 	struct tegra_panel *panel;
 	struct board_info board;

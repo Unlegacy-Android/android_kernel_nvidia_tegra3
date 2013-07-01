@@ -1112,7 +1112,7 @@ static void mpuirq_init(void)
 		ARRAY_SIZE(inv_mpu9150_i2c2_board_info));
 }
 
-static int dalmore_nct1008_init(void)
+static int __init dalmore_nct1008_init(void)
 {
 	int nct1008_port;
 	int ret = 0;
