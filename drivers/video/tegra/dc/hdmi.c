@@ -963,10 +963,6 @@ static void tegra_dc_hdmi_detect_worker(struct work_struct *work)
 	/* board files are expected to allow multiple calls to hotplug_init() */
 	tegra_dc_hotplug_init(dc);
 
-#ifdef CONFIG_FRAMEBUFFER_CONSOLE
-	/* Set default videomode on dc before enabling it*/
-	tegra_dc_set_default_videomode(dc);
-#endif
 	if (!tegra_dc_hdmi_detect(dc) && dc->connected) {
 		dev_dbg(&dc->ndev->dev, "HDMI disconnect\n");
 		dc->connected = false;
