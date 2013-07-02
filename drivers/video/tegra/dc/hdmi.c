@@ -896,7 +896,9 @@ static bool tegra_dc_hdmi_detect(struct tegra_dc *dc)
 	struct fb_monspecs specs;
 	int err;
 
+#ifdef CONFIG_ANDROID
 	mutex_lock(&dc->lock);
+#endif /* CONFIG_ANDROID */
 
 	if (!tegra_dc_hdmi_hpd(dc))
 		goto fail;
@@ -932,12 +934,16 @@ static bool tegra_dc_hdmi_detect(struct tegra_dc *dc)
 	}
 
 success:
+#ifdef CONFIG_ANDROID
 	mutex_unlock(&dc->lock);
+#endif /* CONFIG_ANDROID */
 
 	return true;
 
 fail:
+#ifdef CONFIG_ANDROID
 	mutex_unlock(&dc->lock);
+#endif /* CONFIG_ANDROID */
 
 	hdmi->eld_retrieved = false;
 #ifdef CONFIG_SWITCH
