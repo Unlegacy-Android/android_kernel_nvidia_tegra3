@@ -922,7 +922,7 @@ static int ov9772_gpio_rd(struct ov9772_info *info,
 {
 	int val = -EINVAL;
 
-	if (info->gpio[type].gpio) {
+	if (info->gpio[type].gpio && info->gpio[type].own) {
 		val = gpio_get_value_cansleep(info->gpio[type].gpio);
 		dev_dbg(&info->i2c_client->dev, "%s %u %d\n",
 			__func__, info->gpio[type].gpio, val);
@@ -939,7 +939,7 @@ static int ov9772_gpio_wr(struct ov9772_info *info,
 {
 	int err = -EINVAL;
 
-	if (info->gpio[type].gpio) {
+	if (info->gpio[type].gpio && info->gpio[type].own) {
 		if (!info->gpio[type].active_high)
 			val = !val;
 		val &= 1;
