@@ -201,6 +201,7 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 		goto err_bl;
 	}
 
+#ifdef CONFIG_EDP_FRAMEWORK
 	pb->tegra_pwm_bl_edp_client = devm_kzalloc(&pdev->dev,
 			sizeof(struct edp_client), GFP_KERNEL);
 	if (IS_ERR_OR_NULL(pb->tegra_pwm_bl_edp_client)) {
@@ -246,6 +247,7 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 
 edp_success:
 
+#endif
 	bl->props.brightness = data->dft_brightness;
 	backlight_update_status(bl);
 
