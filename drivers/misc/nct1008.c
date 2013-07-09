@@ -788,7 +788,7 @@ static int nct1008_debuginit(struct nct1008_data *nct)
 {
 	int err = 0;
 	struct dentry *d;
-	char *name = nct1008_id[nct->chip].name;
+	const char *name = nct1008_id[nct->chip].name;
 
 	/* create debugfs by selecting chipid */
 	d = debugfs_create_file(name, S_IRUGO, NULL,
@@ -894,7 +894,7 @@ static irqreturn_t nct1008_irq(int irq, void *dev_id)
 static void nct1008_power_control(struct nct1008_data *data, bool is_enable)
 {
 	int ret;
-	char *name = nct1008_id[data->chip].name;
+	const char *name = nct1008_id[data->chip].name;
 
 	if (!data->nct_reg) {
 		data->nct_reg = regulator_get(&data->client->dev, "vdd");
@@ -1059,7 +1059,7 @@ error:
 
 static int __devinit nct1008_configure_irq(struct nct1008_data *data)
 {
-	char *name = nct1008_id[data->chip].name;
+	const char *name = nct1008_id[data->chip].name;
 
 	data->workqueue = create_singlethread_workqueue(name);
 
