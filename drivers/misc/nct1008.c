@@ -76,8 +76,6 @@
 #define CELSIUS_TO_MILLICELSIUS(x) ((x)*1000)
 #define MILLICELSIUS_TO_CELSIUS(x) ((x)/1000)
 
-#define POWER_ON_DELAY 20 /*ms*/
-
 struct nct1008_data {
 	struct workqueue_struct *workqueue;
 	struct work_struct work;
@@ -898,10 +896,9 @@ static int nct1008_power_control(struct nct1008_data *data, bool enable)
 	if (!data->nct_reg)
 		return 0;
 
-	if (enable) {
+	if (enable)
 		ret = regulator_enable(data->nct_reg);
-		msleep(POWER_ON_DELAY);
-	} else
+	else
 		ret = regulator_disable(data->nct_reg);
 
 	if (ret < 0)
