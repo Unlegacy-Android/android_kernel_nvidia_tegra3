@@ -434,7 +434,7 @@ static struct tegra_dc_sd_settings dalmore_sd_settings = {
 	.use_vpulse2 = true,
 };
 
-static void __init dalmore_panel_select(void)
+static void dalmore_panel_select(void)
 {
 	struct tegra_panel *panel = NULL;
 	struct board_info board;
