@@ -659,6 +659,9 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 	win->flags = TEGRA_WIN_FLAG_ENABLED;
 	win->global_alpha = 0xFF;
 
+	if (fb_mem)
+		tegra_fb_set_par(info);
+
 	if (register_framebuffer(info)) {
 		dev_err(&ndev->dev, "failed to register framebuffer\n");
 		ret = -ENODEV;
