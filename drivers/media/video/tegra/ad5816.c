@@ -124,6 +124,7 @@ struct ad5816_info {
 	int pwr_dev;
 	s32 pos;
 	u16 dev_id;
+	char devname[16];
 };
 
 /**
@@ -777,7 +778,6 @@ static int ad5816_probe(
 		const struct i2c_device_id *id)
 {
 	struct ad5816_info *info;
-	char dname[16];
 	int err;
 
 	dev_dbg(&client->dev, "%s\n", __func__);
@@ -835,20 +835,21 @@ static int ad5816_probe(
 	ad5816_sdata_init(info);
 
 	if (info->pdata->dev_name != 0)
-		strcpy(dname, info->pdata->dev_name);
+		strncpy(info->devname, info->pdata->dev_name,
+			sizeof(info->devname) - 1);
 	else
-		strcpy(dname, "ad5816");
+		strncpy(info->devname, "ad5816", sizeof(info->devname) - 1);
 
 	if (info->pdata->num)
-		snprintf(dname, sizeof(dname),
-			"%s.%u", dname, info->pdata->num);
+		snprintf(info->devname, sizeof(info->devname),
+			"%s.%u", info->devname, info->pdata->num);
 
-	info->miscdev.name = dname;
+	info->miscdev.name = info->devname;
 	info->miscdev.fops = &ad5816_fileops;
 	info->miscdev.minor = MISC_DYNAMIC_MINOR;
 	if (misc_register(&info->miscdev)) {
 		dev_err(info->dev, "%s unable to register misc device %s\n",
-			__func__, dname);
+			__func__, info->devname);
 		ad5816_del(info);
 		return -ENODEV;
 	}

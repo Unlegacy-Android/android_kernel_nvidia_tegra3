@@ -150,6 +150,7 @@ struct as364x_info {
 	u8 led_num;
 	u8 led_mask;
 	bool shutdown_complete;
+	char devname[16];
 };
 
 static struct as364x_platform_data as364x_default_pdata = {
@@ -1180,7 +1181,6 @@ static int as364x_probe(
 	const struct i2c_device_id *id)
 {
 	struct as364x_info *info;
-	char dname[16];
 	int err;
 
 	dev_dbg(&client->dev, "%s\n", __func__);
@@ -1234,19 +1234,20 @@ static int as364x_probe(
 			__func__, info->regs.dev_id);
 
 	if (info->pdata->dev_name != 0)
-		strcpy(dname, info->pdata->dev_name);
+		strncpy(info->devname, info->pdata->dev_name,
+			sizeof(info->devname) - 1);
 	else
-		strcpy(dname, "as364x");
+		strncpy(info->devname, "as364x", sizeof(info->devname) - 1);
 	if (info->pdata->num)
-		snprintf(dname, sizeof(dname), "%s.%u",
-			 dname, info->pdata->num);
+		snprintf(info->devname, sizeof(info->devname), "%s.%u",
+			 info->devname, info->pdata->num);
 
-	info->miscdev.name = dname;
+	info->miscdev.name = info->devname;
 	info->miscdev.fops = &as364x_fileops;
 	info->miscdev.minor = MISC_DYNAMIC_MINOR;
 	if (misc_register(&info->miscdev)) {
 		dev_err(&client->dev, "%s unable to register misc device %s\n",
-				__func__, dname);
+				__func__, info->devname);
 		as364x_del(info);
 		return -ENODEV;
 	}
