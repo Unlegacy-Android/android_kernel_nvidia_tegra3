@@ -1900,7 +1900,6 @@ unsigned int snd_soc_read(struct snd_soc_codec *codec, unsigned int reg)
         }
         else
 		ret = -EIO;
-
 	return ret;
 }
 EXPORT_SYMBOL_GPL(snd_soc_read);
@@ -3468,6 +3467,17 @@ static void fixup_codec_formats(struct snd_soc_pcm_stream *stream)
 		if (stream->formats & codec_format_map[i])
 			stream->formats |= codec_format_map[i];
 }
+
+/**
+ * snd_soc_card_change_online_state - Mark if soc card is online/offline
+ *
+ * @soc_card : soc_card to mark
+ */
+void snd_soc_card_change_online_state(struct snd_soc_card *soc_card, int online)
+{
+	snd_card_change_online_state(soc_card->snd_card, online);
+}
+EXPORT_SYMBOL(snd_soc_card_change_online_state);
 
 /**
  * snd_soc_register_codec - Register a codec with the ASoC core
