@@ -494,10 +494,14 @@ static inline int
 snd_compr_tstamp(struct snd_compr_stream *stream, unsigned long arg)
 {
 	struct snd_compr_tstamp tstamp;
+	int ret;
 
-	snd_compr_update_tstamp(stream, &tstamp);
-	return copy_to_user((struct snd_compr_tstamp __user *)arg,
-		&tstamp, sizeof(tstamp)) ? -EFAULT : 0;
+	memset(&tstamp, 0, sizeof(tstamp));
+	ret = snd_compr_update_tstamp(stream, &tstamp);
+	if (ret == 0)
+		ret = copy_to_user((struct snd_compr_tstamp __user *)arg,
+			&tstamp, sizeof(tstamp)) ? -EFAULT : 0;
+	return ret;
 }
 
 static int snd_compr_pause(struct snd_compr_stream *stream)
