@@ -3,7 +3,7 @@
  *
  * Tegra pulse-width-modulation controller driver
  *
- * Copyright (c) 2010, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION. All rights reserved.
  * Based on arch/arm/plat-mxc/pwm.c by Sascha Hauer <s.hauer@pengutronix.de>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -131,7 +131,7 @@ void pwm_disable(struct pwm_device *pwm)
 		clk_disable_unprepare(pwm->clk);
 		pwm->clk_enb = 0;
 	} else
-		dev_warn(&pwm->pdev->dev, "%s called on disabled PWM\n",
+		dev_info(&pwm->pdev->dev, "%s called on disabled PWM\n",
 			 __func__);
 	mutex_unlock(&pwm_lock);
 }
