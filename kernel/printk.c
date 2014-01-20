@@ -999,27 +999,29 @@ asmlinkage int vprintk(const char *fmt, va_list args)
 				/* Add the current time stamp */
 				char tbuf[50], *tp;
 				unsigned tlen;
-				unsigned long long t;
-				unsigned long nanosec_rem;
-				struct timespec ts;
-				struct rtc_time tm;
 
-				t = cpu_clock(printk_cpu);
-				nanosec_rem = do_div(t, 1000000000);
+				if (system_state == SYSTEM_BOOTING) {
+					unsigned long long t;
+					unsigned long nanosec_rem;
 
-				if (t < 30) {
+					t = cpu_clock(printk_cpu);
+					nanosec_rem = do_div(t, 1000000000);
 					tlen = sprintf(tbuf, "[%5lu.%06lu] ",
 						       (unsigned long) t,
 						       nanosec_rem / 1000);
 				} else {
-					getnstimeofday(&ts);
-					rtc_time_to_tm(ts.tv_sec, &tm);
-					tlen = sprintf(tbuf,
-						       "[%02d-%02d %02d:%02d:%02d.%03d] ",
-						       tm.tm_mon + 1,
-						       tm.tm_mday, tm.tm_hour,
-						       tm.tm_min, tm.tm_sec,
-						       (int)ts.tv_nsec/1000000);
+					struct timespec ts;
+					struct tm tm;
+
+					ts = __current_kernel_time();
+					time_to_tm(ts.tv_sec, -sys_tz.tz_minuteswest * 60, &tm);
+					tlen = sprintf(tbuf, "[%02d-%02d %02d:%02d:%02d.%03lu] ",
+							tm.tm_mon+1,
+							tm.tm_mday,
+							tm.tm_hour,
+							tm.tm_min,
+							tm.tm_sec,
+							(unsigned long) ts.tv_nsec/1000000);
 				}
 
 				for (tp = tbuf; tp < tbuf + tlen; tp++)
