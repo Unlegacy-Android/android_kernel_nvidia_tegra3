@@ -1582,8 +1582,10 @@ static int tegra_pullup(struct usb_gadget *gadget, int is_on)
 			schedule_delayed_work(&udc->non_std_charger_work,
 				msecs_to_jiffies(NON_STD_CHARGER_DET_TIME_MS));
 	} else {
+		cancel_delayed_work(&udc->non_std_charger_work);
 		udc_writel(udc, (tmp & ~USB_CMD_RUN_STOP), USB_CMD_REG_OFFSET);
 	}
+
 	return 0;
 }
 
