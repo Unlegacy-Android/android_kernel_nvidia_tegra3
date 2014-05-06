@@ -4,6 +4,7 @@
 #include <linux/export.h>
 #include <linux/err.h>
 #include <linux/sched.h>
+#include <linux/vmalloc.h>
 #include <asm/uaccess.h>
 
 #include "internal.h"
@@ -340,6 +341,33 @@ int __attribute__((weak)) get_user_pages_fast(unsigned long start,
 	return ret;
 }
 EXPORT_SYMBOL_GPL(get_user_pages_fast);
+
+/**
+ * do_vfree - workqueue routine for freeing vmalloced memory
+ * @work: data to be freed
+ *
+ * The work_struct is overlaid to the data being freed, as at the point
+ * the work is scheduled the data is no longer valid, be its freeing
+ * needs to be delayed until safe.
+ */
+static void do_vfree(struct work_struct *work)
+{
+	vfree(work);
+}
+
+void kvfree(const void *addr)
+{
+	if (is_vmalloc_addr(addr)) {
+		/* Data is no longer valid so just use the allocated space
+		 * as the work_struct
+		 */
+		struct work_struct *work = (struct work_struct *) addr;
+		INIT_WORK(work, do_vfree);
+		schedule_work(work);
+	} else
+		kfree(addr);
+}
+EXPORT_SYMBOL(kvfree);
 
 /* Tracepoints definitions. */
 EXPORT_TRACEPOINT_SYMBOL(kmalloc);
