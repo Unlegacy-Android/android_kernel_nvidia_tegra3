@@ -60,9 +60,15 @@
 #define STK_INTR TEGRA_GPIO_PX3
 #endif
 
+#ifdef CONFIG_VIDEO_OV5640
 #include <media/ov5640.h>
+#endif
+#ifdef CONFIG_VIDEO_OV9740
 #include <media/ov9740.h>
+#endif
+#ifdef CONFIG_VIDEO_YUV
 #include <media/yuv_sensor.h>
+#endif
 
 static struct board_info board_info;
 
@@ -150,7 +156,7 @@ fail:
 }
 
 #if defined(CONFIG_VIDEO_OV5640)
-static int cardhu_ov5640_power_on(void)
+static int cardhu_ov5640_power_on(struct device *dev)
 {
 	pr_info("%s\n", __func__);
 
@@ -160,7 +166,7 @@ static int cardhu_ov5640_power_on(void)
 	return 0;
 }
 
-static int cardhu_ov5640_power_off(void)
+static int cardhu_ov5640_power_off(struct device *dev)
 {
 	pr_info("%s\n", __func__);
 
