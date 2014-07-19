@@ -4,7 +4,6 @@
 #include <linux/resource.h>
 #include <asm/mach-types.h>
 #include <linux/platform_device.h>
-#include <linux/earlysuspend.h>
 #include <linux/pwm_backlight.h>
 #include <asm/atomic.h>
 #include <linux/nvhost.h>
@@ -25,16 +24,13 @@
 #define LCD_CABC           TEGRA_GPIO_PH3    /* (J1/GMI_AD11/LCD_DCR)         */
 #define BL_ENABLE          TEGRA_GPIO_PH1    /* (E1/GMI_AD9/DISPOFF#)         */
 #define BL_PWM             TEGRA_GPIO_PH0    /* (G3/GMI_AD8/LCD_PWM_OUT )     */
-#if defined(CONFIG_TEGRA_HDMI)
+
 #define HDMI_HPD           TEGRA_GPIO_PN7    /* (AN23/HDMI_INT/HDMI_DET_T30S) */
 #define HDMI_5V            TEGRA_GPIO_PI4    /* (L5/GMI_RST_N/EN_HDMI_5V0)    */
 #define HDMI_5V_ALWAYS_ON  1
-#endif
 
-#if defined(CONFIG_TEGRA_HDMI)
 static struct regulator *acer_hdmi_reg = NULL;
 static struct regulator *acer_hdmi_pll = NULL;
-#endif
 
 static atomic_t sd_brightness = ATOMIC_INIT(255);
 static struct board_info board_info;
@@ -52,7 +48,7 @@ static int acer_backlight_init(struct device *dev)
 	/* TBR: disable gpio to  change function pin */
 	tegra_gpio_disable(BL_PWM);
 	INIT_DELAYED_WORK(&bl_en_gpio,acer_backlight_work_queue);
-	return 0;
+	return 1;
 }
 
 static void acer_backlight_exit(struct device *dev)
@@ -108,7 +104,7 @@ static struct platform_device acer_backlight_device = {
 	},
 };
 
-static int acer_panel_enable(void)
+static int acer_panel_enable(struct device *dev)
 {
 	gpio_set_value(LCD_VDD,1);
 	udelay(400);
@@ -130,9 +126,8 @@ static int acer_panel_disable(void)
 	return 0;
 }
 
-#if defined(CONFIG_TEGRA_HDMI)
 #if !HDMI_5V_ALWAYS_ON
-static int acer_hdmi_vddio_enable(void)
+static int acer_hdmi_vddio_enable(struct device *dev)
 {
 	int err;
 	err = gpio_direction_output(HDMI_5V, 1);
@@ -153,11 +148,11 @@ static int acer_hdmi_vddio_disable(void)
 }
 #endif
 
-static int acer_hdmi_enable(void)
+static int acer_hdmi_enable(struct device *dev)
 {
 	int ret;
 	if (!acer_hdmi_reg) {
-		acer_hdmi_reg = regulator_get(NULL, "avdd_hdmi");
+		acer_hdmi_reg = regulator_get(dev, "avdd_hdmi");
 		if (IS_ERR_OR_NULL(acer_hdmi_reg)) {
 			pr_err("[hdmi]: couldn't get regulator avdd_hdmi\n");
 			acer_hdmi_reg = NULL;
@@ -199,7 +194,6 @@ static int acer_hdmi_disable(void)
 
 	return 0;
 }
-#endif
 
 static struct resource acer_disp1_resources[] = {
 	{
@@ -317,7 +311,7 @@ static struct tegra_dc_sd_settings acer_sd_settings = {
 			},
 		},
 	.sd_brightness = &sd_brightness,
-	.bl_device = &acer_backlight_device,
+	.bl_device_name = "pwm-backlight",
 };
 /* DISPLAY PICASSO 2 */
 static struct tegra_dc_mode acer_p2_panel_modes[] = {
@@ -367,7 +361,7 @@ static struct tegra_dc_platform_data acer_p2_disp1_pdata = {
 	.fb             = &acer_p2_fb_data,
 };
 
-static struct nvhost_device acer_p2_disp1_device = {
+static struct platform_device acer_p2_disp1_device = {
 	.name           = "tegradc",
 	.id             = 0,
 	.resource       = acer_disp1_resources,
@@ -426,7 +420,7 @@ static struct tegra_dc_platform_data acer_pm_disp1_pdata = {
 	.fb             = &acer_pm_fb_data,
 };
 
-static struct nvhost_device acer_pm_disp1_device = {
+static struct platform_device acer_pm_disp1_device = {
 	.name           = "tegradc",
 	.id             = 0,
 	.resource       = acer_disp1_resources,
@@ -439,7 +433,6 @@ static struct nvhost_device acer_pm_disp1_device = {
 /*
 	HDMI
 */
-#if defined(CONFIG_TEGRA_HDMI)
 static struct resource acer_disp2_resources[] = {
 	{
 		.name    = "irq",
@@ -499,7 +492,7 @@ static struct tegra_dc_platform_data acer_disp2_pdata = {
 	.emc_clk_rate   = 300000000,
 };
 
-static struct nvhost_device acer_disp2_device = {
+static struct platform_device acer_disp2_device = {
 	.name           = "tegradc",
 	.id             = 1,
 	.resource       = acer_disp2_resources,
@@ -508,20 +501,13 @@ static struct nvhost_device acer_disp2_device = {
 		.platform_data = &acer_disp2_pdata,
 	},
 };
-#endif
 
 /*
 	CARVEOUT
 */
-
+#ifdef CONFIG_TEGRA_NVMAP
 static struct nvmap_platform_carveout acer_carveouts[] = {
-	[0] = {
-		.name       = "iram",
-		.usage_mask = NVMAP_HEAP_CARVEOUT_IRAM,
-		.base       = TEGRA_IRAM_BASE + TEGRA_RESET_HANDLER_SIZE,
-		.size       = TEGRA_IRAM_SIZE - TEGRA_RESET_HANDLER_SIZE,
-		.buddy_size = 0, /* no buddy allocation for IRAM */
-	},
+	[0] = NVMAP_HEAP_CARVEOUT_IRAM_INIT,
 	[1] = {
 		.name       = "generic-0",
 		.usage_mask = NVMAP_HEAP_CARVEOUT_GENERIC,
@@ -543,67 +529,48 @@ static struct platform_device acer_nvmap_device = {
 		.platform_data = &acer_nvmap_data,
 	},
 };
+#endif
 
 static struct platform_device *acer_gfx_devices[] __initdata = {
+#ifdef CONFIG_TEGRA_NVMAP
 	&acer_nvmap_device,
+#endif
 	&tegra_pwfm0_device,
 	&acer_backlight_device,
 };
 
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-struct early_suspend acer_panel_early_suspender;
-
-static void acer_panel_early_suspend(struct early_suspend *h)
-{
-	cancel_delayed_work_sync(&bl_en_gpio);
-	gpio_set_value(BL_ENABLE, 0);
-	msleep(210);
-	if (num_registered_fb > 0)
-		fb_blank(registered_fb[0], FB_BLANK_POWERDOWN);
-	if (num_registered_fb > 1)
-		fb_blank(registered_fb[1], FB_BLANK_NORMAL);
-}
-
-static void acer_panel_late_resume(struct early_suspend *h)
-{
-	unsigned i;
-	for (i = 0; i < num_registered_fb; i++)
-		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
-}
-#endif
-
 int __init acer_panel_init(void)
 {
 	int err;
-	struct resource *res;
+	struct resource __maybe_unused *res;
+	struct platform_device *phost1x;
 
 	tegra_get_board_info(&board_info);
 
+#if defined(CONFIG_TEGRA_NVMAP)
 	acer_carveouts[1].base = tegra_carveout_start;
 	acer_carveouts[1].size = tegra_carveout_size;
+#endif
 
 	tegra_gpio_enable(LVDS_SHUTDOWN);
 	tegra_gpio_enable(LCD_VDD);
 	tegra_gpio_enable(LCD_CABC);
 	tegra_gpio_enable(BL_ENABLE);
-#if defined(CONFIG_TEGRA_HDMI)
 	tegra_gpio_enable(HDMI_HPD);
-#endif
+
 	gpio_request(LVDS_SHUTDOWN, "lvds_shutdown");
 	gpio_request(LCD_VDD, "lcd_vdd");
 	gpio_request(LCD_CABC, "lcd_cabc");
 	gpio_request(BL_ENABLE, "bl_enable");
-#if defined(CONFIG_TEGRA_HDMI)
+
 	gpio_request(HDMI_HPD, "hdmi_hpd");
-#endif
 
 	gpio_direction_output(LVDS_SHUTDOWN,1);
 	gpio_direction_output(LCD_VDD, 1);
 	gpio_direction_output(LCD_CABC,0);
 	gpio_direction_output(BL_ENABLE,1);
 
-#if defined(CONFIG_TEGRA_HDMI)
 	tegra_gpio_enable(HDMI_5V);
 	err = gpio_request(HDMI_5V, "hdmi_5V_enable");
 	if (err) {
@@ -617,30 +584,22 @@ int __init acer_panel_init(void)
 	if (err) {
 		pr_err("[HDMI] failed to set direction of hdmi_5V_enable\n");
 	}
-#endif
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	acer_panel_early_suspender.suspend = acer_panel_early_suspend;
-	acer_panel_early_suspender.resume = acer_panel_late_resume;
-	acer_panel_early_suspender.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
-	register_early_suspend(&acer_panel_early_suspender);
-#endif
-
-#ifdef CONFIG_TEGRA_GRHOST
-	err = tegra3_register_host1x_devices();
-	if (err)
-		return err;
-#endif
 
 	err = platform_add_devices(acer_gfx_devices,
 			ARRAY_SIZE(acer_gfx_devices));
 
+#ifdef CONFIG_TEGRA_GRHOST
+	phost1x = tegra3_register_host1x_devices();
+	if (!phost1x)
+		return -EINVAL;
+#endif
+
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
 	if (acer_board_type == BOARD_PICASSO_M) {
-		res = nvhost_get_resource_byname(&acer_pm_disp1_device,
+		res = platform_get_resource_byname(&acer_pm_disp1_device,
 				IORESOURCE_MEM, "fbmem");
 	}else{
-		res = nvhost_get_resource_byname(&acer_p2_disp1_device,
+		res = platform_get_resource_byname(&acer_p2_disp1_device,
 				IORESOURCE_MEM, "fbmem");
 	}
 	res->start = tegra_fb_start;
@@ -648,30 +607,36 @@ int __init acer_panel_init(void)
 #endif
 
 	/* Copy the bootloader fb to the fb. */
-	tegra_move_framebuffer(tegra_fb_start, tegra_bootloader_fb_start,
+	__tegra_move_framebuffer(&acer_nvmap_device,
+				tegra_fb_start, tegra_bootloader_fb_start,
 				min(tegra_fb_size, tegra_bootloader_fb_size));
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
 	if(!err){
 		if (acer_board_type == BOARD_PICASSO_M) {
-			err = nvhost_device_register(&acer_pm_disp1_device);
+			acer_pm_disp1_device.dev.parent = &phost1x->dev;
+			err = platform_device_register(&acer_pm_disp1_device);
 		}else{
-			err = nvhost_device_register(&acer_p2_disp1_device);
+			acer_p2_disp1_device.dev.parent = &phost1x->dev;
+			err = platform_device_register(&acer_p2_disp1_device);
 		}
 	}
-#if defined(CONFIG_TEGRA_HDMI)
-	res = nvhost_get_resource_byname(&acer_disp2_device,
+
+	res = platform_get_resource_byname(&acer_disp2_device,
 				IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb2_start;
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
-	if (!err)
-		err = nvhost_device_register(&acer_disp2_device);
-#endif
+	if (!err) {
+		acer_disp2_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&acer_disp2_device);
+	}
 #endif
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_NVAVP)
-	if (!err)
-		err = nvhost_device_register(&nvavp_device);
+	if (!err) {
+		nvavp_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&nvavp_device);
+	}
 #endif
 	return err;
 }
