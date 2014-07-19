@@ -807,7 +807,7 @@ static int hsic_reset_gpio = -1;
 
 void hsic_platform_open(void)
 {
-	int reset_gpio = 0, enable_gpio = 0;
+	int reset_gpio = -1, enable_gpio = -1;
 
 	if (hsic_enable_gpio != -1)
 		enable_gpio = gpio_request(hsic_enable_gpio, "uhsic_enable");
