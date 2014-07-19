@@ -198,8 +198,6 @@ int cardhu_pm299_regulator_init(void);
 #define XMM_GPIO_IPC_BB_WAKE		BB_GPIO_AWR
 #define XMM_GPIO_IPC_AP_WAKE		BB_GPIO_CWR
 
-#define TDIODE_OFFSET	(10000)	/* in millicelsius */
-
 /* Board Type */
 #define BOARD_PICASSO_2  0
 #define BOARD_PICASSO_M  1

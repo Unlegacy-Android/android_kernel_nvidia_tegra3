@@ -39,8 +39,10 @@
 #include <linux/spi-tegra.h>
 #include <linux/rfkill-gpio.h>
 
+
 #include <sound/wm8903.h>
 
+#include <mach/edp.h>
 #include <mach/clk.h>
 #include <mach/iomap.h>
 #include <mach/io_dpd.h>
@@ -54,9 +56,9 @@
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <mach/usb_phy.h>
-#include <mach/thermal.h>
 #include <mach/pci.h>
 #include <mach/tegra_fiq_debugger.h>
+
 #ifdef CONFIG_ROTATELOCK
 #include <linux/switch.h>
 #endif
@@ -99,94 +101,6 @@ extern int acer_sku;
 extern int acer_wifi_module;
 
 void gpio_unused_init(void);
-
-static struct balanced_throttle throttle_list[] = {
-#ifdef CONFIG_TEGRA_THERMAL_THROTTLE
-	{
-		.id = BALANCED_THROTTLE_ID_TJ,
-		.throt_tab_size = 10,
-		.throt_tab = {
-			{      0, 1000 },
-			{ 640000, 1000 },
-			{ 640000, 1000 },
-			{ 640000, 1000 },
-			{ 640000, 1000 },
-			{ 640000, 1000 },
-			{ 760000, 1000 },
-			{ 760000, 1050 },
-			{1000000, 1050 },
-			{1000000, 1100 },
-		},
-	},
-#endif
-#ifdef CONFIG_TEGRA_SKIN_THROTTLE
-	{
-		.id = BALANCED_THROTTLE_ID_SKIN,
-		.throt_tab_size = 6,
-		.throt_tab = {
-			{ 640000, 1200 },
-			{ 640000, 1200 },
-			{ 760000, 1200 },
-			{ 760000, 1200 },
-			{1000000, 1200 },
-			{1000000, 1200 },
-		},
-	},
-#endif
-};
-
-/* All units are in millicelsius */
-static struct tegra_thermal_data thermal_data = {
-	.shutdown_device_id = THERMAL_DEVICE_ID_NCT_EXT,
-	.temp_shutdown = 90000,
-
-#if defined(CONFIG_TEGRA_EDP_LIMITS) || defined(CONFIG_TEGRA_THERMAL_THROTTLE)
-	.throttle_edp_device_id = THERMAL_DEVICE_ID_NCT_EXT,
-#endif
-#ifdef CONFIG_TEGRA_EDP_LIMITS
-	.edp_offset = TDIODE_OFFSET,  /* edp based on tdiode */
-	.hysteresis_edp = 3000,
-#endif
-#ifdef CONFIG_TEGRA_THERMAL_THROTTLE
-	.temp_throttle = 85000,
-	.tc1 = 0,
-	.tc2 = 1,
-	.passive_delay = 2000,
-#endif
-#ifdef CONFIG_TEGRA_SKIN_THROTTLE
-	.skin_device_id = THERMAL_DEVICE_ID_SKIN,
-	.temp_throttle_skin = 43000,
-	.tc1_skin = 0,
-	.tc2_skin = 1,
-	.passive_delay_skin = 5000,
-
-	.skin_temp_offset = 9793,
-	.skin_period = 1100,
-	.skin_devs_size = 2,
-	.skin_devs = {
-		{
-			THERMAL_DEVICE_ID_NCT_EXT,
-			{
-				2, 1, 1, 1,
-				1, 1, 1, 1,
-				1, 1, 1, 0,
-				1, 1, 0, 0,
-				0, 0, -1, -7
-			}
-		},
-		{
-			THERMAL_DEVICE_ID_NCT_INT,
-			{
-				-11, -7, -5, -3,
-				-3, -2, -1, 0,
-				0, 0, 1, 1,
-				1, 2, 2, 3,
-				4, 6, 11, 18
-			}
-		},
-	},
-#endif
-};
 
 static int bt_uart_gpio[] = {
 	TEGRA_GPIO_PW7,
@@ -1191,9 +1105,6 @@ static void acer_board_info(void) {
 extern void tegra_booting_info(void);
 static void __init tegra_cardhu_init(void)
 {
-	tegra_thermal_init(&thermal_data,
-				throttle_list,
-				ARRAY_SIZE(throttle_list));
 	tegra_clk_init_from_table(cardhu_clk_init_table);
 	cardhu_pinmux_init();
 	tegra_booting_info();
