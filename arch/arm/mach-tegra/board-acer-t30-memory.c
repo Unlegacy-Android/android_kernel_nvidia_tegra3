@@ -18,16 +18,18 @@
 
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/platform_data/tegra_emc.h>
 
 #include "board.h"
 #include "board-acer-t30.h"
 #include "tegra3_emc.h"
 #include "fuse.h"
+#include "devices.h"
 
 #include <linux/io.h>
 #include <mach/iomap.h>
 
-static const struct tegra_emc_table cardhu_emc_tables_picasso2_elpida_1gb[] =
+static const struct tegra30_emc_table cardhu_emc_tables_picasso2_elpida_1gb[] =
 {
 	{
 		0x31,       /* Rev 3.1 */
@@ -626,7 +628,7 @@ static const struct tegra_emc_table cardhu_emc_tables_picasso2_elpida_1gb[] =
 	},
 };
 
-static const struct tegra_emc_table cardhu_emc_tables_picasso2_samsung_1gb[] =
+static const struct tegra30_emc_table cardhu_emc_tables_picasso2_samsung_1gb[] =
 {
 	{
 		0x31,       /* Rev 3.1 */
@@ -1225,25 +1227,43 @@ static const struct tegra_emc_table cardhu_emc_tables_picasso2_samsung_1gb[] =
 	},
 };
 
+static struct tegra30_emc_pdata cardhu_emc_chip_picasso2_elpida_1gb = {
+	.description = "picasso2_elpida_1gb",
+	.tables = (struct tegra30_emc_table *)cardhu_emc_tables_picasso2_elpida_1gb,
+	.num_tables = ARRAY_SIZE(cardhu_emc_tables_picasso2_elpida_1gb)
+};
+static struct tegra30_emc_pdata cardhu_emc_chip_picasso2_samsung_1gb = {
+	.description = "picasso2_samsung_1gb",
+	.tables = (struct tegra30_emc_table *)cardhu_emc_tables_picasso2_samsung_1gb,
+	.num_tables = ARRAY_SIZE(cardhu_emc_tables_picasso2_samsung_1gb)
+};
+
 #define APB_MISC_PP_STRAPPING_OPT_A 0x8
 #define RAM_CODE ((*(volatile unsigned long*)(IO_ADDRESS(TEGRA_APB_MISC_BASE)+APB_MISC_PP_STRAPPING_OPT_A)>>4)&0x3)
 
-int cardhu_emc_init(void)
+int __init cardhu_emc_init(void)
 {
+	struct tegra30_emc_pdata *emc_platdata = NULL;
+
 	pr_info("################ Picasso M/MF RAMCODE = %ld ################\n" , RAM_CODE);
 	switch(RAM_CODE){
 		case 0:
 			pr_info("%s: Elpida 1GB memory found\n", __func__);
-			tegra_init_emc(cardhu_emc_tables_picasso2_elpida_1gb, ARRAY_SIZE(cardhu_emc_tables_picasso2_elpida_1gb));
+			emc_platdata = &cardhu_emc_chip_picasso2_elpida_1gb;
 			break;
 		case 1:
 			pr_info("%s: Samsung 1GB memory found\n", __func__);
-			tegra_init_emc(cardhu_emc_tables_picasso2_samsung_1gb, ARRAY_SIZE(cardhu_emc_tables_picasso2_samsung_1gb));
+			emc_platdata = &cardhu_emc_chip_picasso2_samsung_1gb;
 			break;
 		default:
 			pr_info("%s: memory not found , using Elpida 1GB memory\n", __func__);
-			tegra_init_emc(cardhu_emc_tables_picasso2_elpida_1gb, ARRAY_SIZE(cardhu_emc_tables_picasso2_elpida_1gb));
+			emc_platdata = &cardhu_emc_chip_picasso2_elpida_1gb;
 	}
+
+	tegra_emc_device.dev.platform_data = emc_platdata;
+	platform_device_register(&tegra_emc_device);
+
+	tegra30_init_emc();
 
 	return 0;
 }
