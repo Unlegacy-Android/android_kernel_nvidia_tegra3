@@ -16,9 +16,13 @@
 
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/gpio.h>
 #include <mach/pinmux.h>
+#include <mach/pinmux-tegra30.h>
+#include <mach/gpio-tegra.h>
 #include "board.h"
 #include "board-acer-t30.h"
+#include "devices.h"
 #include "gpio-names.h"
 
 extern int acer_board_id;
@@ -394,7 +398,7 @@ static __initdata struct tegra_pingroup_config acer_t30_pinmux[] = {
 	DEFAULT_PINMUX(DAP3_SCLK,       RSVD1,           NORMAL,    NORMAL,     OUTPUT),
 };
 
-static void __init cardhu_pinmux_audio_init(void)
+static void __init cardhu_audio_gpio_init(void)
 {
 	int ret = gpio_request(TEGRA_GPIO_CDC_IRQ, "wm8903");
 	if (ret < 0)
@@ -438,9 +442,17 @@ static void __init acer_t30_gpio_init_configure(void)
 	}
 }
 
-int __init cardhu_pinmux_init(void)
+int __init cardhu_gpio_init(void)
 {
 	acer_t30_gpio_init_configure();
+	cardhu_audio_gpio_init();
+
+	return 0;
+}
+
+int __init cardhu_pinmux_init(void)
+{
+	tegra30_default_pinmux();
 
         /* common pinmux connfiguration */
 	switch (acer_board_type) {
@@ -466,7 +478,6 @@ int __init cardhu_pinmux_init(void)
 					ARRAY_SIZE(cardhu_drive_pinmux));
 	tegra_pinmux_config_table(acer_t30_pinmux,
 					ARRAY_SIZE(acer_t30_pinmux));
-	cardhu_pinmux_audio_init();
 
 	return 0;
 }

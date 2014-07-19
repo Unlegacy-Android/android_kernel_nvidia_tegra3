@@ -598,11 +598,6 @@ static void rotationlock_init(void)
 }
 #endif
 
-static struct platform_device tegra_camera = {
-	.name = "tegra_camera",
-	.id = -1,
-};
-
 static struct platform_device *cardhu_spi_devices[] __initdata = {
 	&tegra_spi_device4,
 };
@@ -712,19 +707,13 @@ static struct platform_device *cardhu_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
 	&tegra_udc_device,
-#if defined(CONFIG_TEGRA_IOVMM_SMMU) ||  defined(CONFIG_TEGRA_IOMMU_SMMU)
-	&tegra_smmu_device,
-#endif
 #if defined(CONFIG_ACER_VIBRATOR)
 	&vib_timed_gpio_device,
 #endif
 	&tegra_wdt0_device,
-	&tegra_wdt1_device,
-	&tegra_wdt2_device,
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
-	&tegra_camera,
 #ifdef CONFIG_ROTATELOCK
 	&rotationlock_switch,
 #endif
@@ -1106,7 +1095,11 @@ extern void tegra_booting_info(void);
 static void __init tegra_cardhu_init(void)
 {
 	tegra_clk_init_from_table(cardhu_clk_init_table);
+	tegra_enable_pinmux();
+	tegra_smmu_init();
+	tegra_soc_device_init("acer-t30");
 	cardhu_pinmux_init();
+	cardhu_gpio_init();
 	tegra_booting_info();
 	cardhu_i2c_init();
 	cardhu_spi_init();
@@ -1156,6 +1149,7 @@ static void __init tegra_cardhu_init(void)
 #endif
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	acer_board_info();
+	tegra_register_fuse();
 }
 
 static void __init tegra_cardhu_reserve(void)
@@ -1166,7 +1160,6 @@ static void __init tegra_cardhu_reserve(void)
 #else
 	tegra_reserve(SZ_128M, SZ_8M, SZ_8M);
 #endif
-	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
 MACHINE_START(PICASSO_M, "picasso_m")
