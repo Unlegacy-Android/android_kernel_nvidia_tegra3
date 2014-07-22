@@ -368,3 +368,12 @@ obj-${CONFIG_MACH_GROUPER}              += board-grouper-power-ti.o
 obj-${CONFIG_MACH_GROUPER}              += board-grouper-sdhci.o
 obj-${CONFIG_MACH_GROUPER}              += board-grouper-sensors.o
 obj-${CONFIG_MACH_GROUPER}              += board-touch-grouper-synaptics-spi.o
+
+obj-${CONFIG_ARCH_ACER_T30}             += board-acer-t30.o
+obj-${CONFIG_ARCH_ACER_T30}             += board-acer-t30-kbc.o
+obj-${CONFIG_ARCH_ACER_T30}             += board-acer-t30-panel.o
+obj-${CONFIG_ARCH_ACER_T30}             += board-acer-t30-pinmux.o
+obj-${CONFIG_ARCH_ACER_T30}             += board-acer-t30-power.o
+obj-${CONFIG_ARCH_ACER_T30}             += board-acer-t30-sdhci.o
+obj-${CONFIG_ARCH_ACER_T30}             += board-acer-t30-sensors.o
+obj-${CONFIG_ARCH_ACER_T30}             += board-acer-t30-memory.o

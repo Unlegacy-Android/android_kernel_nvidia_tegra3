@@ -356,6 +356,28 @@ config MACH_GROUPER
        help
          Support for NVIDIA grouper development platform
 
+comment "Acer Tegra Platform options"
+
+config ARCH_ACER_T30
+	depends on ARCH_TEGRA_3x_SOC
+	bool "Acer T30 platform"
+
+comment "Acer board type"
+
+config MACH_PICASSO_M
+	bool "Picasso M"
+	depends on ARCH_ACER_T30
+	select MACH_HAS_SND_SOC_TEGRA_WM8903 if SND_SOC
+	help
+	  Support for Acer Picasso M Tablet
+
+config MACH_PICASSO_MF
+	bool "Picasso MF"
+	depends on ARCH_ACER_T30
+	select MACH_HAS_SND_SOC_TEGRA_WM8903 if SND_SOC
+	help
+	  Support for Acer Picasso MF Tablet
+
 choice
        prompt "Tegra platform type"
        default TEGRA_SILICON_PLATFORM
