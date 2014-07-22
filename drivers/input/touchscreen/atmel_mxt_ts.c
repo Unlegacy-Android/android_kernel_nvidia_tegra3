@@ -1919,10 +1919,12 @@ retry_probe:
 	}
 
 	/* Check register init values */
-	error = mxt_check_reg_init(data);
-	if (error) {
-		dev_err(&client->dev, "Failed to initialize config\n");
-		return error;
+	if (data->pdata->mxt_cfg_name && strlen(data->pdata->mxt_cfg_name) > 0) {
+		error = mxt_check_reg_init(data);
+		if (error) {
+			dev_err(&client->dev, "Failed to initialize config\n");
+			return error;
+		}
 	}
 
 	error = mxt_read_resolution(data);

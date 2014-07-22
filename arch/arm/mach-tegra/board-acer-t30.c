@@ -67,6 +67,9 @@
 #ifdef CONFIG_EEPROM_AT24C02C
 #include <linux/i2c/at24.h>
 #endif
+#ifdef CONFIG_TOUCHSCREEN_ATMEL_MXT
+#include <linux/i2c/atmel_mxt_ts.h>
+#endif
 #ifdef CONFIG_SIMDETECT
 #include <linux/switch.h>
 #endif
@@ -745,14 +748,13 @@ static struct platform_device *cardhu_devices[] __initdata = {
 };
 
 #if defined(CONFIG_TOUCHSCREEN_ATMEL_MXT1386E)
-static struct i2c_board_info __initdata atmel_i2c_info[] = {
+static struct i2c_board_info atmel_i2c_info[] = {
 	{
-		I2C_BOARD_INFO("maXTouch", 0X4C),
+		I2C_BOARD_INFO("maXTouch", 0x4c),
 	},
 };
-#endif
 
-static int __init acer_touch_init(void)
+static void __init acer_touch_init(void)
 {
 	int ret;
 
@@ -768,9 +770,61 @@ static int __init acer_touch_init(void)
 	if (ret < 0)
 		pr_err("[Touch] gpio_request: TEGRA_GPIO_PI2 fail\n");
 
-	tegra_gpio_enable(TEGRA_GPIO_PB0); /* LDO_ENABLE */
-	tegra_gpio_enable(TEGRA_GPIO_PJ0); /* INTERRUPT */
-	tegra_gpio_enable(TEGRA_GPIO_PI2); /* RESET */
+	ret = gpio_direction_output(TEGRA_GPIO_PB0, 1);
+	if (ret < 0)
+		pr_err("[Touch] gpio_direction_output: TEGRA_GPIO_PB0 fail\n");
+
+	ret = gpio_direction_input(TEGRA_GPIO_PJ0);
+	if (ret < 0)
+		pr_err("[Touch] gpio_direction_input: TEGRA_GPIO_PJ0 fail\n");
+
+	ret = gpio_direction_output(TEGRA_GPIO_PI2, 0);
+	if (ret < 0)
+		pr_err("[Touch] gpio_direction_output: TEGRA_GPIO_PI2 fail\n");
+
+	msleep(2);
+	gpio_set_value(TEGRA_GPIO_PI2, 1);
+	msleep(100);
+
+	atmel_i2c_info[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
+	i2c_register_board_info(1, atmel_i2c_info, 1);
+}
+
+#elif defined(CONFIG_TOUCHSCREEN_ATMEL_MXT)
+
+static u8 read_chg(void)
+{
+	return gpio_get_value(TEGRA_GPIO_PJ0);
+}
+
+static struct mxt_platform_data atmel_mxt_info = {
+	.irqflags       = IRQF_ONESHOT | IRQF_TRIGGER_LOW,
+	.read_chg       = &read_chg,
+};
+
+static struct i2c_board_info atmel_i2c_info[] = {
+	{
+		I2C_BOARD_INFO("atmel_mxt_ts", 0x4c),
+		.flags = I2C_CLIENT_WAKE,
+		.platform_data = &atmel_mxt_info,
+	},
+};
+
+static void __init acer_touch_init(void)
+{
+	int ret;
+
+	ret = gpio_request(TEGRA_GPIO_PB0, "Atmel_mXT1386_ENABLE");
+	if (ret < 0)
+		pr_err("[Touch] gpio_request: TEGRA_GPIO_PB0 fail\n");
+
+	ret = gpio_request(TEGRA_GPIO_PJ0, "Atmel_mXT1386_INT");
+	if (ret < 0)
+		pr_err("[Touch] gpio_request: TEGRA_GPIO_PJ0 fail\n");
+
+	ret = gpio_request(TEGRA_GPIO_PI2, "Atmel_mXT1386_RESET");
+	if (ret < 0)
+		pr_err("[Touch] gpio_request: TEGRA_GPIO_PI2 fail\n");
 
 	ret = gpio_direction_output(TEGRA_GPIO_PB0, 1);
 	if (ret < 0)
@@ -783,16 +837,15 @@ static int __init acer_touch_init(void)
 	ret = gpio_direction_output(TEGRA_GPIO_PI2, 0);
 	if (ret < 0)
 		pr_err("[Touch] gpio_direction_output: TEGRA_GPIO_PI2 fail\n");
-	gpio_set_value(TEGRA_GPIO_PI2, 0);
+
 	msleep(2);
 	gpio_set_value(TEGRA_GPIO_PI2, 1);
+	msleep(100);
 
 	atmel_i2c_info[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
 	i2c_register_board_info(1, atmel_i2c_info, 1);
-
-	return 0;
-
 }
+#endif
 
 static int hsic_enable_gpio = -1;
 static int hsic_reset_gpio = -1;
@@ -1117,7 +1170,9 @@ static void __init tegra_cardhu_init(void)
 	cardhu_sdhci_init();
 	cardhu_regulator_init();
 	cardhu_suspend_init();
+#if defined(CONFIG_TOUCHSCREEN_ATMEL_MXT1386E) || defined(CONFIG_TOUCHSCREEN_ATMEL_MXT)
 	acer_touch_init();
+#endif
 	cardhu_gps_uart_init();
 	cardhu_gps_init();
 	cardhu_scroll_init();
