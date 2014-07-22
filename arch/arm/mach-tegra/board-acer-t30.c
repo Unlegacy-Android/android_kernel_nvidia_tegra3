@@ -41,6 +41,7 @@
 
 
 #include <sound/wm8903.h>
+#include <asm/hardware/gic.h>
 
 #include <mach/edp.h>
 #include <mach/clk.h>
@@ -72,6 +73,7 @@
 
 #include "board.h"
 #include "clock.h"
+#include "common.h"
 #include "board-acer-t30.h"
 #include "devices.h"
 #include "gpio-names.h"
@@ -1164,21 +1166,27 @@ static void __init tegra_cardhu_reserve(void)
 }
 
 MACHINE_START(PICASSO_M, "picasso_m")
-	.boot_params    = 0x80000100,
+	.atag_offset    = 0x100,
+	.soc            = &tegra_soc_desc,
 	.map_io         = tegra_map_common_io,
 	.reserve        = tegra_cardhu_reserve,
-	.init_early	= tegra_init_early,
+	.init_early     = tegra30_init_early,
 	.init_irq       = tegra_init_irq,
+	.handle_irq     = gic_handle_irq,
 	.timer          = &tegra_timer,
 	.init_machine   = tegra_cardhu_init,
+	.restart        = tegra_assert_system_reset,
 MACHINE_END
 
 MACHINE_START(PICASSO_MF, "picasso_mf")
-	.boot_params    = 0x80000100,
+	.atag_offset    = 0x100,
+	.soc            = &tegra_soc_desc,
 	.map_io         = tegra_map_common_io,
 	.reserve        = tegra_cardhu_reserve,
-	.init_early	= tegra_init_early,
+	.init_early     = tegra30_init_early,
 	.init_irq       = tegra_init_irq,
+	.handle_irq     = gic_handle_irq,
 	.timer          = &tegra_timer,
 	.init_machine   = tegra_cardhu_init,
+	.restart        = tegra_assert_system_reset,
 MACHINE_END
