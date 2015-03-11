@@ -68,3 +68,4 @@ obj-$(CONFIG_SND_SOC_TEGRA_CS42L73)	+= a2220.o
 obj-$(CONFIG_FAN_THERM_EST)	+= therm_fan_est.o
 obj-$(CONFIG_BLUEDROID_PM)      += bluedroid_pm.o
 obj-$(CONFIG_CPULOAD_MONITOR)	+= cpuload.o
+obj-$(CONFIG_UID_CPUTIME)	+= uid_cputime.o
