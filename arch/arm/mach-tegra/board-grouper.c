@@ -767,6 +767,7 @@ static void __init tegra_grouper_init(void)
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
+	tegra_register_fuse();
 }
 
 static void __init grouper_ramconsole_reserve(unsigned long size)
