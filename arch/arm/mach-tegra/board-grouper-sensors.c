@@ -274,6 +274,11 @@ static void mpuirq_init(void)
 		ARRAY_SIZE(inv_mpu_i2c2_board_info));
 }
 
+static struct thermal_cooling_device *grouper_create_cdev(void *data)
+{
+	return balanced_throttle_register(&tj_throttle, "grouper-nct");
+}
+
 static struct nct1008_platform_data grouper_nct1008_pdata = {
 	.supported_hwrev = true,
 	.ext_range = true,
@@ -285,9 +290,7 @@ static struct nct1008_platform_data grouper_nct1008_pdata = {
 
 	/* Thermal Throttling */
 	.passive = {
-		.create_cdev = (struct thermal_cooling_device *(*)(void *))
-				balanced_throttle_register,
-		.cdev_data = &tj_throttle,
+		.create_cdev = grouper_create_cdev,
 		.trip_temp = 85000,
 		.tc1 = 0,
 		.tc2 = 1,
