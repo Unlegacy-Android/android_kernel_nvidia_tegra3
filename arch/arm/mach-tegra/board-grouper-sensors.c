@@ -307,25 +307,26 @@ static struct i2c_board_info grouper_i2c4_nct1008_board_info[] = {
 static void grouper_init_edp_cdev(void)
 {
 	const struct tegra_edp_limits *cpu_edp_limits;
+	struct nct1008_cdev *active_cdev;
 	int cpu_edp_limits_size;
 	int i;
 
 	/* edp capping */
 	tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
 
-	if (cpu_edp_limits_size > MAX_THROT_TABLE_SIZE)
+	if ((cpu_edp_limits_size > MAX_THROT_TABLE_SIZE) ||
+		(cpu_edp_limits_size > MAX_ACTIVE_TEMP_STATE))
 		BUG();
 
+	active_cdev = &kai_nct1008_pdata.active;
+	active_cdev->create_cdev = edp_cooling_device_create;
+	active_cdev->hysteresis = 1000;
+
 	for (i = 0; i < cpu_edp_limits_size-1; i++) {
-		grouper_nct1008_pdata.active[i].create_cdev =
-			(struct thermal_cooling_device *(*)(void *))
-				edp_cooling_device_create;
-		grouper_nct1008_pdata.active[i].cdev_data = (void *)i;
-		grouper_nct1008_pdata.active[i].trip_temp =
+		active_cdev->states[i].trip_temp =
 			cpu_edp_limits[i].temperature * 1000;
-		grouper_nct1008_pdata.active[i].hysteresis = 1000;
+		active_cdev->states[i].state = i + 1;
 	}
-	grouper_nct1008_pdata.active[i].create_cdev = NULL;
 }
 #else
 static void grouper_init_edp_cdev(void)
