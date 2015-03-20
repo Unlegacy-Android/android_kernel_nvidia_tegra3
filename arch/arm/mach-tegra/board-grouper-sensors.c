@@ -291,15 +291,17 @@ static struct nct1008_platform_data grouper_nct1008_pdata = {
 	.shutdown_ext_limit = 90, /* C */
 	.shutdown_local_limit = 100, /* C */
 
-	/* Thermal Throttling */
-	.passive = {
-		.enable = true,
-		.type = "grouper-nct",
-		.trip_temp = 85000,
-		.tc1 = 0,
-		.tc2 = 1,
-		.passive_delay = 2000,
-	}
+	.num_trips = 1,
+	.trips = {
+		/* Thermal Throttling */
+		[0] = {
+			.cdev_type = "grouper-nct",
+			.trip_temp = 80000,
+			.trip_type = THERMAL_TRIP_PASSIVE,
+			.state = THERMAL_NO_LIMIT,
+			.hysteresis = 0,
+		},
+	},
 };
 
 static struct i2c_board_info grouper_i2c4_nct1008_board_info[] = {
@@ -314,26 +316,32 @@ static struct i2c_board_info grouper_i2c4_nct1008_board_info[] = {
 static void grouper_init_edp_cdev(void)
 {
 	const struct tegra_edp_limits *cpu_edp_limits;
-	struct nct1008_cdev *active_cdev;
 	int cpu_edp_limits_size;
 	int i;
+	int trip;
+	struct nct1008_platform_data *data = &grouper_nct1008_pdata;
+	struct nct_trip_temp *trip_state;
 
 	/* edp capping */
 	tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
 
-	if ((cpu_edp_limits_size > MAX_THROT_TABLE_SIZE) ||
-		(cpu_edp_limits_size > MAX_ACTIVE_TEMP_STATE))
+	if (cpu_edp_limits_size > MAX_THROT_TABLE_SIZE)
 		BUG();
 
-	active_cdev = &kai_nct1008_pdata.active;
-	active_cdev->enable = true;
-	active_cdev->type = "edp";
-	active_cdev->hysteresis = 1000;
-
 	for (i = 0; i < cpu_edp_limits_size-1; i++) {
-		active_cdev->states[i].trip_temp =
-			cpu_edp_limits[i].temperature * 1000;
-		active_cdev->states[i].state = i + 1;
+		trip = data->num_trips;
+		trip_state = &data->trips[trip];
+
+		trip_state->cdev_type = "edp";
+		trip_state->trip_temp = cpu_edp_limits[i].temperature * 1000;
+		trip_state->trip_type = THERMAL_TRIP_ACTIVE;
+		trip_state->state = i + 1;
+		trip_state->hysteresis = 1000;
+
+		data->num_trips++;
+
+		if (data->num_trips > NCT_MAX_TRIPS)
+			BUG();
 	}
 }
 #else
