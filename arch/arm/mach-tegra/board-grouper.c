@@ -811,6 +811,7 @@ static void __init tegra_grouper_init(void)
 	grouper_misc_init();
 	tegra_thermal_init(thermal_binds);
 	tegra_clk_init_from_table(grouper_clk_init_table);
+	tegra_soc_device_init("grouper");
 	grouper_misc_reset();
 	grouper_booting_info();
 	grouper_i2c_init();
