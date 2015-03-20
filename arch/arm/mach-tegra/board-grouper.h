@@ -116,8 +116,6 @@ int __init touch_init_synaptics_grouper(void);
 #define MPU_COMPASS_BUS_NUM	2
 #define MPU_COMPASS_ORIENTATION	{ 0, -1, 0, -1, 0, 0, 0, 0, -1 }
 
-#define TDIODE_OFFSET	(10000) /* in millicelsius */
-
 #define EN_HSIC_GPIO				TEGRA_GPIO_PR7
 
 #define XMM_GPIO_BB_ON			TEGRA_GPIO_PX7

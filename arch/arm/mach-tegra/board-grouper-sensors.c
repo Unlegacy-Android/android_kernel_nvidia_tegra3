@@ -265,12 +265,6 @@ static int nct_get_temp(void *_data, long *temp)
 	return nct1008_thermal_get_temp(data, temp);
 }
 
-static int nct_get_temp_low(void *_data, long *temp)
-{
-	struct nct1008_data *data = _data;
-	return nct1008_thermal_get_temp_low(data, temp);
-}
-
 static int nct_set_limits(void *_data,
 			long lo_limit_milli,
 			long hi_limit_milli)
@@ -289,12 +283,6 @@ static int nct_set_alert(void *_data,
 	return nct1008_thermal_set_alert(data, alert_func, alert_data);
 }
 
-static int nct_set_shutdown_temp(void *_data, long shutdown_temp)
-{
-	struct nct1008_data *data = _data;
-	return nct1008_thermal_set_shutdown_temp(data, shutdown_temp);
-}
-
 static void nct1008_probe_callback(struct nct1008_data *data)
 {
 	struct tegra_thermal_device *thermal_device;
@@ -309,12 +297,9 @@ static void nct1008_probe_callback(struct nct1008_data *data)
 	thermal_device->name = "nct1008";
 	thermal_device->data = data;
 	thermal_device->id = THERMAL_DEVICE_ID_NCT_EXT;
-	thermal_device->offset = TDIODE_OFFSET;
 	thermal_device->get_temp = nct_get_temp;
-	thermal_device->get_temp_low = nct_get_temp_low;
 	thermal_device->set_limits = nct_set_limits;
 	thermal_device->set_alert = nct_set_alert;
-	thermal_device->set_shutdown_temp = nct_set_shutdown_temp;
 
 	tegra_thermal_device_register(thermal_device);
 }

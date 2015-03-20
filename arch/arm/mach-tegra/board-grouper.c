@@ -85,22 +85,6 @@ static struct balanced_throttle throttle_list[] = {
 			{1000000, 1100 },
 		},
 	},
-#ifdef CONFIG_TEGRA_SKIN_THROTTLE
-	{
-		.tegra_cdev = {
-			.id = CDEV_BTHROT_ID_SKIN,
-		},
-		.throt_tab_size = 6,
-		.throt_tab = {
-			{ 640000, 1200 },
-			{ 640000, 1200 },
-			{ 760000, 1200 },
-			{ 760000, 1200 },
-			{1000000, 1200 },
-			{1000000, 1200 },
-		},
-	},
-#endif
 };
 
 /* All units are in millicelsius */
@@ -116,30 +100,9 @@ static struct tegra_thermal_bind thermal_binds[] = {
 			.passive_delay = 2000,
 		}
 	},
-#ifdef CONFIG_TEGRA_SKIN_THROTTLE
-	{
-		.tdev_id = THERMAL_DEVICE_ID_SKIN,
-		.cdev_id = CDEV_BTHROT_ID_SKIN,
-		.type = THERMAL_TRIP_PASSIVE,
-		.passive = {
-			.trip_temp = 43000,
-			.tc1 = 10,
-			.tc2 = 1,
-			.passive_delay = 15000,
-		}
-	},
-#endif
 	{
 		.tdev_id = THERMAL_DEVICE_ID_NULL,
 	},
-};
-
-static struct tegra_skin_data skin_data = {
-#ifdef CONFIG_TEGRA_SKIN_THROTTLE
-	.skin_device_id = THERMAL_DEVICE_ID_SKIN,
-#else
-	.skin_device_id = THERMAL_DEVICE_ID_NULL,
-#endif
 };
 
 static struct rfkill_gpio_platform_data grouper_bt_rfkill_pdata[] = {
@@ -831,13 +794,22 @@ void grouper_booting_info(void )
 	}
 }
 
+/* This needs to be inialized later hand */
+static int __init grouper_throttle_list_init(void)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(throttle_list); i++)
+		if (balanced_throttle_register(&throttle_list[i]))
+			return -ENODEV;
+
+	return 0;
+}
+late_initcall(grouper_throttle_list_init);
+
 static void __init tegra_grouper_init(void)
 {
 	grouper_misc_init();
-	tegra_thermal_init(thermal_binds,
-				&skin_data,
-				throttle_list,
-				ARRAY_SIZE(throttle_list));
+	tegra_thermal_init(thermal_binds);
 	tegra_clk_init_from_table(grouper_clk_init_table);
 	grouper_misc_reset();
 	grouper_booting_info();
