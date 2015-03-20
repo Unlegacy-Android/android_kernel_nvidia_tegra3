@@ -455,8 +455,6 @@ static struct platform_device *grouper_devices[] __initdata = {
 	&tegra_smmu_device,
 #endif
 	&tegra_wdt0_device,
-	&tegra_wdt1_device,
-	&tegra_wdt2_device,
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
