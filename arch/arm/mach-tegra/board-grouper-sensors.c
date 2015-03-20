@@ -26,6 +26,7 @@
 #include <linux/regulator/consumer.h>
 #include <asm/mach-types.h>
 #include <mach/gpio.h>
+#include <mach/edp.h>
 #include <media/yuv_sensor.h>
 #include "board.h"
 #include "board-grouper.h"
@@ -43,6 +44,22 @@ static int front_yuv_sensor_rst_gpio = FRONT_YUV_SENSOR_RST_GPIO;
 static struct regulator *grouper_1v8_ldo5;
 
 static unsigned int pmic_id;
+
+static struct balanced_throttle tj_throttle = {
+	.throt_tab_size = 10,
+	.throt_tab = {
+		{      0, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 760000, 1000 },
+		{ 760000, 1050 },
+		{1000000, 1050 },
+		{1000000, 1100 },
+	},
+};
 
 static const struct i2c_board_info cardhu_i2c1_board_info_al3010[] = {
 	{
@@ -262,6 +279,20 @@ static struct nct1008_platform_data grouper_nct1008_pdata = {
 	.ext_range = true,
 	.conv_rate = 0x08,
 	.offset = 8, /* 4 * 2C. Bug 844025 - 1C for device accuracies */
+
+	.shutdown_ext_limit = 90, /* C */
+	.shutdown_local_limit = 100, /* C */
+
+	/* Thermal Throttling */
+	.passive = {
+		.create_cdev = (struct thermal_cooling_device *(*)(void *))
+				balanced_throttle_register,
+		.cdev_data = &tj_throttle,
+		.trip_temp = 85000,
+		.tc1 = 0,
+		.tc2 = 1,
+		.passive_delay = 2000,
+	}
 };
 
 static struct i2c_board_info grouper_i2c4_nct1008_board_info[] = {
@@ -271,6 +302,36 @@ static struct i2c_board_info grouper_i2c4_nct1008_board_info[] = {
 		.irq = -1,
 	}
 };
+
+#ifdef CONFIG_TEGRA_EDP_LIMITS
+static void grouper_init_edp_cdev(void)
+{
+	const struct tegra_edp_limits *cpu_edp_limits;
+	int cpu_edp_limits_size;
+	int i;
+
+	/* edp capping */
+	tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
+
+	if (cpu_edp_limits_size > MAX_THROT_TABLE_SIZE)
+		BUG();
+
+	for (i = 0; i < cpu_edp_limits_size-1; i++) {
+		grouper_nct1008_pdata.active[i].create_cdev =
+			(struct thermal_cooling_device *(*)(void *))
+				edp_cooling_device_create;
+		grouper_nct1008_pdata.active[i].cdev_data = (void *)i;
+		grouper_nct1008_pdata.active[i].trip_temp =
+			cpu_edp_limits[i].temperature * 1000;
+		grouper_nct1008_pdata.active[i].hysteresis = 1000;
+	}
+	grouper_nct1008_pdata.active[i].create_cdev = NULL;
+}
+#else
+static void grouper_init_edp_cdev(void)
+{
+}
+#endif
 
 static int grouper_nct1008_init(void)
 {
@@ -290,6 +351,8 @@ static int grouper_nct1008_init(void)
 		if (ret < 0)
 			gpio_free(nct1008_port);
 	}
+
+	grouper_init_edp_cdev();
 
 	return ret;
 }
