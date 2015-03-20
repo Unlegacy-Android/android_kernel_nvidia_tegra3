@@ -731,18 +731,6 @@ void grouper_booting_info(void )
 	}
 }
 
-/* This needs to be inialized later hand */
-static int __init grouper_throttle_list_init(void)
-{
-	int i;
-	for (i = 0; i < ARRAY_SIZE(throttle_list); i++)
-		if (balanced_throttle_register(&throttle_list[i]))
-			return -ENODEV;
-
-	return 0;
-}
-late_initcall(grouper_throttle_list_init);
-
 static void __init tegra_grouper_init(void)
 {
 	grouper_misc_init();
