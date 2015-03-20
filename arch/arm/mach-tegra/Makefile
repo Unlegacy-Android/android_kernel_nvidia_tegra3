@@ -345,3 +345,15 @@ obj-${CONFIG_MACH_ROTH}                 += board-roth-panel.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-kbc.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-sensors.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-fan.o
+
+obj-${CONFIG_MACH_GROUPER}              += board-grouper.o
+obj-${CONFIG_MACH_GROUPER}              += board-grouper-kbc.o
+obj-${CONFIG_MACH_GROUPER}              += board-grouper-memory.o
+obj-${CONFIG_MACH_GROUPER}              += board-grouper-misc.o
+obj-${CONFIG_MACH_GROUPER}              += board-grouper-panel.o
+obj-${CONFIG_MACH_GROUPER}              += board-grouper-pinmux.o
+obj-${CONFIG_MACH_GROUPER}              += board-grouper-power.o
+obj-${CONFIG_MACH_GROUPER}              += board-grouper-power-ti.o
+obj-${CONFIG_MACH_GROUPER}              += board-grouper-sdhci.o
+obj-${CONFIG_MACH_GROUPER}              += board-grouper-sensors.o
+obj-${CONFIG_MACH_GROUPER}              += board-touch-grouper-synaptics-spi.o
