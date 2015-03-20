@@ -124,43 +124,6 @@ static struct tegra_thermal_data thermal_data = {
 #endif
 };
 
-/* !!!TODO: Change for grouper (Taken from Ventana) */
-static struct tegra_utmip_config utmi_phy_config[] = {
-	[0] = {
-			.hssync_start_delay = 0,
-			.idle_wait_delay = 17,
-			.elastic_limit = 16,
-			.term_range_adj = 6,
-			.xcvr_setup = 15,
-			.xcvr_setup_offset = 0,
-			.xcvr_use_fuses = 1,
-			.xcvr_lsfslew = 2,
-			.xcvr_lsrslew = 2,
-	},
-	[1] = {
-			.hssync_start_delay = 0,
-			.idle_wait_delay = 17,
-			.elastic_limit = 16,
-			.term_range_adj = 6,
-			.xcvr_setup = 15,
-			.xcvr_setup_offset = 0,
-			.xcvr_use_fuses = 1,
-			.xcvr_lsfslew = 2,
-			.xcvr_lsrslew = 2,
-	},
-	[2] = {
-			.hssync_start_delay = 0,
-			.idle_wait_delay = 17,
-			.elastic_limit = 16,
-			.term_range_adj = 6,
-			.xcvr_setup = 8,
-			.xcvr_setup_offset = 0,
-			.xcvr_use_fuses = 1,
-			.xcvr_lsfslew = 2,
-			.xcvr_lsrslew = 2,
-	},
-};
-
 static struct rfkill_gpio_platform_data grouper_bt_rfkill_pdata[] = {
 	{
 		.name   = "bt_rfkill",
@@ -730,258 +693,90 @@ static int __init grouper_touch_init(void)
 	return 0;
 }
 
-static struct tegra_uhsic_config uhsic_phy_config = {
-	.enable_gpio = EN_HSIC_GPIO,
-	.reset_gpio = -1,
-	.sync_start_delay = 9,
-	.idle_wait_delay = 17,
-	.term_range_adj = 0,
-	.elastic_underrun_limit = 16,
-	.elastic_overrun_limit = 16,
-};
-
-static struct tegra_ehci_platform_data tegra_ehci_uhsic_pdata = {
-	.phy_type = TEGRA_USB_PHY_TYPE_HSIC,
-	.phy_config = &uhsic_phy_config,
-	.operating_mode = TEGRA_USB_HOST,
-	.power_down_on_bus_suspend = 1,
-	.default_enable = true,
-};
-
-static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
-	[0] = {
-			.phy_config = &utmi_phy_config[0],
-			.operating_mode = TEGRA_USB_OTG,
-			.power_down_on_bus_suspend = 1,
-			.hotplug = 1,
-			.default_enable = true,
+static struct tegra_usb_platform_data tegra_udc_pdata = {
+	.port_otg = true,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_DEVICE,
+	.u_data.dev = {
+		.vbus_pmu_irq = 0,
+		.vbus_gpio = -1,
+		.charging_supported = false,
+	.remote_wakeup_supported = false,
 	},
-	[1] = {
-			.phy_config = &utmi_phy_config[1],
-			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 1,
-			.default_enable = false,
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 8,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
 	},
 };
 
-static struct tegra_otg_platform_data tegra_otg_pdata = {
-	.ehci_device = &tegra_ehci1_device,
-	.ehci_pdata = &tegra_ehci_pdata[0],
-};
-
-struct platform_device *tegra_usb_hsic_host_register(void)
-{
-	struct platform_device *pdev;
-	int val;
-
-	pdev = platform_device_alloc(tegra_ehci2_device.name,
-		tegra_ehci2_device.id);
-	if (!pdev)
-		return NULL;
-
-	val = platform_device_add_resources(pdev, tegra_ehci2_device.resource,
-		tegra_ehci2_device.num_resources);
-	if (val)
-		goto error;
-
-	pdev->dev.dma_mask =  tegra_ehci2_device.dev.dma_mask;
-	pdev->dev.coherent_dma_mask = tegra_ehci2_device.dev.coherent_dma_mask;
-
-	val = platform_device_add_data(pdev, &tegra_ehci_uhsic_pdata,
-			sizeof(struct tegra_ehci_platform_data));
-	if (val)
-		goto error;
-
-	val = platform_device_add(pdev);
-	if (val)
-		goto error;
-
-	return pdev;
-
-error:
-	pr_err("%s: failed to add the host contoller device\n", __func__);
-	platform_device_put(pdev);
-	return NULL;
-}
-
-void tegra_usb_hsic_host_unregister(struct platform_device *pdev)
-{
-	platform_device_unregister(pdev);
-}
-
-struct platform_device *tegra_usb_utmip_host_register(void)
-{
-	struct platform_device *pdev;
-	int val;
-
-	pdev = platform_device_alloc(tegra_ehci2_device.name,
-		tegra_ehci2_device.id);
-	if (!pdev)
-		return NULL;
-
-	val = platform_device_add_resources(pdev, tegra_ehci2_device.resource,
-		tegra_ehci2_device.num_resources);
-	if (val)
-		goto error;
-
-	pdev->dev.dma_mask =  tegra_ehci2_device.dev.dma_mask;
-	pdev->dev.coherent_dma_mask = tegra_ehci2_device.dev.coherent_dma_mask;
-
-	val = platform_device_add_data(pdev, &tegra_ehci_pdata[1],
-			sizeof(struct tegra_ehci_platform_data));
-	if (val)
-		goto error;
-
-	val = platform_device_add(pdev);
-	if (val)
-		goto error;
-
-	return pdev;
-
-error:
-	pr_err("%s: failed to add the host contoller device\n", __func__);
-	platform_device_put(pdev);
-	return NULL;
-}
-
-void tegra_usb_utmip_host_unregister(struct platform_device *pdev)
-{
-	platform_device_unregister(pdev);
-}
-
-static int grouper_usb_hsic_postsupend(void)
-{
-	pr_debug("%s\n", __func__);
-#ifdef CONFIG_TEGRA_BB_XMM_POWER
-	baseband_xmm_set_power_status(BBXMM_PS_L2);
-#endif
-	return 0;
-}
-
-static int grouper_usb_hsic_preresume(void)
-{
-	pr_debug("%s\n", __func__);
-#ifdef CONFIG_TEGRA_BB_XMM_POWER
-	baseband_xmm_set_power_status(BBXMM_PS_L2TOL0);
-#endif
-	return 0;
-}
-
-static int grouper_usb_hsic_phy_ready(void)
-{
-	pr_debug("%s\n", __func__);
-#ifdef CONFIG_TEGRA_BB_XMM_POWER
-	baseband_xmm_set_power_status(BBXMM_PS_L0);
-#endif
-	return 0;
-}
-
-static int grouper_usb_hsic_phy_off(void)
-{
-	pr_debug("%s\n", __func__);
-#ifdef CONFIG_TEGRA_BB_XMM_POWER
-	baseband_xmm_set_power_status(BBXMM_PS_L3);
-#endif
-	return 0;
-}
-
-#ifdef CONFIG_USB_SUPPORT
-static struct usb_phy_plat_data tegra_usb_phy_pdata[] = {
-	[0] = {
-			.instance = 0,
-			.vbus_gpio = -1,
+static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
+	.port_otg = true,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.vbus_reg = NULL,
+		.hot_plug = true,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
 	},
-	[1] = {
-			.instance = 1,
-			.vbus_gpio = -1,
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 15,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
 	},
 };
 
-static struct baseband_power_platform_data tegra_baseband_power_data = {
-	.baseband_type = BASEBAND_XMM,
-	.modem = {
-	.xmm = {
-			.bb_rst = XMM_GPIO_BB_RST,
-			.bb_on = XMM_GPIO_BB_ON,
-			.bb_vbat = XMM_GPIO_BB_VBAT,
-			.bb_vbus = XMM_GPIO_BB_VBUS,
-			.bb_sw_sel = XMM_GPIO_BB_SW_SEL,
-			.sim_card_det = XMM_GPIO_SIM_CARD_DET,
-			.ipc_bb_rst_ind = XMM_GPIO_IPC_BB_RST_IND,
-			.ipc_bb_wake = XMM_GPIO_IPC_BB_WAKE,
-			.ipc_ap_wake = XMM_GPIO_IPC_AP_WAKE,
-			.ipc_hsic_active = XMM_GPIO_IPC_HSIC_ACTIVE,
-			.ipc_hsic_sus_req = XMM_GPIO_IPC_HSIC_SUS_REQ,
-			.ipc_bb_force_crash = XMM_GPIO_IPC_BB_FORCE_CRASH,
-			.hsic_device = &tegra_ehci2_device,
-		},
+static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode	= TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.vbus_reg = NULL,
+		.hot_plug = true,
+		.remote_wakeup_supported = true,
+	.power_off_on_suspend = true,
 	},
-};
-
-static struct platform_device tegra_baseband_power_device = {
-	.name = "baseband_xmm_power",
-	.id = -1,
-	.dev = {
-		.platform_data = &tegra_baseband_power_data,
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 8,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
 	},
 };
 
 static void grouper_usb_init(void)
 {
-	u32 project_info = grouper_get_project_id();
-	unsigned int pcb_id_version = grouper_query_pcba_revision();
-
-	tegra_usb_phy_init(tegra_usb_phy_pdata,
-			ARRAY_SIZE(tegra_usb_phy_pdata));
-
 	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 	platform_device_register(&tegra_otg_device);
 
-	if (project_info == GROUPER_PROJECT_NAKASI_3G) {
-		printk(KERN_INFO"%s : pcb_id_version = %d \n", __func__, pcb_id_version);
-		/* for baseband devices do not switch off phy during suspend */
-		tegra_ehci_uhsic_pdata.power_down_on_bus_suspend = 0;
-		tegra_ehci_pdata[1].power_down_on_bus_suspend = 0;
-		uhsic_phy_config.postsuspend = grouper_usb_hsic_postsupend;
-		uhsic_phy_config.preresume = grouper_usb_hsic_preresume;
-		uhsic_phy_config.usb_phy_ready = grouper_usb_hsic_phy_ready;
-		uhsic_phy_config.post_phy_off = grouper_usb_hsic_phy_off;
-		tegra_ehci2_device.dev.platform_data = &tegra_ehci_uhsic_pdata;
-		/* baseband registration happens in baseband-xmm-power  */
+	/* Setup the udc platform data */
+	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 
-		switch (pcb_id_version) {
-			case TILAPIA_PCBA_SR1:
-			case TILAPIA_PCBA_SR2:
-			case TILAPIA_PCBA_SR3:
-				uhsic_phy_config.enable_gpio = TEGRA_GPIO_PR7;
-				break;
-			default:
-				uhsic_phy_config.enable_gpio = TEGRA_GPIO_PU4;
-		}
-
-	} else {
-		tegra_ehci2_device.dev.platform_data = &tegra_ehci_pdata[1];
-		platform_device_register(&tegra_ehci2_device);
-	}
-}
-
-static void grouper_modem_init(void)
-{
-	u32 project_info = grouper_get_project_id();
-
-        printk(KERN_INFO"%s\n",__func__);
-
-	if (project_info == GROUPER_PROJECT_NAKASI_3G) {
-		tegra_baseband_power_data.hsic_register =
-			&tegra_usb_hsic_host_register;
-		tegra_baseband_power_data.hsic_unregister =
-			&tegra_usb_hsic_host_unregister;
-                tegra_baseband_power_data.utmip_register =
-                        &tegra_usb_utmip_host_register;
-                tegra_baseband_power_data.utmip_unregister =
-                        &tegra_usb_utmip_host_unregister;
-		platform_device_register(&tegra_baseband_power_device);
-	}
+	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
+	platform_device_register(&tegra_ehci2_device);
 }
 
 #else
@@ -1049,7 +844,6 @@ static void __init tegra_grouper_init(void)
 		grouper_suspend_init();
 	}
 	grouper_touch_init();
-	grouper_modem_init();
 	grouper_keys_init();
 	grouper_panel_init();
 	grouper_sensors_init();
