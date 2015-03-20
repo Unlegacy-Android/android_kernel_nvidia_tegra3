@@ -67,9 +67,10 @@
 #include "wdt-recovery.h"
 
 static struct balanced_throttle throttle_list[] = {
-#ifdef CONFIG_TEGRA_THERMAL_THROTTLE
 	{
-		.id = BALANCED_THROTTLE_ID_TJ,
+		.tegra_cdev = {
+			.id = CDEV_BTHROT_ID_TJ,
+		},
 		.throt_tab_size = 10,
 		.throt_tab = {
 			{      0, 1000 },
@@ -84,10 +85,11 @@ static struct balanced_throttle throttle_list[] = {
 			{1000000, 1100 },
 		},
 	},
-#endif
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 	{
-		.id = BALANCED_THROTTLE_ID_SKIN,
+		.tegra_cdev = {
+			.id = CDEV_BTHROT_ID_SKIN,
+		},
 		.throt_tab_size = 6,
 		.throt_tab = {
 			{ 640000, 1200 },
@@ -103,17 +105,41 @@ static struct balanced_throttle throttle_list[] = {
 
 /* All units are in millicelsius */
 static struct tegra_thermal_data thermal_data = {
-	.shutdown_device_id = THERMAL_DEVICE_ID_NCT_EXT,
-	.temp_shutdown = 90000,
 	.throttle_edp_device_id = THERMAL_DEVICE_ID_NCT_EXT,
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 	.edp_offset = TDIODE_OFFSET,  /* edp based on tdiode */
 	.hysteresis_edp = 3000,
 #endif
 	.temp_throttle = 85000,
-	.tc1 = 0,
-	.tc2 = 1,
-	.passive_delay = 2000,
+	.binds = {
+		{
+			.tdev_id = THERMAL_DEVICE_ID_NCT_EXT,
+			.cdev_id = CDEV_BTHROT_ID_TJ,
+			.type = THERMAL_TRIP_PASSIVE,
+			.passive = {
+				.trip_temp = 85000,
+				.tc1 = 0,
+				.tc2 = 1,
+				.passive_delay = 2000,
+			}
+		},
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+		{
+			.tdev_id = THERMAL_DEVICE_ID_SKIN,
+			.cdev_id = CDEV_BTHROT_ID_SKIN,
+			.type = THERMAL_TRIP_PASSIVE,
+			.passive = {
+				.trip_temp = 43000,
+				.tc1 = 10,
+				.tc2 = 1,
+				.passive_delay = 15000,
+			}
+		},
+#endif
+		{
+			.tdev_id = THERMAL_DEVICE_ID_NULL,
+		},
+	},
 };
 
 static struct tegra_skin_data skin_data = {
