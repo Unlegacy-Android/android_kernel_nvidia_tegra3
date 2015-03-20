@@ -104,48 +104,39 @@ static struct balanced_throttle throttle_list[] = {
 };
 
 /* All units are in millicelsius */
-static struct tegra_thermal_data thermal_data = {
-	.throttle_edp_device_id = THERMAL_DEVICE_ID_NCT_EXT,
-#ifdef CONFIG_TEGRA_EDP_LIMITS
-	.edp_offset = TDIODE_OFFSET,  /* edp based on tdiode */
-	.hysteresis_edp = 3000,
-#endif
-	.temp_throttle = 85000,
-	.binds = {
-		{
-			.tdev_id = THERMAL_DEVICE_ID_NCT_EXT,
-			.cdev_id = CDEV_BTHROT_ID_TJ,
-			.type = THERMAL_TRIP_PASSIVE,
-			.passive = {
-				.trip_temp = 85000,
-				.tc1 = 0,
-				.tc2 = 1,
-				.passive_delay = 2000,
-			}
-		},
+static struct tegra_thermal_bind thermal_binds[] = {
+	{
+		.tdev_id = THERMAL_DEVICE_ID_NCT_EXT,
+		.cdev_id = CDEV_BTHROT_ID_TJ,
+		.type = THERMAL_TRIP_PASSIVE,
+		.passive = {
+			.trip_temp = 85000,
+			.tc1 = 0,
+			.tc2 = 1,
+			.passive_delay = 2000,
+		}
+	},
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
-		{
-			.tdev_id = THERMAL_DEVICE_ID_SKIN,
-			.cdev_id = CDEV_BTHROT_ID_SKIN,
-			.type = THERMAL_TRIP_PASSIVE,
-			.passive = {
-				.trip_temp = 43000,
-				.tc1 = 10,
-				.tc2 = 1,
-				.passive_delay = 15000,
-			}
-		},
+	{
+		.tdev_id = THERMAL_DEVICE_ID_SKIN,
+		.cdev_id = CDEV_BTHROT_ID_SKIN,
+		.type = THERMAL_TRIP_PASSIVE,
+		.passive = {
+			.trip_temp = 43000,
+			.tc1 = 10,
+			.tc2 = 1,
+			.passive_delay = 15000,
+		}
+	},
 #endif
-		{
-			.tdev_id = THERMAL_DEVICE_ID_NULL,
-		},
+	{
+		.tdev_id = THERMAL_DEVICE_ID_NULL,
 	},
 };
 
 static struct tegra_skin_data skin_data = {
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 	.skin_device_id = THERMAL_DEVICE_ID_SKIN,
-	.temp_throttle_skin = 43000,
 #else
 	.skin_device_id = THERMAL_DEVICE_ID_NULL,
 #endif
@@ -843,7 +834,7 @@ void grouper_booting_info(void )
 static void __init tegra_grouper_init(void)
 {
 	grouper_misc_init();
-	tegra_thermal_init(&thermal_data,
+	tegra_thermal_init(thermal_binds,
 				&skin_data,
 				throttle_list,
 				ARRAY_SIZE(throttle_list));
