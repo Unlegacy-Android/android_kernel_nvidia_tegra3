@@ -45,20 +45,22 @@ static struct regulator *grouper_1v8_ldo5;
 
 static unsigned int pmic_id;
 
+static struct throttle_table tj_throttle_table[] = {
+	{      0, 1000 },
+	{ 640000, 1000 },
+	{ 640000, 1000 },
+	{ 640000, 1000 },
+	{ 640000, 1000 },
+	{ 640000, 1000 },
+	{ 760000, 1000 },
+	{ 760000, 1050 },
+	{1000000, 1050 },
+	{1000000, 1100 },
+};
+
 static struct balanced_throttle tj_throttle = {
-	.throt_tab_size = 10,
-	.throt_tab = {
-		{      0, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 760000, 1000 },
-		{ 760000, 1050 },
-		{1000000, 1050 },
-		{1000000, 1100 },
-	},
+	.throt_tab_size = ARRAY_SIZE(tj_throttle_table),
+	.throt_tab = tj_throttle_table,
 };
 
 static const struct i2c_board_info cardhu_i2c1_board_info_al3010[] = {
@@ -277,7 +279,7 @@ static void mpuirq_init(void)
 static int __init grouper_throttle_init(void)
 {
 	if (machine_is_grouper())
-		balanced_throttle_register(&tj_throttle, "grouper-nct");
+		balanced_throttle_register(&tj_throttle, "tegra-balanced");
 	return 0;
  }
 module_init(grouper_throttle_init);
@@ -295,10 +297,11 @@ static struct nct1008_platform_data grouper_nct1008_pdata = {
 	.trips = {
 		/* Thermal Throttling */
 		[0] = {
-			.cdev_type = "grouper-nct",
+			.cdev_type = "tegra-balanced",
 			.trip_temp = 80000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
-			.state = THERMAL_NO_LIMIT,
+			.upper = THERMAL_NO_LIMIT,
+			.lower = THERMAL_NO_LIMIT,
 			.hysteresis = 0,
 		},
 	},
@@ -311,44 +314,6 @@ static struct i2c_board_info grouper_i2c4_nct1008_board_info[] = {
 		.irq = -1,
 	}
 };
-
-#ifdef CONFIG_TEGRA_EDP_LIMITS
-static void grouper_init_edp_cdev(void)
-{
-	const struct tegra_edp_limits *cpu_edp_limits;
-	int cpu_edp_limits_size;
-	int i;
-	int trip;
-	struct nct1008_platform_data *data = &grouper_nct1008_pdata;
-	struct nct_trip_temp *trip_state;
-
-	/* edp capping */
-	tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
-
-	if (cpu_edp_limits_size > MAX_THROT_TABLE_SIZE)
-		BUG();
-
-	for (i = 0; i < cpu_edp_limits_size-1; i++) {
-		trip = data->num_trips;
-		trip_state = &data->trips[trip];
-
-		trip_state->cdev_type = "edp";
-		trip_state->trip_temp = cpu_edp_limits[i].temperature * 1000;
-		trip_state->trip_type = THERMAL_TRIP_ACTIVE;
-		trip_state->state = i + 1;
-		trip_state->hysteresis = 1000;
-
-		data->num_trips++;
-
-		if (data->num_trips > NCT_MAX_TRIPS)
-			BUG();
-	}
-}
-#else
-static void grouper_init_edp_cdev(void)
-{
-}
-#endif
 
 static int grouper_nct1008_init(void)
 {
@@ -369,7 +334,9 @@ static int grouper_nct1008_init(void)
 			gpio_free(nct1008_port);
 	}
 
-	grouper_init_edp_cdev();
+	tegra_platform_edp_init(grouper_nct1008_pdata.trips,
+				&grouper_nct1008_pdata.num_trips,
+				0); /* edp temperature margin */
 
 	return ret;
 }
