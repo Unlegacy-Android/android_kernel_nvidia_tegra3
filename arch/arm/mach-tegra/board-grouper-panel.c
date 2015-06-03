@@ -537,7 +537,7 @@ static struct tegra_dc_platform_data grouper_disp1_pdata = {
 	.fb		= &grouper_fb_data,
 };
 
-static struct nvhost_device grouper_disp1_device = {
+static struct platform_device grouper_disp1_device = {
 	.name		= "tegradc",
 	.id		= 0,
 	.resource	= grouper_disp1_resources,
@@ -552,7 +552,7 @@ static int grouper_disp1_check_fb(struct device *dev, struct fb_info *info)
 	return info->device == &grouper_disp1_device.dev;
 }
 
-static struct nvhost_device grouper_disp2_device = {
+static struct platform_device grouper_disp2_device = {
 	.name		= "tegradc",
 	.id		= 1,
 	.resource	= grouper_disp2_resources,
@@ -607,6 +607,7 @@ int __init grouper_panel_init(void)
 	int err;
 	struct resource __maybe_unused *res;
 	struct board_info board_info;
+	struct platform_device *phost1x;
 
 	tegra_get_board_info(&board_info);
 
@@ -630,17 +631,17 @@ int __init grouper_panel_init(void)
 	gpio_request(grouper_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(grouper_hdmi_hpd);
 
-#ifdef CONFIG_TEGRA_GRHOST
-	err = tegra3_register_host1x_devices();
-	if (err)
-		return err;
-#endif
-
 	err = platform_add_devices(grouper_gfx_devices,
 				ARRAY_SIZE(grouper_gfx_devices));
 
+#ifdef CONFIG_TEGRA_GRHOST
+	phost1x = tegra3_register_host1x_devices();
+	if (!phost1x)
+		return -EINVAL;
+#endif
+
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	res = nvhost_get_resource_byname(&grouper_disp1_device,
+	res = platform_get_resource_byname(&grouper_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
@@ -651,20 +652,26 @@ int __init grouper_panel_init(void)
 //				min(tegra_fb_size, tegra_bootloader_fb_size));
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	if (!err)
-		err = nvhost_device_register(&grouper_disp1_device);
+	if (!err) {
+		grouper_disp1_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&grouper_disp1_device);
+	}
 
-	res = nvhost_get_resource_byname(&grouper_disp2_device,
+	res = platform_get_resource_byname(&grouper_disp2_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb2_start;
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
-	if (!err)
-		err = nvhost_device_register(&grouper_disp2_device);
+	if (!err) {
+		grouper_disp2_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&grouper_disp2_device);
+	}
 #endif
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_NVAVP)
-	if (!err)
-		err = nvhost_device_register(&nvavp_device);
+	if (!err) {
+		nvavp_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&nvavp_device);
+	}
 #endif
 	return err;
 }
