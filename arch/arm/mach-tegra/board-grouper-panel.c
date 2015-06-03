@@ -181,10 +181,10 @@ static int grouper_panel_postpoweron(void)
 	return 0;
 }
 
-static int grouper_panel_enable(void)
+static int grouper_panel_enable(struct device *dev)
 {
 	if (grouper_lvds_vdd_panel == NULL) {
-		grouper_lvds_vdd_panel = regulator_get(NULL, "vdd_lcd_panel");
+		grouper_lvds_vdd_panel = regulator_get(dev, "vdd_lcd_panel");
 		if (WARN_ON(IS_ERR(grouper_lvds_vdd_panel)))
 			pr_err("%s: couldn't get regulator vdd_lcd_panel: %ld\n",
 			       __func__, PTR_ERR(grouper_lvds_vdd_panel));
@@ -224,11 +224,11 @@ static int grouper_panel_disable(void)
 }
 
 #ifdef CONFIG_TEGRA_DC
-static int grouper_hdmi_vddio_enable(void)
+static int grouper_hdmi_vddio_enable(struct device *dev)
 {
 	int ret;
 	if (!grouper_hdmi_vddio) {
-		grouper_hdmi_vddio = regulator_get(NULL, "vdd_hdmi_con");
+		grouper_hdmi_vddio = regulator_get(dev, "vdd_hdmi_con");
 		if (IS_ERR_OR_NULL(grouper_hdmi_vddio)) {
 			ret = PTR_ERR(grouper_hdmi_vddio);
 			pr_err("hdmi: couldn't get regulator vdd_hdmi_con\n");
@@ -256,11 +256,11 @@ static int grouper_hdmi_vddio_disable(void)
 	return 0;
 }
 
-static int grouper_hdmi_enable(void)
+static int grouper_hdmi_enable(struct device *dev)
 {
 	int ret;
 	if (!grouper_hdmi_reg) {
-		grouper_hdmi_reg = regulator_get(NULL, "avdd_hdmi");
+		grouper_hdmi_reg = regulator_get(dev, "avdd_hdmi");
 		if (IS_ERR_OR_NULL(grouper_hdmi_reg)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
 			grouper_hdmi_reg = NULL;
@@ -273,7 +273,7 @@ static int grouper_hdmi_enable(void)
 		return ret;
 	}
 	if (!grouper_hdmi_pll) {
-		grouper_hdmi_pll = regulator_get(NULL, "avdd_hdmi_pll");
+		grouper_hdmi_pll = regulator_get(dev, "avdd_hdmi_pll");
 		if (IS_ERR_OR_NULL(grouper_hdmi_pll)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
 			grouper_hdmi_pll = NULL;
