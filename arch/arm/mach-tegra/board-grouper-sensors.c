@@ -23,11 +23,14 @@
 #include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/mpu.h>
+#include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 #include <asm/mach-types.h>
 #include <mach/gpio.h>
 #include <mach/edp.h>
+#ifdef CONFIG_VIDEO_MI1040
 #include <media/yuv_sensor.h>
+#endif
 #include "board.h"
 #include "board-grouper.h"
 #include "cpu-tegra.h"
@@ -35,6 +38,7 @@
 #include <linux/slab.h>
 #include <mach/board-grouper-misc.h>
 
+#ifdef CONFIG_VIDEO_MI1040
 #define CAM1_LDO_EN_GPIO		TEGRA_GPIO_PR6
 #define FRONT_YUV_SENSOR_RST_GPIO	TEGRA_GPIO_PO0
 #define FRONT_YUV_SENSOR_RST_GPIO_BACH	TEGRA_GPIO_PBB0
@@ -44,6 +48,7 @@ static int front_yuv_sensor_rst_gpio = FRONT_YUV_SENSOR_RST_GPIO;
 static struct regulator *grouper_1v8_ldo5;
 
 static unsigned int pmic_id;
+#endif
 
 static struct throttle_table tj_throttle_table[] = {
 		/* CPU_THROT_LOW cannot be used by other than CPU */
@@ -71,18 +76,19 @@ static struct balanced_throttle tj_throttle = {
 	.throt_tab = tj_throttle_table,
 };
 
-static const struct i2c_board_info cardhu_i2c1_board_info_al3010[] = {
+static struct i2c_board_info cardhu_i2c1_board_info_al3010[] = {
 	{
 		I2C_BOARD_INFO("al3010",0x1C),
 	},
 };
 
-static const struct i2c_board_info cap1106_i2c1_board_info[] = {
+static struct i2c_board_info cap1106_i2c1_board_info[] = {
     {
         I2C_BOARD_INFO("cap1106",0x28),
     },
 };
 
+#ifdef CONFIG_VIDEO_MI1040
 static int grouper_camera_init(void)
 {
 	u32 project_info = grouper_get_project_id();
@@ -215,6 +221,8 @@ static struct i2c_board_info front_sensor_i2c2_board_info[] = {  //ddebug
 		.platform_data = &yuv_front_sensor_data,
 	},
 };
+#endif
+
 /* MPU board file definition	*/
 #if (MPU_GYRO_TYPE == MPU_TYPE_MPU3050)
 #define MPU_GYRO_NAME		"mpu3050"
@@ -350,12 +358,14 @@ static int grouper_nct1008_init(void)
 int __init grouper_sensors_init(void)
 {
 	int err;
+#ifdef CONFIG_VIDEO_MI1040
 	grouper_camera_init();
 
 /* Front Camera mi1040 + */
     pr_info("mi1040 i2c_register_board_info");
 	i2c_register_board_info(2, front_sensor_i2c2_board_info,
 		ARRAY_SIZE(front_sensor_i2c2_board_info));
+#endif
 
 	err = grouper_nct1008_init();
 	if (err)
