@@ -375,7 +375,7 @@ static struct tegra_dc_sd_settings grouper_sd_settings = {
 	.bin_width = -1,
 	.aggressiveness = 1,
 	.phase_in_adjustments = true,
-	.panel_min_brightness = 13,
+	// .panel_min_brightness = 13, TODO
 	.use_vid_luma = false,
 	/* Default video coefficients */
 	.coeff = {5, 9, 2},
@@ -533,7 +533,7 @@ static struct tegra_dc_platform_data grouper_disp1_pdata = {
 	.flags		= TEGRA_DC_FLAG_ENABLED,
 	.default_out	= &grouper_disp1_out,
 	.emc_clk_rate	= 300000000,
-	.min_emc_clk_rate	= 102000000,
+	// .min_emc_clk_rate	= 102000000, TODO
 	.fb		= &grouper_fb_data,
 };
 
