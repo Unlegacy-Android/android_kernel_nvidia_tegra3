@@ -18,15 +18,18 @@
 
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/gpio.h>
+#include <linux/platform_data/tegra_emc.h>
 
 #include "board.h"
 #include "board-grouper.h"
 #include "tegra3_emc.h"
 #include "fuse.h"
+ #include "devices.h"
 
 #include <mach/board-grouper-misc.h>
 
-static const struct tegra_emc_table Nakasi_dvfs_Elpida_table_0430[] = {
+static const struct tegra30_emc_table Nakasi_dvfs_Elpida_table_0430[] = {
 	{
 		0x32,       /* Rev 3.2 */
 		25500,      /* SDRAM frequency */
@@ -749,7 +752,7 @@ static const struct tegra_emc_table Nakasi_dvfs_Elpida_table_0430[] = {
 	},
 };
 
-static const struct tegra_emc_table Nakasi_dvfs_Hynix_table_0430[] ={
+static const struct tegra30_emc_table Nakasi_dvfs_Hynix_table_0430[] ={
 	{
 		0x32,       /* Rev 3.2 */
 		25500,      /* SDRAM frequency */
@@ -1472,7 +1475,7 @@ static const struct tegra_emc_table Nakasi_dvfs_Hynix_table_0430[] ={
 	},
 };
 
-static const struct tegra_emc_table ME370TG_dvfs_table_Elpida_0831[] = {
+static const struct tegra30_emc_table ME370TG_dvfs_table_Elpida_0831[] = {
 	{
 		0x32,       /* Rev 3.2 */
 		25500,      /* SDRAM frequency */
@@ -2195,7 +2198,7 @@ static const struct tegra_emc_table ME370TG_dvfs_table_Elpida_0831[] = {
 	},
 };
 
-static const struct tegra_emc_table ME370TG_dvfs_table_Hynix_0831[] = {
+static const struct tegra30_emc_table ME370TG_dvfs_table_Hynix_0831[] = {
 	{
 		0x32,       /* Rev 3.2 */
 		25500,      /* SDRAM frequency */
@@ -2918,12 +2921,37 @@ static const struct tegra_emc_table ME370TG_dvfs_table_Hynix_0831[] = {
 	},
 };
 
+static struct tegra30_emc_pdata Nakasi_chip_Elpida_0430 = {
+	.description = "elpida_0430",
+	.tables = (struct tegra30_emc_table *)Nakasi_dvfs_Elpida_table_0430,
+	.num_tables = ARRAY_SIZE(Nakasi_dvfs_Elpida_table_0430)
+};
+
+static struct tegra30_emc_pdata Nakasi_chip_Hynix_0430 = {
+	.description = "hynx_0430",
+	.tables = (struct tegra30_emc_table *)Nakasi_dvfs_Hynix_table_0430,
+	.num_tables = ARRAY_SIZE(Nakasi_dvfs_Hynix_table_0430)
+};
+
+static struct tegra30_emc_pdata ME370TG_chip_Elpida_0831 = {
+	.description = "me370tg_eplida_0831",
+	.tables = (struct tegra30_emc_table *)ME370TG_dvfs_table_Elpida_0831,
+	.num_tables = ARRAY_SIZE(ME370TG_dvfs_table_Elpida_0831)
+};
+
+static struct tegra30_emc_pdata ME370TG_chip_Hynix_0831 = {
+	.description = "me370tg_hync_0831",
+	.tables = (struct tegra30_emc_table *)ME370TG_dvfs_table_Hynix_0831,
+	.num_tables = ARRAY_SIZE(ME370TG_dvfs_table_Hynix_0831)
+};
+
 #include "gpio-names.h"
 
 int grouper_emc_init(void)
 {
 	int ret = 0;
 	int mem_bootstrap_ad4 = 0, mem_bootstrap_ad5 = 0;
+	struct tegra30_emc_pdata *emc_platdata = NULL;
 	#define MEMORY_BOOSTRAP_PIN_AD4 TEGRA_GPIO_PG4
 	#define MEMORY_BOOSTRAP_PIN_AD5 TEGRA_GPIO_PG5
 
@@ -2961,25 +2989,26 @@ int grouper_emc_init(void)
 
 	if (grouper_get_project_id() == GROUPER_PROJECT_NAKASI) {
 		if (!mem_bootstrap_ad4 && !mem_bootstrap_ad5) {
-			tegra_init_emc(Nakasi_dvfs_Elpida_table_0430,
-				ARRAY_SIZE(Nakasi_dvfs_Elpida_table_0430));
+			emc_platdata = &Nakasi_chip_Elpida_0430;
 			printk("grouper_emc_init: Nakasi_dvfs_Elpida_table_0430\n");
 		} else {
-			tegra_init_emc(Nakasi_dvfs_Hynix_table_0430,
-				ARRAY_SIZE(Nakasi_dvfs_Hynix_table_0430));
+			emc_platdata = &Nakasi_chip_Hynix_0430;
 			printk("grouper_emc_init: Nakasi_dvfs_Hynix_table_0430\n");
 		}
 	} else {
-			if(!mem_bootstrap_ad4 && !mem_bootstrap_ad5) {
-				tegra_init_emc(ME370TG_dvfs_table_Elpida_0831,
-					ARRAY_SIZE(ME370TG_dvfs_table_Elpida_0831));
-				printk("grouper_emc_init:ME370TG_dvfs_table_Elpida_0831\n");
+			if (!mem_bootstrap_ad4 && !mem_bootstrap_ad5) {
+				emc_platdata = &ME370TG_chip_Elpida_0831;
+				printk("grouper_emc_init: ME370TG_dvfs_table_Elpida_0831\n");
 			} else {
-				tegra_init_emc(ME370TG_dvfs_table_Hynix_0831,
-					ARRAY_SIZE(ME370TG_dvfs_table_Hynix_0831));
+				emc_platdata = &ME370TG_chip_Hynix_0831;
 				printk("grouper_emc_init: ME370TG_dvfs_table_Hynix_0831\n");
 			}
 	}
+
+	tegra_emc_device.dev.platform_data = emc_platdata;
+	platform_device_register(&tegra_emc_device);
+
+	tegra30_init_emc();
 
 	return 0;
 
