@@ -38,7 +38,7 @@
 #include <linux/nfc/pn544.h>
 #include <linux/skbuff.h>
 #include <linux/regulator/consumer.h>
-#include <linux/smb347-charger.h>
+#include <linux/power/smb347-charger.h>
 #include <linux/rfkill-gpio.h>
 
 #include <mach/clk.h>
