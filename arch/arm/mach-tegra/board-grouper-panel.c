@@ -23,7 +23,6 @@
 #include <linux/resource.h>
 #include <asm/mach-types.h>
 #include <linux/platform_device.h>
-#include <linux/earlysuspend.h>
 #include <linux/pwm_backlight.h>
 #include <asm/atomic.h>
 #include <linux/nvhost.h>
@@ -603,49 +602,6 @@ static struct platform_device *grouper_gfx_devices[] __initdata = {
 	&grouper_backlight_device,
 };
 
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-/* put early_suspend/late_resume handlers here for the display in order
- * to keep the code out of the display driver, keeping it closer to upstream
- */
-struct early_suspend grouper_panel_early_suspender;
-
-static void grouper_panel_early_suspend(struct early_suspend *h)
-{
-	/* power down LCD, add use a black screen for HDMI */
-	if (num_registered_fb > 0)
-		fb_blank(registered_fb[0], FB_BLANK_POWERDOWN);
-	if (num_registered_fb > 1)
-		fb_blank(registered_fb[1], FB_BLANK_NORMAL);
-#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_store_default_gov();
-	if (cpufreq_change_gov(cpufreq_conservative_gov))
-		pr_err("Early_suspend: Error changing governor to %s\n",
-				cpufreq_conservative_gov);
-#endif
-
-#ifdef CONFIG_PM_DEBUG
-	pr_info("%sed\n", __func__);
-#endif
-
-}
-
-static void grouper_panel_late_resume(struct early_suspend *h)
-{
-	unsigned i;
-#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	if (cpufreq_restore_default_gov())
-		pr_err("Early_suspend: Unable to restore governor\n");
-#endif
-	for (i = 0; i < num_registered_fb; i++)
-		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
-
-#ifdef CONFIG_PM_DEBUG
-	pr_info("%sd\n", __func__);
-#endif
-}
-#endif
-
 int __init grouper_panel_init(void)
 {
 	int err;
@@ -673,13 +629,6 @@ int __init grouper_panel_init(void)
 
 	gpio_request(grouper_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(grouper_hdmi_hpd);
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	grouper_panel_early_suspender.suspend = grouper_panel_early_suspend;
-	grouper_panel_early_suspender.resume = grouper_panel_late_resume;
-	grouper_panel_early_suspender.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
-	register_early_suspend(&grouper_panel_early_suspender);
-#endif
 
 #ifdef CONFIG_TEGRA_GRHOST
 	err = tegra3_register_host1x_devices();
