@@ -25,7 +25,7 @@
 #include "board-grouper.h"
 #include "tegra3_emc.h"
 #include "fuse.h"
- #include "devices.h"
+#include "devices.h"
 
 #include <mach/board-grouper-misc.h>
 
@@ -2947,7 +2947,7 @@ static struct tegra30_emc_pdata ME370TG_chip_Hynix_0831 = {
 
 #include "gpio-names.h"
 
-int grouper_emc_init(void)
+int __init grouper_emc_init(void)
 {
 	int ret = 0;
 	int mem_bootstrap_ad4 = 0, mem_bootstrap_ad5 = 0;
