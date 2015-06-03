@@ -16,7 +16,9 @@
 
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/gpio.h>
 #include <mach/pinmux.h>
+#include <mach/pinmux-tegra30.h>
 #include <mach/board-grouper-misc.h>
 #include "board.h"
 #include "board-grouper.h"
