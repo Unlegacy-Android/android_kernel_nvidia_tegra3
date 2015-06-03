@@ -21,7 +21,7 @@
 
 #include <mach/board-grouper-misc.h>
 #include <mach/pinmux.h>
-#include <mach/pinmux-t3.h>
+#include <mach/pinmux-tegra30.h>
 #include "gpio-names.h"
 #include "fuse.h"
 
