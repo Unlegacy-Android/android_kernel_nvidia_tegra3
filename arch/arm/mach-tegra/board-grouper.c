@@ -98,8 +98,6 @@ static struct resource grouper_bluesleep_resources[] = {
 	},
 	[2] = {
 		.name = "host_wake",
-			.start  = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6),
-			.end    = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6),
 			.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
 	},
 };
@@ -114,6 +112,9 @@ static struct platform_device grouper_bluesleep_device = {
 extern void bluesleep_setup_uart_port(struct platform_device *uart_dev);
 static noinline void __init grouper_setup_bluesleep(void)
 {
+	grouper_bluesleep_resources[2].start = grouper_bluesleep_resources[2].end =
+		gpio_to_irq(TEGRA_GPIO_PU6);
+
 	platform_device_register(&grouper_bluesleep_device);
 	bluesleep_setup_uart_port(&tegra_uartc_device);
 	return;
@@ -155,7 +156,6 @@ static struct i2c_board_info __initdata grouper_nfc_board_info[] = {
 	{
 		I2C_BOARD_INFO("pn544", 0x28),
 		.platform_data = &nfc_pdata,
-		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PX0),
 	},
 };
 
@@ -219,7 +219,6 @@ static struct i2c_board_info grouper_i2c4_smb347_board_info[] = {
 
 static struct i2c_board_info __initdata rt5640_board_info = {
 	I2C_BOARD_INFO("rt5640", 0x1c),
-	.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_CDC_IRQ),
 };
 
 static void grouper_i2c_init(void)
@@ -244,6 +243,7 @@ static void grouper_i2c_init(void)
 	i2c_register_board_info(4, grouper_i2c4_smb347_board_info,
 		ARRAY_SIZE(grouper_i2c4_smb347_board_info));
 
+	rt5640_board_info.irq = gpio_to_irq(TEGRA_GPIO_CDC_IRQ);
 	i2c_register_board_info(4, &rt5640_board_info, 1);
 
 	i2c_register_board_info(4, cardhu_i2c4_bq27541_board_info,
@@ -254,8 +254,9 @@ static void grouper_i2c_init(void)
 		nfc_pdata.ven_gpio = TEGRA_GPIO_PP0;
 		nfc_pdata.firm_gpio = TEGRA_GPIO_PP3;
 		grouper_nfc_board_info[0].addr = (0x2A);
-		grouper_nfc_board_info[0].irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PS7);
+		grouper_nfc_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PS7);
 	}
+	grouper_nfc_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PX0);
 	i2c_register_board_info(2, grouper_nfc_board_info, 1);
 }
 

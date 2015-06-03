@@ -74,14 +74,12 @@ static struct balanced_throttle tj_throttle = {
 static const struct i2c_board_info cardhu_i2c1_board_info_al3010[] = {
 	{
 		I2C_BOARD_INFO("al3010",0x1C),
-		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PZ2),
 	},
 };
 
 static const struct i2c_board_info cap1106_i2c1_board_info[] = {
     {
         I2C_BOARD_INFO("cap1106",0x28),
-        .irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PR3),
     },
 };
 
@@ -250,7 +248,6 @@ static struct mpu_platform_data mpu_compass_data = {
 static struct i2c_board_info __initdata inv_mpu_i2c2_board_info[] = {
         {
                 I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
-                .irq = TEGRA_GPIO_TO_IRQ(MPU_GYRO_IRQ_GPIO),
                 .platform_data = &mpu_gyro_data,
         },
         {
@@ -280,6 +277,7 @@ static void mpuirq_init(void)
 	}
 	pr_info("*** MPU END *** mpuirq_init...\n");
 
+	inv_mpu_i2c2_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
 	i2c_register_board_info(MPU_GYRO_BUS_NUM, inv_mpu_i2c2_board_info,
 		ARRAY_SIZE(inv_mpu_i2c2_board_info));
 }
@@ -331,7 +329,7 @@ static int grouper_nct1008_init(void)
 	nct1008_port = TEGRA_GPIO_PS3;
 	if (nct1008_port >= 0) {
 		/* FIXME: enable irq when throttling is supported */
-		grouper_i2c4_nct1008_board_info[0].irq = TEGRA_GPIO_TO_IRQ(nct1008_port);
+		grouper_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
 
 		ret = gpio_request(nct1008_port, "temp_alert");
 		if (ret < 0)
@@ -367,10 +365,12 @@ int __init grouper_sensors_init(void)
 
 	mpuirq_init();
 
+	cardhu_i2c1_board_info_al3010[0].irq = gpio_to_irq(TEGRA_GPIO_PZ2);
 	i2c_register_board_info(2, cardhu_i2c1_board_info_al3010,
 		ARRAY_SIZE(cardhu_i2c1_board_info_al3010));
 
     if (GROUPER_PROJECT_BACH == grouper_get_project_id()) {
+        cap1106_i2c1_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PR3);
         i2c_register_board_info(2, cap1106_i2c1_board_info,
                 ARRAY_SIZE(cap1106_i2c1_board_info));
     }
