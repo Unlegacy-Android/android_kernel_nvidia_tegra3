@@ -45,6 +45,7 @@
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
+#include <mach/pinmux-tegra30.h>
 #include <mach/iomap.h>
 #include <mach/io.h>
 #include <mach/i2s.h>
@@ -279,14 +280,6 @@ static struct tegra_uart_platform_data grouper_loopback_uart_pdata;
 
 static unsigned int debug_uart_port_irq;
 
-static char *uart_names[] = {
-	"uarta",
-	"uartb",
-	"uartc",
-	"uartd",
-	"uarte",
-};
-
 static struct platform_device *debug_uarts[] = {
 	&debug_uarta_device,
 	&debug_uartb_device,
@@ -298,7 +291,6 @@ static struct platform_device *debug_uarts[] = {
 static void __init uart_debug_init(void)
 {
 	int debug_port_id;
-	struct platform_device *debug_uart;
 
 	debug_port_id = uart_console_debug_init(3);
 	if (debug_port_id < 0) {
@@ -346,7 +338,7 @@ static void __init grouper_uart_init(void)
 		uart_debug_init();
 
 	tegra_serial_debug_init(debug_uart_port_base, debug_uart_port_irq,
-				debug_uart_clk, -1, -1, false);
+				debug_uart_clk, -1, -1);
 
 	platform_add_devices(grouper_uart_devices,
 				ARRAY_SIZE(grouper_uart_devices));
@@ -682,6 +674,11 @@ static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 	},
 };
 
+static struct tegra_usb_otg_data tegra_otg_pdata = {
+	.ehci_device = &tegra_ehci1_device,
+	.ehci_pdata = &tegra_ehci1_utmi_pdata,
+};
+
 static void grouper_usb_init(void)
 {
 	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
@@ -693,11 +690,6 @@ static void grouper_usb_init(void)
 	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
 	platform_device_register(&tegra_ehci2_device);
 }
-
-#else
-static void grouper_usb_init(void) { }
-static void grouper_modem_init(void) { }
-#endif
 
 static void grouper_audio_init(void)
 {
@@ -787,12 +779,12 @@ static void __init tegra_grouper_reserve(void)
 
 static void __init tegra_grouper_init_early(void)
 {
-	tegra_init_early();
+	tegra30_init_early();
 	grouper_pinmux_init();
 }
 
 MACHINE_START(GROUPER, "grouper")
-	.boot_params	= 0x80000100,
+	.atag_offset	= 0x100,
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_grouper_reserve,
 	.init_early	= tegra_grouper_init_early,
