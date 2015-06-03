@@ -458,7 +458,7 @@ static struct tegra_dc_sd_settings grouper_sd_settings = {
 			},
 		},
 	.sd_brightness = &sd_brightness,
-	.bl_device = &grouper_backlight_device,
+	.bl_device_name = "pwm-backlight",
 };
 
 #ifdef CONFIG_TEGRA_DC
