@@ -18,6 +18,7 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
+#include <linux/module.h>
 
 #include <mach/board-grouper-misc.h>
 #include <mach/pinmux.h>

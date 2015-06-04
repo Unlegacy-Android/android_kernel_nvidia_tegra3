@@ -40,6 +40,9 @@
 #include <linux/regulator/consumer.h>
 #include <linux/power/smb347-charger.h>
 #include <linux/rfkill-gpio.h>
+#include <linux/reboot.h>
+
+#include <asm/hardware/gic.h>
 
 #include <mach/clk.h>
 #include <mach/iomap.h>
@@ -66,6 +69,7 @@
 #include "fuse.h"
 #include "pm.h"
 #include "wdt-recovery.h"
+#include "common.h"
 
 static struct rfkill_gpio_platform_data grouper_bt_rfkill_pdata[] = {
 	{
@@ -110,14 +114,20 @@ static struct platform_device grouper_bluesleep_device = {
 	.resource       = grouper_bluesleep_resources,
 };
 
+#ifdef CONFIG_BT_BLUESLEEP
 extern void bluesleep_setup_uart_port(struct platform_device *uart_dev);
+#endif
+
 static noinline void __init grouper_setup_bluesleep(void)
 {
 	grouper_bluesleep_resources[2].start = grouper_bluesleep_resources[2].end =
 		gpio_to_irq(TEGRA_GPIO_PU6);
 
 	platform_device_register(&grouper_bluesleep_device);
+
+#ifdef CONFIG_BT_BLUESLEEP
 	bluesleep_setup_uart_port(&tegra_uartc_device);
+#endif
 	return;
 }
 
@@ -725,6 +735,7 @@ static void __init tegra_grouper_init(void)
 	grouper_misc_init();
 	tegra_clk_init_from_table(grouper_clk_init_table);
 	tegra_soc_device_init("grouper");
+	grouper_pinmux_init();
 	grouper_misc_reset();
 	grouper_booting_info();
 	grouper_i2c_init();
@@ -761,11 +772,6 @@ static void __init tegra_grouper_init(void)
 	tegra_register_fuse();
 }
 
-static void __init grouper_ramconsole_reserve(unsigned long size)
-{
-	tegra_ram_console_debug_reserve(SZ_1M);
-}
-
 static void __init tegra_grouper_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
@@ -774,21 +780,17 @@ static void __init tegra_grouper_reserve(void)
 #else
 	tegra_reserve(SZ_128M, SZ_8M, SZ_8M);
 #endif
-	grouper_ramconsole_reserve(SZ_1M);
-}
-
-static void __init tegra_grouper_init_early(void)
-{
-	tegra30_init_early();
-	grouper_pinmux_init();
 }
 
 MACHINE_START(GROUPER, "grouper")
 	.atag_offset	= 0x100,
+	.soc 		= &tegra_soc_desc,
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_grouper_reserve,
-	.init_early	= tegra_grouper_init_early,
+	.init_early	= tegra30_init_early,
 	.init_irq	= tegra_init_irq,
+	.handle_irq = gic_handle_irq,
 	.timer		= &tegra_timer,
 	.init_machine	= tegra_grouper_init,
+	.restart        = tegra_assert_system_reset,
 MACHINE_END
