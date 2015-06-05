@@ -28,6 +28,7 @@ obj-$(CONFIG_BATTERY_COLLIE)	+= collie_battery.o
 obj-$(CONFIG_BATTERY_WM97XX)	+= wm97xx_battery.o
 obj-$(CONFIG_BATTERY_SBS)	+= sbs-battery.o
 obj-$(CONFIG_BATTERY_BQ27x00)	+= bq27x00_battery.o
+obj-$(CONFIG_BATTERY_BQ27541)	+= bq27541_battery.o
 obj-$(CONFIG_CHARGER_TPS8003X)	+= tps80031-charger.o
 obj-$(CONFIG_BATTERY_GAUGE_TPS8003X) += tps80031_battery_gauge.o
 obj-$(CONFIG_CHARGER_SMB349)	+= smb349-charger.o
