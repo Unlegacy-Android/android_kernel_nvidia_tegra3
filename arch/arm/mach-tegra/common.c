@@ -1143,11 +1143,19 @@ void tegra_get_board_info(struct board_info *bi)
 			(bi->major_revision << 16) | (bi->minor_revision << 8);
 	} else {
 #endif
+#ifdef CONFIG_MACH_GROUPER
+		bi->board_id = 0xF41;
+		bi->sku = 0xA00;
+		bi->fab =0x1;
+		bi->major_revision = 0x044;
+		bi->minor_revision = 0x2;
+#else
 		bi->board_id = (system_serial_high >> 16) & 0xFFFF;
 		bi->sku = (system_serial_high) & 0xFFFF;
 		bi->fab = (system_serial_low >> 24) & 0xFF;
 		bi->major_revision = (system_serial_low >> 16) & 0xFF;
 		bi->minor_revision = (system_serial_low >> 8) & 0xFF;
+#endif
 #ifdef CONFIG_OF
 	}
 #endif
@@ -1166,6 +1174,9 @@ static int __init tegra_pmu_board_info(char *info)
 
 void tegra_get_pmu_board_info(struct board_info *bi)
 {
+#ifdef CONFIG_MACH_GROUPER
+	pmu_board_info.sku = 0x1;
+#endif
 	memcpy(bi, &pmu_board_info, sizeof(struct board_info));
 }
 
