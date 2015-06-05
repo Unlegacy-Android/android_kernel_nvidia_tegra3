@@ -901,4 +901,11 @@ config TOUCHSCREEN_MAXIM_STI
           To compile this driver as a module, choose M here: the
           module will be called maxim_sti.
 
+config TOUCHSCREEN_ELAN_TF_3K
+        tristate "ELAN legacy Touchscreen Interface"
+        depends on I2C
+        help
+          To compile this driver as a module, choose M here: the
+          module will be called atmel_tsadcc.
+
 endif
