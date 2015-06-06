@@ -115,7 +115,7 @@
 static int smb347_configure_charger(struct i2c_client *client, int value);
 extern int battery_callback(unsigned usb_cable_state);
 /* Enable or disable the callback for the battery driver. */
-// #define TOUCH_CALLBACK_ENABLED
+#define TOUCH_CALLBACK_ENABLED
 #ifdef TOUCH_CALLBACK_ENABLED
 extern void touch_callback(unsigned cable_status);
 #endif
