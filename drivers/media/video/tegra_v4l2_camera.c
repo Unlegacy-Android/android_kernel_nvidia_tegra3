@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -14,12 +14,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/delay.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <linux/pm_runtime.h>
 #include <linux/nvhost.h>
+
+#include <mach/iomap.h>
+#include <mach/powergate.h>
 
 #include <media/soc_camera.h>
 #include <media/soc_mediabus.h>
@@ -43,7 +47,8 @@
 
 /* SYNCPTs 12-17 are reserved for VI. */
 #define TEGRA_VI_SYNCPT_VI                              NVSYNCPT_VI_ISP_2
-#define TEGRA_VI_SYNCPT_CSI                             NVSYNCPT_VI_ISP_3
+#define TEGRA_VI_SYNCPT_CSI_A                           NVSYNCPT_VI_ISP_3
+#define TEGRA_VI_SYNCPT_CSI_B                           NVSYNCPT_VI_ISP_4
 
 /* Tegra CSI-MIPI registers. */
 #define TEGRA_VI_OUT_1_INCR_SYNCPT			0x0000
@@ -230,6 +235,7 @@
 #define TEGRA_CSI_PIXEL_STREAM_A_EXPECTED_FRAME		0x08c8
 #define TEGRA_CSI_PIXEL_STREAM_B_EXPECTED_FRAME		0x08cc
 #define TEGRA_CSI_DSI_MIPI_CAL_CONFIG			0x08d0
+#define TEGRA_CSI_MIPIBIAS_PAD_CONFIG0			0x08d4
 
 #define TC_VI_REG_RD(DEV, REG) readl(DEV->vi_base + REG)
 #define TC_VI_REG_WT(DEV, REG, VAL) writel(VAL, DEV->vi_base + REG)
@@ -250,6 +256,8 @@
 struct tegra_buffer {
 	struct vb2_buffer		vb; /* v4l buffer must be first */
 	struct list_head		queue;
+	struct soc_camera_device	*icd;
+	int				output_channel;
 
 	/*
 	 * Various buffer addresses shadowed so we don't have to recalculate
@@ -265,15 +273,17 @@ struct tegra_buffer {
 
 struct tegra_camera_dev {
 	struct soc_camera_host		ici;
-	struct soc_camera_device	*icd;
 	struct nvhost_device		*ndev;
-	struct tegra_camera_platform_data *pdata;
 
 	struct clk			*clk_vi;
 	struct clk			*clk_vi_sensor;
 	struct clk			*clk_csi;
 	struct clk			*clk_isp;
 	struct clk			*clk_csus;
+	struct clk			*clk_sclk;
+	struct clk			*clk_emc;
+
+	struct regulator		*reg;
 
 	void __iomem			*vi_base;
 	spinlock_t			videobuf_queue_lock;
@@ -281,17 +291,28 @@ struct tegra_camera_dev {
 	struct vb2_buffer		*active;
 	struct vb2_alloc_ctx		*alloc_ctx;
 	enum v4l2_field			field;
-	int				sequence;
+	int				sequence_a;
+	int				sequence_b;
 
 	struct work_struct		work;
 	struct mutex			work_mutex;
 
+	struct soc_camera_device *icd;
+
 	u32				syncpt_vi;
-	u32				syncpt_csi;
+	u32				syncpt_csi_a;
+	u32				syncpt_csi_b;
+	int				capturing;
 
 	/* Debug */
 	int num_frames;
+	int enable_refcnt;
+
+	/* CSI pad calibration flag */
+	int cal_done;
 };
+
+static struct tegra_camera_dev *p_cam_dev;
 
 static const struct soc_mbus_pixelfmt tegra_camera_formats[] = {
 	{
@@ -336,6 +357,23 @@ static const struct soc_mbus_pixelfmt tegra_camera_formats[] = {
 		.packing		= SOC_MBUS_PACKING_NONE,
 		.order			= SOC_MBUS_ORDER_LE,
 	},
+
+	/* For RAW8 and RAW10 output, we always output 16-bit (2 bytes). */
+	{
+		.fourcc			= V4L2_PIX_FMT_SBGGR8,
+		.name			= "Bayer 8 BGBG.. GRGR..",
+		.bits_per_sample	= 16,
+		.packing		= SOC_MBUS_PACKING_EXTEND16,
+		.order			= SOC_MBUS_ORDER_LE,
+	},
+	{
+		.fourcc			= V4L2_PIX_FMT_SBGGR10,
+		.name			= "Bayer 10 BGBG.. GRGR..",
+		.bits_per_sample	= 16,
+		.packing		= SOC_MBUS_PACKING_EXTEND16,
+		.order			= SOC_MBUS_ORDER_LE,
+	},
+
 };
 
 static struct tegra_buffer *to_tegra_vb(struct vb2_buffer *vb)
@@ -345,9 +383,13 @@ static struct tegra_buffer *to_tegra_vb(struct vb2_buffer *vb)
 
 static void tegra_camera_save_syncpts(struct tegra_camera_dev *pcdev)
 {
-	pcdev->syncpt_csi =
+	pcdev->syncpt_csi_a =
 		nvhost_syncpt_read_ext(pcdev->ndev,
-				       TEGRA_VI_SYNCPT_CSI);
+				       TEGRA_VI_SYNCPT_CSI_A);
+
+	pcdev->syncpt_csi_b =
+		nvhost_syncpt_read_ext(pcdev->ndev,
+				       TEGRA_VI_SYNCPT_CSI_B);
 
 	pcdev->syncpt_vi =
 		nvhost_syncpt_read_ext(pcdev->ndev,
@@ -357,60 +399,65 @@ static void tegra_camera_save_syncpts(struct tegra_camera_dev *pcdev)
 static void tegra_camera_incr_syncpts(struct tegra_camera_dev *pcdev)
 {
 	nvhost_syncpt_cpu_incr_ext(pcdev->ndev,
-				   TEGRA_VI_SYNCPT_CSI);
+				   TEGRA_VI_SYNCPT_CSI_A);
+
+	nvhost_syncpt_cpu_incr_ext(pcdev->ndev,
+				   TEGRA_VI_SYNCPT_CSI_B);
 
 	nvhost_syncpt_cpu_incr_ext(pcdev->ndev,
 				   TEGRA_VI_SYNCPT_VI);
 }
 
-static void tegra_camera_capture_setup_csi_a(struct tegra_camera_dev *pcdev,
-					     int input_format,
-					     int yuv_input_format)
+static void tegra_camera_capture_clean(struct tegra_camera_dev *pcdev)
 {
-	struct soc_camera_device *icd = pcdev->icd;
-	int bytes_per_line = soc_mbus_bytes_per_line(icd->user_width,
-						icd->current_fmt->host_fmt);
-
-	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_CORE_CONTROL, 0x02000000);
-
-	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_INPUT_CONTROL,
-		(yuv_input_format << 8) |
-		(input_format << 2));
-
-	TC_VI_REG_WT(pcdev, TEGRA_VI_H_DOWNSCALE_CONTROL, 0x00000004);
-	TC_VI_REG_WT(pcdev, TEGRA_VI_V_DOWNSCALE_CONTROL, 0x00000004);
-
-	/* CSI-A H_ACTIVE and V_ACTIVE */
-	TC_VI_REG_WT(pcdev, TEGRA_VI_CSI_PPA_H_ACTIVE,
-		     (icd->user_width << 16));
-	TC_VI_REG_WT(pcdev, TEGRA_VI_CSI_PPA_V_ACTIVE,
-		     (icd->user_height << 16));
-
-	/* CSI A */
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_VI_INPUT_STREAM_CONTROL, 0x00000000);
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_HOST_INPUT_STREAM_CONTROL, 0x00000000);
+
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CSI_PIXEL_PARSER_STATUS, 0x0);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CSI_CIL_STATUS, 0x0);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CSI_PIXEL_PARSER_INTERRUPT_MASK, 0x0);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CSI_CIL_INTERRUPT_MASK, 0x0);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CSI_READONLY_STATUS, 0x0);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_ESCAPE_MODE_COMMAND, 0x0);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_ESCAPE_MODE_DATA, 0x0);
+
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CIL_PAD_CONFIG, 0x00000000);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CIL_MIPI_CAL_STATUS, 0x00000000);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CLKEN_OVERRIDE, 0x00000000);
+
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_DEBUG_CONTROL, 0x0);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_DEBUG_COUNTER_0, 0x0);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_DEBUG_COUNTER_1, 0x0);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_DEBUG_COUNTER_2, 0x0);
+}
+
+static void tegra_camera_capture_setup_csi_a(struct tegra_camera_dev *pcdev,
+					     struct soc_camera_device *icd,
+					     u32 hdr)
+{
+	struct tegra_camera_platform_data *pdata = icd->link->priv;
+	int bytes_per_line = soc_mbus_bytes_per_line(icd->user_width,
+			icd->current_fmt->host_fmt);
+
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_INPUT_STREAM_A_CONTROL, 0x00000000);
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_A_CONTROL0, 0x00000000);
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_A_CONTROL1, 0x00000000);
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_A_WORD_COUNT, 0x00000000);
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_A_GAP, 0x00000000);
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND, 0x00000000);
-
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_PHY_CILA_CONTROL0, 0x00000000);
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_CILA_PAD_CONFIG0, 0x00000000);
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_CILA_PAD_CONFIG1, 0x00000000);
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_CIL_PAD_CONFIG, 0x00000000);
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_CILA_MIPI_CAL_CONFIG, 0x00000000);
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_CIL_MIPI_CAL_STATUS, 0x00000000);
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_CLKEN_OVERRIDE, 0x00000000);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_A_EXPECTED_FRAME, 0x0);
 
-	/* pad1s enabled, virtual channel ID 00 */
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_A_CONTROL0,
-		(0x1 << 16) | /* Output 1 pixel per clock */
-		(0x1e << 8) | /* If hdr shows wrong fmt, use YUV422 */
-		(0x1 << 7) | /* Check header CRC */
-		(0x1 << 6) | /* Use word count field in the header */
-		(0x1 << 5) | /* Look at data identifier byte in hdr */
-		(0x1 << 4)); /* Expect packet header */
+	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_CORE_CONTROL, 0x02000000);
+
+	/* CSI-A H_ACTIVE and V_ACTIVE */
+	TC_VI_REG_WT(pcdev, TEGRA_VI_CSI_PPA_H_ACTIVE,
+		     (icd->user_width << 16));
+	TC_VI_REG_WT(pcdev, TEGRA_VI_CSI_PPA_V_ACTIVE,
+		     (icd->user_height << 16));
 
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_A_CONTROL1,
 		0x1); /* Frame # for top field detect for interlaced */
@@ -424,22 +471,27 @@ static void tegra_camera_capture_setup_csi_a(struct tegra_camera_dev *pcdev,
 		(0x100 << 4) | /* Wait 0x100 vi clks for timeout */
 		0x1); /* Enable line timeout */
 
+	/* pad 0s enabled, virtual channel ID 00 */
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_A_CONTROL0,
+		(0x1 << 16) | /* Output 1 pixel per clock */
+		(hdr << 8) | /* If hdr shows wrong fmt, use right value */
+		(0x1 << 7) | /* Check header CRC */
+		(0x1 << 6) | /* Use word count field in the header */
+		(0x1 << 5) | /* Look at data identifier byte in hdr */
+		(0x1 << 4));  /* Expect packet header */
+
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_INPUT_STREAM_A_CONTROL,
 		     (0x3f << 16) | /* Skip packet threshold */
-		     (pcdev->pdata->lanes - 1));
+		     (pdata->lanes - 1));
 
 	/* Use 0x00000022 for continuous clock mode. */
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_PHY_CILA_CONTROL0,
-		(pcdev->pdata->continuous_clk << 5) |
+		(pdata->continuous_clk << 5) |
 		0x5); /* Clock settle time */
 
-	TC_VI_REG_WT(pcdev, TEGRA_VI_CONT_SYNCPT_CSI_PPA_FRAME_END,
+	TC_VI_REG_WT(pcdev, TEGRA_VI_CONT_SYNCPT_CSI_PPA_FRAME_START,
 		(0x1 << 8) | /* Enable continuous syncpt */
-		TEGRA_VI_SYNCPT_CSI);
-
-	TC_VI_REG_WT(pcdev, TEGRA_VI_CONT_SYNCPT_OUT_1,
-		(0x1 << 8) | /* Enable continuous syncpt */
-		TEGRA_VI_SYNCPT_VI);
+		TEGRA_VI_SYNCPT_CSI_A);
 
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_PHY_CIL_COMMAND, 0x00020001);
 
@@ -447,21 +499,26 @@ static void tegra_camera_capture_setup_csi_a(struct tegra_camera_dev *pcdev,
 }
 
 static void tegra_camera_capture_setup_csi_b(struct tegra_camera_dev *pcdev,
-					     int input_format,
-					     int yuv_input_format)
+					     struct soc_camera_device *icd,
+					     u32 hdr)
 {
-	struct soc_camera_device *icd = pcdev->icd;
+	struct tegra_camera_platform_data *pdata = icd->link->priv;
 	int bytes_per_line = soc_mbus_bytes_per_line(icd->user_width,
 						icd->current_fmt->host_fmt);
 
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_INPUT_STREAM_B_CONTROL, 0x00000000);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_B_CONTROL0, 0x00000000);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_B_CONTROL1, 0x00000000);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_B_WORD_COUNT, 0x00000000);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_B_GAP, 0x00000000);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND, 0x00000000);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_PHY_CILB_CONTROL0, 0x00000000);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CILB_PAD_CONFIG0, 0x00000000);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CILB_PAD_CONFIG1, 0x00000000);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CILB_MIPI_CAL_CONFIG, 0x00000000);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_B_EXPECTED_FRAME, 0x0);
+
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_CORE_CONTROL, 0x04000000);
-
-	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_INPUT_CONTROL,
-		(yuv_input_format << 8) |
-		(input_format << 2));
-
-	TC_VI_REG_WT(pcdev, TEGRA_VI_H_DOWNSCALE_CONTROL, 0x00000008);
-	TC_VI_REG_WT(pcdev, TEGRA_VI_V_DOWNSCALE_CONTROL, 0x00000008);
 
 	/* CSI-B H_ACTIVE and V_ACTIVE */
 	TC_VI_REG_WT(pcdev, TEGRA_VI_CSI_PPB_H_ACTIVE,
@@ -469,27 +526,10 @@ static void tegra_camera_capture_setup_csi_b(struct tegra_camera_dev *pcdev,
 	TC_VI_REG_WT(pcdev, TEGRA_VI_CSI_PPB_V_ACTIVE,
 		(icd->user_height << 16));
 
-	/* CSI B */
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_VI_INPUT_STREAM_CONTROL, 0x00000000);
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_HOST_INPUT_STREAM_CONTROL, 0x00000000);
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_INPUT_STREAM_B_CONTROL, 0x00000000);
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_B_CONTROL0, 0x00000000);
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_B_CONTROL1, 0x00000000);
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_B_WORD_COUNT, 0x00000000);
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_B_GAP, 0x00000000);
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND, 0x00000000);
-
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_CILB_PAD_CONFIG0, 0x00000000);
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_CILB_PAD_CONFIG1, 0x00000000);
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_CIL_PAD_CONFIG, 0x00000000);
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_CILB_MIPI_CAL_CONFIG, 0x00000000);
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_CIL_MIPI_CAL_STATUS, 0x00000000);
-	TC_VI_REG_WT(pcdev, TEGRA_CSI_CLKEN_OVERRIDE, 0x00000000);
-
-	/* pad1s enabled, virtual channel ID 00 */
+	/* pad 0s enabled, virtual channel ID 00 */
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_B_CONTROL0,
 		(0x1 << 16) | /* Output 1 pixel per clock */
-		(0x1e << 8) | /* If hdr shows wrong fmt, use YUV422 */
+		(hdr << 8) | /* If hdr shows wrong fmt, use right value */
 		(0x1 << 7) | /* Check header CRC */
 		(0x1 << 6) | /* Use word count field in the header */
 		(0x1 << 5) | /* Look at data identifier byte in hdr */
@@ -510,20 +550,16 @@ static void tegra_camera_capture_setup_csi_b(struct tegra_camera_dev *pcdev,
 
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_INPUT_STREAM_B_CONTROL,
 		     (0x3f << 16) | /* Skip packet threshold */
-		     (pcdev->pdata->lanes - 1));
+		     (pdata->lanes - 1));
 
 	/* Use 0x00000022 for continuous clock mode. */
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_PHY_CILB_CONTROL0,
-		(pcdev->pdata->continuous_clk << 5) |
+		(pdata->continuous_clk << 5) |
 		0x5); /* Clock settle time */
 
-	TC_VI_REG_WT(pcdev, TEGRA_VI_CONT_SYNCPT_CSI_PPB_FRAME_END,
+	TC_VI_REG_WT(pcdev, TEGRA_VI_CONT_SYNCPT_CSI_PPB_FRAME_START,
 		(0x1 << 8) | /* Enable continuous syncpt */
-		TEGRA_VI_SYNCPT_CSI);
-
-	TC_VI_REG_WT(pcdev, TEGRA_VI_CONT_SYNCPT_OUT_1,
-		(0x1 << 8) | /* Enable continuous syncpt */
-		TEGRA_VI_SYNCPT_VI);
+		TEGRA_VI_SYNCPT_CSI_B);
 
 	TC_VI_REG_WT(pcdev, TEGRA_CSI_PHY_CIL_COMMAND, 0x00010002);
 
@@ -531,19 +567,17 @@ static void tegra_camera_capture_setup_csi_b(struct tegra_camera_dev *pcdev,
 }
 
 static void tegra_camera_capture_setup_vip(struct tegra_camera_dev *pcdev,
-					     int input_format,
-					     int yuv_input_format)
+					   struct soc_camera_device *icd,
+					   u32 input_control)
 {
-	struct soc_camera_device *icd = pcdev->icd;
 
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_CORE_CONTROL, 0x00000000);
 
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_INPUT_CONTROL,
 		(1 << 27) | /* field detect */
 		(1 << 25) | /* hsync/vsync decoded from data (BT.656) */
-		(yuv_input_format << 8) |
 		(1 << 1) | /* VIP_INPUT_ENABLE */
-		(input_format << 2));
+		input_control);
 
 	TC_VI_REG_WT(pcdev, TEGRA_VI_H_DOWNSCALE_CONTROL, 0x00000000);
 	TC_VI_REG_WT(pcdev, TEGRA_VI_V_DOWNSCALE_CONTROL, 0x00000000);
@@ -571,59 +605,163 @@ static void tegra_camera_capture_setup_vip(struct tegra_camera_dev *pcdev,
 	TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL, 0x00000004);
 }
 
-static void tegra_camera_capture_setup(struct tegra_camera_dev *pcdev)
+static int tegra_camera_capture_output_channel_setup(
+		struct tegra_camera_dev *pcdev,
+		struct soc_camera_device *icd)
 {
-	struct soc_camera_device *icd = pcdev->icd;
-	const struct soc_camera_format_xlate *current_fmt = icd->current_fmt;
-	enum v4l2_mbus_pixelcode input_code = current_fmt->code;
-	u32 output_fourcc = current_fmt->host_fmt->fourcc;
-	int yuv_input_format = 0x0;
-	int input_format = 0x0; /* Default to YUV422 */
-	int yuv_output_format = 0x0;
-	int output_format = 0x3; /* Default to YUV422 */
-	int port = pcdev->pdata->port;
+	struct tegra_camera_platform_data *pdata = icd->link->priv;
+	int port = pdata->port;
 	int bytes_per_line = soc_mbus_bytes_per_line(icd->user_width,
 						icd->current_fmt->host_fmt);
-
-	switch (input_code) {
-	case V4L2_MBUS_FMT_UYVY8_2X8:
-		yuv_input_format = 0x2;
-		break;
-	case V4L2_MBUS_FMT_VYUY8_2X8:
-		yuv_input_format = 0x3;
-		break;
-	case V4L2_MBUS_FMT_YUYV8_2X8:
-		yuv_input_format = 0x0;
-		break;
-	case V4L2_MBUS_FMT_YVYU8_2X8:
-		yuv_input_format = 0x1;
-		break;
-	default:
-		BUG_ON(1);
-	}
+	const struct soc_camera_format_xlate *current_fmt = icd->current_fmt;
+	u32 output_fourcc = current_fmt->host_fmt->fourcc;
+	u32 output_format, output_control;
+	struct tegra_buffer *buf = to_tegra_vb(pcdev->active);
 
 	switch (output_fourcc) {
 	case V4L2_PIX_FMT_UYVY:
-		yuv_output_format = 0x0;
+		output_format = 0x3; /* Default to YUV422 */
 		break;
 	case V4L2_PIX_FMT_VYUY:
-		yuv_output_format = 0x1;
+		output_format = (0x1 << 17) | 0x3;
 		break;
 	case V4L2_PIX_FMT_YUYV:
-		yuv_output_format = 0x2;
+		output_format = (0x2 << 17) | 0x3;
 		break;
 	case V4L2_PIX_FMT_YVYU:
-		yuv_output_format = 0x3;
+		output_format = (0x3 << 17) | 0x3;
 		break;
 	case V4L2_PIX_FMT_YUV420:
 	case V4L2_PIX_FMT_YVU420:
 		output_format = 0x6; /* YUV420 planar */
 		break;
+	case V4L2_PIX_FMT_SBGGR8:
+	case V4L2_PIX_FMT_SBGGR10:
+		/* Use second output channel for RAW8/RAW10 */
+		buf->output_channel = 1;
+
+		if (port == TEGRA_CAMERA_PORT_CSI_A)
+			output_format = 0x7;
+		else if (port == TEGRA_CAMERA_PORT_CSI_B)
+			output_format = 0x8;
+		else
+			output_format = 0x9;
+		break;
 	default:
-		BUG_ON(1);
+		dev_err(&pcdev->ndev->dev, "Wrong output format %d\n",
+			output_fourcc);
+		return -EINVAL;
 	}
 
-	BUG_ON(!tegra_camera_port_is_valid(port));
+	output_control = (pdata->flip_v ? (0x1 << 20) : 0) |
+			(pdata->flip_h ? (0x1 << 19) : 0) |
+			output_format;
+
+	if (buf->output_channel == 0) {
+		TC_VI_REG_WT(pcdev, TEGRA_VI_VI_FIRST_OUTPUT_CONTROL,
+				output_control);
+		/*
+		 * Set up frame size.  Bits 31:16 are the number of lines, and
+		 * bits 15:0 are the number of pixels per line.
+		 */
+		TC_VI_REG_WT(pcdev, TEGRA_VI_FIRST_OUTPUT_FRAME_SIZE,
+				(icd->user_height << 16) | icd->user_width);
+
+		/* First output memory enabled */
+		TC_VI_REG_WT(pcdev, TEGRA_VI_VI_ENABLE, 0x00000000);
+
+		/* Set the number of frames in the buffer. */
+		TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_COUNT_FIRST, 0x00000001);
+
+		/* Set up buffer frame size. */
+		TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_SIZE_FIRST,
+				(icd->user_height << 16) | icd->user_width);
+
+		TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BUFFER_STRIDE_FIRST,
+				(icd->user_height * bytes_per_line));
+
+		TC_VI_REG_WT(pcdev, TEGRA_VI_CONT_SYNCPT_OUT_1,
+				(0x1 << 8) | /* Enable continuous syncpt */
+				TEGRA_VI_SYNCPT_VI);
+
+		TC_VI_REG_WT(pcdev, TEGRA_VI_VI_ENABLE, 0x00000000);
+	} else if (buf->output_channel == 1) {
+		TC_VI_REG_WT(pcdev, TEGRA_VI_VI_SECOND_OUTPUT_CONTROL,
+				output_control);
+
+		TC_VI_REG_WT(pcdev, TEGRA_VI_SECOND_OUTPUT_FRAME_SIZE,
+				(icd->user_height << 16) | icd->user_width);
+
+		TC_VI_REG_WT(pcdev, TEGRA_VI_VI_ENABLE_2, 0x00000000);
+
+		/* Set the number of frames in the buffer. */
+		TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_COUNT_SECOND, 0x00000001);
+
+		/* Set up buffer frame size. */
+		TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_SIZE_SECOND,
+				(icd->user_height << 16) | icd->user_width);
+
+		TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BUFFER_STRIDE_SECOND,
+				(icd->user_height * bytes_per_line));
+
+		TC_VI_REG_WT(pcdev, TEGRA_VI_CONT_SYNCPT_OUT_2,
+				(0x1 << 8) | /* Enable continuous syncpt */
+				TEGRA_VI_SYNCPT_VI);
+
+		TC_VI_REG_WT(pcdev, TEGRA_VI_VI_ENABLE_2, 0x00000000);
+	} else {
+		dev_err(&pcdev->ndev->dev, "Wrong output channel %d\n",
+			buf->output_channel);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int tegra_camera_capture_setup(struct tegra_camera_dev *pcdev)
+{
+	struct vb2_buffer *vb = pcdev->active;
+	struct tegra_buffer *buf = to_tegra_vb(vb);
+	struct soc_camera_device *icd = buf->icd;
+	struct tegra_camera_platform_data *pdata = icd->link->priv;
+	int port = pdata->port;
+	const struct soc_camera_format_xlate *current_fmt = icd->current_fmt;
+	enum v4l2_mbus_pixelcode input_code = current_fmt->code;
+	u32 hdr, input_control = 0x0;
+
+	if ( !pcdev->icd )
+		pcdev->icd = icd;
+
+	switch (input_code) {
+	case V4L2_MBUS_FMT_UYVY8_2X8:
+		input_control |= 0x2 << 8;
+		hdr = 30;
+		break;
+	case V4L2_MBUS_FMT_VYUY8_2X8:
+		input_control |= 0x3 << 8;
+		hdr = 30;
+		break;
+	case V4L2_MBUS_FMT_YUYV8_2X8:
+		input_control |= 0x0;
+		hdr = 30;
+		break;
+	case V4L2_MBUS_FMT_YVYU8_2X8:
+		input_control |= 0x1 << 8;
+		hdr = 30;
+		break;
+	case V4L2_MBUS_FMT_SBGGR8_1X8:
+		input_control |= 0x2 << 2;	/* Input Format = Bayer */
+		hdr = 42;
+		break;
+	case V4L2_MBUS_FMT_SBGGR10_1X10:
+		input_control |= 0x2 << 2;	/* Input Format = Bayer */
+		hdr = 43;
+		break;
+	default:
+		dev_err(&pcdev->ndev->dev, "Input format %d is not supported\n",
+			input_code);
+		return -EINVAL;
+	}
 
 	/*
 	 * Set up low pass filter.  Use 0x240 for chromaticity and 0x240
@@ -635,54 +773,28 @@ static void tegra_camera_capture_setup(struct tegra_camera_dev *pcdev)
 	/* Set up raise-on-edge, so we get an interrupt on end of frame. */
 	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_RAISE, 0x00000001);
 
+	if ( !pdata->continuous_capture || !pcdev->capturing ) {
+
+		/* Cleanup registers */
+		tegra_camera_capture_clean(pcdev);
+	}
+
+	/* Setup registers for CSI-A, CSI-B and VIP inputs */
 	if (port == TEGRA_CAMERA_PORT_CSI_A)
-		tegra_camera_capture_setup_csi_a(pcdev, input_format,
-						 yuv_input_format);
+		tegra_camera_capture_setup_csi_a(pcdev, icd, hdr);
 	else if (port == TEGRA_CAMERA_PORT_CSI_B)
-		tegra_camera_capture_setup_csi_b(pcdev, input_format,
-						 yuv_input_format);
+		tegra_camera_capture_setup_csi_b(pcdev, icd, hdr);
 	else
-		tegra_camera_capture_setup_vip(pcdev, input_format,
-					       yuv_input_format);
+		tegra_camera_capture_setup_vip(pcdev, icd, input_control);
 
-	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_FIRST_OUTPUT_CONTROL,
-		(pcdev->pdata->flip_v ? (0x1 << 20) : 0) |
-		(pcdev->pdata->flip_h ? (0x1 << 19) : 0) |
-		(yuv_output_format << 17) |
-		output_format);
-
-	/*
-	 * Set up frame size.  Bits 31:16 are the number of lines, and
-	 * bits 15:0 are the number of pixels per line.
-	 */
-	TC_VI_REG_WT(pcdev, TEGRA_VI_FIRST_OUTPUT_FRAME_SIZE,
-		(icd->user_height << 16) | icd->user_width);
-
-	/* First output memory enabled */
-	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_ENABLE, 0x00000000);
-
-	/* Set the number of frames in the buffer. */
-	TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_COUNT_FIRST, 0x00000001);
-
-	/* Set up buffer frame size. */
-	TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_SIZE_FIRST,
-		(icd->user_height << 16) | icd->user_width);
-
-	TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BUFFER_STRIDE_FIRST,
-		(icd->user_height * bytes_per_line));
-
-	TC_VI_REG_WT(pcdev, TEGRA_VI_VI_ENABLE, 0x00000000);
+	/* Setup registers for output channels */
+	return tegra_camera_capture_output_channel_setup(pcdev, icd);
 }
 
-static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
-				      struct tegra_buffer *buf)
+static int tegra_camera_capture_buffer_setup(struct tegra_camera_dev *pcdev,
+			struct tegra_buffer *buf)
 {
-	struct soc_camera_device *icd = pcdev->icd;
-	int port = pcdev->pdata->port;
-	int err;
-
-	pcdev->syncpt_csi++;
-	pcdev->syncpt_vi++;
+	struct soc_camera_device *icd = buf->icd;
 
 	switch (icd->current_fmt->host_fmt->fourcc) {
 	case V4L2_PIX_FMT_YUV420:
@@ -701,45 +813,86 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 	case V4L2_PIX_FMT_VYUY:
 	case V4L2_PIX_FMT_YUYV:
 	case V4L2_PIX_FMT_YVYU:
-		TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BASE_ADDRESS_FIRST,
-			     buf->buffer_addr);
-		TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_START_ADDRESS_FIRST,
-			     buf->start_addr);
-
-		break;
+	case V4L2_PIX_FMT_SBGGR8:
+	case V4L2_PIX_FMT_SBGGR10:
+		/* output 1 */
+		if (buf->output_channel == 0) {
+			TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BASE_ADDRESS_FIRST,
+					buf->buffer_addr);
+			TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_START_ADDRESS_FIRST,
+					buf->start_addr);
+		/* output 2 */
+		} else if (buf->output_channel == 1) {
+			TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_BASE_ADDRESS_SECOND,
+					buf->buffer_addr);
+			TC_VI_REG_WT(pcdev, TEGRA_VI_VB0_START_ADDRESS_SECOND,
+					buf->start_addr);
+		} else {
+			dev_err(&pcdev->ndev->dev, "Wrong output channel %d\n",
+				buf->output_channel);
+			return -EINVAL;
+		}
+	break;
 
 	default:
-		BUG_ON(1);
+		dev_err(&pcdev->ndev->dev, "Wrong host format %d\n",
+			icd->current_fmt->host_fmt->fourcc);
+		return -EINVAL;
 	}
 
-	BUG_ON(!tegra_camera_port_is_valid(port));
+	return 0;
+}
 
-	if (port == TEGRA_CAMERA_PORT_CSI_A)
-		TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND,
-			     0x0000f005);
-	else if (port == TEGRA_CAMERA_PORT_CSI_B)
-		TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND,
-			     0x0000f005);
-	else
-		TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL,
-			     0x00000001);
+static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
+				      struct tegra_buffer *buf)
+{
+	struct soc_camera_device *icd = buf->icd;
+	struct tegra_camera_platform_data *pdata = icd->link->priv;
+	int port = pdata->port;
+	int err;
 
+	err = tegra_camera_capture_buffer_setup(pcdev, buf);
+	if (err < 0)
+		return err;
 	/*
 	 * Only wait on CSI frame end syncpt if we're using CSI.  Otherwise,
 	 * wait on VIP VSYNC syncpt.
 	 */
-	if (tegra_camera_port_is_csi(port))
+	if (port == TEGRA_CAMERA_PORT_CSI_A) {
+		pcdev->syncpt_csi_a = nvhost_syncpt_incr_max_ext(pcdev->ndev,
+						TEGRA_VI_SYNCPT_CSI_A, 1);
+		TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND,
+				pdata->continuous_capture?0x0000f001 :0x0000f005);
+
 		err = nvhost_syncpt_wait_timeout_ext(pcdev->ndev,
-			TEGRA_VI_SYNCPT_CSI,
-			pcdev->syncpt_csi,
-			TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
-			NULL);
-	else
+				TEGRA_VI_SYNCPT_CSI_A,
+				pcdev->syncpt_csi_a,
+				TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
+				NULL);
+	} else if (port == TEGRA_CAMERA_PORT_CSI_B) {
+		pcdev->syncpt_csi_b = nvhost_syncpt_incr_max_ext(pcdev->ndev,
+						TEGRA_VI_SYNCPT_CSI_B, 1);
+		TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND,
+				pdata->continuous_capture? 0x0000f001: 0x0000f005);
+
 		err = nvhost_syncpt_wait_timeout_ext(pcdev->ndev,
-			TEGRA_VI_SYNCPT_VI,
-			pcdev->syncpt_csi,
-			TEGRA_SYNCPT_VI_WAIT_TIMEOUT,
-			NULL);
+				TEGRA_VI_SYNCPT_CSI_B,
+				pcdev->syncpt_csi_b,
+				TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
+				NULL);
+	} else {
+		pcdev->syncpt_vi = nvhost_syncpt_incr_max_ext(pcdev->ndev,
+						TEGRA_VI_SYNCPT_VI, 1);
+		TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL,
+				0x00000001);
+		err = nvhost_syncpt_wait_timeout_ext(pcdev->ndev,
+				TEGRA_VI_SYNCPT_VI,
+				pcdev->syncpt_csi_a,
+				TEGRA_SYNCPT_VI_WAIT_TIMEOUT,
+				NULL);
+	}
+
+	pcdev->capturing = 1;
 
 	if (!err)
 		return 0;
@@ -749,8 +902,8 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 		u32 cilstatus;
 		u32 rostatus;
 
-		dev_err(&pcdev->ndev->dev, "Timeout on CSI syncpt\n");
-		dev_err(&pcdev->ndev->dev, "buffer_addr = 0x%08x\n",
+		dev_warn(&icd->vdev->dev, "Timeout on CSI syncpt\n");
+		dev_warn(&icd->vdev->dev, "buffer_addr = 0x%08x\n",
 			buf->buffer_addr);
 
 		ppstatus = TC_VI_REG_RD(pcdev,
@@ -760,7 +913,7 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 		rostatus = TC_VI_REG_RD(pcdev,
 			TEGRA_CSI_CSI_READONLY_STATUS);
 
-		dev_err(&pcdev->ndev->dev,
+		dev_warn(&icd->vdev->dev,
 			"PPSTATUS = 0x%08x, "
 			"CILSTATUS = 0x%08x, "
 			"ROSTATUS = 0x%08x\n",
@@ -768,14 +921,14 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 	} else {
 		u32 vip_input_status;
 
-		dev_err(&pcdev->ndev->dev, "Timeout on VI syncpt\n");
-		dev_err(&pcdev->ndev->dev, "buffer_addr = 0x%08x\n",
+		dev_warn(&pcdev->ndev->dev, "Timeout on VI syncpt\n");
+		dev_warn(&pcdev->ndev->dev, "buffer_addr = 0x%08x\n",
 			buf->buffer_addr);
 
 		vip_input_status = TC_VI_REG_RD(pcdev,
 			TEGRA_VI_VIP_INPUT_STATUS);
 
-		dev_err(&pcdev->ndev->dev,
+		dev_warn(&pcdev->ndev->dev,
 			"VIP_INPUT_STATUS = 0x%08x\n",
 			vip_input_status);
 	}
@@ -783,12 +936,10 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 	return err;
 }
 
-static int tegra_camera_capture_stop(struct tegra_camera_dev *pcdev)
+static int tegra_camera_capture_stop(struct tegra_camera_dev *pcdev, int port)
 {
-	int port = pcdev->pdata->port;
 	int err;
-
-	BUG_ON(!tegra_camera_port_is_valid(port));
+	struct tegra_buffer *buf = to_tegra_vb(pcdev->active);
 
 	if (port == TEGRA_CAMERA_PORT_CSI_A)
 		TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND,
@@ -800,6 +951,8 @@ static int tegra_camera_capture_stop(struct tegra_camera_dev *pcdev)
 		TC_VI_REG_WT(pcdev, TEGRA_VI_CAMERA_CONTROL,
 			     0x00000005);
 
+	pcdev->syncpt_vi = nvhost_syncpt_incr_max_ext(pcdev->ndev,
+					TEGRA_VI_SYNCPT_VI, 1);
 	if (tegra_camera_port_is_csi(port))
 		err = nvhost_syncpt_wait_timeout_ext(pcdev->ndev,
 			TEGRA_VI_SYNCPT_VI,
@@ -814,17 +967,28 @@ static int tegra_camera_capture_stop(struct tegra_camera_dev *pcdev)
 		u32 ppstatus;
 		u32 cilstatus;
 
-		dev_err(&pcdev->ndev->dev, "Timeout on VI syncpt\n");
-		buffer_addr = TC_VI_REG_RD(pcdev,
+		dev_warn(&pcdev->ndev->dev, "Timeout on VI syncpt\n");
+
+		if (buf->output_channel == 0)
+			buffer_addr = TC_VI_REG_RD(pcdev,
 					   TEGRA_VI_VB0_BASE_ADDRESS_FIRST);
-		dev_err(&pcdev->ndev->dev, "buffer_addr = 0x%08x\n",
+		else if (buf->output_channel == 1)
+			buffer_addr = TC_VI_REG_RD(pcdev,
+					   TEGRA_VI_VB0_BASE_ADDRESS_SECOND);
+		else {
+			dev_err(&pcdev->ndev->dev, "Wrong output channel %d\n",
+				buf->output_channel);
+			return -EINVAL;
+		}
+
+		dev_warn(&pcdev->ndev->dev, "buffer_addr = 0x%08x\n",
 			buffer_addr);
 
 		ppstatus = TC_VI_REG_RD(pcdev,
 					TEGRA_CSI_CSI_PIXEL_PARSER_STATUS);
 		cilstatus = TC_VI_REG_RD(pcdev,
 					 TEGRA_CSI_CSI_CIL_STATUS);
-		dev_err(&pcdev->ndev->dev,
+		dev_warn(&pcdev->ndev->dev,
 			"PPSTATUS = 0x%08x, CILSTATUS = 0x%08x\n",
 			ppstatus, cilstatus);
 	}
@@ -832,26 +996,85 @@ static int tegra_camera_capture_stop(struct tegra_camera_dev *pcdev)
 	return err;
 }
 
+static void tegra_camera_activate(struct tegra_camera_dev *pcdev)
+{
+	nvhost_module_busy_ext(pcdev->ndev);
+
+	/* Enable external power */
+	regulator_enable(pcdev->reg);
+
+	/* Unpowergate VE */
+	tegra_unpowergate_partition(TEGRA_POWERGATE_VENC);
+
+	/* Turn on relevant clocks. */
+	clk_set_rate(pcdev->clk_vi, 300000000);
+	clk_enable(pcdev->clk_vi);
+	clk_set_rate(pcdev->clk_vi_sensor, 24000000);
+	clk_enable(pcdev->clk_vi_sensor);
+	clk_enable(pcdev->clk_csi);
+	clk_enable(pcdev->clk_isp);
+	clk_enable(pcdev->clk_csus);
+	clk_set_rate(pcdev->clk_sclk, 80000000);
+	clk_enable(pcdev->clk_sclk);
+	clk_enable(pcdev->clk_emc);
+
+	/* Save current syncpt values. */
+	tegra_camera_save_syncpts(pcdev);
+}
+
+static void tegra_camera_deactivate(struct tegra_camera_dev *pcdev)
+{
+	struct soc_camera_device *icd = pcdev->icd;
+	if ( icd ) {
+		struct tegra_camera_platform_data *pdata = icd->link->priv;
+
+		if ( pdata->continuous_capture ) {
+			pcdev->capturing = 0;
+			TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_PPA_COMMAND,
+						 0x0000f003);
+			TC_VI_REG_WT(pcdev, TEGRA_CSI_PIXEL_STREAM_PPB_COMMAND,
+						 0x0000f003);
+			usleep_range(20000, 21000);
+		}
+	}
+
+	/* Turn off relevant clocks. */
+	clk_disable(pcdev->clk_vi);
+	clk_disable(pcdev->clk_vi_sensor);
+	clk_disable(pcdev->clk_csi);
+	clk_disable(pcdev->clk_isp);
+	clk_disable(pcdev->clk_csus);
+	clk_disable(pcdev->clk_sclk);
+	clk_disable(pcdev->clk_emc);
+
+	/* Powergate VE */
+	tegra_powergate_partition(TEGRA_POWERGATE_VENC);
+
+	/* Disable external power */
+	regulator_disable(pcdev->reg);
+
+	nvhost_module_idle_ext(pcdev->ndev);
+
+	pcdev->cal_done = 0;
+}
+
 static int tegra_camera_capture_frame(struct tegra_camera_dev *pcdev)
 {
-	struct vb2_buffer *vb;
-	struct tegra_buffer *buf;
+	struct vb2_buffer *vb = pcdev->active;
+	struct tegra_buffer *buf = to_tegra_vb(vb);
+	struct soc_camera_device *icd = buf->icd;
+	struct tegra_camera_platform_data *pdata = icd->link->priv;
+	int port = pdata->port;
 	int retry = TEGRA_SYNCPT_RETRY_COUNT;
-	int port = pcdev->pdata->port;
 	int err;
-
-	if (!pcdev->active)
-		return 0;
-
-	vb = pcdev->active;
-	buf = to_tegra_vb(vb);
 
 	while (retry) {
 		err = tegra_camera_capture_start(pcdev, buf);
+		/* Capturing succeed, stop capturing */
 		if (!err)
-			err = tegra_camera_capture_stop(pcdev);
-
-		if (err != 0) {
+			err = tegra_camera_capture_stop(pcdev, port);
+		/* Capturing failed, stop and retry */
+		else {
 			retry--;
 
 			/* Stop streaming. */
@@ -883,7 +1106,6 @@ static int tegra_camera_capture_frame(struct tegra_camera_dev *pcdev)
 					     0x00000005);
 			}
 
-
 			tegra_camera_incr_syncpts(pcdev);
 			tegra_camera_save_syncpts(pcdev);
 
@@ -893,26 +1115,26 @@ static int tegra_camera_capture_frame(struct tegra_camera_dev *pcdev)
 		break;
 	}
 
+	/* Reset hardware for too many errors */
+	if (!retry) {
+		tegra_camera_deactivate(pcdev);
+		mdelay(5);
+		tegra_camera_activate(pcdev);
+		if (pcdev->active)
+			tegra_camera_capture_setup(pcdev);
+	}
+
 	spin_lock_irq(&pcdev->videobuf_queue_lock);
-
-	/*
-	 * If vb->state is VB2_BUF_STATE_ERROR, then the vb has already been
-	 * removed, so we shouldn't remove it again.
-	 */
-	if (vb->state != VB2_BUF_STATE_ERROR)
-		list_del_init(&buf->queue);
-
-	if (!list_empty(&pcdev->capture))
-		pcdev->active = &list_entry(pcdev->capture.next,
-					    struct tegra_buffer, queue)->vb;
-	else
-		pcdev->active = NULL;
 
 	do_gettimeofday(&vb->v4l2_buf.timestamp);
 	vb->v4l2_buf.field = pcdev->field;
-	vb->v4l2_buf.sequence = pcdev->sequence++;
+	if (port == TEGRA_CAMERA_PORT_CSI_A)
+		vb->v4l2_buf.sequence = pcdev->sequence_a++;
+	else if (port == TEGRA_CAMERA_PORT_CSI_B)
+		vb->v4l2_buf.sequence = pcdev->sequence_b++;
 
 	vb2_buffer_done(vb, err < 0 ? VB2_BUF_STATE_ERROR : VB2_BUF_STATE_DONE);
+	list_del_init(&buf->queue);
 
 	pcdev->num_frames++;
 
@@ -921,77 +1143,145 @@ static int tegra_camera_capture_frame(struct tegra_camera_dev *pcdev)
 	return err;
 }
 
+static int tegra_camera_csi_pad_calibration(struct tegra_camera_dev *pcdev)
+{
+	struct vb2_buffer *vb = pcdev->active;
+	struct tegra_buffer *buf = to_tegra_vb(vb);
+	struct soc_camera_device *icd = buf->icd;
+	struct tegra_camera_platform_data *pdata = icd->link->priv;
+	int port = pdata->port;
+	int retry = 500;
+	u32 data;
+	int err = -EINVAL;
+
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_DSI_MIPI_CAL_CONFIG, 0x40300);
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_MIPIBIAS_PAD_CONFIG0, 0x50700);
+
+	if (port == TEGRA_CAMERA_PORT_CSI_B || pdata->lanes == 4)
+		TC_VI_REG_WT(pcdev, TEGRA_CSI_CILB_MIPI_CAL_CONFIG, 0x200004);
+
+	data = 0x2a000004;
+	if (port == TEGRA_CAMERA_PORT_CSI_A)
+		data |= 0x200000; /* MIPI_CAL_SELA */
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CILA_MIPI_CAL_CONFIG, data);
+
+	/* Start calibration */
+	data |= 0x80000000;
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CILA_MIPI_CAL_CONFIG, data);
+
+	while (retry--) {
+		data = TC_VI_REG_RD(pcdev, TEGRA_CSI_CSI_CIL_STATUS);
+		if ((data & 0x8000) == 0x8000)
+			break;
+		udelay(20);
+	}
+	if (!retry) {
+		dev_warn(&pcdev->ndev->dev, "MIPI calibration timeout!\n");
+		goto cal_out;
+	}
+
+	/* Clear status */
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CSI_CIL_STATUS, data);
+	retry = 500;
+	while (retry--) {
+		data = TC_VI_REG_RD(pcdev, TEGRA_CSI_CSI_CIL_STATUS);
+		if ((data & 0x8000) == 0x0)
+			break;
+		udelay(20);
+	}
+
+	if (!retry) {
+		dev_warn(&pcdev->ndev->dev,
+			 "Clear MIPI calibration status timeout!\n");
+		goto cal_out;
+	}
+
+	data = TC_VI_REG_RD(pcdev, TEGRA_CSI_CSI_PIXEL_PARSER_STATUS);
+	err = TC_VI_REG_RD(pcdev, TEGRA_CSI_CSI_CIL_STATUS);
+	if (data | err) {
+		dev_warn(&pcdev->ndev->dev,
+			 "Calibration status not be cleared!\n");
+		err = -EINVAL;
+		goto cal_out;
+	}
+
+	/* Calibration succeed */
+	err = 0;
+
+cal_out:
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CSI_CIL_STATUS, data);
+
+	/* un-select to avoid interference with DSI */
+	if (port == TEGRA_CAMERA_PORT_CSI_B || pdata->lanes == 4)
+		TC_VI_REG_WT(pcdev, TEGRA_CSI_CILB_MIPI_CAL_CONFIG, 0x4);
+
+	TC_VI_REG_WT(pcdev, TEGRA_CSI_CILA_MIPI_CAL_CONFIG, 0x2a000004);
+
+	return err;
+}
+
 static void tegra_camera_work(struct work_struct *work)
 {
 	struct tegra_camera_dev *pcdev =
 		container_of(work, struct tegra_camera_dev, work);
+	struct tegra_buffer *buf;
+	struct soc_camera_device *icd;
+	struct tegra_camera_platform_data *pdata;
 
-	mutex_lock(&pcdev->work_mutex);
+	while (1) {
+		mutex_lock(&pcdev->work_mutex);
 
-	while (pcdev->active)
+		spin_lock_irq(&pcdev->videobuf_queue_lock);
+		if (list_empty(&pcdev->capture)) {
+			pcdev->active = NULL;
+			spin_unlock_irq(&pcdev->videobuf_queue_lock);
+			mutex_unlock(&pcdev->work_mutex);
+			return;
+		}
+
+		buf = list_entry(pcdev->capture.next, struct tegra_buffer,
+				queue);
+		pcdev->active = &buf->vb;
+		spin_unlock_irq(&pcdev->videobuf_queue_lock);
+
+		icd = buf->icd;
+		pdata = icd->link->priv;
+
+		if ( !pdata->continuous_capture || !pcdev->capturing ) {
+			tegra_camera_capture_setup(pcdev);
+			if (!pcdev->cal_done) {
+				tegra_camera_csi_pad_calibration(pcdev);
+				pcdev->cal_done = 1;
+			}
+		}
 		tegra_camera_capture_frame(pcdev);
 
-	mutex_unlock(&pcdev->work_mutex);
-}
-
-static void tegra_camera_activate(struct tegra_camera_dev *pcdev)
-{
-	nvhost_module_busy_ext(pcdev->ndev);
-
-	/* Turn on relevant clocks. */
-	clk_enable(pcdev->clk_vi);
-	clk_enable(pcdev->clk_vi_sensor);
-	clk_enable(pcdev->clk_csi);
-	clk_enable(pcdev->clk_isp);
-	clk_enable(pcdev->clk_csus);
-
-	/* Save current syncpt values. */
-	tegra_camera_save_syncpts(pcdev);
-}
-
-static void tegra_camera_deactivate(struct tegra_camera_dev *pcdev)
-{
-	mutex_lock(&pcdev->work_mutex);
-
-	/* Cancel active buffer. */
-	if (pcdev->active) {
-		list_del_init(&to_tegra_vb(pcdev->active)->queue);
-		vb2_buffer_done(pcdev->active, VB2_BUF_STATE_ERROR);
-		pcdev->active = NULL;
+		mutex_unlock(&pcdev->work_mutex);
 	}
-
-	mutex_unlock(&pcdev->work_mutex);
-
-	/* Turn off relevant clocks. */
-	clk_disable(pcdev->clk_vi);
-	clk_disable(pcdev->clk_vi_sensor);
-	clk_disable(pcdev->clk_csi);
-	clk_disable(pcdev->clk_isp);
-	clk_disable(pcdev->clk_csus);
-
-	nvhost_module_idle_ext(pcdev->ndev);
 }
 
-static void tegra_camera_init_buffer(struct tegra_camera_dev *pcdev,
-				     struct tegra_buffer *buf)
+static int tegra_camera_init_buffer(struct tegra_buffer *buf)
 {
-	struct soc_camera_device *icd = pcdev->icd;
+	struct soc_camera_device *icd = buf->icd;
 	int bytes_per_line = soc_mbus_bytes_per_line(icd->user_width,
 						icd->current_fmt->host_fmt);
+	struct tegra_camera_platform_data *pdata = icd->link->priv;
 
 	switch (icd->current_fmt->host_fmt->fourcc) {
 	case V4L2_PIX_FMT_UYVY:
 	case V4L2_PIX_FMT_VYUY:
 	case V4L2_PIX_FMT_YUYV:
 	case V4L2_PIX_FMT_YVYU:
+	case V4L2_PIX_FMT_SBGGR8:
+	case V4L2_PIX_FMT_SBGGR10:
 		buf->buffer_addr = vb2_dma_nvmap_plane_paddr(&buf->vb, 0);
 		buf->start_addr = buf->buffer_addr;
 
-		if (pcdev->pdata->flip_v)
+		if (pdata->flip_v)
 			buf->start_addr += bytes_per_line *
 					   (icd->user_height-1);
 
-		if (pcdev->pdata->flip_h)
+		if (pdata->flip_h)
 			buf->start_addr += bytes_per_line - 1;
 
 		break;
@@ -1015,7 +1305,7 @@ static void tegra_camera_init_buffer(struct tegra_camera_dev *pcdev,
 		buf->start_addr_u = buf->buffer_addr_u;
 		buf->start_addr_v = buf->buffer_addr_v;
 
-		if (pcdev->pdata->flip_v) {
+		if (pdata->flip_v) {
 			buf->start_addr += icd->user_width *
 					   (icd->user_height - 1);
 
@@ -1026,7 +1316,7 @@ static void tegra_camera_init_buffer(struct tegra_camera_dev *pcdev,
 					      ((icd->user_height/2) - 1));
 		}
 
-		if (pcdev->pdata->flip_h) {
+		if (pdata->flip_h) {
 			buf->start_addr += icd->user_width - 1;
 
 			buf->start_addr_u += (icd->user_width/2) - 1;
@@ -1037,23 +1327,27 @@ static void tegra_camera_init_buffer(struct tegra_camera_dev *pcdev,
 		break;
 
 	default:
-		BUG_ON(1);
+		dev_err(icd->parent, "Wrong host format %d\n",
+			icd->current_fmt->host_fmt->fourcc);
+		return -EINVAL;
 	}
+
+	return 0;
 }
 
 /*
  *  Videobuf operations
  */
 static int tegra_camera_videobuf_setup(struct vb2_queue *vq,
-				       const struct v4l2_format *fmt,
 				       unsigned int *num_buffers,
 				       unsigned int *num_planes,
-				       unsigned int sizes[],
+				       unsigned long sizes[],
 				       void *alloc_ctxs[])
 {
 	struct soc_camera_device *icd = container_of(vq,
 						     struct soc_camera_device,
 						     vb2_vidq);
+	struct tegra_camera_platform_data *pdata = icd->link->priv;
 	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
 	struct tegra_camera_dev *pcdev = ici->priv;
 	int bytes_per_line = soc_mbus_bytes_per_line(icd->user_width,
@@ -1066,19 +1360,15 @@ static int tegra_camera_videobuf_setup(struct vb2_queue *vq,
 
 	*num_planes = 1;
 
-	pcdev->sequence = 0;
+	if (pdata->port == TEGRA_CAMERA_PORT_CSI_A)
+		pcdev->sequence_a = 0;
+	else if (pdata->port == TEGRA_CAMERA_PORT_CSI_B)
+		pcdev->sequence_b = 0;
 	sizes[0] = bytes_per_line * icd->user_height;
 	alloc_ctxs[0] = pcdev->alloc_ctx;
 
 	if (!*num_buffers)
 		*num_buffers = 2;
-
-	dev_dbg(icd->parent, "num_buffers=%u, size=%u\n",
-		*num_buffers, sizes[0]);
-
-	tegra_camera_capture_setup(pcdev);
-
-	dev_dbg(icd->parent, "Finished tegra_camera_videobuf_setup()\n");
 
 	return 0;
 }
@@ -1088,9 +1378,8 @@ static int tegra_camera_videobuf_prepare(struct vb2_buffer *vb)
 	struct soc_camera_device *icd = container_of(vb->vb2_queue,
 						     struct soc_camera_device,
 						     vb2_vidq);
-	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
-	struct tegra_camera_dev *pcdev = ici->priv;
-	struct tegra_buffer *buf;
+	struct tegra_buffer *buf = to_tegra_vb(vb);
+	struct tegra_camera_platform_data *pdata = icd->link->priv;
 	int bytes_per_line = soc_mbus_bytes_per_line(icd->user_width,
 						icd->current_fmt->host_fmt);
 	unsigned long size;
@@ -1100,7 +1389,19 @@ static int tegra_camera_videobuf_prepare(struct vb2_buffer *vb)
 	if (bytes_per_line < 0)
 		return bytes_per_line;
 
-	buf = to_tegra_vb(vb);
+	buf->icd = icd;
+
+	if (!pdata) {
+		dev_err(icd->parent, "No platform data for this device!\n");
+		return -EINVAL;
+	}
+
+	if (!tegra_camera_port_is_valid(pdata->port)) {
+		dev_err(icd->parent,
+			"Invalid camera port %d in platform data\n",
+			pdata->port);
+		return -EINVAL;
+	}
 
 	dev_dbg(icd->parent, "%s (vb=0x%p) 0x%p %lu\n", __func__,
 		vb, vb2_plane_vaddr(vb, 0), vb2_plane_size(vb, 0));
@@ -1114,7 +1415,10 @@ static int tegra_camera_videobuf_prepare(struct vb2_buffer *vb)
 		memset(vb2_plane_vaddr(vb, 0), 0xbd, vb2_plane_size(vb, 0));
 #endif
 
-	BUG_ON(NULL == icd->current_fmt);
+	if (!icd->current_fmt) {
+		dev_err(icd->parent, "%s NULL format point\n", __func__);
+		return -EINVAL;
+	}
 
 	size = icd->user_height * bytes_per_line;
 
@@ -1126,11 +1430,7 @@ static int tegra_camera_videobuf_prepare(struct vb2_buffer *vb)
 
 	vb2_set_plane_payload(vb, 0, size);
 
-	tegra_camera_init_buffer(pcdev, buf);
-
-	dev_dbg(icd->parent, "Finished tegra_camera_videobuf_prepare()\n");
-
-	return 0;
+	return tegra_camera_init_buffer(buf);
 }
 
 static void tegra_camera_videobuf_queue(struct vb2_buffer *vb)
@@ -1142,18 +1442,12 @@ static void tegra_camera_videobuf_queue(struct vb2_buffer *vb)
 	struct tegra_camera_dev *pcdev = ici->priv;
 	struct tegra_buffer *buf = to_tegra_vb(vb);
 
-	dev_dbg(icd->parent, "In tegra_camera_videobuf_queue()\n");
-
 	dev_dbg(icd->parent, "%s (vb=0x%p) 0x%p %lu\n", __func__,
 		vb, vb2_plane_vaddr(vb, 0), vb2_get_plane_payload(vb, 0));
 
 	spin_lock_irq(&pcdev->videobuf_queue_lock);
 	list_add_tail(&buf->queue, &pcdev->capture);
-
-	if (!pcdev->active) {
-		pcdev->active = vb;
-		schedule_work(&pcdev->work);
-	}
+	schedule_work(&pcdev->work);
 	spin_unlock_irq(&pcdev->videobuf_queue_lock);
 
 	dev_dbg(icd->parent, "Finished tegra_camera_videobuf_queue()\n");
@@ -1208,16 +1502,24 @@ static int tegra_camera_stop_streaming(struct vb2_queue *q)
 	struct tegra_camera_dev *pcdev = ici->priv;
 	struct list_head *buf_head, *tmp;
 
+
 	mutex_lock(&pcdev->work_mutex);
 
 	spin_lock_irq(&pcdev->videobuf_queue_lock);
-
-	pcdev->active = NULL;
-
-	list_for_each_safe(buf_head, tmp, &pcdev->capture)
-		list_del_init(buf_head);
-
+	list_for_each_safe(buf_head, tmp, &pcdev->capture) {
+		struct tegra_buffer *buf = container_of(buf_head,
+				struct tegra_buffer,
+				queue);
+		if (buf->icd == icd)
+			list_del_init(buf_head);
+	}
 	spin_unlock_irq(&pcdev->videobuf_queue_lock);
+
+	if (pcdev->active) {
+		struct tegra_buffer *buf = to_tegra_vb(pcdev->active);
+		if (buf->icd == icd)
+			pcdev->active = NULL;
+	}
 
 	mutex_unlock(&pcdev->work_mutex);
 
@@ -1262,24 +1564,13 @@ static int tegra_camera_add_device(struct soc_camera_device *icd)
 {
 	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
 	struct tegra_camera_dev *pcdev = ici->priv;
-	int err;
 
-	if (pcdev->icd)
-		return -EBUSY;
-
-	pm_runtime_get_sync(ici->v4l2_dev.dev);
-
-	if (pcdev->pdata->enable_camera) {
-		err = pcdev->pdata->enable_camera(pcdev->ndev);
-		if (IS_ERR_VALUE(err))
-			return err;
+	if (!pcdev->enable_refcnt) {
+		pm_runtime_get_sync(ici->v4l2_dev.dev);
+		tegra_camera_activate(pcdev);
+		pcdev->num_frames = 0;
 	}
-
-	tegra_camera_activate(pcdev);
-
-	pcdev->icd = icd;
-
-	pcdev->num_frames = 0;
+	pcdev->enable_refcnt++;
 
 	dev_dbg(icd->parent, "TEGRA Camera host attached to camera %d\n",
 		icd->devnum);
@@ -1293,14 +1584,12 @@ static void tegra_camera_remove_device(struct soc_camera_device *icd)
 	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
 	struct tegra_camera_dev *pcdev = ici->priv;
 
-	tegra_camera_deactivate(pcdev);
-
-	pcdev->icd = NULL;
-
-	if (pcdev->pdata->disable_camera)
-		pcdev->pdata->disable_camera(pcdev->ndev);
-
-	pm_runtime_put_sync(ici->v4l2_dev.dev);
+	pcdev->enable_refcnt--;
+	if (!pcdev->enable_refcnt) {
+		cancel_work_sync(&pcdev->work);
+		tegra_camera_deactivate(pcdev);
+		pm_runtime_put_sync(ici->v4l2_dev.dev);
+	}
 
 	dev_dbg(icd->parent, "Frames captured: %d\n", pcdev->num_frames);
 
@@ -1308,7 +1597,8 @@ static void tegra_camera_remove_device(struct soc_camera_device *icd)
 		icd->devnum);
 }
 
-static int tegra_camera_set_bus_param(struct soc_camera_device *icd)
+static int tegra_camera_set_bus_param(struct soc_camera_device *icd,
+					__u32 pixfmt)
 {
 	return 0;
 }
@@ -1341,6 +1631,8 @@ static int tegra_camera_get_formats(struct soc_camera_device *icd,
 	case V4L2_MBUS_FMT_VYUY8_2X8:
 	case V4L2_MBUS_FMT_YUYV8_2X8:
 	case V4L2_MBUS_FMT_YVYU8_2X8:
+	case V4L2_MBUS_FMT_SBGGR8_1X8:
+	case V4L2_MBUS_FMT_SBGGR10_1X10:
 		formats += ARRAY_SIZE(tegra_camera_formats);
 		for (k = 0;
 		     xlate && (k < ARRAY_SIZE(tegra_camera_formats));
@@ -1416,6 +1708,18 @@ static int tegra_camera_set_fmt(struct soc_camera_device *icd,
 	dev_dbg(dev, "Finished tegra_camera_set_fmt(), returning %d\n", ret);
 
 	return ret;
+}
+
+static int tegra_camera_enum_fsizes(struct soc_camera_device *icd, struct v4l2_frmsizeenum * fsize) {
+	struct v4l2_subdev *sd = soc_camera_to_subdev(icd);
+	int ret;
+
+	//printk("%s (%d)\n", __func__, fsize->index);
+	ret = v4l2_subdev_call(sd, video, enum_framesizes, fsize);
+	if (IS_ERR_VALUE(ret))
+		return ret;
+
+	return 0;
 }
 
 static int tegra_camera_try_fmt(struct soc_camera_device *icd,
@@ -1518,6 +1822,7 @@ static struct soc_camera_host_ops tegra_soc_camera_host_ops = {
 	.reqbufs	= tegra_camera_reqbufs,
 	.poll		= tegra_camera_poll,
 	.querycap	= tegra_camera_querycap,
+	.enum_fsizes = tegra_camera_enum_fsizes,
 };
 
 static int __devinit tegra_camera_probe(struct nvhost_device *ndev,
@@ -1533,8 +1838,7 @@ static int __devinit tegra_camera_probe(struct nvhost_device *ndev,
 		goto exit;
 	}
 
-	pcdev->pdata			= ndev->dev.platform_data;
-	pcdev->ndev			= ndev;
+	pcdev->ndev = ndev;
 
 	pcdev->ici.priv		= pcdev;
 	pcdev->ici.v4l2_dev.dev	= &ndev->dev;
@@ -1546,14 +1850,6 @@ static int __devinit tegra_camera_probe(struct nvhost_device *ndev,
 	INIT_WORK(&pcdev->work, tegra_camera_work);
 	spin_lock_init(&pcdev->videobuf_queue_lock);
 	mutex_init(&pcdev->work_mutex);
-
-	nvhost_set_drvdata(ndev, pcdev);
-
-	if (!tegra_camera_port_is_valid(pcdev->pdata->port)) {
-		dev_err(&ndev->dev, "Invalid camera port %d in platform data\n",
-			pcdev->pdata->port);
-		goto exit_free_pcdev;
-	}
 
 	pcdev->clk_vi = clk_get_sys("tegra_camera", "vi");
 	if (IS_ERR_OR_NULL(pcdev->clk_vi)) {
@@ -1585,14 +1881,47 @@ static int __devinit tegra_camera_probe(struct nvhost_device *ndev,
 		goto exit_put_clk_isp;
 	}
 
-	clk_set_rate(pcdev->clk_vi, 150000000);
+	pcdev->clk_sclk = clk_get_sys("tegra_camera", "sclk");
+	if (IS_ERR_OR_NULL(pcdev->clk_sclk)) {
+		dev_err(&ndev->dev, "Failed to get sclk clock.\n");
+		goto exit_put_clk_csus;
+	}
+
+	pcdev->clk_emc = clk_get_sys("tegra_camera", "emc");
+	if (IS_ERR_OR_NULL(pcdev->clk_emc)) {
+		dev_err(&ndev->dev, "Failed to get emc clock.\n");
+		goto exit_put_clk_sclk;
+	}
+
+	clk_set_rate(pcdev->clk_vi, 300000000);
 	clk_set_rate(pcdev->clk_vi_sensor, 24000000);
 
-	err = nvhost_client_device_get_resources(ndev);
-	if (err)
-		goto exit_put_clk_csus;
+	/* Get regulator pointer */
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	pcdev->reg = regulator_get(&ndev->dev, "vcsi");
+#else
+	pcdev->reg = regulator_get(&ndev->dev, "avdd_dsi_csi");
+#endif
+	if (IS_ERR_OR_NULL(pcdev->reg)) {
+		dev_err(&ndev->dev, "%s: couldn't get regulator\n",
+				__func__);
+		goto exit_put_clk_emc;
+	}
 
-	nvhost_client_device_init(ndev);
+	nvhost_set_drvdata(ndev, pcdev);
+	err = nvhost_client_device_get_resources(ndev);
+	if (err) {
+		dev_err(&ndev->dev, "%s: nvhost get resources failed %d\n",
+				__func__, err);
+		goto exit_put_regulator;
+	}
+
+	err = nvhost_client_device_init(ndev);
+	if (err) {
+		dev_err(&ndev->dev, "%s: nvhost init failed %d\n",
+				__func__, err);
+		goto exit_put_regulator;
+	}
 
 	pcdev->vi_base = ndev->aperture;
 
@@ -1600,25 +1929,33 @@ static int __devinit tegra_camera_probe(struct nvhost_device *ndev,
 	pm_runtime_enable(&ndev->dev);
 	pm_runtime_resume(&ndev->dev);
 
-	pcdev->alloc_ctx = vb2_dma_nvmap_init_ctx(NULL);
+	pcdev->alloc_ctx = vb2_dma_nvmap_init_ctx(&ndev->dev);
 	if (IS_ERR(pcdev->alloc_ctx)) {
 		err = PTR_ERR(pcdev->alloc_ctx);
-		goto exit_put_resources;
+		goto exit_pm_disable;
 	}
 
 	err = soc_camera_host_register(&pcdev->ici);
 	if (IS_ERR_VALUE(err))
 		goto exit_cleanup_alloc_ctx;
 
+	p_cam_dev = pcdev;
+
 	dev_notice(&ndev->dev, "Tegra camera driver loaded.\n");
 
 	return err;
 
 exit_cleanup_alloc_ctx:
-	vb2_dma_nvmap_cleanup_ctx(&ndev->dev);
-exit_put_resources:
+	vb2_dma_nvmap_cleanup_ctx(pcdev->alloc_ctx);
+exit_pm_disable:
 	pm_runtime_disable(&ndev->dev);
 	nvhost_client_device_put_resources(ndev);
+exit_put_regulator:
+	regulator_put(pcdev->reg);
+exit_put_clk_emc:
+	clk_put(pcdev->clk_emc);
+exit_put_clk_sclk:
+	clk_put(pcdev->clk_sclk);
 exit_put_clk_csus:
 	clk_put(pcdev->clk_csus);
 exit_put_clk_isp:
@@ -1635,6 +1972,25 @@ exit:
 	return err;
 }
 
+int tegra_camera_mclk_on_off(int on)
+{
+    if (!p_cam_dev) return -1;
+
+    if (on) {
+        printk("camera mclock on\n");
+        clk_set_rate(p_cam_dev->csus_clk, 6000000);
+        clk_set_rate(p_cam_dev->vi_sensor_clk, 24000000);
+        clk_enable(p_cam_dev->vi_sensor_clk);
+        clk_enable(p_cam_dev->csus_clk);
+    } else{
+        clk_disable(p_cam_dev->vi_sensor_clk);
+        clk_disable(p_cam_dev->csus_clk);
+    }
+    printk("-%s\n",__FUNCTION__);
+
+    return 0;
+}
+
 static int __devexit tegra_camera_remove(struct nvhost_device *ndev)
 {
 	struct soc_camera_host *ici = to_soc_camera_host(&ndev->dev);
@@ -1648,7 +2004,7 @@ static int __devexit tegra_camera_remove(struct nvhost_device *ndev)
 
 	soc_camera_host_unregister(ici);
 
-	vb2_dma_nvmap_cleanup_ctx(&ndev->dev);
+	vb2_dma_nvmap_cleanup_ctx(pcdev->alloc_ctx);
 
 	pm_runtime_disable(&ndev->dev);
 
@@ -1681,11 +2037,6 @@ static int tegra_camera_suspend(struct nvhost_device *ndev, pm_message_t state)
 		/* Suspend the camera sensor. */
 		WARN_ON(!pcdev->icd->ops->suspend);
 		pcdev->icd->ops->suspend(pcdev->icd, state);
-
-		/* Power off the camera subsystem. */
-		pcdev->pdata->disable_camera(pcdev->ndev);
-
-		nvhost_module_idle_ext(nvhost_get_parent(ndev));
 	}
 
 	return 0;
@@ -1699,14 +2050,10 @@ static int tegra_camera_resume(struct nvhost_device *ndev)
 
 	/* We only need to do something if a camera sensor is attached. */
 	if (pcdev->icd) {
-		nvhost_module_busy_ext(nvhost_get_parent(ndev));
-
-		/* Power on the camera subsystem. */
-		pcdev->pdata->enable_camera(pcdev->ndev);
-
 		/* Resume the camera host. */
 		tegra_camera_save_syncpts(pcdev);
-		tegra_camera_capture_setup(pcdev);
+		if (pcdev->active)
+			tegra_camera_capture_setup(pcdev);
 
 		/* Resume the camera sensor. */
 		WARN_ON(!pcdev->icd->ops->resume);
@@ -1748,5 +2095,6 @@ module_exit(tegra_camera_exit);
 
 MODULE_DESCRIPTION("TEGRA SoC Camera Host driver");
 MODULE_AUTHOR("Andrew Chew <achew@nvidia.com>");
+MODULE_AUTHOR("Bryan Wu <pengw@nvidia.com>");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("nvhost:" TEGRA_CAM_DRV_NAME);

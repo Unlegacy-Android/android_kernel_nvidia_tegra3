@@ -37,6 +37,7 @@
 #include <linux/nct1008.h>
 #include <linux/slab.h>
 #include <mach/board-grouper-misc.h>
+#include <mach/pinmux-tegra30.h>
 
 #ifdef CONFIG_VIDEO_MI1040
 #define CAM1_LDO_EN_GPIO		TEGRA_GPIO_PR6
