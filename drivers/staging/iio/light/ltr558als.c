@@ -9,6 +9,7 @@
  */
 
 #include <linux/delay.h>
+#include <linux/earlysuspend.h>
 #include <linux/fs.h>
 #include <linux/i2c.h>
 #include <linux/init.h>
@@ -661,8 +662,7 @@ static const struct attribute_group ltr558_group = {
 
 static int ltr558_chip_init(struct i2c_client *client)
 {
-	struct iio_dev *indio_dev = i2c_get_clientdata(client);
-	struct ltr558_chip *chip = iio_priv(indio_dev);
+	struct ltr558_chip *chip = i2c_get_clientdata(client);
 	int error = 0;
 
 	mdelay(PON_DELAY);
@@ -735,16 +735,17 @@ static int ltr558_probe(struct i2c_client *client,
 	struct ltr558_chip *chip;
 	struct iio_dev *indio_dev;
 
-	/* data memory allocation */
 	indio_dev = iio_allocate_device(sizeof(*chip));
 	if (indio_dev == NULL) {
-		dev_err(&client->dev, "iio allocation fails\n");
-		ret = -ENOMEM;
+		dev_err(&client->dev, "Memory allocation fails\n");
+		ret =  -ENOMEM;
 		goto exit;
 	}
 	chip = iio_priv(indio_dev);
 
-	i2c_set_clientdata(client, indio_dev);
+	dev_dbg(&client->dev, "%s() called\n", __func__);
+
+	i2c_set_clientdata(client, chip);
 	chip->client = client;
 	chip->irq = client->irq;
 
@@ -754,7 +755,7 @@ static int ltr558_probe(struct i2c_client *client,
 		if (ret) {
 			dev_err(&client->dev, "Unable to register irq %d; "
 				"ret %d\n", chip->irq, ret);
-			goto exit_iio_free;
+			goto exit_free;
 		}
 	}
 
@@ -764,6 +765,7 @@ static int ltr558_probe(struct i2c_client *client,
 	if (ret)
 		goto exit_irq;
 
+	indio_dev->name = id->name;
 	indio_dev->info = &ltr558_info;
 	indio_dev->dev.parent = &client->dev;
 	indio_dev->modes = INDIO_DIRECT_MODE;
@@ -779,7 +781,7 @@ static int ltr558_probe(struct i2c_client *client,
 exit_irq:
 	if (chip->irq > 0)
 		free_irq(chip->irq, chip);
-exit_iio_free:
+exit_free:
 	iio_free_device(indio_dev);
 exit:
 	return ret;
@@ -788,23 +790,24 @@ exit:
 
 static int ltr558_remove(struct i2c_client *client)
 {
-	struct iio_dev *indio_dev = i2c_get_clientdata(client);
-	struct ltr558_chip *chip = iio_priv(indio_dev);
+	struct ltr558_chip *chip = i2c_get_clientdata(client);
+	struct iio_dev *indio_dev;
+	indio_dev = iio_priv_to_dev(chip);
 
 	dev_dbg(&client->dev, "%s()\n", __func__);
+	iio_device_unregister(indio_dev);
 	if (chip->irq > 0)
 		free_irq(chip->irq, chip);
 	ltr558_ps_disable(client);
 	ltr558_als_disable(client);
-	iio_device_unregister(indio_dev);
+	kfree(chip);
 	return 0;
 }
 
 
 static int ltr558_suspend(struct i2c_client *client, pm_message_t mesg)
 {
-	struct iio_dev *indio_dev = i2c_get_clientdata(client);
-	struct ltr558_chip *chip = iio_priv(indio_dev);
+	struct ltr558_chip *chip = i2c_get_clientdata(client);
 	int ret;
 
 	if (chip->is_als_enable == 1)
@@ -822,8 +825,7 @@ static int ltr558_suspend(struct i2c_client *client, pm_message_t mesg)
 
 static int ltr558_resume(struct i2c_client *client)
 {
-	struct iio_dev *indio_dev = i2c_get_clientdata(client);
-	struct ltr558_chip *chip = iio_priv(indio_dev);
+	struct ltr558_chip *chip = i2c_get_clientdata(client);
 	int error = 0;
 
 	mdelay(PON_DELAY);

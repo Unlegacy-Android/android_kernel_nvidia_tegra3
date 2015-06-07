@@ -7,9 +7,9 @@
  */
 
 #include <linux/interrupt.h>
+#include <linux/gpio.h>
 #include <linux/fs.h>
 #include <linux/device.h>
-#include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/spi/spi.h>
 #include <linux/slab.h>
@@ -25,7 +25,10 @@
 #define AD5686_ADDR(x)				((x) << 16)
 #define AD5686_CMD(x)				((x) << 20)
 
-#define AD5686_ADDR_DAC(chan)		(0x1 << (chan))
+#define AD5686_ADDR_DAC0			0x1
+#define AD5686_ADDR_DAC1			0x2
+#define AD5686_ADDR_DAC2			0x4
+#define AD5686_ADDR_DAC3			0x8
 #define AD5686_ADDR_ALL_DAC			0xF
 
 #define AD5686_CMD_NOOP				0x0
@@ -93,35 +96,63 @@ enum ad5686_supported_device_ids {
 	ID_AD5685,
 	ID_AD5686,
 };
-#define AD5868_CHANNEL(chan, bits, shift) {			\
-		.type = IIO_VOLTAGE,				\
-		.indexed = 1,					\
-		.output = 1,					\
-		.channel = chan,				\
-		.info_mask = IIO_CHAN_INFO_SCALE_SHARED_BIT,	\
-		.address = AD5686_ADDR_DAC(chan),			\
-		.scan_type = IIO_ST('u', bits, 16, shift)	\
-}
+
 static const struct ad5686_chip_info ad5686_chip_info_tbl[] = {
 	[ID_AD5684] = {
-		.channel[0] = AD5868_CHANNEL(0, 12, 4),
-		.channel[1] = AD5868_CHANNEL(1, 12, 4),
-		.channel[2] = AD5868_CHANNEL(2, 12, 4),
-		.channel[3] = AD5868_CHANNEL(3, 12, 4),
+		.channel[0] = IIO_CHAN(IIO_OUT, 0, 1, 0, NULL, 0, 0,
+				    (1 << IIO_CHAN_INFO_SCALE_SHARED),
+				    AD5686_ADDR_DAC0,
+				    0, IIO_ST('u', 12, 16, 4), 0),
+		.channel[1] = IIO_CHAN(IIO_OUT, 0, 1, 0, NULL, 1, 0,
+				    (1 << IIO_CHAN_INFO_SCALE_SHARED),
+				    AD5686_ADDR_DAC1,
+				    1, IIO_ST('u', 12, 16, 4), 0),
+		.channel[2] = IIO_CHAN(IIO_OUT, 0, 1, 0, NULL, 2, 0,
+				    (1 << IIO_CHAN_INFO_SCALE_SHARED),
+				    AD5686_ADDR_DAC2,
+				    2, IIO_ST('u', 12, 16, 4), 0),
+		.channel[3] = IIO_CHAN(IIO_OUT, 0, 1, 0, NULL, 3, 0,
+				    (1 << IIO_CHAN_INFO_SCALE_SHARED),
+				    AD5686_ADDR_DAC3,
+				    3, IIO_ST('u', 12, 16, 4), 0),
 		.int_vref_mv = 2500,
 	},
 	[ID_AD5685] = {
-		.channel[0] = AD5868_CHANNEL(0, 14, 2),
-		.channel[1] = AD5868_CHANNEL(1, 14, 2),
-		.channel[2] = AD5868_CHANNEL(2, 14, 2),
-		.channel[3] = AD5868_CHANNEL(3, 14, 2),
+		.channel[0] = IIO_CHAN(IIO_OUT, 0, 1, 0, NULL, 0, 0,
+				    (1 << IIO_CHAN_INFO_SCALE_SHARED),
+				    AD5686_ADDR_DAC0,
+				    0, IIO_ST('u', 14, 16, 2), 0),
+		.channel[1] = IIO_CHAN(IIO_OUT, 0, 1, 0, NULL, 1, 0,
+				    (1 << IIO_CHAN_INFO_SCALE_SHARED),
+				    AD5686_ADDR_DAC1,
+				    1, IIO_ST('u', 14, 16, 2), 0),
+		.channel[2] = IIO_CHAN(IIO_OUT, 0, 1, 0, NULL, 2, 0,
+				    (1 << IIO_CHAN_INFO_SCALE_SHARED),
+				    AD5686_ADDR_DAC2,
+				    2, IIO_ST('u', 14, 16, 2), 0),
+		.channel[3] = IIO_CHAN(IIO_OUT, 0, 1, 0, NULL, 3, 0,
+				    (1 << IIO_CHAN_INFO_SCALE_SHARED),
+				    AD5686_ADDR_DAC3,
+				    3, IIO_ST('u', 14, 16, 2), 0),
 		.int_vref_mv = 2500,
 	},
 	[ID_AD5686] = {
-		.channel[0] = AD5868_CHANNEL(0, 16, 0),
-		.channel[1] = AD5868_CHANNEL(1, 16, 0),
-		.channel[2] = AD5868_CHANNEL(2, 16, 0),
-		.channel[3] = AD5868_CHANNEL(3, 16, 0),
+		.channel[0] = IIO_CHAN(IIO_OUT, 0, 1, 0, NULL, 0, 0,
+				    (1 << IIO_CHAN_INFO_SCALE_SHARED),
+				    AD5686_ADDR_DAC0,
+				    0, IIO_ST('u', 16, 16, 0), 0),
+		.channel[1] = IIO_CHAN(IIO_OUT, 0, 1, 0, NULL, 1, 0,
+				    (1 << IIO_CHAN_INFO_SCALE_SHARED),
+				    AD5686_ADDR_DAC1,
+				    1, IIO_ST('u', 16, 16, 0), 0),
+		.channel[2] = IIO_CHAN(IIO_OUT, 0, 1, 0, NULL, 2, 0,
+				    (1 << IIO_CHAN_INFO_SCALE_SHARED),
+				    AD5686_ADDR_DAC2,
+				    2, IIO_ST('u', 16, 16, 0), 0),
+		.channel[3] = IIO_CHAN(IIO_OUT, 0, 1, 0, NULL, 3, 0,
+				    (1 << IIO_CHAN_INFO_SCALE_SHARED),
+				    AD5686_ADDR_DAC3,
+				    3, IIO_ST('u', 16, 16, 0), 0),
 		.int_vref_mv = 2500,
 	},
 };
@@ -243,12 +274,11 @@ static ssize_t ad5686_write_dac_powerdown(struct device *dev,
 	return ret ? ret : len;
 }
 
-static IIO_CONST_ATTR(out_voltage_powerdown_mode_available,
+static IIO_CONST_ATTR(out_powerdown_mode_available,
 			"1kohm_to_gnd 100kohm_to_gnd three_state");
 
-#define IIO_DEV_ATTR_DAC_POWERDOWN_MODE(_num)				\
-	IIO_DEVICE_ATTR(out_voltage##_num##_powerdown_mode,		\
-			S_IRUGO | S_IWUSR,				\
+#define IIO_DEV_ATTR_DAC_POWERDOWN_MODE(_num) \
+	IIO_DEVICE_ATTR(out##_num##_powerdown_mode, S_IRUGO | S_IWUSR,	\
 			ad5686_read_powerdown_mode,			\
 			ad5686_write_powerdown_mode, _num)
 
@@ -257,9 +287,8 @@ static IIO_DEV_ATTR_DAC_POWERDOWN_MODE(1);
 static IIO_DEV_ATTR_DAC_POWERDOWN_MODE(2);
 static IIO_DEV_ATTR_DAC_POWERDOWN_MODE(3);
 
-#define IIO_DEV_ATTR_DAC_POWERDOWN(_num)				\
-	IIO_DEVICE_ATTR(out_voltage##_num##_powerdown,			\
-			S_IRUGO | S_IWUSR,				\
+#define IIO_DEV_ATTR_DAC_POWERDOWN(_num)	\
+	IIO_DEVICE_ATTR(out##_num##_powerdown, S_IRUGO | S_IWUSR,	\
 			ad5686_read_dac_powerdown,			\
 			ad5686_write_dac_powerdown, _num)
 
@@ -269,15 +298,15 @@ static IIO_DEV_ATTR_DAC_POWERDOWN(2);
 static IIO_DEV_ATTR_DAC_POWERDOWN(3);
 
 static struct attribute *ad5686_attributes[] = {
-	&iio_dev_attr_out_voltage0_powerdown.dev_attr.attr,
-	&iio_dev_attr_out_voltage1_powerdown.dev_attr.attr,
-	&iio_dev_attr_out_voltage2_powerdown.dev_attr.attr,
-	&iio_dev_attr_out_voltage3_powerdown.dev_attr.attr,
-	&iio_dev_attr_out_voltage0_powerdown_mode.dev_attr.attr,
-	&iio_dev_attr_out_voltage1_powerdown_mode.dev_attr.attr,
-	&iio_dev_attr_out_voltage2_powerdown_mode.dev_attr.attr,
-	&iio_dev_attr_out_voltage3_powerdown_mode.dev_attr.attr,
-	&iio_const_attr_out_voltage_powerdown_mode_available.dev_attr.attr,
+	&iio_dev_attr_out0_powerdown.dev_attr.attr,
+	&iio_dev_attr_out1_powerdown.dev_attr.attr,
+	&iio_dev_attr_out2_powerdown.dev_attr.attr,
+	&iio_dev_attr_out3_powerdown.dev_attr.attr,
+	&iio_dev_attr_out0_powerdown_mode.dev_attr.attr,
+	&iio_dev_attr_out1_powerdown_mode.dev_attr.attr,
+	&iio_dev_attr_out2_powerdown_mode.dev_attr.attr,
+	&iio_dev_attr_out3_powerdown_mode.dev_attr.attr,
+	&iio_const_attr_out_powerdown_mode_available.dev_attr.attr,
 	NULL,
 };
 
@@ -305,7 +334,7 @@ static int ad5686_read_raw(struct iio_dev *indio_dev,
 		*val = ret;
 		return IIO_VAL_INT;
 		break;
-	case IIO_CHAN_INFO_SCALE:
+	case (1 << IIO_CHAN_INFO_SCALE_SHARED):
 		scale_uv = (st->vref_mv * 100000)
 			>> (chan->scan_type.realbits);
 		*val =  scale_uv / 100000;
@@ -327,7 +356,7 @@ static int ad5686_write_raw(struct iio_dev *indio_dev,
 
 	switch (mask) {
 	case 0:
-		if (val > (1 << chan->scan_type.realbits) || val < 0)
+		if (val > (1 << chan->scan_type.realbits))
 			return -EINVAL;
 
 		mutex_lock(&indio_dev->mlock);
@@ -391,13 +420,13 @@ static int __devinit ad5686_probe(struct spi_device *spi)
 	indio_dev->channels = st->chip_info->channel;
 	indio_dev->num_channels = AD5686_DAC_CHANNELS;
 
-	regdone = 1;
-	ret = ad5686_spi_write(st, AD5686_CMD_INTERNAL_REFER_SETUP, 0,
-				!!voltage_uv, 0);
+	ret = iio_device_register(indio_dev);
 	if (ret)
 		goto error_disable_reg;
 
-	ret = iio_device_register(indio_dev);
+	regdone = 1;
+	ret = ad5686_spi_write(st, AD5686_CMD_INTERNAL_REFER_SETUP, 0,
+				!!voltage_uv, 0);
 	if (ret)
 		goto error_disable_reg;
 
@@ -410,7 +439,10 @@ error_put_reg:
 	if (!IS_ERR(st->reg))
 		regulator_put(st->reg);
 
-	iio_free_device(indio_dev);
+	if (regdone)
+		iio_device_unregister(indio_dev);
+	else
+		iio_free_device(indio_dev);
 
 	return ret;
 }
@@ -419,13 +451,14 @@ static int __devexit ad5686_remove(struct spi_device *spi)
 {
 	struct iio_dev *indio_dev = spi_get_drvdata(spi);
 	struct ad5686_state *st = iio_priv(indio_dev);
+	struct regulator *reg = st->reg;
+
+	if (!IS_ERR(reg)) {
+		regulator_disable(reg);
+		regulator_put(reg);
+	}
 
 	iio_device_unregister(indio_dev);
-	if (!IS_ERR(st->reg)) {
-		regulator_disable(st->reg);
-		regulator_put(st->reg);
-	}
-	iio_free_device(indio_dev);
 
 	return 0;
 }
@@ -436,7 +469,6 @@ static const struct spi_device_id ad5686_id[] = {
 	{"ad5686", ID_AD5686},
 	{}
 };
-MODULE_DEVICE_TABLE(spi, ad5686_id);
 
 static struct spi_driver ad5686_driver = {
 	.driver = {
@@ -447,7 +479,18 @@ static struct spi_driver ad5686_driver = {
 	.remove = __devexit_p(ad5686_remove),
 	.id_table = ad5686_id,
 };
-module_spi_driver(ad5686_driver);
+
+static __init int ad5686_spi_init(void)
+{
+	return spi_register_driver(&ad5686_driver);
+}
+module_init(ad5686_spi_init);
+
+static __exit void ad5686_spi_exit(void)
+{
+	spi_unregister_driver(&ad5686_driver);
+}
+module_exit(ad5686_spi_exit);
 
 MODULE_AUTHOR("Michael Hennerich <hennerich@blackfin.uclinux.org>");
 MODULE_DESCRIPTION("Analog Devices AD5686/85/84 DAC");

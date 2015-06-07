@@ -68,10 +68,14 @@ struct ad5791_platform_data {
 
 /**
  * struct ad5791_chip_info - chip specific information
+ * @bits:		accuracy of the DAC in bits
+ * @left_shift:		number of bits the datum must be shifted
  * @get_lin_comp:	function pointer to the device specific function
  */
 
 struct ad5791_chip_info {
+	u8			bits;
+	u8			left_shift;
 	int (*get_lin_comp)	(unsigned int span);
 };
 
@@ -82,7 +86,6 @@ struct ad5791_chip_info {
  * @reg_vss:		negative supply regulator
  * @chip_info:		chip model specific constants
  * @vref_mv:		actual reference voltage used
- * @vref_neg_mv:	voltage of the negative supply
  * @pwr_down_mode	current power down mode
  */
 
@@ -92,7 +95,6 @@ struct ad5791_state {
 	struct regulator		*reg_vss;
 	const struct ad5791_chip_info	*chip_info;
 	unsigned short			vref_mv;
-	unsigned int			vref_neg_mv;
 	unsigned			ctrl;
 	unsigned			pwr_down_mode;
 	bool				pwr_down;

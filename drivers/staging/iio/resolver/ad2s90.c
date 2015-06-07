@@ -14,47 +14,57 @@
 #include <linux/spi/spi.h>
 #include <linux/slab.h>
 #include <linux/sysfs.h>
-#include <linux/module.h>
 
 #include "../iio.h"
 #include "../sysfs.h"
 
+#define DRV_NAME "ad2s90"
+
 struct ad2s90_state {
 	struct mutex lock;
+	struct iio_dev *idev;
 	struct spi_device *sdev;
 	u8 rx[2] ____cacheline_aligned;
 };
 
-static int ad2s90_read_raw(struct iio_dev *indio_dev,
-			   struct iio_chan_spec const *chan,
-			   int *val,
-			   int *val2,
-			   long m)
+static ssize_t ad2s90_show_angular(struct device *dev,
+			struct device_attribute *attr, char *buf)
 {
 	int ret;
-	struct ad2s90_state *st = iio_priv(indio_dev);
+	ssize_t len = 0;
+	u16 val;
+	struct ad2s90_state *st = iio_priv(dev_get_drvdata(dev));
 
 	mutex_lock(&st->lock);
 	ret = spi_read(st->sdev, st->rx, 2);
 	if (ret)
 		goto error_ret;
-	*val = (((u16)(st->rx[0])) << 4) | ((st->rx[1] & 0xF0) >> 4);
-
+	val = (((u16)(st->rx[0])) << 4) | ((st->rx[1] & 0xF0) >> 4);
+	len = sprintf(buf, "%d\n", val);
 error_ret:
 	mutex_unlock(&st->lock);
 
-	return IIO_VAL_INT;
+	return ret ? ret : len;
 }
 
-static const struct iio_info ad2s90_info = {
-	.read_raw = &ad2s90_read_raw,
-	.driver_module = THIS_MODULE,
+#define IIO_DEV_ATTR_SIMPLE_RESOLVER(_show) \
+	IIO_DEVICE_ATTR(angular, S_IRUGO, _show, NULL, 0)
+
+static IIO_DEV_ATTR_SIMPLE_RESOLVER(ad2s90_show_angular);
+
+static struct attribute *ad2s90_attributes[] = {
+	&iio_dev_attr_angular.dev_attr.attr,
+	NULL,
 };
 
-static const struct iio_chan_spec ad2s90_chan = {
-	.type = IIO_ANGL,
-	.indexed = 1,
-	.channel = 0,
+static const struct attribute_group ad2s90_attribute_group = {
+	.name = DRV_NAME,
+	.attrs = ad2s90_attributes,
+};
+
+static const struct iio_info ad2s90_info = {
+	.attrs = &ad2s90_attribute_group,
+	.driver_module = THIS_MODULE,
 };
 
 static int __devinit ad2s90_probe(struct spi_device *spi)
@@ -76,11 +86,8 @@ static int __devinit ad2s90_probe(struct spi_device *spi)
 	indio_dev->dev.parent = &spi->dev;
 	indio_dev->info = &ad2s90_info;
 	indio_dev->modes = INDIO_DIRECT_MODE;
-	indio_dev->channels = &ad2s90_chan;
-	indio_dev->num_channels = 1;
-	indio_dev->name = spi_get_device_id(spi)->name;
 
-	ret = iio_device_register(indio_dev);
+	ret = iio_device_register(st->idev);
 	if (ret)
 		goto error_free_dev;
 
@@ -92,7 +99,7 @@ static int __devinit ad2s90_probe(struct spi_device *spi)
 	return 0;
 
 error_free_dev:
-	iio_free_device(indio_dev);
+	iio_free_device(st->idev);
 error_ret:
 	return ret;
 }
@@ -100,27 +107,30 @@ error_ret:
 static int __devexit ad2s90_remove(struct spi_device *spi)
 {
 	iio_device_unregister(spi_get_drvdata(spi));
-	iio_free_device(spi_get_drvdata(spi));
 
 	return 0;
 }
 
-static const struct spi_device_id ad2s90_id[] = {
-	{ "ad2s90" },
-	{}
-};
-MODULE_DEVICE_TABLE(spi, ad2s90_id);
-
 static struct spi_driver ad2s90_driver = {
 	.driver = {
-		.name = "ad2s90",
+		.name = DRV_NAME,
 		.owner = THIS_MODULE,
 	},
 	.probe = ad2s90_probe,
 	.remove = __devexit_p(ad2s90_remove),
-	.id_table = ad2s90_id,
 };
-module_spi_driver(ad2s90_driver);
+
+static __init int ad2s90_spi_init(void)
+{
+	return spi_register_driver(&ad2s90_driver);
+}
+module_init(ad2s90_spi_init);
+
+static __exit void ad2s90_spi_exit(void)
+{
+	spi_unregister_driver(&ad2s90_driver);
+}
+module_exit(ad2s90_spi_exit);
 
 MODULE_AUTHOR("Graff Yang <graff.yang@gmail.com>");
 MODULE_DESCRIPTION("Analog Devices AD2S90 Resolver to Digital SPI driver");

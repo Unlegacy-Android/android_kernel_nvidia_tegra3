@@ -39,11 +39,6 @@
 
 #define ADXRS450_GET_ST(a)	((a >> 26) & 0x3)
 
-enum {
-	ID_ADXRS450,
-	ID_ADXRS453,
-};
-
 /**
  * struct adxrs450_state - device instance specific data
  * @us:			actual spi_device

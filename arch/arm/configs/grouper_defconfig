@@ -3134,8 +3134,11 @@ CONFIG_STAGING=y
 # CONFIG_DX_SEP is not set
 CONFIG_IIO=y
 # CONFIG_IIO_ST_HWMON is not set
-# CONFIG_IIO_BUFFER is not set
-# CONFIG_IIO_TRIGGER is not set
+CONFIG_IIO_BUFFER=y
+# CONFIG_IIO_SW_RING is not set
+CONFIG_IIO_KFIFO_BUF=y
+CONFIG_IIO_TRIGGER=y
+CONFIG_IIO_CONSUMERS_PER_TRIGGER=2
 
 #
 # Accelerometers
@@ -3150,46 +3153,37 @@ CONFIG_IIO=y
 # CONFIG_LIS3L02DQ is not set
 
 #
-# Analog to digital converters
+# Analog to digital convertors
 #
+# CONFIG_AD7150 is not set
+# CONFIG_AD7152 is not set
 # CONFIG_AD7291 is not set
 # CONFIG_AD7298 is not set
+# CONFIG_AD7314 is not set
 # CONFIG_AD7606 is not set
 # CONFIG_AD799X is not set
 # CONFIG_AD7476 is not set
 # CONFIG_AD7887 is not set
 # CONFIG_AD7780 is not set
 # CONFIG_AD7793 is not set
+# CONFIG_AD7745 is not set
 # CONFIG_AD7816 is not set
-# CONFIG_AD7192 is not set
+# CONFIG_ADT75 is not set
 # CONFIG_ADT7310 is not set
 # CONFIG_ADT7410 is not set
-# CONFIG_AD7280 is not set
 # CONFIG_MAX1363 is not set
 
 #
-# Analog digital bi-direction converters
+# Analog digital bi-direction convertors
 #
 # CONFIG_ADT7316 is not set
 
 #
-# Capacitance to digital converters
+# Digital to analog convertors
 #
-# CONFIG_AD7150 is not set
-# CONFIG_AD7152 is not set
-# CONFIG_AD7746 is not set
-
-#
-# Digital to analog converters
-#
-# CONFIG_AD5064 is not set
-# CONFIG_AD5360 is not set
-# CONFIG_AD5380 is not set
-# CONFIG_AD5421 is not set
 # CONFIG_AD5624R_SPI is not set
 # CONFIG_AD5446 is not set
 # CONFIG_AD5504 is not set
-# CONFIG_AD5764 is not set
 # CONFIG_AD5791 is not set
 # CONFIG_AD5686 is not set
 # CONFIG_MAX517 is not set
@@ -3215,14 +3209,11 @@ CONFIG_IIO=y
 # CONFIG_ADXRS450 is not set
 
 #
-# Network Analyzer, Impedance Converters
-#
-# CONFIG_AD5933 is not set
-
-#
 # Inertial measurement units
 #
 # CONFIG_ADIS16400 is not set
+CONFIG_INV_MPU_IIO=y
+# CONFIG_INV_IIO_MPU3050_ACCEL_SLAVE_BMA250 is not set
 
 #
 # Light sensors
@@ -3232,12 +3223,13 @@ CONFIG_IIO=y
 # CONFIG_SENSORS_TSL2563 is not set
 # CONFIG_TSL2583 is not set
 # CONFIG_SENSORS_LTR558 is not set
-CONFIG_SENSORS_CM3217=y
 
 #
 # Magnetometer sensors
 #
 # CONFIG_SENSORS_HMC5843 is not set
+# CONFIG_INV_YAS53X_IIO is not set
+CONFIG_INV_AMI306_IIO=y
 
 #
 # Active energy metering IC
@@ -3252,17 +3244,15 @@ CONFIG_SENSORS_CM3217=y
 # Resolver to digital converters
 #
 # CONFIG_AD2S90 is not set
-# CONFIG_AD2S1200 is not set
+# CONFIG_AD2S120X is not set
 # CONFIG_AD2S1210 is not set
 
 #
 # Triggers - standalone
 #
-
-#
-# Pressure sensors
-#
-# CONFIG_SENSORS_BMP180 is not set
+# CONFIG_IIO_PERIODIC_RTC_TRIGGER is not set
+# CONFIG_IIO_GPIO_TRIGGER is not set
+# CONFIG_IIO_SYSFS_TRIGGER is not set
 # CONFIG_IIO_SIMPLE_DUMMY is not set
 # CONFIG_FB_SM7XX is not set
 # CONFIG_CRYSTALHD is not set

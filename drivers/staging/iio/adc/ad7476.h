@@ -49,10 +49,15 @@ enum ad7476_supported_device_ids {
 	ID_AD7495
 };
 
-#ifdef CONFIG_IIO_BUFFER
+#ifdef CONFIG_IIO_RING_BUFFER
+int ad7476_scan_from_ring(struct iio_dev *indio_dev);
 int ad7476_register_ring_funcs_and_init(struct iio_dev *indio_dev);
 void ad7476_ring_cleanup(struct iio_dev *indio_dev);
-#else /* CONFIG_IIO_BUFFER */
+#else /* CONFIG_IIO_RING_BUFFER */
+static inline int ad7476_scan_from_ring(struct iio_dev *indio_dev)
+{
+	return 0;
+}
 
 static inline int
 ad7476_register_ring_funcs_and_init(struct iio_dev *indio_dev)
@@ -63,5 +68,5 @@ ad7476_register_ring_funcs_and_init(struct iio_dev *indio_dev)
 static inline void ad7476_ring_cleanup(struct iio_dev *indio_dev)
 {
 }
-#endif /* CONFIG_IIO_BUFFER */
+#endif /* CONFIG_IIO_RING_BUFFER */
 #endif /* IIO_ADC_AD7476_H_ */

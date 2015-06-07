@@ -1,7 +1,7 @@
 #
 # Light sensors
 #
-menu "Light sensors"
+comment "Light sensors"
 
 config SENSORS_ISL29018
 	tristate "ISL 29018 light and proximity sensor"
@@ -15,12 +15,12 @@ config SENSORS_ISL29018
 	  Data from sensor is accessible via sysfs.
 
 config SENSORS_ISL29028
-	tristate "ISL 29028/ISL 29029 light and proximity sensor"
+	tristate "ISL 29028 light and proximity sensor"
 	depends on I2C
 	default n
 	help
 	  If you say yes here you get support for ambient light sensing and
-	  proximity ir sensing from intersil ISL29028/ISL29029.
+	  proximity ir sensing from intersil ISL29028.
 	  This driver will provide the measurements of ambient light intensity
 	  in lux, proximity infrared sensing and normal infrared sensing.
 	  Data from sensor is accessible via sysfs.
@@ -49,12 +49,3 @@ config SENSORS_LTR558
 	help
 	  If you say yes here you get support for ambient light sensing and
 	  proximity ir sensing from Lite On Technology LTR558.
-
-config SENSORS_CM3217
-	tristate "CM3217 light sensor"
-	depends on I2C
-	default n
-	help
-	  Say Y here to enable the CM3217 Ambient Light Sensor.
-
-endmenu

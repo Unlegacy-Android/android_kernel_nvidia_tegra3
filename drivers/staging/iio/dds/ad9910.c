@@ -14,7 +14,6 @@
 #include <linux/spi/spi.h>
 #include <linux/slab.h>
 #include <linux/sysfs.h>
-#include <linux/module.h>
 
 #include "../iio.h"
 #include "../sysfs.h"
@@ -353,6 +352,7 @@ static struct attribute *ad9910_attributes[] = {
 };
 
 static const struct attribute_group ad9910_attribute_group = {
+	.name = DRV_NAME,
 	.attrs = ad9910_attributes,
 };
 
@@ -400,7 +400,6 @@ error_ret:
 static int __devexit ad9910_remove(struct spi_device *spi)
 {
 	iio_device_unregister(spi_get_drvdata(spi));
-	iio_free_device(spi_get_drvdata(spi));
 
 	return 0;
 }
@@ -413,9 +412,19 @@ static struct spi_driver ad9910_driver = {
 	.probe = ad9910_probe,
 	.remove = __devexit_p(ad9910_remove),
 };
-module_spi_driver(ad9910_driver);
+
+static __init int ad9910_spi_init(void)
+{
+	return spi_register_driver(&ad9910_driver);
+}
+module_init(ad9910_spi_init);
+
+static __exit void ad9910_spi_exit(void)
+{
+	spi_unregister_driver(&ad9910_driver);
+}
+module_exit(ad9910_spi_exit);
 
 MODULE_AUTHOR("Cliff Cai");
 MODULE_DESCRIPTION("Analog Devices ad9910 driver");
 MODULE_LICENSE("GPL v2");
-MODULE_ALIAS("spi:" DRV_NAME);

@@ -17,10 +17,8 @@
 #include <linux/list.h>
 #include <linux/i2c.h>
 #include <linux/rtc.h>
-#include <linux/module.h>
 
 #include "../iio.h"
-#include "../events.h"
 #include "../sysfs.h"
 #include "adt7316.h"
 
@@ -205,7 +203,7 @@ struct adt7316_chip_info {
 #define ADT7316_TEMP_INT_MASK		0x1F
 #define ADT7516_AIN_INT_MASK		0xE0
 #define ADT7316_TEMP_AIN_INT_MASK	\
-	(ADT7316_TEMP_INT_MASK)
+	(ADT7316_TEMP_INT_MASK | ADT7316_TEMP_INT_MASK)
 
 /*
  * struct adt7316_chip_info - chip specifc information
@@ -1778,44 +1776,44 @@ static irqreturn_t adt7316_event_handler(int irq, void *private)
 
 		time = iio_get_time_ns();
 		if (stat1 & (1 << 0))
-			iio_push_event(indio_dev,
+			iio_push_event(indio_dev, 0,
 				       IIO_UNMOD_EVENT_CODE(IIO_TEMP, 0,
 							    IIO_EV_TYPE_THRESH,
 							    IIO_EV_DIR_RISING),
 				       time);
 		if (stat1 & (1 << 1))
-			iio_push_event(indio_dev,
+			iio_push_event(indio_dev, 0,
 				       IIO_UNMOD_EVENT_CODE(IIO_TEMP, 0,
 							    IIO_EV_TYPE_THRESH,
 							    IIO_EV_DIR_FALLING),
 				       time);
 		if (stat1 & (1 << 2))
-			iio_push_event(indio_dev,
+			iio_push_event(indio_dev, 0,
 				       IIO_UNMOD_EVENT_CODE(IIO_TEMP, 1,
 							    IIO_EV_TYPE_THRESH,
 							    IIO_EV_DIR_RISING),
 				       time);
 		if (stat1 & (1 << 3))
-			iio_push_event(indio_dev,
+			iio_push_event(indio_dev, 0,
 				       IIO_UNMOD_EVENT_CODE(IIO_TEMP, 1,
 							    IIO_EV_TYPE_THRESH,
 							    IIO_EV_DIR_FALLING),
 				       time);
 		if (stat1 & (1 << 5))
-			iio_push_event(indio_dev,
-				       IIO_UNMOD_EVENT_CODE(IIO_VOLTAGE, 1,
+			iio_push_event(indio_dev, 0,
+				       IIO_UNMOD_EVENT_CODE(IIO_IN, 1,
 							    IIO_EV_TYPE_THRESH,
 							    IIO_EV_DIR_EITHER),
 				       time);
 		if (stat1 & (1 << 6))
-			iio_push_event(indio_dev,
-				       IIO_UNMOD_EVENT_CODE(IIO_VOLTAGE, 2,
+			iio_push_event(indio_dev, 0,
+				       IIO_UNMOD_EVENT_CODE(IIO_IN, 2,
 							    IIO_EV_TYPE_THRESH,
 							    IIO_EV_DIR_EITHER),
 				       time);
 		if (stat1 & (1 << 7))
-			iio_push_event(indio_dev,
-				       IIO_UNMOD_EVENT_CODE(IIO_VOLTAGE, 3,
+			iio_push_event(indio_dev, 0,
+				       IIO_UNMOD_EVENT_CODE(IIO_IN, 3,
 							    IIO_EV_TYPE_THRESH,
 							    IIO_EV_DIR_EITHER),
 				       time);
@@ -1823,8 +1821,8 @@ static irqreturn_t adt7316_event_handler(int irq, void *private)
 	ret = chip->bus.read(chip->bus.client, ADT7316_INT_STAT2, &stat2);
 	if (!ret) {
 		if (stat2 & ADT7316_INT_MASK2_VDD)
-			iio_push_event(indio_dev,
-				       IIO_UNMOD_EVENT_CODE(IIO_VOLTAGE,
+			iio_push_event(indio_dev, 0,
+				       IIO_UNMOD_EVENT_CODE(IIO_IN,
 							    0,
 							    IIO_EV_TYPE_THRESH,
 							    IIO_EV_DIR_RISING),
@@ -2065,7 +2063,6 @@ static struct attribute *adt7316_event_attributes[] = {
 
 static struct attribute_group adt7316_event_attribute_group = {
 	.attrs = adt7316_event_attributes,
-	.name = "events",
 };
 
 static struct attribute *adt7516_event_attributes[] = {
@@ -2086,38 +2083,38 @@ static struct attribute *adt7516_event_attributes[] = {
 
 static struct attribute_group adt7516_event_attribute_group = {
 	.attrs = adt7516_event_attributes,
-	.name = "events",
 };
 
-#ifdef CONFIG_PM_SLEEP
-static int adt7316_disable(struct device *dev)
+#ifdef CONFIG_PM
+int adt7316_disable(struct device *dev)
 {
 	struct iio_dev *dev_info = dev_get_drvdata(dev);
 	struct adt7316_chip_info *chip = iio_priv(dev_info);
 
 	return _adt7316_store_enabled(chip, 0);
 }
+EXPORT_SYMBOL(adt7316_disable);
 
-static int adt7316_enable(struct device *dev)
+int adt7316_enable(struct device *dev)
 {
 	struct iio_dev *dev_info = dev_get_drvdata(dev);
 	struct adt7316_chip_info *chip = iio_priv(dev_info);
 
 	return _adt7316_store_enabled(chip, 1);
 }
-
-SIMPLE_DEV_PM_OPS(adt7316_pm_ops, adt7316_disable, adt7316_enable);
-EXPORT_SYMBOL_GPL(adt7316_pm_ops);
+EXPORT_SYMBOL(adt7316_enable);
 #endif
 
 static const struct iio_info adt7316_info = {
 	.attrs = &adt7316_attribute_group,
+	.num_interrupt_lines = 1,
 	.event_attrs = &adt7316_event_attribute_group,
 	.driver_module = THIS_MODULE,
 };
 
 static const struct iio_info adt7516_info = {
 	.attrs = &adt7516_attribute_group,
+	.num_interrupt_lines = 1,
 	.event_attrs = &adt7516_event_attribute_group,
 	.driver_module = THIS_MODULE,
 };
@@ -2169,6 +2166,10 @@ int __devinit adt7316_probe(struct device *dev, struct adt7316_bus *bus,
 	indio_dev->name = name;
 	indio_dev->modes = INDIO_DIRECT_MODE;
 
+	ret = iio_device_register(indio_dev);
+	if (ret)
+		goto error_free_dev;
+
 	if (chip->bus.irq > 0) {
 		if (adt7316_platform_data[0])
 			chip->bus.irq_flags = adt7316_platform_data[0];
@@ -2180,7 +2181,7 @@ int __devinit adt7316_probe(struct device *dev, struct adt7316_bus *bus,
 					   indio_dev->name,
 					   indio_dev);
 		if (ret)
-			goto error_free_dev;
+			goto error_unreg_dev;
 
 		if (chip->bus.irq_flags & IRQF_TRIGGER_HIGH)
 			chip->config1 |= ADT7316_INT_POLARITY;
@@ -2198,10 +2199,6 @@ int __devinit adt7316_probe(struct device *dev, struct adt7316_bus *bus,
 		goto error_unreg_irq;
 	}
 
-	ret = iio_device_register(indio_dev);
-	if (ret)
-		goto error_unreg_irq;
-
 	dev_info(dev, "%s temperature sensor, ADC and DAC registered.\n",
 			indio_dev->name);
 
@@ -2209,6 +2206,8 @@ int __devinit adt7316_probe(struct device *dev, struct adt7316_bus *bus,
 
 error_unreg_irq:
 	free_irq(chip->bus.irq, indio_dev);
+error_unreg_dev:
+	iio_device_unregister(indio_dev);
 error_free_dev:
 	iio_free_device(indio_dev);
 error_ret:
@@ -2221,9 +2220,10 @@ int __devexit adt7316_remove(struct device *dev)
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	struct adt7316_chip_info *chip = iio_priv(indio_dev);
 
-	iio_device_unregister(indio_dev);
+	dev_set_drvdata(dev, NULL);
 	if (chip->bus.irq)
 		free_irq(chip->bus.irq, indio_dev);
+	iio_device_unregister(indio_dev);
 	iio_free_device(indio_dev);
 
 	return 0;
