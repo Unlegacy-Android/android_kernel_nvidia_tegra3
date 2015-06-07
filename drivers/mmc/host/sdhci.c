@@ -2788,6 +2788,9 @@ int sdhci_add_host(struct sdhci_host *host)
 	int ret;
 	struct edp_manager *battery_manager = NULL;
 	struct platform_device *pdev = to_platform_device(mmc_dev(host->mmc));
+#ifdef CONFIG_MACH_GROUPER
+ 	int rc;
+#endif
 
 	WARN_ON(host == NULL);
 	if (host == NULL)
@@ -3210,6 +3213,16 @@ int sdhci_add_host(struct sdhci_host *host)
 	if (IS_ERR(host->vmmc)) {
 		pr_info("%s: no vmmc regulator found\n", mmc_hostname(mmc));
 		host->vmmc = NULL;
+#ifdef CONFIG_MACH_GROUPER
+	} else {
+		pr_info("%s: set vmmc to 3.0v\n", mmc_hostname(mmc));
+		rc = regulator_set_voltage(host->vmmc, 3000000, 3100000);
+		if (rc) {
+			dev_err(mmc_dev(host->mmc), "%s regulator_set_voltage failed: %d", "vmmc", rc);	
+		} else {
+			regulator_enable(host->vmmc);
+		}
+#endif
 	}
 
 	sdhci_init(host, 0);
