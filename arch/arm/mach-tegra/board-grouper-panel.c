@@ -40,23 +40,7 @@
 #include <mach/board-grouper-misc.h>
 
 /* grouper default display board pins */
-#define grouper_lvds_avdd_en		TEGRA_GPIO_PH6
-#define grouper_lvds_rst			TEGRA_GPIO_PG7
-#define grouper_lvds_shutdown		TEGRA_GPIO_PN6
-#define grouper_lvds_rs			TEGRA_GPIO_PV6
-#define grouper_lvds_lr			TEGRA_GPIO_PG1
-
-/* grouper A00 display board pins */
-#define grouper_lvds_rs_a00		TEGRA_GPIO_PH1
-
-/* common pins( backlight ) for all display boards */
-#define grouper_hdmi_hpd			TEGRA_GPIO_PN7
-
-#ifdef CONFIG_TEGRA_DC
-static struct regulator *grouper_hdmi_reg;
-static struct regulator *grouper_hdmi_pll;
-static struct regulator *grouper_hdmi_vddio;
-#endif
+#define grouper_lvds_shutdown	TEGRA_GPIO_PN6
 
 static atomic_t sd_brightness = ATOMIC_INIT(255);
 
@@ -216,87 +200,6 @@ static int grouper_panel_disable(void)
 }
 
 #ifdef CONFIG_TEGRA_DC
-static int grouper_hdmi_vddio_enable(struct device *dev)
-{
-	int ret;
-	if (!grouper_hdmi_vddio) {
-		grouper_hdmi_vddio = regulator_get(dev, "vdd_hdmi_con");
-		if (IS_ERR_OR_NULL(grouper_hdmi_vddio)) {
-			ret = PTR_ERR(grouper_hdmi_vddio);
-			pr_err("hdmi: couldn't get regulator vdd_hdmi_con\n");
-			grouper_hdmi_vddio = NULL;
-			return ret;
-		}
-	}
-	ret = regulator_enable(grouper_hdmi_vddio);
-	if (ret < 0) {
-		pr_err("hdmi: couldn't enable regulator vdd_hdmi_con\n");
-		regulator_put(grouper_hdmi_vddio);
-		grouper_hdmi_vddio = NULL;
-		return ret;
-	}
-	return ret;
-}
-
-static int grouper_hdmi_vddio_disable(void)
-{
-	if (grouper_hdmi_vddio) {
-		regulator_disable(grouper_hdmi_vddio);
-		regulator_put(grouper_hdmi_vddio);
-		grouper_hdmi_vddio = NULL;
-	}
-	return 0;
-}
-
-static int grouper_hdmi_enable(struct device *dev)
-{
-	int ret;
-
-	if (!grouper_hdmi_reg) {
-		grouper_hdmi_reg = regulator_get(dev, "avdd_hdmi");
-		if (IS_ERR_OR_NULL(grouper_hdmi_reg)) {
-			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
-			grouper_hdmi_reg = NULL;
-			return PTR_ERR(grouper_hdmi_reg);
-		}
-	}
-	ret = regulator_enable(grouper_hdmi_reg);
-	if (ret < 0) {
-		pr_err("hdmi: couldn't enable regulator avdd_hdmi\n");
-		return ret;
-	}
-	if (!grouper_hdmi_pll) {
-		grouper_hdmi_pll = regulator_get(dev, "avdd_hdmi_pll");
-		if (IS_ERR_OR_NULL(grouper_hdmi_pll)) {
-			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
-			grouper_hdmi_pll = NULL;
-			regulator_put(grouper_hdmi_reg);
-			grouper_hdmi_reg = NULL;
-			return PTR_ERR(grouper_hdmi_pll);
-		}
-	}
-	ret = regulator_enable(grouper_hdmi_pll);
-	if (ret < 0) {
-		pr_err("hdmi: couldn't enable regulator avdd_hdmi_pll\n");
-		return ret;
-	}
-
-	return 0;
-}
-
-static int grouper_hdmi_disable(void)
-{
-	regulator_disable(grouper_hdmi_reg);
-	regulator_put(grouper_hdmi_reg);
-	grouper_hdmi_reg = NULL;
-
-	regulator_disable(grouper_hdmi_pll);
-	regulator_put(grouper_hdmi_pll);
-	grouper_hdmi_pll = NULL;
-
-	return 0;
-}
-
 static struct resource grouper_disp1_resources[] = {
 	{
 		.name	= "irq",
@@ -314,33 +217,6 @@ static struct resource grouper_disp1_resources[] = {
 		.name	= "fbmem",
 		.start	= 0,	/* Filled in by grouper_panel_init() */
 		.end	= 0,	/* Filled in by grouper_panel_init() */
-		.flags	= IORESOURCE_MEM,
-	},
-};
-
-static struct resource grouper_disp2_resources[] = {
-	{
-		.name	= "irq",
-		.start	= INT_DISPLAY_B_GENERAL,
-		.end	= INT_DISPLAY_B_GENERAL,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.name	= "regs",
-		.start	= TEGRA_DISPLAY2_BASE,
-		.end	= TEGRA_DISPLAY2_BASE + TEGRA_DISPLAY2_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.name	= "fbmem",
-		.flags	= IORESOURCE_MEM,
-		.start	= 0,
-		.end	= 0,
-	},
-	{
-		.name	= "hdmi_regs",
-		.start	= TEGRA_HDMI_BASE,
-		.end	= TEGRA_HDMI_BASE + TEGRA_HDMI_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
 	},
 };
@@ -462,41 +338,6 @@ static struct tegra_fb_data grouper_fb_data = {
 	.xres		= 800,
 	.yres		= 1280,
 	.bits_per_pixel	= 32,
-//	.flags		= TEGRA_FB_FLIP_ON_PROBE,
-};
-
-static struct tegra_fb_data grouper_hdmi_fb_data = {
-	.win		= 0,
-	.xres		= 800,
-	.yres		= 1280,
-	.bits_per_pixel	= 32,
-	.flags		= TEGRA_FB_FLIP_ON_PROBE,
-};
-
-static struct tegra_dc_out grouper_disp2_out = {
-	.type		= TEGRA_DC_OUT_HDMI,
-	.flags		= TEGRA_DC_OUT_HOTPLUG_HIGH,
-
-	.dcc_bus	= 3,
-	.hotplug_gpio	= grouper_hdmi_hpd,
-
-	.max_pixclock	= KHZ2PICOS(148500),
-
-	.align		= TEGRA_DC_ALIGN_MSB,
-	.order		= TEGRA_DC_ORDER_RED_BLUE,
-
-	.enable		= grouper_hdmi_enable,
-	.disable	= grouper_hdmi_disable,
-
-	.postsuspend	= grouper_hdmi_vddio_disable,
-	.hotplug_init	= grouper_hdmi_vddio_enable,
-};
-
-static struct tegra_dc_platform_data grouper_disp2_pdata = {
-	.flags		= 0,
-	.default_out	= &grouper_disp2_out,
-	.fb		= &grouper_hdmi_fb_data,
-	.emc_clk_rate	= 300000000,
 };
 #endif
 
@@ -546,16 +387,6 @@ static int grouper_disp1_check_fb(struct device *dev, struct fb_info *info)
 {
 	return info->device == &grouper_disp1_device.dev;
 }
-
-static struct platform_device grouper_disp2_device = {
-	.name		= "tegradc",
-	.id		= 1,
-	.resource	= grouper_disp2_resources,
-	.num_resources	= ARRAY_SIZE(grouper_disp2_resources),
-	.dev = {
-		.platform_data = &grouper_disp2_pdata,
-	},
-};
 #else
 static int grouper_disp1_check_fb(struct device *dev, struct fb_info *info)
 {
@@ -563,7 +394,7 @@ static int grouper_disp1_check_fb(struct device *dev, struct fb_info *info)
 }
 #endif
 
-#if defined(CONFIG_TEGRA_NVMAP)
+#ifdef CONFIG_TEGRA_NVMAP
 static struct nvmap_platform_carveout grouper_carveouts[] = {
 	[0] = NVMAP_HEAP_CARVEOUT_IRAM_INIT,
 	[1] = {
@@ -590,7 +421,7 @@ static struct platform_device grouper_nvmap_device = {
 #endif
 
 static struct platform_device *grouper_gfx_devices[] __initdata = {
-#if defined(CONFIG_TEGRA_NVMAP)
+#ifdef CONFIG_TEGRA_NVMAP
 	&grouper_nvmap_device,
 #endif
 	&tegra_pwfm0_device,
@@ -601,14 +432,12 @@ int __init grouper_panel_init(void)
 {
 	int err;
 	struct resource __maybe_unused *res;
-	struct board_info board_info;
 #ifdef CONFIG_TEGRA_GRHOST
 	struct platform_device *phost1x;
 #endif
 
-	tegra_get_board_info(&board_info);
 
-#if defined(CONFIG_TEGRA_NVMAP)
+#ifdef CONFIG_TEGRA_NVMAP
 	grouper_carveouts[1].base = tegra_carveout_start;
 	grouper_carveouts[1].size = tegra_carveout_size;
 #endif
@@ -622,9 +451,6 @@ int __init grouper_panel_init(void)
 		printk("Bach: Set LCD pclk as %d Hz\n", grouper_disp1_out.modes->pclk);
 		gpio_request(TEGRA_GPIO_PV6, "gpio_v6");
 	}
-
-	gpio_request(grouper_hdmi_hpd, "hdmi_hpd");
-	gpio_direction_input(grouper_hdmi_hpd);
 
 	err = platform_add_devices(grouper_gfx_devices,
 				ARRAY_SIZE(grouper_gfx_devices));
@@ -651,15 +477,6 @@ int __init grouper_panel_init(void)
 	if (!err) {
 		grouper_disp1_device.dev.parent = &phost1x->dev;
 		err = platform_device_register(&grouper_disp1_device);
-	}
-
-	res = platform_get_resource_byname(&grouper_disp2_device,
-					IORESOURCE_MEM, "fbmem");
-	res->start = tegra_fb2_start;
-	res->end = tegra_fb2_start + tegra_fb2_size - 1;
-	if (!err) {
-		grouper_disp2_device.dev.parent = &phost1x->dev;
-		err = platform_device_register(&grouper_disp2_device);
 	}
 #endif
 

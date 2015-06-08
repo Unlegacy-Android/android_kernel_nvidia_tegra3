@@ -92,44 +92,21 @@ static struct i2c_board_info cap1106_i2c1_board_info[] = {
 #ifdef CONFIG_VIDEO_MI1040
 static int grouper_camera_init(void)
 {
-	u32 project_info = grouper_get_project_id();
-
-	if (project_info == GROUPER_PROJECT_BACH)
+	if (grouper_get_project_id() == GROUPER_PROJECT_BACH)
 		front_yuv_sensor_rst_gpio = FRONT_YUV_SENSOR_RST_GPIO_BACH;
 
 	pmic_id = grouper_query_pmic_id();
-	printk("%s: pmic_id= 0x%X", __FUNCTION__, pmic_id);
-#if 0
-	int ret;
-
-	ret = gpio_request(CAM2_POWER_DWN_GPIO, "cam2_power_en");
-	if (ret < 0) {
-		pr_err("%s: gpio_request failed for gpio %s\n",
-			__func__, "CAM2_POWER_DWN_GPIO");
-	}
-
-	gpio_direction_output(CAM2_POWER_DWN_GPIO, 1);
-	mdelay(10);
-
-	ret = gpio_request(CAM2_RST_GPIO, "cam2_reset");
-	if (ret < 0) {
-		pr_err("%s: gpio_request failed for gpio %s\n",
-			__func__, "CAM2_RST_GPIO");
-	}
-
-	gpio_direction_output(CAM2_RST_GPIO, 0);
-	mdelay(5);
-#endif
+	pr_info("%s: pmic_id= 0x%X", __func__, pmic_id);
 	return 0;
 }
 
 static int yuv_front_sensor_power_on(void)
 {
 	int ret;
-	printk("yuv_front_sensor_power_on+\n");
+	pr_debug("%s+\n", __func__);
 
 	if (!grouper_1v8_ldo5) {
-		if(pmic_id == GROUPER_PMIC_MAXIM) {
+		if (pmic_id == GROUPER_PMIC_MAXIM) {
 			grouper_1v8_ldo5 = regulator_get(NULL, "vdd_sensor_1v8");
 		} else if (pmic_id == GROUPER_PMIC_TI) {
 			grouper_1v8_ldo5 = regulator_get(NULL, "avdd_vdac");
@@ -149,15 +126,15 @@ static int yuv_front_sensor_power_on(void)
 	msleep(10);
 
 	/* AVDD_CAM1, 2.85V, controlled by CAM1_LDO_EN */
-	pr_info("gpio %d read as %d\n",CAM1_LDO_EN_GPIO, gpio_get_value(CAM1_LDO_EN_GPIO));
+	pr_debug("gpio %d read as %d\n",CAM1_LDO_EN_GPIO, gpio_get_value(CAM1_LDO_EN_GPIO));
 	ret = gpio_request(CAM1_LDO_EN_GPIO, "cam1_ldo_en");
 	if (ret < 0)
 		pr_err("%s: gpio_request failed for gpio %s, ret= %d\n",
 			__func__, "CAM1_LDO_EN_GPIO", ret);
-	pr_info("gpio %d: %d", CAM1_LDO_EN_GPIO, gpio_get_value(CAM1_LDO_EN_GPIO));
+	pr_debug("gpio %d: %d", CAM1_LDO_EN_GPIO, gpio_get_value(CAM1_LDO_EN_GPIO));
 	gpio_set_value(CAM1_LDO_EN_GPIO, 1);
 	gpio_direction_output(CAM1_LDO_EN_GPIO, 1);
-	pr_info("--> %d\n", gpio_get_value(CAM1_LDO_EN_GPIO));
+	pr_debug("--> %d\n", gpio_get_value(CAM1_LDO_EN_GPIO));
 
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_CAM_MCLK, TEGRA_TRI_NORMAL);
 
@@ -169,20 +146,20 @@ static int yuv_front_sensor_power_on(void)
 	if (ret < 0)
 		pr_err("%s: gpio_request failed for gpio %s, ret= %d\n",
 			__func__, "FRONT_YUV_SENSOR_RST_GPIO", ret);
-	pr_info("gpio %d: %d", front_yuv_sensor_rst_gpio, gpio_get_value(front_yuv_sensor_rst_gpio));
+	pr_debug("gpio %d: %d", front_yuv_sensor_rst_gpio, gpio_get_value(front_yuv_sensor_rst_gpio));
 	gpio_set_value(front_yuv_sensor_rst_gpio, 1);
 	gpio_direction_output(front_yuv_sensor_rst_gpio, 1);
-	pr_info("--> %d\n", gpio_get_value(front_yuv_sensor_rst_gpio));
+	pr_debug("--> %d\n", gpio_get_value(front_yuv_sensor_rst_gpio));
 
-	printk("yuv_front_sensor_power_on-\n");
+	pr_debug("%s-\n", __func__);
 	return 0;
 }
 
 static int yuv_front_sensor_power_off(void)
 {
-	printk("%s+\n", __FUNCTION__);
+	pr_debug("%s+\n", __func__);
 
-	if((pmic_id == GROUPER_PMIC_MAXIM) || (pmic_id == GROUPER_PMIC_TI)) {
+	if ((pmic_id == GROUPER_PMIC_MAXIM) || (pmic_id == GROUPER_PMIC_TI)) {
 		gpio_set_value(front_yuv_sensor_rst_gpio, 0);
 		gpio_direction_output(front_yuv_sensor_rst_gpio, 0);
 		gpio_free(front_yuv_sensor_rst_gpio);
@@ -203,10 +180,10 @@ static int yuv_front_sensor_power_off(void)
 			grouper_1v8_ldo5 = NULL;
 		}
 
-		printk("%s-\n", __FUNCTION__);
+		pr_debug("%s-\n", __func__);
 		return 0;
 	} else {
-		printk("%s- Unknow pmic_id: 0x%X\n", __FUNCTION__, pmic_id);
+		pr_err("%s: unknow pmic_id: 0x%X\n", __func__, pmic_id);
 		return -ENODEV;
 	}
 }
@@ -269,7 +246,7 @@ static void mpuirq_init(void)
 {
 	int ret = 0;
 
-	pr_info("*** MPU START *** mpuirq_init...\n");
+	pr_debug("*** MPU START *** mpuirq_init...\n");
 
 	/* MPU-IRQ assignment */
 	ret = gpio_request(MPU_GYRO_IRQ_GPIO, MPU_GYRO_NAME);
@@ -284,7 +261,7 @@ static void mpuirq_init(void)
 		gpio_free(MPU_GYRO_IRQ_GPIO);
 		return;
 	}
-	pr_info("*** MPU END *** mpuirq_init...\n");
+	pr_debug("*** MPU END *** mpuirq_init...\n");
 
 	inv_mpu_i2c2_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
 	i2c_register_board_info(MPU_GYRO_BUS_NUM, inv_mpu_i2c2_board_info,
@@ -362,15 +339,15 @@ int __init grouper_sensors_init(void)
 #ifdef CONFIG_VIDEO_MI1040
 	grouper_camera_init();
 
-/* Front Camera mi1040 + */
-    pr_info("mi1040 i2c_register_board_info");
+	/* Front Camera mi1040 + */
+    pr_debug("%s: mi1040 i2c_register_board_info", __func__);
 	i2c_register_board_info(2, front_sensor_i2c2_board_info,
 		ARRAY_SIZE(front_sensor_i2c2_board_info));
 #endif
 
 	err = grouper_nct1008_init();
 	if (err)
-		printk("[Error] Thermal: Configure GPIO_PCC2 as an irq fail!");
+		pr_err("%s: Thermal: Configure GPIO_PCC2 as an irq fail!", __func__);
 	i2c_register_board_info(4, grouper_i2c4_nct1008_board_info,
 		ARRAY_SIZE(grouper_i2c4_nct1008_board_info));
 

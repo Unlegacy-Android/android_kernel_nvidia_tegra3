@@ -41,27 +41,13 @@
 
 #include "gpio-names.h"
 #include "board.h"
-#include "board-cardhu.h"
+#include "board-grouper.h"
 #include "pm.h"
 #include "tegra3_tsensor.h"
 #include <mach/board-grouper-misc.h>
 
-static void grouper_ti_get_board_info(struct board_info *bi)
-{
-	bi->board_id = 0x0245;
-	bi->sku = 0x820;
-	bi->fab =0xe8;
-	bi->major_revision = (system_serial_low >> 16) & 0xFF;
-	bi->minor_revision = (system_serial_low >> 8) & 0xFF;
-}
-
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
-
-static struct regulator_consumer_supply tps6591x_vdd1_supply_skubit0_0[] = {
-	REGULATOR_SUPPLY("vdd_core", NULL),
-	REGULATOR_SUPPLY("en_vddio_ddr_1v2", NULL),
-};
 
 static struct regulator_consumer_supply tps6591x_vdd1_supply_skubit0_1[] = {
 	REGULATOR_SUPPLY("en_vddio_ddr_1v2", NULL),
@@ -137,22 +123,12 @@ static struct regulator_consumer_supply tps6591x_ldo3_supply_e118x[] = {
 	REGULATOR_SUPPLY("pwrdet_sdmmc1", NULL),
 };
 
-static struct regulator_consumer_supply tps6591x_ldo3_supply_e1198[] = {
-	REGULATOR_SUPPLY("unused_rail_ldo3", NULL),
-};
-
 static struct regulator_consumer_supply tps6591x_ldo4_supply_0[] = {
 	REGULATOR_SUPPLY("vdd_rtc", NULL),
 };
 
 static struct regulator_consumer_supply tps6591x_ldo5_supply_e118x[] = {
 	REGULATOR_SUPPLY("avdd_vdac", NULL),
-};
-
-static struct regulator_consumer_supply tps6591x_ldo5_supply_e1198[] = {
-	REGULATOR_SUPPLY("avdd_vdac", NULL),
-	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.0"),
-	REGULATOR_SUPPLY("pwrdet_sdmmc1", NULL),
 };
 
 static struct regulator_consumer_supply tps6591x_ldo6_supply_0[] = {
@@ -200,9 +176,8 @@ static struct regulator_consumer_supply tps6591x_ldo8_supply_0[] = {
 		.ectrl = _ectrl,					\
 		.flags = _flags,					\
 		/* .shutdown_state_off = _off,	*/			\
-	}
+	};
 
-TPS_PDATA_INIT(vdd1, skubit0_0, 600,  1500, 0, 1, 1, 0, -1, 0, 0, EXT_CTRL_SLEEP_OFF, 0, true);
 TPS_PDATA_INIT(vdd1, skubit0_1, 600,  1500, 0, 1, 1, 0, -1, 0, 0, EXT_CTRL_SLEEP_OFF, 0, true);
 TPS_PDATA_INIT(vdd2, 0,         600,  1500, 0, 1, 1, 0, -1, 0, 0, 0, 0, false);
 TPS_PDATA_INIT(vddctrl, 0,      600,  1400, 0, 1, 1, 0, -1, 0, 0, EXT_CTRL_EN1, 0, true);
@@ -212,10 +187,8 @@ TPS_PDATA_INIT(ldo1, 0,         1000, 3300, tps6591x_rails(VDD_2), 1, 0, 0, -1, 
 TPS_PDATA_INIT(ldo2, 0,         1050, 1050, tps6591x_rails(VDD_2), 0, 0, 1, -1, 0, 1, 0, 0, false);
 
 TPS_PDATA_INIT(ldo3, e118x,     1000, 3300, 0, 0, 0, 0, -1, 0, 0, 0, 0, true);
-TPS_PDATA_INIT(ldo3, e1198,     1000, 3300, 0, 0, 0, 0, -1, 0, 0, 0, 0, true);
 TPS_PDATA_INIT(ldo4, 0,         1000, 3300, 0, 1, 0, 0, -1, 0, 0, 0, 0, false);
 TPS_PDATA_INIT(ldo5, e118x,     1000, 3300, 0, 0, 0, 0, -1, 0, 0, 0, 0, true);
-TPS_PDATA_INIT(ldo5, e1198,     1000, 3300, 0, 0, 0, 0, -1, 0, 0, 0, 0, true);
 
 TPS_PDATA_INIT(ldo6, 0,         1200, 1200, tps6591x_rails(VIO), 0, 0, 1, -1, 0, 0, 0, 0, true);
 TPS_PDATA_INIT(ldo7, 0,         1200, 1200, tps6591x_rails(VIO), 1, 1, 1, -1, 0, 0, EXT_CTRL_SLEEP_OFF, LDO_LOW_POWER_ON_SUSPEND, false);
@@ -261,15 +234,6 @@ static struct tps6591x_rtc_platform_data rtc_data = {
 	TPS_REG(LDO_7, ldo7, 0),		\
 	TPS_REG(LDO_8, ldo8, 0)
 
-static struct tps6591x_subdev_info tps_devs_e118x_skubit0_0[] = {
-	TPS_REG(VIO, vio, 0),
-	TPS_REG(VDD_1, vdd1, skubit0_0),
-	TPS6591X_DEV_COMMON_E118X,
-#if defined(CONFIG_RTC_DRV_TPS6591x)
-	TPS_RTC_REG(),
-#endif
-};
-
 static struct tps6591x_subdev_info tps_devs_e118x_skubit0_1[] = {
 	TPS_REG(VIO, vio, 0),
 	TPS_REG(VDD_1, vdd1, skubit0_1),
@@ -290,24 +254,6 @@ static struct tps6591x_subdev_info tps_devs_e118x_skubit0_1[] = {
 	TPS_REG(LDO_6, ldo6, 0),		\
 	TPS_REG(LDO_7, ldo7, 0),		\
 	TPS_REG(LDO_8, ldo8, 0)
-
-static struct tps6591x_subdev_info tps_devs_e1198_skubit0_0[] = {
-	TPS_REG(VIO, vio, 0),
-	TPS_REG(VDD_1, vdd1, skubit0_0),
-	TPS6591X_DEV_COMMON_GROUPER,
-#if defined(CONFIG_RTC_DRV_TPS6591x)
-	TPS_RTC_REG(),
-#endif
-};
-
-static struct tps6591x_subdev_info tps_devs_e1198_skubit0_1[] = {
-	TPS_REG(VIO, vio, 0),
-	TPS_REG(VDD_1, vdd1, skubit0_1),
-	TPS6591X_DEV_COMMON_GROUPER,
-#if defined(CONFIG_RTC_DRV_TPS6591x)
-	TPS_RTC_REG(),
-#endif
-};
 
 #define TPS_GPIO_INIT_PDATA(gpio_nr, _init_apply, _sleep_en, _pulldn_en, _output_en, _output_val)	\
 	[gpio_nr] = {					\
@@ -387,133 +333,40 @@ static struct i2c_board_info __initdata tps62361_boardinfo[] = {
 
 int __init grouper_ti_regulator_init(void)
 {
-	struct board_info board_info;
-	struct board_info pmu_board_info;
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	u32 pmc_ctrl;
-	bool ext_core_regulator = false;
 
 	/* configure the power management controller to trigger PMU
 	 * interrupts when low */
-
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
 
-	grouper_ti_get_board_info(&board_info);
-	tegra_get_pmu_board_info(&pmu_board_info);
 
 	/* The regulator details have complete constraints */
 	regulator_has_full_constraints();
 
-	/* PMU-E1208, the ldo2 should be set to 1200mV */
-	if (pmu_board_info.board_id == BOARD_E1208) {
-		pdata_ldo2_0.regulator.constraints.min_uV = 1200000;
-		pdata_ldo2_0.regulator.constraints.max_uV = 1200000;
-	}
+	pdata_ldo3_e118x.slew_rate_uV_per_us = 250;
 
-	/*
-	 * E1198 will have different core regulator decoding.
-	 * A01/A02: Based on sku bit 0.
-	 * A03: Based on bit 2 and bit 0
-	 *       2,0: 00 no core regulator,
-	 *            01:TPS62365
-	 *            10:TPS62366
-	 *            11:TPS623850
-	 */
-	if (board_info.board_id == BOARD_E1198) {
-		int vsels;
-		switch(board_info.fab) {
-		case BOARD_FAB_A00:
-		case BOARD_FAB_A01:
-		case BOARD_FAB_A02:
-			if (board_info.sku & SKU_DCDC_TPS62361_SUPPORT)
-				ext_core_regulator = true;
-			break;
-
-		case BOARD_FAB_A03:
-			vsels = ((board_info.sku >> 1) & 0x2) | (board_info.sku & 1);
-			switch(vsels) {
-			case 1:
-				ext_core_regulator = true;
-				tps62361_pdata.vsel0_def_state = 1;
-				tps62361_pdata.vsel1_def_state = 1;
-				break;
-			case 2:
-				ext_core_regulator = true;
-				tps62361_pdata.vsel0_def_state = 0;
-				tps62361_pdata.vsel1_def_state = 0;
-				break;
-			case 3:
-				ext_core_regulator = true;
-				tps62361_pdata.vsel0_def_state = 1;
-				tps62361_pdata.vsel1_def_state = 0;
-				break;
-			}
-			break;
-		}
-
-		pr_info("BoardId:SKU:Fab 0x%04x:0x%04x:0x%02x\n",
-			board_info.board_id, board_info.sku , board_info.fab);
-		pr_info("Core regulator %s\n",
-			(ext_core_regulator)? "true": "false");
-		pr_info("VSEL 1:0 %d%d\n",
-			tps62361_pdata.vsel1_def_state,
-			tps62361_pdata.vsel0_def_state);
-	}
-
-	if ((board_info.board_id == BOARD_E1291) &&
-		(board_info.sku & SKU_DCDC_TPS62361_SUPPORT))
-		ext_core_regulator = true;
-
-	if ((board_info.board_id == BOARD_E1198) ||
-		(board_info.board_id == BOARD_E1291)) {
-		if (ext_core_regulator) {
-			tps_platform.num_subdevs =
-					ARRAY_SIZE(tps_devs_e1198_skubit0_1);
-			tps_platform.subdevs = tps_devs_e1198_skubit0_1;
-		} else {
-			tps_platform.num_subdevs =
-					ARRAY_SIZE(tps_devs_e1198_skubit0_0);
-			tps_platform.subdevs = tps_devs_e1198_skubit0_0;
-		}
-	} else {
-		if (board_info.board_id == BOARD_PM269)
-			pdata_ldo3_e118x.slew_rate_uV_per_us = 250;
-
-		if (pmu_board_info.sku & SKU_DCDC_TPS62361_SUPPORT) {
-			tps_platform.num_subdevs = ARRAY_SIZE(tps_devs_e118x_skubit0_1);
-			tps_platform.subdevs = tps_devs_e118x_skubit0_1;
-			ext_core_regulator = true;
-		} else {
-			tps_platform.num_subdevs = ARRAY_SIZE(tps_devs_e118x_skubit0_0);
-			tps_platform.subdevs = tps_devs_e118x_skubit0_0;
-		}
-	}
+	tps_platform.num_subdevs = ARRAY_SIZE(tps_devs_e118x_skubit0_1);
+	tps_platform.subdevs = tps_devs_e118x_skubit0_1;
 
 	/*
 	 *E1291-A04/A05/A07 or PM269-alike:
 	 *	Enable DEV_SLP and enable sleep on GPIO2
 	 */
-	if ((board_info.board_id == BOARD_PM269) ||
-		((board_info.board_id == BOARD_E1291) &&
-			((board_info.fab == BOARD_FAB_A04) ||
-			 (board_info.fab == BOARD_FAB_A05) ||
-			 (board_info.fab == BOARD_FAB_A07)))) {
-		pr_info("TPS6591x GPIO2 was reprogrammed to follow state of "
-			"SLEEP input\n");
-		tps_platform.dev_slp_en = true;
-		tps_platform.gpio_init_data = tps_gpio_pdata_e1291_a04;
-		tps_platform.num_gpioinit_data =
-					ARRAY_SIZE(tps_gpio_pdata_e1291_a04);
-	}
+	pr_info("TPS6591x GPIO2 was reprogrammed to follow state of "
+		"SLEEP input\n");
+	tps_platform.dev_slp_en = true;
+	tps_platform.gpio_init_data = tps_gpio_pdata_e1291_a04;
+	tps_platform.num_gpioinit_data =
+				ARRAY_SIZE(tps_gpio_pdata_e1291_a04);
 
 	i2c_register_board_info(4, grouper_ti_regulators, 1);
 
-	/* Register the external core regulator if it is require */
-	if (ext_core_regulator) {
-		pr_info("Registering the core regulator\n");
-		i2c_register_board_info(4, tps62361_boardinfo, 1);
-	}
+	/* Register the external core regulator */
+	pr_info("Registering the core regulator\n");
+	i2c_register_board_info(4, tps62361_boardinfo, 1);
+
 	return 0;
 }
 
@@ -598,11 +451,6 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_bl_supply[] = {
 	REGULATOR_SUPPLY("vdd_backlight1", NULL),
 };
 
-/* EN_VDD_BL2 (E1291-A03) from AP PEX_L0_PRSNT_N DD.00 */
-static struct regulator_consumer_supply fixed_reg_en_vdd_bl2_supply[] = {
-	REGULATOR_SUPPLY("vdd_backlight2", NULL),
-};
-
 /* EN_3V3_MODEM from AP GPIO VI_VSYNCH D06*/
 static struct regulator_consumer_supply fixed_reg_en_3v3_modem_supply[] = {
 	REGULATOR_SUPPLY("vdd_3v3_mini_card", NULL),
@@ -621,13 +469,6 @@ static struct regulator_consumer_supply fixed_reg_cam1_ldo_en_supply[] = {
 	REGULATOR_SUPPLY("vdd", "6-000e"),
 };
 
-/* CAM2_LDO_EN from AP GPIO KB_ROW7 R07*/
-static struct regulator_consumer_supply fixed_reg_cam2_ldo_en_supply[] = {
-	REGULATOR_SUPPLY("vdd_2v8_cam2", NULL),
-	REGULATOR_SUPPLY("avdd", "7-0072"),
-	REGULATOR_SUPPLY("vdd", "7-000e"),
-};
-
 /* CAM3_LDO_EN from AP GPIO KB_ROW8 S00*/
 static struct regulator_consumer_supply fixed_reg_cam3_ldo_en_supply[] = {
 	REGULATOR_SUPPLY("vdd_cam3", NULL),
@@ -641,11 +482,6 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_com_supply[] = {
 /* EN_3V3_EMMC from AP GPIO SDMMC3_DAT4 D01*/
 static struct regulator_consumer_supply fixed_reg_en_3v3_emmc_supply[] = {
 	REGULATOR_SUPPLY("vdd_emmc_core", NULL),
-};
-
-/* EN_3V3_PEX_HVDD from AP GPIO VI_D09 L07*/
-static struct regulator_consumer_supply fixed_reg_en_3v3_pex_hvdd_supply[] = {
-	REGULATOR_SUPPLY("hvdd_pex", NULL),
 };
 
 /* EN_3v3_FUSE from AP GPIO VI_D08 L06*/
@@ -665,18 +501,9 @@ static struct regulator_consumer_supply fixed_reg_en_1v8_cam_supply[] = {
 	REGULATOR_SUPPLY("vdd_i2c", "2-0033"),
 };
 
-static struct regulator_consumer_supply fixed_reg_en_vbrtr_supply[] = {
-	REGULATOR_SUPPLY("vdd_vbrtr", NULL),
-};
-
 /* EN_USB1_VBUS_OC*/
 static struct regulator_consumer_supply fixed_reg_en_usb1_vbus_oc_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
-};
-
-/*EN_USB3_VBUS_OC*/
-static struct regulator_consumer_supply fixed_reg_en_usb3_vbus_oc_supply[] = {
-	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
 };
 
 /* EN_VDDIO_VID_OC from AP GPIO VI_PCLK T00*/
@@ -721,7 +548,7 @@ static struct regulator_consumer_supply fixed_reg_en_vddio_vid_oc_supply[] = {
 		.dev    = {						\
 			.platform_data = &fixed_reg_##_var##_pdata,	\
 		},							\
-	}
+	};
 
 #define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,	\
 		 _gpio_nr, _active_high, _boot_state, _millivolts)	\
@@ -731,17 +558,10 @@ static struct regulator_consumer_supply fixed_reg_en_vddio_vid_oc_supply[] = {
 
 /* common to most of boards*/
 FIXED_REG(0, en_5v_cp,		en_5v_cp,	NULL,				1,	0,	TPS6591X_GPIO_0,	true,	1, 5000);
-FIXED_REG(1, en_5v0,		en_5v0,		NULL,				0,      0,      TPS6591X_GPIO_2,	true,	0, 5000);
-FIXED_REG(2, en_ddr,		en_ddr,		NULL,				1,      0,      TPS6591X_GPIO_6,	true,	1, 1500);
-FIXED_REG(3, en_3v3_sys,	en_3v3_sys,	NULL,				0,      0,      TPS6591X_GPIO_7,	true,	1, 3300);
-FIXED_REG(4, en_vdd_bl,		en_vdd_bl,	NULL,				0,      0,      TEGRA_GPIO_PK3,		true,	1, 5000);
 FIXED_REG(5, en_3v3_modem,	en_3v3_modem,	NULL,				1,      0,      TEGRA_GPIO_PD6,		true,	1, 3300);
-FIXED_REG(6, en_vdd_pnl1,	en_vdd_pnl1,	FIXED_SUPPLY(en_3v3_sys),	0,      0,      TEGRA_GPIO_PL4,		true,	1, 3300);
 FIXED_REG(7, cam3_ldo_en,	cam3_ldo_en,	FIXED_SUPPLY(en_3v3_sys),	0,      0,      TEGRA_GPIO_PS0,		true,	0, 3300);
 FIXED_REG(8, en_vdd_com,	en_vdd_com,	FIXED_SUPPLY(en_3v3_sys),	1,      0,      TEGRA_GPIO_PD0,		true,	1, 3300);
-FIXED_REG(9, en_3v3_fuse,	en_3v3_fuse,	FIXED_SUPPLY(en_3v3_sys), 	0,      0,      TEGRA_GPIO_PL6,		true,	0, 3300);
 FIXED_REG(10, en_3v3_emmc,	en_3v3_emmc,	FIXED_SUPPLY(en_3v3_sys), 	1,      0,      TEGRA_GPIO_PD1,		true,	1, 3300);
-FIXED_REG(12, en_3v3_pex_hvdd,	en_3v3_pex_hvdd, FIXED_SUPPLY(en_3v3_sys),	0,      0,      TEGRA_GPIO_PL7,		true,	0, 3300);
 FIXED_REG(13, en_1v8_cam,	en_1v8_cam,	tps6591x_rails(VIO),		0,      0,      TEGRA_GPIO_PBB4,	true,	0, 1800);
 
 /* Specific to E1187/E1186/E1256 */
@@ -762,74 +582,17 @@ FIXED_REG(9, en_3v3_fuse_pm269,		en_3v3_fuse,		FIXED_SUPPLY(en_3v3_sys), 	0,    
 FIXED_REG(18, cam1_ldo_en,	cam1_ldo_en,	FIXED_SUPPLY(en_3v3_sys),	0,      0,      TEGRA_GPIO_PR6,		true,	0, 2800);
 //FIXED_REG(19, cam2_ldo_en,	cam2_ldo_en,	FIXED_SUPPLY(en_3v3_sys),	0,      0,      TEGRA_GPIO_PR7,		true,	0, 2800);
 
-/* E1291 A03 specific */
-FIXED_REG(20, en_vdd_bl1_a03,	en_vdd_bl,	NULL,				0,      0,      TEGRA_GPIO_PDD2,	true,	1, 5000);
-FIXED_REG(21, en_vdd_bl2_a03,	en_vdd_bl2,	NULL,				0,      0,      TEGRA_GPIO_PDD0,	true,	1, 5000);
-FIXED_REG(22, en_vbrtr,		en_vbrtr,	FIXED_SUPPLY(en_3v3_sys),	0,      0,      PMU_TCA6416_GPIO_PORT12,true,	0, 3300);
-
-/* PM313 display board specific */
-FIXED_REG(4, en_vdd_bl_pm313,   en_vdd_bl,      NULL,				0,      0,      TEGRA_GPIO_PK3,		true,  1, 5000);
-FIXED_REG(6, en_vdd_pnl1_pm313, en_vdd_pnl1,    FIXED_SUPPLY(en_3v3_sys),	0,      0,      TEGRA_GPIO_PH3,		true,  1, 3300);
-
-
 /****************** Open collector Load switches *******/
 /*Specific to pm269*/
 FIXED_REG_OD(17, en_vddio_vid_oc_pm269,	en_vddio_vid_oc,	FIXED_SUPPLY(dis_5v_switch),	0,      0,	TEGRA_GPIO_PP2,		true,	0, 5000, true);
 
-/* Specific to pm311 */
-FIXED_REG_OD(15, en_usb1_vbus_oc_pm311,	en_usb1_vbus_oc,	FIXED_SUPPLY(dis_5v_switch), 	0,      0,      TEGRA_GPIO_PCC7,	true,	0, 5000, true);
-FIXED_REG_OD(16, en_usb3_vbus_oc_pm311,	en_usb3_vbus_oc,	FIXED_SUPPLY(dis_5v_switch), 	0,      0,      TEGRA_GPIO_PCC6,	true,	0, 5000, true);
-
-
 /* Specific to E1187/E1186/E1256 */
 FIXED_REG_OD(15, en_usb1_vbus_oc_e118x,	en_usb1_vbus_oc,	FIXED_SUPPLY(dis_5v_switch), 	0,      0,      TEGRA_GPIO_PI4,		true,	0, 5000, true);
-FIXED_REG_OD(16, en_usb3_vbus_oc_e118x,	en_usb3_vbus_oc,	FIXED_SUPPLY(dis_5v_switch), 	0,      0,      TEGRA_GPIO_PH7,		true,	0, 5000, true);
-FIXED_REG_OD(17, en_vddio_vid_oc_e118x,	en_vddio_vid_oc,	FIXED_SUPPLY(dis_5v_switch), 	0,      0,      TEGRA_GPIO_PT0,		true,	0, 5000, true);
-
-
-/* E1198/E1291 specific  fab < A03 */
-FIXED_REG_OD(15, en_usb1_vbus_oc,	en_usb1_vbus_oc,	FIXED_SUPPLY(en_5v0),		0,      0,      TEGRA_GPIO_PI4,		true,	0, 5000, true);
-FIXED_REG_OD(16, en_usb3_vbus_oc,	en_usb3_vbus_oc, 	FIXED_SUPPLY(en_5v0), 		0,      0,      TEGRA_GPIO_PH7,		true,	0, 5000, true);
-
-/* E1198/E1291 specific  fab >= A03 */
-FIXED_REG_OD(15, en_usb1_vbus_oc_a03,	en_usb1_vbus_oc,	FIXED_SUPPLY(en_5v0),		0,      0,      TEGRA_GPIO_PDD6,	true,	0, 5000, true);
-FIXED_REG_OD(16, en_usb3_vbus_oc_a03,	en_usb3_vbus_oc,	FIXED_SUPPLY(en_5v0), 		0,      0,      TEGRA_GPIO_PDD4,	true,	0, 5000, true);
-
-/* E1198/E1291 specific */
-FIXED_REG_OD(17, en_vddio_vid_oc,	en_vddio_vid_oc,	FIXED_SUPPLY(en_5v0), 		0,      0,      TEGRA_GPIO_PT0,		true,	0, 5000, true);
 
 /*
  * Creating the fixed/gpio-switch regulator device tables for different boards
  */
 #define ADD_FIXED_REG(_name)	(&fixed_reg_##_name##_dev)
-
-#define COMMON_FIXED_REG			\
-	ADD_FIXED_REG(en_5v_cp),		\
-	ADD_FIXED_REG(en_5v0),			\
-	ADD_FIXED_REG(en_ddr),			\
-	ADD_FIXED_REG(en_3v3_sys),		\
-	ADD_FIXED_REG(en_3v3_modem),		\
-	ADD_FIXED_REG(en_vdd_pnl1),		\
-	ADD_FIXED_REG(cam3_ldo_en),		\
-	ADD_FIXED_REG(en_vdd_com),		\
-	ADD_FIXED_REG(en_3v3_fuse),		\
-	ADD_FIXED_REG(en_3v3_emmc),		\
-	ADD_FIXED_REG(en_3v3_pex_hvdd),		\
-	ADD_FIXED_REG(en_1v8_cam),
-
-#define COMMON_FIXED_REG_E1291_A04		\
-	ADD_FIXED_REG(en_5v_cp),		\
-	ADD_FIXED_REG(en_5v0_a04),		\
-	ADD_FIXED_REG(en_ddr_a04),		\
-	ADD_FIXED_REG(en_3v3_sys_a04),		\
-	ADD_FIXED_REG(en_3v3_modem),		\
-	ADD_FIXED_REG(en_vdd_pnl1),		\
-	ADD_FIXED_REG(cam3_ldo_en),		\
-	ADD_FIXED_REG(en_vdd_com),		\
-	ADD_FIXED_REG(en_3v3_fuse),		\
-	ADD_FIXED_REG(en_3v3_emmc),		\
-	ADD_FIXED_REG(en_3v3_pex_hvdd),		\
-	ADD_FIXED_REG(en_1v8_cam),
 
 #define PM269_FIXED_REG				\
 	ADD_FIXED_REG(en_5v_cp),		\
@@ -847,112 +610,9 @@ FIXED_REG_OD(17, en_vddio_vid_oc,	en_vddio_vid_oc,	FIXED_SUPPLY(en_5v0), 		0,   
 	ADD_FIXED_REG(en_usb1_vbus_oc_e118x),	\
 	ADD_FIXED_REG(en_vddio_vid_oc_pm269),
 
-#define PM311_FIXED_REG				\
-	ADD_FIXED_REG(en_5v_cp),		\
-	ADD_FIXED_REG(en_5v0),			\
-	ADD_FIXED_REG(en_ddr),			\
-	ADD_FIXED_REG(en_3v3_sys),		\
-	ADD_FIXED_REG(en_3v3_modem),		\
-	ADD_FIXED_REG(cam1_ldo_en),		\
-	ADD_FIXED_REG(cam3_ldo_en),		\
-	ADD_FIXED_REG(en_vdd_com),		\
-	ADD_FIXED_REG(en_3v3_fuse_pm269),	\
-	ADD_FIXED_REG(en_3v3_emmc),		\
-	ADD_FIXED_REG(en_1v8_cam),		\
-	ADD_FIXED_REG(dis_5v_switch_e118x),	\
-	ADD_FIXED_REG(en_usb1_vbus_oc_pm311),	\
-	ADD_FIXED_REG(en_usb3_vbus_oc_pm311),	\
-	ADD_FIXED_REG(en_vddio_vid_oc_pm269),
-
-
 #define E1247_DISPLAY_FIXED_REG			\
 	ADD_FIXED_REG(en_vdd_bl_pm269),		\
 	ADD_FIXED_REG(en_vdd_pnl1_pm269),
-
-#define E1247_DSI_DISPLAY_FIXED_REG		\
-	ADD_FIXED_REG(en_vdd_bl_pm269),
-
-#define PM313_DISPLAY_FIXED_REG			\
-	ADD_FIXED_REG(en_vdd_bl_pm313),		\
-	ADD_FIXED_REG(en_vdd_pnl1_pm313),
-
-#define E118x_FIXED_REG				\
-	ADD_FIXED_REG(en_5v_cp),		\
-	ADD_FIXED_REG(en_5v0),			\
-	ADD_FIXED_REG(en_ddr),			\
-	ADD_FIXED_REG(en_3v3_sys),		\
-	ADD_FIXED_REG(en_3v3_modem),		\
-	ADD_FIXED_REG(cam3_ldo_en),		\
-	ADD_FIXED_REG(en_vdd_com),		\
-	ADD_FIXED_REG(en_3v3_fuse),		\
-	ADD_FIXED_REG(en_3v3_emmc),		\
-	ADD_FIXED_REG(en_3v3_pex_hvdd),		\
-	ADD_FIXED_REG(en_1v8_cam),		\
-	ADD_FIXED_REG(dis_5v_switch_e118x),	\
-	ADD_FIXED_REG(en_vbrtr),		\
-	ADD_FIXED_REG(en_usb1_vbus_oc_e118x),	\
-	ADD_FIXED_REG(en_usb3_vbus_oc_e118x),	\
-	ADD_FIXED_REG(en_vddio_vid_oc_e118x),
-
-#define E1198_FIXED_REG				\
-	ADD_FIXED_REG(cam1_ldo_en),		\
-	ADD_FIXED_REG(en_vddio_vid_oc),
-
-#define E1291_1198_A00_FIXED_REG		\
-	ADD_FIXED_REG(en_vdd_bl),		\
-	ADD_FIXED_REG(en_usb1_vbus_oc),		\
-	ADD_FIXED_REG(en_usb3_vbus_oc),
-
-#define E1291_A03_FIXED_REG			\
-	ADD_FIXED_REG(en_vdd_bl1_a03),		\
-	ADD_FIXED_REG(en_vdd_bl2_a03),		\
-	ADD_FIXED_REG(en_usb1_vbus_oc_a03),	\
-	ADD_FIXED_REG(en_usb3_vbus_oc_a03),
-
-/* Fixed regulator devices for E1186/E1187/E1256 */
-static struct platform_device *fixed_reg_devs_e118x[] = {
-	E118x_FIXED_REG
-	E1247_DISPLAY_FIXED_REG
-};
-
-static struct platform_device *fixed_reg_devs_e118x_dsi[] = {
-	E118x_FIXED_REG
-	E1247_DSI_DISPLAY_FIXED_REG
-};
-
-/* Fixed regulator devices for E1186/E1187/E1256 */
-static struct platform_device *fixed_reg_devs_e118x_pm313[] = {
-	E118x_FIXED_REG
-	PM313_DISPLAY_FIXED_REG
-};
-
-/* Fixed regulator devices for E1198 and E1291 */
-static struct platform_device *fixed_reg_devs_e1198_base[] = {
-	COMMON_FIXED_REG
-	E1291_1198_A00_FIXED_REG
-	E1198_FIXED_REG
-};
-
-static struct platform_device *fixed_reg_devs_e1198_a02[] = {
-	ADD_FIXED_REG(en_5v_cp),
-	ADD_FIXED_REG(en_5v0),
-	ADD_FIXED_REG(en_ddr_a04),
-	ADD_FIXED_REG(en_3v3_sys_a04),
-	ADD_FIXED_REG(en_3v3_modem),
-	ADD_FIXED_REG(en_vdd_pnl1),
-	ADD_FIXED_REG(cam3_ldo_en),
-	ADD_FIXED_REG(en_vdd_com),
-	ADD_FIXED_REG(en_3v3_fuse),
-	ADD_FIXED_REG(en_3v3_emmc),
-	ADD_FIXED_REG(en_3v3_pex_hvdd),
-	ADD_FIXED_REG(en_1v8_cam),
-	ADD_FIXED_REG(en_vdd_bl1_a03),
-	ADD_FIXED_REG(en_vdd_bl2_a03),
-	ADD_FIXED_REG(cam1_ldo_en),
-	ADD_FIXED_REG(en_usb1_vbus_oc_a03),
-	ADD_FIXED_REG(en_usb3_vbus_oc_a03),
-	ADD_FIXED_REG(en_vddio_vid_oc),
-};
 
 /* Fixed regulator devices for PM269 */
 static struct platform_device *fixed_reg_devs_pm269[] = {
@@ -960,137 +620,13 @@ static struct platform_device *fixed_reg_devs_pm269[] = {
 	E1247_DISPLAY_FIXED_REG
 };
 
-static struct platform_device *fixed_reg_devs_pm269_dsi[] = {
-	PM269_FIXED_REG
-	E1247_DSI_DISPLAY_FIXED_REG
-};
-
-/* Fixed regulator devices for PM269 */
-static struct platform_device *fixed_reg_devs_pm269_pm313[] = {
-	PM269_FIXED_REG
-	PM313_DISPLAY_FIXED_REG
-};
-
-/* Fixed regulator devices for PM311 */
-static struct platform_device *fixed_reg_devs_pm311[] = {
-	PM311_FIXED_REG
-	E1247_DISPLAY_FIXED_REG
-};
-
-static struct platform_device *fixed_reg_devs_pm311_dsi[] = {
-	PM311_FIXED_REG
-	E1247_DSI_DISPLAY_FIXED_REG
-};
-
-/* Fixed regulator devices for PM11 */
-static struct platform_device *fixed_reg_devs_pm311_pm313[] = {
-	PM311_FIXED_REG
-	PM313_DISPLAY_FIXED_REG
-};
-
-/* Fixed regulator devices for E1291 A03 */
-static struct platform_device *fixed_reg_devs_e1291_a03[] = {
-	COMMON_FIXED_REG
-	E1291_A03_FIXED_REG
-	E1198_FIXED_REG
-};
-
-/* Fixed regulator devices for E1291 A04/A05 */
-static struct platform_device *fixed_reg_devs_e1291_a04[] = {
-	COMMON_FIXED_REG_E1291_A04
-	E1291_A03_FIXED_REG
-	E1198_FIXED_REG
-};
-
-static bool is_display_board_dsi(u16 display_board_id)
-{
-	return ((display_board_id == BOARD_DISPLAY_E1213) ||
-		(display_board_id == BOARD_DISPLAY_E1253) ||
-		(display_board_id == BOARD_DISPLAY_E1506));
-}
-
 int __init grouper_ti_fixed_regulator_init(void)
 {
-	struct board_info board_info;
-	struct board_info pmu_board_info;
-	struct board_info display_board_info;
-	struct platform_device **fixed_reg_devs;
-	int    nfixreg_devs;
-
-	if(!grouper_query_pmic_id())
+	if (!grouper_query_pmic_id())
 		return 0;
 
-	grouper_ti_get_board_info(&board_info);
-	tegra_get_pmu_board_info(&pmu_board_info);
-	tegra_get_display_board_info(&display_board_info);
-
-	switch (board_info.board_id) {
-	case BOARD_E1198:
-		if (board_info.fab <= BOARD_FAB_A01) {
-			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_e1198_base);
-			fixed_reg_devs = fixed_reg_devs_e1198_base;
-		} else {
-			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_e1198_a02);
-			fixed_reg_devs = fixed_reg_devs_e1198_a02;
-		}
-		break;
-
-	case BOARD_E1291:
-		if (board_info.fab == BOARD_FAB_A03) {
-			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_e1291_a03);
-			fixed_reg_devs = fixed_reg_devs_e1291_a03;
-		} else if ((board_info.fab == BOARD_FAB_A04) ||
-				(board_info.fab == BOARD_FAB_A05) ||
-				(board_info.fab == BOARD_FAB_A07)) {
-			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_e1291_a04);
-			fixed_reg_devs = fixed_reg_devs_e1291_a04;
-		} else {
-			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_e1198_base);
-			fixed_reg_devs = fixed_reg_devs_e1198_base;
-		}
-		break;
-
-	case BOARD_PM311:
-	case BOARD_PM305:
-		nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_pm311);
-		fixed_reg_devs = fixed_reg_devs_pm311;
-		if (display_board_info.board_id == BOARD_DISPLAY_PM313) {
-			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_pm311_pm313);
-			fixed_reg_devs = fixed_reg_devs_pm311_pm313;
-		} else if (is_display_board_dsi(display_board_info.board_id)) {
-			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_pm311_dsi);
-			fixed_reg_devs = fixed_reg_devs_pm311_dsi;
-		}
-		break;
-
-	case BOARD_PM269:
-	case BOARD_E1257:
-		nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_pm269);
-		fixed_reg_devs = fixed_reg_devs_pm269;
-		if (display_board_info.board_id == BOARD_DISPLAY_PM313) {
-			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_pm269_pm313);
-			fixed_reg_devs = fixed_reg_devs_pm269_pm313;
-		} else {
-			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_pm269);
-			fixed_reg_devs = fixed_reg_devs_pm269;
-		}
-		break;
-
-	default:
-		if (display_board_info.board_id == BOARD_DISPLAY_PM313) {
-			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_e118x_pm313);
-			fixed_reg_devs = fixed_reg_devs_e118x_pm313;
-		} else if (is_display_board_dsi(display_board_info.board_id)) {
-			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_e118x_dsi);
-			fixed_reg_devs = fixed_reg_devs_e118x_dsi;
-		} else {
-			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_e118x);
-			fixed_reg_devs = fixed_reg_devs_e118x;
-		}
-		break;
-	}
-
-	return platform_add_devices(fixed_reg_devs, nfixreg_devs);
+	return platform_add_devices(fixed_reg_devs_pm269,
+				ARRAY_SIZE(fixed_reg_devs_pm269));
 }
 subsys_initcall_sync(grouper_ti_fixed_regulator_init);
 
@@ -1129,62 +665,9 @@ static struct tegra_suspend_platform_data grouper_ti_suspend_data = {
 
 int __init grouper_ti_suspend_init(void)
 {
-	struct board_info board_info;
-	struct board_info pmu_board_info;
-
-	grouper_ti_get_board_info(&board_info);
-	tegra_get_pmu_board_info(&pmu_board_info);
-
-	/* For PMU Fab A03, A04 and A05 make core_pwr_req to high */
-	if ((pmu_board_info.fab == BOARD_FAB_A03) ||
-		(pmu_board_info.fab == BOARD_FAB_A04) ||
-		 (pmu_board_info.fab == BOARD_FAB_A05))
-		grouper_ti_suspend_data.corereq_high = true;
-
 	/* CORE_PWR_REQ to be high for all processor/pmu board whose sku bit 0
 	 * is set. This is require to enable the dc-dc converter tps62361x */
-	if ((board_info.sku & SKU_DCDC_TPS62361_SUPPORT) || (pmu_board_info.sku & SKU_DCDC_TPS62361_SUPPORT))
-		grouper_ti_suspend_data.corereq_high = true;
-
-	switch (board_info.board_id) {
-	case BOARD_E1291:
-		/* CORE_PWR_REQ to be high for E1291-A03 */
-		if (board_info.fab == BOARD_FAB_A03)
-			grouper_ti_suspend_data.corereq_high = true;
-		/*
-		*if (board_info.fab < BOARD_FAB_A03)
-		*	post E1291-A02 revisions WAKE19/USB1-VBUS wake supported
-		*	tegra_disable_wake_source(TEGRA_WAKE_USB1_VBUS);
-		*/
-		break;
-	case BOARD_E1198:
-	/*
-	*if (board_info.fab < BOARD_FAB_A02)
-	* post E1198-A01 revisions WAKE19/USB1-VBUS wake supported
-	*tegra_disable_wake_source(TEGRA_WAKE_USB1_VBUS);
-	*/
-		break;
-	case BOARD_PM269:
-	case BOARD_PM305:
-	case BOARD_PM311:
-		break;
-	case BOARD_E1256:
-	case BOARD_E1257:
-		grouper_ti_suspend_data.cpu_timer = 5000;
-		grouper_ti_suspend_data.cpu_off_timer = 5000;
-		break;
-	case BOARD_E1187:
-	case BOARD_E1186:
-		/* VBUS repeated wakeup seen on older E1186 boards */
-		/*
-		* tegra_disable_wake_source(TEGRA_WAKE_USB1_VBUS);
-		*/
-		grouper_ti_suspend_data.cpu_timer = 5000;
-		grouper_ti_suspend_data.cpu_off_timer = 5000;
-		break;
-	default:
-		break;
-	}
+	grouper_ti_suspend_data.corereq_high = true;
 
 	tegra_init_suspend(&grouper_ti_suspend_data);
 	return 0;
@@ -1206,4 +689,3 @@ int __init grouper_ti_edp_init(void)
 	return 0;
 }
 #endif
-

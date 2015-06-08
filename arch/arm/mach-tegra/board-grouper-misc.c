@@ -26,15 +26,6 @@
 #include "gpio-names.h"
 #include "fuse.h"
 
-#define GROUPER_MISC_ATTR(module) \
-static struct kobj_attribute module##_attr = { \
-	.attr = { \
-		.name = __stringify(module), \
-		.mode = 0444, \
-	}, \
-	.show = module##_show, \
-}
-
 /* PCBID is composed of ten GPIO pins */
 static unsigned int grouper_pcbid;
 
@@ -63,28 +54,19 @@ static const struct pins grouper_projectid_pins[] = {
 
 unsigned int grouper_query_bt_wifi_module(void)
 {
-	unsigned int value = 0;
-	value = grouper_pcbid & 0x003;
-
-	return value;
+	return grouper_pcbid & 0x003;
 }
 EXPORT_SYMBOL(grouper_query_bt_wifi_module);
 
 unsigned int grouper_query_pcba_revision(void)
 {
-	unsigned int value = 0;
-	value = (grouper_pcbid & 0x038) >> 3;
-
-	return value;
+	return (grouper_pcbid & 0x038) >> 3;
 }
 EXPORT_SYMBOL(grouper_query_pcba_revision);
 
 unsigned int grouper_query_audio_codec(void)
 {
-	unsigned int value = 0;
-	value = (grouper_pcbid & 0x0c0) >> 6;
-
-	return value;
+	return (grouper_pcbid & 0x0c0) >> 6;
 }
 EXPORT_SYMBOL(grouper_query_audio_codec);
 
@@ -100,19 +82,13 @@ EXPORT_SYMBOL(grouper_query_gps_module);
 
 unsigned int grouper_query_pmic_id(void)
 {
-	unsigned int value = 0;
-	value = (grouper_pcbid & 0x100) >> 8;
-
-	return value;
+	return (grouper_pcbid & 0x100) >> 8;
 }
 EXPORT_SYMBOL(grouper_query_pmic_id);
 
 unsigned int grouper_get_project_id(void)
 {
-	unsigned int value = 0;
-	value = grouper_projectid & 0xf;
-
-	return value;
+	return grouper_projectid & 0xf;
 }
 EXPORT_SYMBOL(grouper_get_project_id);
 
@@ -153,6 +129,15 @@ static ssize_t grouper_projectid_show(struct kobject *kobj,
 	return s - buf;
 }
 
+#define GROUPER_MISC_ATTR(module) \
+static struct kobj_attribute module##_attr = { \
+	.attr = { \
+		.name = __stringify(module), \
+		.mode = 0444, \
+	}, \
+	.show = module##_show, \
+};
+
 GROUPER_MISC_ATTR(grouper_chipid);
 GROUPER_MISC_ATTR(grouper_pcbid);
 GROUPER_MISC_ATTR(grouper_projectid);
@@ -175,8 +160,7 @@ static int board_pins_init(
 	unsigned int pin_size,
 	unsigned int *pin_value)
 {
-	int ret = 0, i = 0;
-
+	int ret = 0, i;
 
 	for (i = 0; i < pin_size; i++) {
 		ret = gpio_request(board_pins[i].gpio, board_pins[i].label);
@@ -199,15 +183,14 @@ static void board_pins_reset(
 	const struct pins *board_pins,
 	unsigned int pin_size)
 {
-	int i = 0;
-	enum grouper_project_id project_id = grouper_get_project_id();
+	int i;
 
 	for (i = 0; i < pin_size; i++) {
 		if (board_pins[i].extended_pins) {
 			/* set no-pull */
 			tegra_pinmux_set_pullupdown(board_pins[i].pingroup,
 				TEGRA_PUPD_NORMAL);
-			if (project_id == GROUPER_PROJECT_NAKASI) {
+			if (grouper_get_project_id() == GROUPER_PROJECT_NAKASI) {
 				/* disable input buffer */
 				tegra_pinmux_set_io(board_pins[i].pingroup,
 				TEGRA_PIN_OUTPUT);
@@ -227,21 +210,21 @@ int __init grouper_misc_init(void)
 	/* create a platform device */
 	grouper_misc_device = platform_device_alloc("grouper_misc", -1);
 
-        if (!grouper_misc_device) {
+	if (!grouper_misc_device) {
 		ret = -ENOMEM;
 		goto fail_platform_device;
-        }
+	}
 
 	/* add a platform device to device hierarchy */
 	ret = platform_device_add(grouper_misc_device);
 	if (ret) {
-		pr_err("[MISC]: cannot add device to platform.\n");
+		pr_err("%s: cannot add device to platform.\n", __func__);
 		goto fail_platform_add_device;
 	}
 
 	ret = sysfs_create_group(&grouper_misc_device->dev.kobj, &attr_group);
 	if (ret) {
-		pr_err("[MISC]: cannot create sysfs group.\n");
+		pr_err("%s: cannot create sysfs group.\n", __func__);
 		goto fail_sysfs;
 	}
 
@@ -249,7 +232,7 @@ int __init grouper_misc_init(void)
 	ret = board_pins_init(grouper_pcbid_pins,
 		ARRAY_SIZE(grouper_pcbid_pins), &grouper_pcbid);
 	if (ret) {
-		pr_err("[MISC]: cannot acquire PCB_ID info.\n");
+		pr_err("%s: cannot acquire PCB_ID info.\n", __func__);
 		goto fail_sysfs;
 	}
 
@@ -257,12 +240,12 @@ int __init grouper_misc_init(void)
 	ret = board_pins_init(grouper_projectid_pins,
 		ARRAY_SIZE(grouper_projectid_pins), &grouper_projectid);
 	if (ret) {
-		pr_err("[MISC]: cannot acquire PROJECT_ID info.\n");
+		pr_err("%s: cannot acquire PROJECT_ID info.\n", __func__);
 		goto fail_sysfs;
 	}
 
 	/* print out pcb_id and project_id info */
-	pr_info("[MISC]: pcbid=0x%04x (projectid=0x%02x)\n",
+	pr_info("%s: pcbid=0x%04x (projectid=0x%02x)\n", __func__,
 		grouper_get_pcb_id(), grouper_get_project_id());
 
 	return ret;

@@ -31,8 +31,8 @@
 
 static const struct tegra30_emc_table Nakasi_dvfs_Elpida_table_0430[] = {
 	{
-		0x32,       /* Rev 3.2 */
-		25500,      /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		25500,	/* SDRAM frequency */
 		{
 			0x00000001, /* EMC_RC */
 			0x00000004, /* EMC_RFC */
@@ -151,8 +151,8 @@ static const struct tegra30_emc_table Nakasi_dvfs_Elpida_table_0430[] = {
 		0x00000001, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		51000,      /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		51000,	/* SDRAM frequency */
 		{
 			0x00000002, /* EMC_RC */
 			0x00000008, /* EMC_RFC */
@@ -271,8 +271,8 @@ static const struct tegra30_emc_table Nakasi_dvfs_Elpida_table_0430[] = {
 		0x00000001, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		102000,     /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		102000,	/* SDRAM frequency */
 		{
 			0x00000005, /* EMC_RC */
 			0x00000010, /* EMC_RFC */
@@ -391,8 +391,8 @@ static const struct tegra30_emc_table Nakasi_dvfs_Elpida_table_0430[] = {
 		0x00000001, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		204000,     /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		204000,	/* SDRAM frequency */
 		{
 			0x0000000a, /* EMC_RC */
 			0x00000020, /* EMC_RFC */
@@ -511,8 +511,8 @@ static const struct tegra30_emc_table Nakasi_dvfs_Elpida_table_0430[] = {
 		0x00000001, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		333500,     /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		333500,	/* SDRAM frequency */
 		{
 			0x0000000f, /* EMC_RC */
 			0x00000034, /* EMC_RFC */
@@ -631,8 +631,8 @@ static const struct tegra30_emc_table Nakasi_dvfs_Elpida_table_0430[] = {
 		0x00000000, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		667000,     /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		667000,	/* SDRAM frequency */
 		{
 			0x0000001f, /* EMC_RC */
 			0x00000069, /* EMC_RFC */
@@ -754,8 +754,8 @@ static const struct tegra30_emc_table Nakasi_dvfs_Elpida_table_0430[] = {
 
 static const struct tegra30_emc_table Nakasi_dvfs_Hynix_table_0430[] ={
 	{
-		0x32,       /* Rev 3.2 */
-		25500,      /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		25500,	/* SDRAM frequency */
 		{
 			0x00000001, /* EMC_RC */
 			0x00000004, /* EMC_RFC */
@@ -874,8 +874,8 @@ static const struct tegra30_emc_table Nakasi_dvfs_Hynix_table_0430[] ={
 		0x00000001, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		51000,      /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		51000,	/* SDRAM frequency */
 		{
 			0x00000002, /* EMC_RC */
 			0x00000008, /* EMC_RFC */
@@ -994,8 +994,8 @@ static const struct tegra30_emc_table Nakasi_dvfs_Hynix_table_0430[] ={
 		0x00000001, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		102000,     /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		102000,	/* SDRAM frequency */
 		{
 			0x00000005, /* EMC_RC */
 			0x00000010, /* EMC_RFC */
@@ -1114,8 +1114,8 @@ static const struct tegra30_emc_table Nakasi_dvfs_Hynix_table_0430[] ={
 		0x00000001, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		204000,     /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		204000,	/* SDRAM frequency */
 		{
 			0x0000000a, /* EMC_RC */
 			0x00000020, /* EMC_RFC */
@@ -1234,8 +1234,8 @@ static const struct tegra30_emc_table Nakasi_dvfs_Hynix_table_0430[] ={
 		0x00000001, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		333500,     /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		333500,	/* SDRAM frequency */
 		{
 			0x0000000f, /* EMC_RC */
 			0x00000034, /* EMC_RFC */
@@ -1354,8 +1354,8 @@ static const struct tegra30_emc_table Nakasi_dvfs_Hynix_table_0430[] ={
 		0x00000000, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		667000,     /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		667000,	/* SDRAM frequency */
 		{
 			0x00000020, /* EMC_RC */
 			0x0000006a, /* EMC_RFC */
@@ -1477,8 +1477,8 @@ static const struct tegra30_emc_table Nakasi_dvfs_Hynix_table_0430[] ={
 
 static const struct tegra30_emc_table ME370TG_dvfs_table_Elpida_0831[] = {
 	{
-		0x32,       /* Rev 3.2 */
-		25500,      /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		25500,	/* SDRAM frequency */
 		{
 			0x00000001, /* EMC_RC */
 			0x00000004, /* EMC_RFC */
@@ -1597,8 +1597,8 @@ static const struct tegra30_emc_table ME370TG_dvfs_table_Elpida_0831[] = {
 		0x00000001, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		51000,      /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		51000,	/* SDRAM frequency */
 		{
 			0x00000002, /* EMC_RC */
 			0x00000008, /* EMC_RFC */
@@ -1717,8 +1717,8 @@ static const struct tegra30_emc_table ME370TG_dvfs_table_Elpida_0831[] = {
 		0x00000001, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		102000,     /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		102000,	/* SDRAM frequency */
 		{
 			0x00000005, /* EMC_RC */
 			0x00000010, /* EMC_RFC */
@@ -1837,8 +1837,8 @@ static const struct tegra30_emc_table ME370TG_dvfs_table_Elpida_0831[] = {
 		0x00000001, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		204000,     /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		204000,	/* SDRAM frequency */
 		{
 			0x0000000a, /* EMC_RC */
 			0x00000020, /* EMC_RFC */
@@ -1957,8 +1957,8 @@ static const struct tegra30_emc_table ME370TG_dvfs_table_Elpida_0831[] = {
 		0x00000001, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		333500,     /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		333500,	/* SDRAM frequency */
 		{
 			0x0000000f, /* EMC_RC */
 			0x00000034, /* EMC_RFC */
@@ -2077,8 +2077,8 @@ static const struct tegra30_emc_table ME370TG_dvfs_table_Elpida_0831[] = {
 		0x00000000, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		667000,     /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		667000,	/* SDRAM frequency */
 		{
 			0x0000001f, /* EMC_RC */
 			0x00000069, /* EMC_RFC */
@@ -2200,8 +2200,8 @@ static const struct tegra30_emc_table ME370TG_dvfs_table_Elpida_0831[] = {
 
 static const struct tegra30_emc_table ME370TG_dvfs_table_Hynix_0831[] = {
 	{
-		0x32,       /* Rev 3.2 */
-		25500,      /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		25500,	/* SDRAM frequency */
 		{
 			0x00000001, /* EMC_RC */
 			0x00000004, /* EMC_RFC */
@@ -2320,8 +2320,8 @@ static const struct tegra30_emc_table ME370TG_dvfs_table_Hynix_0831[] = {
 		0x00000001, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		51000,      /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		51000,	/* SDRAM frequency */
 		{
 			0x00000002, /* EMC_RC */
 			0x00000008, /* EMC_RFC */
@@ -2440,8 +2440,8 @@ static const struct tegra30_emc_table ME370TG_dvfs_table_Hynix_0831[] = {
 		0x00000001, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		102000,     /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		102000,	/* SDRAM frequency */
 		{
 			0x00000005, /* EMC_RC */
 			0x00000010, /* EMC_RFC */
@@ -2560,8 +2560,8 @@ static const struct tegra30_emc_table ME370TG_dvfs_table_Hynix_0831[] = {
 		0x00000001, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		204000,     /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		204000,	/* SDRAM frequency */
 		{
 			0x0000000a, /* EMC_RC */
 			0x00000020, /* EMC_RFC */
@@ -2680,8 +2680,8 @@ static const struct tegra30_emc_table ME370TG_dvfs_table_Hynix_0831[] = {
 		0x00000001, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		333500,     /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		333500,	/* SDRAM frequency */
 		{
 			0x0000000f, /* EMC_RC */
 			0x00000034, /* EMC_RFC */
@@ -2800,8 +2800,8 @@ static const struct tegra30_emc_table ME370TG_dvfs_table_Hynix_0831[] = {
 		0x00000000, /* EMC_CFG.DYN_SELF_REF */
 	},
 	{
-		0x32,       /* Rev 3.2 */
-		667000,     /* SDRAM frequency */
+		0x32,	/* Rev 3.2 */
+		667000,	/* SDRAM frequency */
 		{
 			0x00000020, /* EMC_RC */
 			0x0000006a, /* EMC_RFC */
@@ -2940,7 +2940,7 @@ static struct tegra30_emc_pdata ME370TG_chip_Elpida_0831 = {
 };
 
 static struct tegra30_emc_pdata ME370TG_chip_Hynix_0831 = {
-	.description = "me370tg_hync_0831",
+	.description = "me370tg_hynx_0831",
 	.tables = (struct tegra30_emc_table *)ME370TG_dvfs_table_Hynix_0831,
 	.num_tables = ARRAY_SIZE(ME370TG_dvfs_table_Hynix_0831)
 };
@@ -2957,14 +2957,14 @@ int __init grouper_emc_init(void)
 
 	ret = gpio_request(MEMORY_BOOSTRAP_PIN_AD4, "memory_bootstrap_ad4");
 	if (ret < 0) {
-		printk("grouper_emc_init: request MEMORY_BOOSTRAP_PIN_AD4 failed\n");
+		printk("%s: request MEMORY_BOOSTRAP_PIN_AD4 failed\n", __func__);
 		WARN_ON(1);
 		return 0;
 	}
 
 	ret = gpio_direction_input(MEMORY_BOOSTRAP_PIN_AD4);
 	if (ret < 0) {
-		printk("grouper_emc_init: failed to configure MEMORY_BOOSTRAP_PIN_AD4\n");
+		printk("%s: failed to configure MEMORY_BOOSTRAP_PIN_AD4\n", __func__);
 		WARN_ON(1);
 		return 0;
 	}
@@ -2972,36 +2972,37 @@ int __init grouper_emc_init(void)
 
 	ret = gpio_request(MEMORY_BOOSTRAP_PIN_AD5, "memory_bootstrap_ad5");
 	if (ret < 0) {
-		printk("grouper_emc_init: request MEMORY_BOOSTRAP_PIN_AD5 failed\n");
+		printk("%s: request MEMORY_BOOSTRAP_PIN_AD5 failed\n", __func__);
 		WARN_ON(1);
 		return 0;
 	}
 
 	ret = gpio_direction_input(MEMORY_BOOSTRAP_PIN_AD5);
 	if (ret < 0) {
-		printk("grouper_emc_init: failed to configure MEMORY_BOOSTRAP_PIN_AD4\n");
+		printk("%s: failed to configure MEMORY_BOOSTRAP_PIN_AD4\n", __func__);
 		WARN_ON(1);
 		return 0;
 	}
 	mem_bootstrap_ad5 = gpio_get_value(MEMORY_BOOSTRAP_PIN_AD5);
 
-	printk("grouper_emc_init:mem_bootstrap_ad4=%u mem_bootstrap_ad5=%u \n",mem_bootstrap_ad4,mem_bootstrap_ad5);
+	pr_debug("%s: mem_bootstrap_ad4=%u mem_bootstrap_ad5=%u\n", __func__,
+			mem_bootstrap_ad4, mem_bootstrap_ad5);
 
 	if (grouper_get_project_id() == GROUPER_PROJECT_NAKASI) {
 		if (!mem_bootstrap_ad4 && !mem_bootstrap_ad5) {
 			emc_platdata = &Nakasi_chip_Elpida_0430;
-			printk("grouper_emc_init: Nakasi_dvfs_Elpida_table_0430\n");
+			printk("%s: Nakasi_dvfs_Elpida_table_0430\n", __func__);
 		} else {
 			emc_platdata = &Nakasi_chip_Hynix_0430;
-			printk("grouper_emc_init: Nakasi_dvfs_Hynix_table_0430\n");
+			printk("%s: Nakasi_dvfs_Hynix_table_0430\n", __func__);
 		}
 	} else {
 			if (!mem_bootstrap_ad4 && !mem_bootstrap_ad5) {
 				emc_platdata = &ME370TG_chip_Elpida_0831;
-				printk("grouper_emc_init: ME370TG_dvfs_table_Elpida_0831\n");
+				printk("%s: ME370TG_dvfs_table_Elpida_0831\n", __func__);
 			} else {
 				emc_platdata = &ME370TG_chip_Hynix_0831;
-				printk("grouper_emc_init: ME370TG_dvfs_table_Hynix_0831\n");
+				printk("%s: ME370TG_dvfs_table_Hynix_0831\n", __func__);
 			}
 	}
 
@@ -3011,5 +3012,4 @@ int __init grouper_emc_init(void)
 	tegra30_init_emc();
 
 	return 0;
-
 }

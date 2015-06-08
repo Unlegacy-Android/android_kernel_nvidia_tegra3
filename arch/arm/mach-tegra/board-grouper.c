@@ -40,7 +40,6 @@
 #include <linux/regulator/consumer.h>
 #include <linux/power/smb347-charger.h>
 #include <linux/rfkill-gpio.h>
-#include <linux/reboot.h>
 
 #include <asm/hardware/gic.h>
 
@@ -73,16 +72,16 @@
 
 static struct rfkill_gpio_platform_data grouper_bt_rfkill_pdata[] = {
 	{
-		.name   = "bt_rfkill",
-		.shutdown_gpio  = TEGRA_GPIO_PU0,
-		.reset_gpio     = TEGRA_GPIO_INVALID,
-		.type           = RFKILL_TYPE_BLUETOOTH,
+		.name		= "bt_rfkill",
+		.shutdown_gpio	= TEGRA_GPIO_PU0,
+		.reset_gpio	= TEGRA_GPIO_INVALID,
+		.type		= RFKILL_TYPE_BLUETOOTH,
 	},
 };
 
 static struct platform_device grouper_bt_rfkill_device = {
-	.name = "rfkill_gpio",
-	.id             = -1,
+	.name 	= "rfkill_gpio",
+	.id		= -1,
 	.dev = {
 		.platform_data = &grouper_bt_rfkill_pdata,
 	},
@@ -91,27 +90,27 @@ static struct platform_device grouper_bt_rfkill_device = {
 static struct resource grouper_bluesleep_resources[] = {
 	[0] = {
 		.name = "gpio_host_wake",
-			.start  = TEGRA_GPIO_PU6,
-			.end    = TEGRA_GPIO_PU6,
-			.flags  = IORESOURCE_IO,
+			.start	= TEGRA_GPIO_PU6,
+			.end	= TEGRA_GPIO_PU6,
+			.flags	= IORESOURCE_IO,
 	},
 	[1] = {
 		.name = "gpio_ext_wake",
-			.start  = TEGRA_GPIO_PU1,
-			.end    = TEGRA_GPIO_PU1,
-			.flags  = IORESOURCE_IO,
+			.start	= TEGRA_GPIO_PU1,
+			.end	= TEGRA_GPIO_PU1,
+			.flags	= IORESOURCE_IO,
 	},
 	[2] = {
 		.name = "host_wake",
-			.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
+			.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
 	},
 };
 
 static struct platform_device grouper_bluesleep_device = {
-	.name           = "bluesleep",
-	.id             = -1,
-	.num_resources  = ARRAY_SIZE(grouper_bluesleep_resources),
-	.resource       = grouper_bluesleep_resources,
+	.name		= "bluesleep",
+	.id			= -1,
+	.num_resources	= ARRAY_SIZE(grouper_bluesleep_resources),
+	.resource	= grouper_bluesleep_resources,
 };
 
 #ifdef CONFIG_BT_BLUESLEEP
@@ -128,7 +127,6 @@ static noinline void __init grouper_setup_bluesleep(void)
 #ifdef CONFIG_BT_BLUESLEEP
 	bluesleep_setup_uart_port(&tegra_uartc_device);
 #endif
-	return;
 }
 
 static __initdata struct tegra_clk_init_table grouper_clk_init_table[] = {
@@ -234,11 +232,6 @@ static struct i2c_board_info __initdata rt5640_board_info = {
 
 static void grouper_i2c_init(void)
 {
-	struct board_info board_info;
-	u32 project_info = grouper_get_project_id();
-
-	tegra_get_board_info(&board_info);
-
 	tegra_i2c_device1.dev.platform_data = &grouper_i2c1_platform_data;
 	tegra_i2c_device2.dev.platform_data = &grouper_i2c2_platform_data;
 	tegra_i2c_device3.dev.platform_data = &grouper_i2c3_platform_data;
@@ -260,7 +253,7 @@ static void grouper_i2c_init(void)
 	i2c_register_board_info(4, cardhu_i2c4_bq27541_board_info,
 		ARRAY_SIZE(cardhu_i2c4_bq27541_board_info));
 
-	if (project_info == GROUPER_PROJECT_NAKASI_3G) {
+	if (grouper_get_project_id() == GROUPER_PROJECT_NAKASI_3G) {
 		nfc_pdata.irq_gpio = TEGRA_GPIO_PS7;
 		nfc_pdata.ven_gpio = TEGRA_GPIO_PP0;
 		nfc_pdata.firm_gpio = TEGRA_GPIO_PP3;
@@ -312,8 +305,6 @@ static void __init uart_debug_init(void)
 	}
 	
 	grouper_uart_devices[debug_port_id] = uart_console_debug_device;
-
-	return;
 }
 
 static void __init grouper_uart_init(void)
@@ -396,12 +387,12 @@ static void __init grouper_spi_init(void)
 		spi_parent_clk[i].parent_clk = c;
 		spi_parent_clk[i].fixed_clk_rate = clk_get_rate(c);
 	}
+
 	grouper_spi_pdata.parent_clk_list = spi_parent_clk;
 	grouper_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk);
 	tegra_spi_device4.dev.platform_data = &grouper_spi_pdata;
 	platform_add_devices(grouper_spi_devices,
 				ARRAY_SIZE(grouper_spi_devices));
-
 }
 
 static struct resource tegra_rtc_resources[] = {
@@ -418,8 +409,8 @@ static struct resource tegra_rtc_resources[] = {
 };
 
 static struct platform_device tegra_rtc_device = {
-	.name = "tegra_rtc",
-	.id   = -1,
+	.name	= "tegra_rtc",
+	.id		= -1,
 	.resource = tegra_rtc_resources,
 	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
 };
@@ -455,11 +446,11 @@ static struct platform_device *grouper_devices[] __initdata = {
 	&tegra_rtc_device,
 	&tegra_udc_device,
 	&tegra_wdt0_device,
-#if defined(CONFIG_TEGRA_AVP)
+#ifdef CONFIG_TEGRA_AVP
 	&tegra_avp_device,
 #endif
 	&tegra_camera,
-#if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
+#ifdef CONFIG_CRYPTO_DEV_TEGRA_SE
 	&tegra_se_device,
 #endif
 	&tegra_ahub_device,
@@ -476,25 +467,12 @@ static struct platform_device *grouper_devices[] __initdata = {
 	&tegra_pcm_device,
 	&grouper_audio_device,
 	&tegra_hda_device,
-#if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
+#ifdef CONFIG_CRYPTO_DEV_TEGRA_AES
 	&tegra_aes_device,
 #endif
 };
 
-static __initdata struct tegra_clk_init_table spi_clk_init_table[] = {
-	/* name         parent          rate            enabled */
-	{ "sbc1",       "pll_p",        52000000,       true},
-	{ NULL,         NULL,           0,              0},
-};
-
-static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
-	/* name         parent          rate            enabled */
-	{ "extern3",    "pll_p",        41000000,       true},
-	{ "clk_out_3",  "extern3",      40800000,       true},
-	{ NULL,         NULL,           0,              0},
-};
-
-#if defined(CONFIG_TOUCHSCREEN_ELAN_TF_3K)
+#ifdef CONFIG_TOUCHSCREEN_ELAN_TF_3K
 // Interrupt pin: TEGRA_GPIO_PH4
 // Reset pin: TEGRA_GPIO_PH6
 // Power pin:
@@ -502,30 +480,28 @@ static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 #include <linux/i2c/ektf3k.h>
 
 static struct elan_ktf3k_i2c_platform_data ts_elan_ktf3k_data[] = {
-        {
-                .version = 0x0001,
-		   .abs_x_min = 0,
-                .abs_x_max = ELAN_X_MAX,   //LG 9.7" Dpin 2368, Spin 2112
-                .abs_y_min = 0,
-                .abs_y_max = ELAN_Y_MAX,   //LG 9.7" Dpin 1728, Spin 1600
-                .intr_gpio = TEGRA_GPIO_PH4,
-                .rst_gpio = TEGRA_GPIO_PH6,
-        },
+	{
+		.version = 0x0001,
+		.abs_x_min = 0,
+		.abs_x_max = ELAN_X_MAX,	//LG 9.7" Dpin 2368, Spin 2112
+		.abs_y_min = 0,
+		.abs_y_max = ELAN_Y_MAX,	//LG 9.7" Dpin 1728, Spin 1600
+		.intr_gpio = TEGRA_GPIO_PH4,
+		.rst_gpio = TEGRA_GPIO_PH6,
+	},
 };
 static struct i2c_board_info elan_i2c_devices[] = {
-        {
-                I2C_BOARD_INFO(ELAN_KTF3K_NAME, 0x10),
-                .platform_data = &ts_elan_ktf3k_data,
-                .irq = (INT_GPIO_BASE + TEGRA_GPIO_PH4),
-        },
-
+	{
+		I2C_BOARD_INFO(ELAN_KTF3K_NAME, 0x10),
+		.platform_data = &ts_elan_ktf3k_data,
+		.irq = (INT_GPIO_BASE + TEGRA_GPIO_PH4),
+	},
 };
 #endif
 
-static int elan_touch_init(void)
+static int __init grouper_touch_init(void)
 {
-	struct board_info BoardInfo;
-#if defined(CONFIG_TOUCHSCREEN_ELAN_TF_3K)
+#ifdef CONFIG_TOUCHSCREEN_ELAN_TF_3K
 	struct elan_ktf3k_i2c_platform_data *platform;
 #endif
 
@@ -541,71 +517,13 @@ static int elan_touch_init(void)
 	gpio_set_value(TEGRA_GPIO_PH6, 1);
 	msleep(100);
 
-	tegra_get_board_info(&BoardInfo);
-#if defined(CONFIG_TOUCHSCREEN_ATMEL_MXT)
-	if ((BoardInfo.sku & SKU_TOUCH_MASK) == SKU_TOUCH_2000) {
-		atmel_mxt_info.config = config_sku2000;
-		atmel_mxt_info.config_crc = MXT_CONFIG_CRC_SKU2000;
-	}
-#endif
-
-#if defined(CONFIG_TOUCHSCREEN_ELAN_TF_3K)
+#ifdef CONFIG_TOUCHSCREEN_ELAN_TF_3K
 	platform = (struct elan_ktf3k_i2c_platform_data *)elan_i2c_devices[0].platform_data;
 	platform->abs_x_max = ELAN_X_MAX_370T - 1;
 	platform->abs_y_max = ELAN_Y_MAX_370T - 1;
-	printk("[ELAN] Touch dirver register\n");
+	printk("%s: registering ELAN touchscreen driver\n", __func__);
 	i2c_register_board_info(1, elan_i2c_devices, 1);
 #endif
-	return 0;
-
-}
-
-static int __init grouper_touch_init(void)
-{
-	int touch_id;
-
-    return elan_touch_init();	
-
-	gpio_request(GROUPER_TS_ID1, "touch-id1");
-	gpio_direction_input(GROUPER_TS_ID1);
-
-	gpio_request(GROUPER_TS_ID2, "touch-id2");
-	gpio_direction_input(GROUPER_TS_ID2);
-
-	touch_id = gpio_get_value(GROUPER_TS_ID1) << 1;
-	touch_id |= gpio_get_value(GROUPER_TS_ID2);
-
-	pr_info("touch-id %d\n", touch_id);
-
-	/* Disable TS_ID GPIO to save power */
-	gpio_direction_output(GROUPER_TS_ID1, 0);
-	tegra_pinmux_set_pullupdown(GROUPER_TS_ID1_PG, TEGRA_PUPD_NORMAL);
-	tegra_pinmux_set_tristate(GROUPER_TS_ID1_PG, TEGRA_TRI_TRISTATE);
-	gpio_direction_output(GROUPER_TS_ID2, 0);
-	tegra_pinmux_set_pullupdown(GROUPER_TS_ID2_PG, TEGRA_PUPD_NORMAL);
-	tegra_pinmux_set_tristate(GROUPER_TS_ID2_PG, TEGRA_TRI_TRISTATE);
-
-	switch (touch_id) {
-	case 0:
-		pr_info("Raydium PCB based touch init\n");
-		tegra_clk_init_from_table(spi_clk_init_table);
-		touch_init_raydium(TEGRA_GPIO_PZ3, TEGRA_GPIO_PN5, 0);
-		break;
-	case 1:
-		pr_info("Raydium On-Board touch init\n");
-		tegra_clk_init_from_table(spi_clk_init_table);
-		tegra_clk_init_from_table(touch_clk_init_table);
-		clk_enable(tegra_get_clock_by_name("clk_out_3"));
-
-		touch_init_raydium(TEGRA_GPIO_PZ3, TEGRA_GPIO_PN5, 1);
-		break;
-	case 3:
-		pr_info("Synaptics PCB based touch init\n");
-		touch_init_synaptics_grouper();
-		break;
-	default:
-		pr_err("touch_id error, no touch %d\n", touch_id);
-	}
 	return 0;
 }
 
@@ -704,26 +622,26 @@ static void grouper_audio_init(void)
 	grouper_audio_pdata.codec_dai_name = "rt5640-aif1";
 }
 
-unsigned int boot_reason=0;
-void grouper_booting_info(void )
+unsigned int boot_reason = 0;
+void grouper_booting_info(void)
 {
 	static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	unsigned int reg;
+	unsigned int boot_reason, reg;
 	#define PMC_RST_STATUS_WDT (1)
 	#define PMC_RST_STATUS_SW (3)
 
 	reg = readl(pmc + 0x1b4);
-	printk("grouper_booting_info reg=%x\n",reg );
+	printk("%s: reg=%x\n", __func__, reg);
 
-	if (reg == PMC_RST_STATUS_SW){
+	if (reg == PMC_RST_STATUS_SW) {
 		boot_reason = PMC_RST_STATUS_SW;
-		printk("grouper_booting_info-SW reboot\n");
-	} else if (reg == PMC_RST_STATUS_WDT){
+		printk("%s: SW reboot\n", __func__);
+	} else if (reg == PMC_RST_STATUS_WDT) {
 		boot_reason = PMC_RST_STATUS_WDT;
-		printk("grouper_booting_info-watchdog reboot\n");
-	} else{
-		boot_reason=0;
-		printk("grouper_booting_info-normal\n");
+		printk("%s: watchdog reboot\n", __func__);
+	} else {
+		boot_reason = 0;
+		printk("%s: normal\n", __func__);
 	}
 }
 
@@ -774,7 +692,7 @@ static void __init tegra_grouper_init(void)
 
 static void __init tegra_grouper_reserve(void)
 {
-#if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
+#ifdef CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 	/* support 1920X1200 with 24bpp */
 	tegra_reserve(0, SZ_8M + SZ_1M, SZ_8M + SZ_1M);
 #else
@@ -792,5 +710,5 @@ MACHINE_START(GROUPER, "grouper")
 	.handle_irq = gic_handle_irq,
 	.timer		= &tegra_timer,
 	.init_machine	= tegra_grouper_init,
-	.restart        = tegra_assert_system_reset,
+	.restart	= tegra_assert_system_reset,
 MACHINE_END

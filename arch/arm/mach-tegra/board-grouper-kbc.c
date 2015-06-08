@@ -59,9 +59,9 @@ static struct gpio_keys_platform_data grouper_keys_platform_data = {
 };
 
 static struct platform_device grouper_keys_device = {
-	.name   = "gpio-keys",
-	.id     = 0,
-	.dev    = {
+	.name	= "gpio-keys",
+	.id		= 0,
+	.dev	= {
 		.platform_data  = &grouper_keys_platform_data,
 	},
 };
@@ -73,7 +73,7 @@ int __init grouper_keys_init(void)
 	tegra_get_board_info(&board_info);
 	BUG_ON(board_info.board_id != BOARD_E1565);
 
-	pr_info("Registering gpio keys\n");
+	pr_info("%s: registering gpio keys\n", __func__);
 
 	platform_device_register(&grouper_keys_device);
 

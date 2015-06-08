@@ -33,7 +33,6 @@
 #include "board.h"
 #include "board-grouper.h"
 
-#define KAI_SD_CD	TEGRA_GPIO_PI5
 #define GROUPER_WLAN_PWR	TEGRA_GPIO_PD4
 #define GROUPER_WLAN_RST	TEGRA_GPIO_PD3
 #define GROUPER_WLAN_WOW	TEGRA_GPIO_PO4
@@ -155,14 +154,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
-/*	.tap_delay = 6,
-	.is_voltage_switch_supported = false,
-	.vdd_rail_name = NULL,
-	.slot_rail_name = NULL,
-	.vdd_max_uv = -1,
-	.vdd_min_uv = -1,
-	.max_clk = 0,
-	.is_8bit_supported = false, */
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
@@ -174,14 +165,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.mmc_data = {
 		.built_in = 1,
 	}
-/*	.tap_delay = 6,
-	.is_voltage_switch_supported = false,
-	.vdd_rail_name = NULL,
-	.slot_rail_name = NULL,
-	.vdd_max_uv = -1,
-	.vdd_min_uv = -1,
-	.max_clk = 48000000,
-	.is_8bit_supported = true, */
 };
 
 static struct platform_device tegra_sdhci_device2 = {
@@ -220,13 +203,13 @@ static int grouper_wifi_set_carddetect(int val)
 	if (wifi_status_cb)
 		wifi_status_cb(val, wifi_status_cb_devid);
 	else
-	pr_warning("%s: Nobody to notify\n", __func__);
+		pr_warning("%s: Nobody to notify\n", __func__);
 	return 0;
 }
 
 static int grouper_wifi_power(int on)
 {
-	pr_err("Powering %s wifi\n", (on ? "on" : "off"));
+	pr_info("Powering %s wifi\n", (on ? "on" : "off"));
 
 	gpio_set_value(GROUPER_WLAN_PWR, on);
 	mdelay(100);
@@ -238,7 +221,7 @@ static int grouper_wifi_power(int on)
 
 static int grouper_wifi_reset(int on)
 {
-	pr_err("%s: do nothing\n", __func__);
+	pr_info("%s: do nothing\n", __func__);
 	return 0;
 }
 
@@ -283,7 +266,6 @@ static int __init grouper_wifi_prepower(void)
 
 	return 0;
 }
-
 subsys_initcall_sync(grouper_wifi_prepower);
 #endif
 
