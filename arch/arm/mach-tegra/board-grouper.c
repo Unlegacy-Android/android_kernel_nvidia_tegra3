@@ -454,9 +454,6 @@ static struct platform_device *grouper_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
 	&tegra_udc_device,
-#if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
-	&tegra_smmu_device,
-#endif
 	&tegra_wdt0_device,
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
@@ -733,6 +730,7 @@ void grouper_booting_info(void )
 static void __init tegra_grouper_init(void)
 {
 	tegra_clk_init_from_table(grouper_clk_init_table);
+	tegra_smmu_init();
 	tegra_soc_device_init("grouper");
 	grouper_pinmux_init();
 	grouper_booting_info();
