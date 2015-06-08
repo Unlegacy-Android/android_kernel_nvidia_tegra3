@@ -642,6 +642,11 @@ int __init grouper_panel_init(void)
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 #endif
 
+	/* Copy the bootloader fb to the fb. */
+	__tegra_move_framebuffer(&grouper_nvmap_device,
+		tegra_fb_start, tegra_bootloader_fb_start,
+				min(tegra_fb_size, tegra_bootloader_fb_size));
+
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
 	if (!err) {
 		grouper_disp1_device.dev.parent = &phost1x->dev;
