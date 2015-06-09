@@ -1202,6 +1202,10 @@ static int tegra_fuse_probe(struct platform_device *pdev)
 	}
 	dev_attr_odm_reserved.attr.mode = 0640;
 
+#ifdef CONFIG_MACH_GROUPER
+	kobject_set_name(&pdev->dev.kobj, "fuse");
+#endif
+
 	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
 				&dev_attr_odm_production_mode.attr));
 	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &dev_attr_device_key.attr));
