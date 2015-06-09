@@ -18,9 +18,6 @@
 #include <linux/module.h>
 #include <linux/input/mt.h>
 #include <linux/interrupt.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-#endif
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
@@ -140,9 +137,6 @@ struct elan_ktf3k_ts_data {
 	struct workqueue_struct *elan_wq;
 	struct work_struct work;
 	int (*power)(int on);
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	struct early_suspend early_suspend;
-#endif
 	int intr_gpio;
 // Firmware Information
 	int fw_ver;
@@ -167,7 +161,7 @@ static struct elan_ktf3k_ts_data *private_ts = NULL;
 static int __fw_packet_handler(struct i2c_client *client, int imediate);
 static int elan_ktf3k_ts_rough_calibrate(struct i2c_client *client);
 static int elan_ktf3k_ts_hw_reset(struct i2c_client *client);
-static int elan_ktf3k_ts_resume(struct i2c_client *client);
+static int elan_ktf3k_ts_resume(struct device *dev);
 #ifdef FIRMWARE_UPDATE_WITH_HEADER
 static int firmware_update_header(struct i2c_client *client, const unsigned char *firmware, unsigned int page_number);
 #endif
@@ -304,7 +298,7 @@ static long elan_iap_ioctl(/*struct inode *inode,*/ struct file *filp,    unsign
 			put_user(gpio_get_value(private_ts->intr_gpio), ip);
 			break;
 		case IOCTL_RESUME:
-			elan_ktf3k_ts_resume(private_ts->client);
+			elan_ktf3k_ts_resume(&private_ts->client->dev);
 			break;
 		default:            
 			break;   
@@ -334,11 +328,6 @@ static int isOldFW(struct i2c_client *client)
 	
     return 0;
 }
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void elan_ktf3k_ts_early_suspend(struct early_suspend *h);
-static void elan_ktf3k_ts_late_resume(struct early_suspend *h);
-#endif
 
 static ssize_t elan_ktf3k_gpio_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -1494,13 +1483,6 @@ static int elan_ktf3k_ts_probe(struct i2c_client *client,
           firmware_update_header(client, touch_firmware, sizeof(touch_firmware)/FIRMWARE_PAGE_SIZE);
 #endif
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	ts->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 21;
-	ts->early_suspend.suspend = elan_ktf3k_ts_early_suspend;
-	ts->early_suspend.resume = elan_ktf3k_ts_late_resume;
-	register_early_suspend(&ts->early_suspend);
-#endif
-
 	private_ts = ts;
 
 	//elan_ktf2k_touch_sysfs_init();
@@ -1588,10 +1570,6 @@ static int elan_ktf3k_ts_remove(struct i2c_client *client)
 
 	elan_touch_sysfs_deinit();
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	unregister_early_suspend(&ts->early_suspend);
-#endif
-	
 	free_irq(client->irq, ts);
 
 	if (ts->elan_wq)
@@ -1622,8 +1600,9 @@ void force_release_pos(struct i2c_client *client)
         input_sync(ts->input_dev);
 }
 
-static int elan_ktf3k_ts_suspend(struct i2c_client *client, pm_message_t mesg)
+static int elan_ktf3k_ts_suspend(struct device *dev)
 {
+	struct i2c_client *client = to_i2c_client(dev);
 	struct elan_ktf3k_ts_data *ts = i2c_get_clientdata(client);
 	int rc = 0;
 
@@ -1640,9 +1619,9 @@ static int elan_ktf3k_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 	return 0;
 }
 
-static int elan_ktf3k_ts_resume(struct i2c_client *client)
+static int elan_ktf3k_ts_resume(struct device *dev)
 {
-
+	struct i2c_client *client = to_i2c_client(dev);
 	int rc = 0, retry = 5;
 	touch_debug(DEBUG_INFO, "[elan] %s: enter\n", __func__);
 	if(work_lock == 0){
@@ -1661,20 +1640,8 @@ static int elan_ktf3k_ts_resume(struct i2c_client *client)
 	return 0;
 }
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void elan_ktf3k_ts_early_suspend(struct early_suspend *h)
-{
-	struct elan_ktf3k_ts_data *ts;
-	ts = container_of(h, struct elan_ktf3k_ts_data, early_suspend);
-	elan_ktf3k_ts_suspend(ts->client, PMSG_SUSPEND);
-}
-
-static void elan_ktf3k_ts_late_resume(struct early_suspend *h)
-{
-	struct elan_ktf3k_ts_data *ts;
-	ts = container_of(h, struct elan_ktf3k_ts_data, early_suspend);
-	elan_ktf3k_ts_resume(ts->client);
-}
+#ifdef CONFIG_PM
+static SIMPLE_DEV_PM_OPS(elan_ktf3k_ts_pm, elan_ktf3k_ts_suspend, elan_ktf3k_ts_resume);
 #endif
 
 static const struct i2c_device_id elan_ktf3k_ts_id[] = {
@@ -1685,13 +1652,12 @@ static const struct i2c_device_id elan_ktf3k_ts_id[] = {
 static struct i2c_driver ektf3k_ts_driver = {
 	.probe		= elan_ktf3k_ts_probe,
 	.remove		= elan_ktf3k_ts_remove,
-#ifndef CONFIG_HAS_EARLYSUSPEND
-	.suspend	= elan_ktf3k_ts_suspend,
-	.resume		= elan_ktf3k_ts_resume,
-#endif
 	.id_table	= elan_ktf3k_ts_id,
 	.driver		= {
 		.name = ELAN_KTF3K_NAME,
+#ifdef CONFIG_PM
+		.pm   = &elan_ktf3k_ts_pm,
+#endif
 	},
 };
 
