@@ -2756,14 +2756,6 @@ static int rt5640_probe(struct snd_soc_codec *codec)
 		return ret;
 	}
 
-	val = snd_soc_read(codec, RT5640_RESET);
-	if ((val != rt5640_reg[RT5640_RESET]) && (val != RT5639_RESET_ID)) {
-		dev_err(codec->dev,
-			"Device with ID register %x is not rt5640/39\n", val);
-		mutex_unlock(&rt5640->lock);
-		return -ENODEV;
-	}
-
 	rt5640_reset(codec);
 	snd_soc_update_bits(codec, RT5640_PWR_ANLG1,
 		RT5640_PWR_VREF1 | RT5640_PWR_MB |
