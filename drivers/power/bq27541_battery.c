@@ -33,7 +33,6 @@
 #include <linux/timer.h>
 #include <linux/interrupt.h>
 #include <asm/unaligned.h>
-#include <linux/miscdevice.h>
 #include <mach/gpio.h>
 #include <linux/wakelock.h>
 #include "../../arch/arm/mach-tegra/gpio-names.h"
@@ -233,11 +232,9 @@ static struct power_supply bq27541_supply[] = {
 
 static struct bq27541_device_info {
 	struct i2c_client *client;
-	struct delayed_work battery_stress_test;
 	struct delayed_work status_poll_work;
 	struct delayed_work low_low_bat_work;
 	struct delayed_work shutdown_en_work;
-	struct miscdevice battery_misc;
 	struct wake_lock low_battery_wake_lock;
 	struct wake_lock cable_wake_lock;
 	char device_name[5];
@@ -798,7 +795,6 @@ static int is_legal_pack(void)
 	return 0;
 }
 
-#include "stress_test.c"
 static int bq27541_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
@@ -841,7 +837,6 @@ static int bq27541_probe(struct i2c_client *client,
 	battery_work_queue = create_singlethread_workqueue("battery_workqueue");
 	INIT_DELAYED_WORK(&bq27541_device->status_poll_work, battery_status_poll);
 	INIT_DELAYED_WORK(&bq27541_device->low_low_bat_work, low_low_battery_check);
-       INIT_DELAYED_WORK(&bq27541_device->battery_stress_test, battery_strees_test);
 	INIT_DELAYED_WORK(&bq27541_device->shutdown_en_work, shutdown_enable_set);
 	cancel_delayed_work(&bq27541_device->status_poll_work);
 
@@ -853,15 +848,6 @@ static int bq27541_probe(struct i2c_client *client,
 	ret = sysfs_create_group(&client->dev.kobj, &battery_smbus_group);
 	if (ret) {
 		dev_err(&client->dev, "bq27541_probe: unable to create the sysfs\n");
-	}
-
-	/* Misc device registration */
-       bq27541_device->battery_misc.minor = MISC_DYNAMIC_MINOR;
-	bq27541_device->battery_misc.name = "battery";
-	bq27541_device->battery_misc.fops   = &battery_fops;
-       ret = misc_register(&bq27541_device->battery_misc);
-	if(ret) {
-		pr_info("Cannot register bq27541 miscdev (err=%d)\n", ret);
 	}
 
 	setup_low_battery_irq();
