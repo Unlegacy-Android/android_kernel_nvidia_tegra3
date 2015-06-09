@@ -4,9 +4,6 @@
 #include <linux/i2c.h>
 #include <linux/mutex.h>
 #include <linux/delay.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-#endif
 #include <linux/hwmon.h>
 #include <linux/hwmon-sysfs.h>
 #include <asm/ioctl.h>
@@ -67,9 +64,6 @@ struct al3010_data {
 	struct i2c_client *client;
 	struct mutex lock;
 	struct miscdevice misc_dev;
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	struct early_suspend light_sensor_early_suspender;
-#endif
 	u8 reg_cache[AL3010_NUM_CACHABLE_REGS];
 	u8 power_state_before_suspend;
 };
@@ -282,7 +276,7 @@ static ssize_t al3010_show_default_lux(struct device *dev,
 	return sprintf(buf, "%d\n", show_default_lux_value);
 }
 
-static ssize_t al3010_power_on(struct device *dev ,
+static ssize_t al3010_power_on(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -315,11 +309,6 @@ static const struct attribute_group al3010_attr_group = {
 	.attrs = al3010_attributes,
 };
 
-static int al3010_chip_suspend(struct al3010_data *data)
-{
-	return al3010_set_power_state(data->client, 0);
-}
-
 /* restore registers from cache */
 static int al3010_chip_resume(struct al3010_data *data)
 {
@@ -341,30 +330,6 @@ static int al3010_chip_resume(struct al3010_data *data)
 
 	return ret;
 }
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void al3010_early_suspend(struct early_suspend *h)
-{
-	struct al3010_data *data = container_of(h, struct al3010_data, light_sensor_early_suspender);
-
-	if (al3010_hardware_fail)
-		return;
-
-	al3010_chip_suspend(data);
-}
-
-static void al3010_late_resume(struct early_suspend *h)
-{
-	struct al3010_data *data = container_of(h, struct al3010_data, light_sensor_early_suspender);
-
-	if (al3010_hardware_fail)
-		return;
-
-	// delay to avoid early_suspend and late_resume too close as it could cause power on fail
-	mdelay(5);
-	al3010_chip_resume(data);
-}
-#endif
 
 static int al3010_init_client(struct i2c_client *client)
 {
@@ -522,12 +487,7 @@ static int __devinit al3010_probe(struct i2c_client *client,
 		dev_err(&client->dev, "%s: unable to register misc device %s\n", __func__, data->misc_dev.name);
 		goto exit_kfree;
 	}
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	data->light_sensor_early_suspender.suspend = al3010_early_suspend;
-	data->light_sensor_early_suspender.resume = al3010_late_resume;
-	data->light_sensor_early_suspender.level = EARLY_SUSPEND_LEVEL_DISABLE_FB+100;
-	register_early_suspend(&data->light_sensor_early_suspender);
-#endif
+
 	return 0;
 
 exit_kfree:
@@ -549,30 +509,33 @@ static int __devexit al3010_remove(struct i2c_client *client)
 }
 
 #ifdef CONFIG_PM
-static int al3010_suspend(struct i2c_client *client, pm_message_t mesg)
+static int al3010_suspend(struct device *dev)
 {
-	struct al3010_data *data = i2c_get_clientdata(client);
+	if (al3010_hardware_fail)
+		return 0;
+
+	dev_dbg(dev, "%s\n", __func__);
+
+	return al3010_set_power_state(to_i2c_client(dev), 0);
+}
+
+static int al3010_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
 
 	if (al3010_hardware_fail)
 		return 0;
 
-	return al3010_chip_suspend(data);
+	// delay to avoid suspend and resume too close as it could cause power on fail
+	mdelay(5);
+
+	dev_dbg(dev, "%s\n", __func__);
+
+	return al3010_chip_resume(i2c_get_clientdata(client));
 }
 
-static int al3010_resume(struct i2c_client *client)
-{
-	struct al3010_data *data = i2c_get_clientdata(client);
-
-	if (al3010_hardware_fail)
-		return 0;
-
-	return al3010_chip_resume(data);
-}
-
-#else
-#define al3010_suspend	NULL
-#define al3010_resume	NULL
-#endif /* CONFIG_PM */
+static SIMPLE_DEV_PM_OPS(al3010_pm, al3010_suspend, al3010_resume);
+#endif
 
 static const struct i2c_device_id al3010_id[] = {
 	{ "al3010", 0 },
@@ -584,9 +547,10 @@ static struct i2c_driver al3010_driver = {
 	.driver = {
 		.name	= "al3010",
 		.owner	= THIS_MODULE,
+#ifdef CONFIG_PM
+		.pm		= &al3010_pm,
+#endif
 	},
-	.suspend = al3010_suspend,
-	.resume	= al3010_resume,
 	.probe	= al3010_probe,
 	.remove	= __devexit_p(al3010_remove),
 	.id_table = al3010_id,
