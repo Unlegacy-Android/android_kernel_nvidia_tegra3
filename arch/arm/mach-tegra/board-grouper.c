@@ -483,9 +483,9 @@ static struct elan_ktf3k_i2c_platform_data ts_elan_ktf3k_data[] = {
 	{
 		.version = 0x0001,
 		.abs_x_min = 0,
-		.abs_x_max = ELAN_X_MAX,	//LG 9.7" Dpin 2368, Spin 2112
+		.abs_x_max = ELAN_X_MAX_370T - 1,
 		.abs_y_min = 0,
-		.abs_y_max = ELAN_Y_MAX,	//LG 9.7" Dpin 1728, Spin 1600
+		.abs_y_max = ELAN_Y_MAX_370T - 1,
 		.intr_gpio = TEGRA_GPIO_PH4,
 		.rst_gpio = TEGRA_GPIO_PH6,
 	},
@@ -494,17 +494,12 @@ static struct i2c_board_info elan_i2c_devices[] = {
 	{
 		I2C_BOARD_INFO(ELAN_KTF3K_NAME, 0x10),
 		.platform_data = &ts_elan_ktf3k_data,
-		.irq = (INT_GPIO_BASE + TEGRA_GPIO_PH4),
 	},
 };
 #endif
 
 static int __init grouper_touch_init(void)
 {
-#ifdef CONFIG_TOUCHSCREEN_ELAN_TF_3K
-	struct elan_ktf3k_i2c_platform_data *platform;
-#endif
-
 	gpio_request(TEGRA_GPIO_PH3, "elan-pwn");
 	gpio_direction_output(TEGRA_GPIO_PH3, 1);
 
@@ -518,9 +513,7 @@ static int __init grouper_touch_init(void)
 	msleep(100);
 
 #ifdef CONFIG_TOUCHSCREEN_ELAN_TF_3K
-	platform = (struct elan_ktf3k_i2c_platform_data *)elan_i2c_devices[0].platform_data;
-	platform->abs_x_max = ELAN_X_MAX_370T - 1;
-	platform->abs_y_max = ELAN_Y_MAX_370T - 1;
+	elan_i2c_devices[0].irq = gpio_to_irq(TEGRA_GPIO_PH4);
 	printk("%s: registering ELAN touchscreen driver\n", __func__);
 	i2c_register_board_info(1, elan_i2c_devices, 1);
 #endif
