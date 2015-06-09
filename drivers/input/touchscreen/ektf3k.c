@@ -111,7 +111,7 @@ static int work_lock=0x00;
 static unsigned now_usb_cable_status=0;
 static unsigned int gPrint_point = 0; 
 
-#define TOUCH_STRESS_TEST 1
+//#define TOUCH_STRESS_TEST
 #ifdef TOUCH_STRESS_TEST
 #define STRESS_IOC_MAGIC 0xF3
 #define STRESS_IOC_MAXNR 4
