@@ -67,6 +67,8 @@ config ANDROID_LOW_MEMORY_KILLER
 	  Register processes to be killed when memory is low
 
 
+source "drivers/staging/android/switch/Kconfig"
+
 endif # if ANDROID
 
 endmenu
