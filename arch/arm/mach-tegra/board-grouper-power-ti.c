@@ -18,36 +18,15 @@
  * 02111-1307, USA
  */
 #include <linux/i2c.h>
-#include <linux/pda_power.h>
-#include <linux/platform_device.h>
-#include <linux/resource.h>
-#include <linux/regulator/machine.h>
 #include <linux/mfd/tps6591x.h>
-#include <linux/mfd/max77663-core.h>
-#include <linux/gpio.h>
-#include <linux/io.h>
 #include <linux/regulator/fixed.h>
 #include <linux/regulator/tps6591x-regulator.h>
 #include <linux/regulator/tps62360.h>
-#include <linux/power/gpio-charger.h>
 
 #include <asm/mach-types.h>
-#include <asm/system_info.h>
 
-#include <mach/iomap.h>
-#include <mach/irqs.h>
-#include <mach/pinmux.h>
-#include <mach/edp.h>
-
-#include "gpio-names.h"
-#include "board.h"
 #include "board-grouper.h"
-#include "pm.h"
-#include "tegra3_tsensor.h"
 #include <mach/board-grouper-misc.h>
-
-#define PMC_CTRL		0x0
-#define PMC_CTRL_INTR_LOW	(1 << 17)
 
 static struct regulator_consumer_supply tps6591x_vdd1_supply_skubit0_1[] = {
 	REGULATOR_SUPPLY("en_vddio_ddr_1v2", NULL),
@@ -331,46 +310,6 @@ static struct i2c_board_info __initdata tps62361_boardinfo[] = {
 	},
 };
 
-int __init grouper_ti_regulator_init(void)
-{
-	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	u32 pmc_ctrl;
-
-	/* configure the power management controller to trigger PMU
-	 * interrupts when low */
-	pmc_ctrl = readl(pmc + PMC_CTRL);
-	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
-
-
-	/* The regulator details have complete constraints */
-	regulator_has_full_constraints();
-
-	pdata_ldo3_e118x.slew_rate_uV_per_us = 250;
-
-	tps_platform.num_subdevs = ARRAY_SIZE(tps_devs_e118x_skubit0_1);
-	tps_platform.subdevs = tps_devs_e118x_skubit0_1;
-
-	/*
-	 *E1291-A04/A05/A07 or PM269-alike:
-	 *	Enable DEV_SLP and enable sleep on GPIO2
-	 */
-	pr_info("TPS6591x GPIO2 was reprogrammed to follow state of "
-		"SLEEP input\n");
-	tps_platform.dev_slp_en = true;
-	tps_platform.gpio_init_data = tps_gpio_pdata_e1291_a04;
-	tps_platform.num_gpioinit_data =
-				ARRAY_SIZE(tps_gpio_pdata_e1291_a04);
-
-	i2c_register_board_info(4, grouper_ti_regulators, 1);
-
-	/* Register the external core regulator */
-	pr_info("Registering the core regulator\n");
-	i2c_register_board_info(4, tps62361_boardinfo, 1);
-
-	return 0;
-}
-
-
 /**************** GPIO based fixed regulator *****************/
 /* EN_5V_CP from PMU GP0 */
 static struct regulator_consumer_supply fixed_reg_en_5v_cp_supply[] = {
@@ -620,72 +559,38 @@ static struct platform_device *fixed_reg_devs_pm269[] = {
 	E1247_DISPLAY_FIXED_REG
 };
 
-int __init grouper_ti_fixed_regulator_init(void)
+void __init grouper_tps6591x_regulator_init(void) {
+	/* The regulator details have complete constraints */
+	regulator_has_full_constraints();
+
+	pdata_ldo3_e118x.slew_rate_uV_per_us = 250;
+
+	tps_platform.num_subdevs = ARRAY_SIZE(tps_devs_e118x_skubit0_1);
+	tps_platform.subdevs = tps_devs_e118x_skubit0_1;
+
+	/*
+	 *E1291-A04/A05/A07 or PM269-alike:
+	 *	Enable DEV_SLP and enable sleep on GPIO2
+	 */
+	pr_info("%s: TPS6591x GPIO2 was reprogrammed to follow state of "
+		"SLEEP input\n", __func__);
+	tps_platform.gpio_init_data = tps_gpio_pdata_e1291_a04;
+	tps_platform.num_gpioinit_data =
+				ARRAY_SIZE(tps_gpio_pdata_e1291_a04);
+
+	i2c_register_board_info(4, grouper_ti_regulators, 1);
+
+	/* Register the external core regulator */
+	pr_info("%s: Registering the core regulator\n", __func__);
+	i2c_register_board_info(4, tps62361_boardinfo, 1);
+}
+
+static int __init grouper_ti_fixed_regulator_init(void)
 {
-	if (!grouper_query_pmic_id())
+	if (!machine_is_grouper() || !grouper_query_pmic_id())
 		return 0;
 
 	return platform_add_devices(fixed_reg_devs_pm269,
 				ARRAY_SIZE(fixed_reg_devs_pm269));
 }
 subsys_initcall_sync(grouper_ti_fixed_regulator_init);
-
-static void grouper_ti_board_suspend(int lp_state, enum suspend_stage stg)
-{
-	if ((lp_state == TEGRA_SUSPEND_LP1) && (stg == TEGRA_SUSPEND_BEFORE_CPU))
-		tegra_console_uart_suspend();
-}
-
-static void grouper_ti_board_resume(int lp_state, enum resume_stage stg)
-{
-	if ((lp_state == TEGRA_SUSPEND_LP1) && (stg == TEGRA_RESUME_AFTER_CPU))
-		tegra_console_uart_resume();
-}
-
-static struct tegra_suspend_platform_data grouper_ti_suspend_data = {
-	.cpu_timer	= 2000,
-	.cpu_off_timer	= 200,
-	.suspend_mode	= TEGRA_SUSPEND_LP0,
-	.core_timer	= 0x7e7e,
-	.core_off_timer = 0,
-	.corereq_high	= true,
-	.sysclkreq_high	= true,
-	.cpu_lp2_min_residency = 2000,
-	.board_suspend = grouper_ti_board_suspend,
-	.board_resume = grouper_ti_board_resume,
-#ifdef CONFIG_TEGRA_LP1_950
-	.lp1_lowvolt_support = true,
-	.i2c_base_addr = TEGRA_I2C5_BASE,
-	.pmuslave_addr = 0x78,
-	.core_reg_addr = 0x17,
-	.lp1_core_volt_low = 0x0C,
-	.lp1_core_volt_high = 0x20,
-#endif
-};
-
-int __init grouper_ti_suspend_init(void)
-{
-	/* CORE_PWR_REQ to be high for all processor/pmu board whose sku bit 0
-	 * is set. This is require to enable the dc-dc converter tps62361x */
-	grouper_ti_suspend_data.corereq_high = true;
-
-	tegra_init_suspend(&grouper_ti_suspend_data);
-	return 0;
-}
-
-#ifdef CONFIG_TEGRA_EDP_LIMITS
-
-int __init grouper_ti_edp_init(void)
-{
-	unsigned int regulator_mA;
-
-	regulator_mA = get_maximum_cpu_current_supported();
-	if (!regulator_mA) {
-		regulator_mA = 6000; /* regular T30/s */
-	}
-	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
-
-	tegra_init_cpu_edp_limits(regulator_mA);
-	return 0;
-}
-#endif

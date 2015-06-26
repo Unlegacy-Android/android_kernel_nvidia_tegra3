@@ -652,23 +652,15 @@ static void __init tegra_grouper_init(void)
 	grouper_misc_init();
 	grouper_misc_reset();
 #ifdef CONFIG_TEGRA_EDP_LIMITS
-	if (grouper_query_pmic_id())
-		grouper_ti_edp_init();
-	else
-		grouper_edp_init();
+	grouper_edp_init();
 #endif
 	grouper_uart_init();
 	grouper_audio_init();
 	platform_add_devices(grouper_devices, ARRAY_SIZE(grouper_devices));
 	tegra_ram_console_debug_init();
 	grouper_sdhci_init();
-	if (grouper_query_pmic_id()) {
-		grouper_ti_regulator_init();
-		grouper_ti_suspend_init();
-	} else {
-		grouper_regulator_init();
-		grouper_suspend_init();
-	}
+	grouper_regulator_init();
+	grouper_suspend_init();
 	grouper_touch_init();
 	grouper_keys_init();
 	grouper_panel_init();
