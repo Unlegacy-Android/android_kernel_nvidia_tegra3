@@ -206,6 +206,10 @@ static unsigned long tegra_dc_calc_win_bandwidth(struct tegra_dc *dc,
 		in_w / w->out_w * (WIN_IS_TILED(w) ?
 		tiled_windows_bw_multiplier : 1);
 
+#ifdef CONFIG_MACH_GROUPER
+	ret = ret * 12 / 10;
+#endif
+
 	return ret;
 }
 
