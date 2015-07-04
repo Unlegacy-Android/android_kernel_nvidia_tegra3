@@ -99,7 +99,7 @@ static int grouper_backlight_notify(struct device *unused, int brightness)
 	int cur_sd_brightness = atomic_read(&sd_brightness);
 
 	/* SD brightness is a percentage, 8-bit value. */
-	brightness = (brightness * cur_sd_brightness) / 255;
+	brightness = DIV_ROUND_CLOSEST((brightness * cur_sd_brightness), 255);
 
 	/* Apply any backlight response curve */
 	if (brightness > 255)
