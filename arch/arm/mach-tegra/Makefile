@@ -76,7 +76,9 @@ obj-$(CONFIG_USB_SUPPORT)               += tegra_usb_pmc.o
 obj-$(CONFIG_USB_SUPPORT)               += tegra_usb_pad_ctrl.o
 obj-$(CONFIG_USB_SUPPORT)               += tegra3_usb_phy.o
 obj-$(CONFIG_USB_SUPPORT)               += tegra2_usb_phy.o
+ifeq ($(CONFIG_ARCH_TEGRA_11x_SOC),y)
 obj-$(CONFIG_USB_SUPPORT)               += tegra11x_usb_phy.o
+endif
 obj-$(CONFIG_FIQ)                       += fiq.o
 obj-$(CONFIG_TEGRA_FIQ_DEBUGGER)        += tegra_fiq_debugger.o
 obj-$(CONFIG_TEGRA_PWM)                 += pwm.o
@@ -84,7 +86,9 @@ obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)       += arb_sema.o
 
 obj-y                                   += powergate.o
 obj-y                                   += powergate-ops-txx.o
+ifeq ($(CONFIG_ARCH_TEGRA_11x_SOC),y)
 obj-y                                   += powergate-ops-t1xx.o
+endif
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += powergate-t20.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += powergate-t30.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += powergate-t11x.o
@@ -241,10 +245,9 @@ obj-${CONFIG_MACH_CARDHU}               += board-cardhu-sdhci.o
 obj-${CONFIG_MACH_CARDHU}               += board-cardhu-sensors.o
 obj-${CONFIG_MACH_CARDHU}               += board-cardhu-memory.o
 obj-${CONFIG_MACH_CARDHU}               += board-cardhu-powermon.o
+obj-${CONFIG_MACH_CARDHU}               += board-touch-raydium_spi.o
 
 obj-${CONFIG_MACH_KAI}                  += board-touch-kai-synaptics-spi.o
-obj-y                                   += board-touch-raydium_spi.o
-obj-y                                   += board-touch-maxim_sti-spi.o
 
 obj-${CONFIG_MACH_P1852}               += board-p1852.o
 obj-${CONFIG_MACH_P1852}               += board-p1852-power.o
@@ -275,7 +278,8 @@ obj-${CONFIG_MACH_KAI}                  += board-kai-pinmux.o
 obj-${CONFIG_MACH_KAI}                  += board-kai-power.o
 obj-${CONFIG_MACH_KAI}                  += board-kai-sdhci.o
 obj-${CONFIG_MACH_KAI}                  += board-kai-sensors.o
-obj-y                                   += eeprom-wifi-mac.o
+obj-${CONFIG_MACH_KAI}                  += board-touch-raydium_spi.o
+obj-${CONFIG_MACH_KAI}                  += eeprom-wifi-mac.o
 
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-memory.o
@@ -290,6 +294,7 @@ obj-${CONFIG_MACH_DALMORE}              += board-dalmore-sensors.o
 obj-${CONFIG_MACH_DALMORE}              += panel-a-1080p-11-6.o
 obj-${CONFIG_MACH_DALMORE}              += panel-p-wuxga-10-1.o
 obj-${CONFIG_MACH_DALMORE}              += panel-s-wqxga-10-1.o
+obj-${CONFIG_MACH_DALMORE}              += board-touch-raydium_spi.o
 
 obj-${CONFIG_MACH_MACALLAN}             += board-macallan.o
 obj-${CONFIG_MACH_MACALLAN}             += board-macallan-memory.o
@@ -301,6 +306,7 @@ obj-${CONFIG_MACH_MACALLAN}             += board-macallan-panel.o
 obj-${CONFIG_MACH_MACALLAN}             += board-macallan-kbc.o
 obj-${CONFIG_MACH_MACALLAN}             += board-macallan-sensors.o
 obj-${CONFIG_MACH_MACALLAN}             += panel-p-wuxga-10-1.o
+obj-${CONFIG_MACH_MACALLAN}             += board-touch-raydium_spi.o
 
 obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab.o
 obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-memory.o
@@ -312,6 +318,8 @@ obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-panel.o
 obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-kbc.o
 obj-${CONFIG_MACH_TEGRATAB}            += board-tegratab-sensors.o
 obj-${CONFIG_MACH_TEGRATAB}            += panel-lgd-wxga-7-0.o
+obj-${CONFIG_MACH_TEGRATAB}            += board-touch-raydium_spi.o
+obj-${CONFIG_MACH_TEGRATAB}            += board-touch-maxim_sti-spi.o
 
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-memory.o
@@ -325,6 +333,7 @@ obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-powermon.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += panel-l-720p-5.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += panel-j-720p-4-7.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += panel-s-1080p-5.o
+obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-touch-raydium_spi.o
 
 obj-${CONFIG_TEGRA_BB_XMM_POWER}        += baseband-xmm-power.o
 obj-${CONFIG_TEGRA_BB_XMM_POWER2}       += baseband-xmm-power2.o
@@ -343,6 +352,7 @@ obj-${CONFIG_MACH_ROTH}                 += board-roth-panel.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-kbc.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-sensors.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-fan.o
+obj-${CONFIG_MACH_ROTH}                 += board-touch-raydium_spi.o
 
 obj-${CONFIG_MACH_GROUPER}              += board-grouper.o
 obj-${CONFIG_MACH_GROUPER}              += board-grouper-kbc.o
