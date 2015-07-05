@@ -141,6 +141,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 		.embedded_sdio = &embedded_sdio_data2,
 #endif
 		.built_in = 0,
+		.ocr_mask = MMC_OCR_1V8_MASK,
 	},
 #ifndef CONFIG_MMC_EMBEDDED_SDIO
 	.pm_flags = MMC_PM_KEEP_POWER,
@@ -161,6 +162,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.ddr_clk_limit = 41000000,
 	.mmc_data = {
 		.built_in = 1,
+		.ocr_mask = MMC_OCR_1V8_MASK,
 	}
 };
 
