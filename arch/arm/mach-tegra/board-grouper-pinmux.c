@@ -14,16 +14,10 @@
  *
  */
 
-#include <linux/kernel.h>
-#include <linux/init.h>
 #include <linux/gpio.h>
-#include <mach/pinmux.h>
 #include <mach/pinmux-tegra30.h>
 #include <mach/board-grouper-misc.h>
-#include "board.h"
 #include "board-grouper.h"
-#include "devices.h"
-#include "gpio-names.h"
 
 #define DEFAULT_DRIVE(_name)					\
 	{							\
@@ -586,11 +580,6 @@ static void __init grouper_gpio_init_configure(void)
 
 int __init grouper_pinmux_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-	BUG_ON(board_info.board_id != BOARD_E1565);
-
 	tegra30_default_pinmux();
 
 	grouper_gpio_init_configure();

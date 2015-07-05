@@ -19,22 +19,11 @@
  * 02111-1307, USA
  */
 
-#include <linux/kernel.h>
 #include <linux/platform_device.h>
-#include <linux/input.h>
-#include <linux/device.h>
-#include <linux/gpio.h>
 #include <linux/gpio_keys.h>
 
-#include <mach/irqs.h>
-#include <mach/io.h>
-#include <mach/iomap.h>
 #include <mach/kbc.h>
-#include "board.h"
 #include "board-grouper.h"
-
-#include "gpio-names.h"
-#include "devices.h"
 
 #define GPIO_KEY(_id, _gpio, _iswake)		\
 	{					\
@@ -68,11 +57,6 @@ static struct platform_device grouper_keys_device = {
 
 int __init grouper_keys_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-	BUG_ON(board_info.board_id != BOARD_E1565);
-
 	pr_info("%s: registering gpio keys\n", __func__);
 
 	platform_device_register(&grouper_keys_device);

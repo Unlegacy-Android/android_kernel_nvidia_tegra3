@@ -18,12 +18,10 @@
  */
 
 #include <linux/delay.h>
-#include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/nct1008.h>
 #include <linux/mpu.h>
 #include <linux/regulator/consumer.h>
-#include <linux/slab.h>
 #include <linux/gpio.h>
 #include <mach/edp.h>
 #include <asm/mach-types.h>
@@ -31,7 +29,6 @@
 #ifdef CONFIG_VIDEO_MI1040
 #include <media/yuv_sensor.h>
 #endif
-#include "board.h"
 #include "board-grouper.h"
 #include "cpu-tegra.h"
 
@@ -115,7 +112,7 @@ static int grouper_nct1008_init(void)
 
 	/* FIXME: enable irq when throttling is supported */
 	grouper_i2c4_nct1008_board_info[0].irq =
-		gpio_to_irq(GROUPER_TEMP_ALERT_GPIO);
+				gpio_to_irq(GROUPER_TEMP_ALERT_GPIO);
 
 	ret = gpio_request(GROUPER_TEMP_ALERT_GPIO, "temp_alert");
 	if (ret < 0) {

@@ -296,9 +296,10 @@ static void __init uart_debug_init(void)
 	int debug_port_id;
 
 	debug_port_id = uart_console_debug_init(3);
-	if (debug_port_id < 0) {
+	if (debug_port_id < 0)
 		return;
-	} else if (debug_port_id >= ARRAY_SIZE(debug_uarts)) {
+	
+	if (debug_port_id >= ARRAY_SIZE(debug_uarts)) {
 		pr_info("The debug console id %d is invalid, Assuming UARTA",
 			debug_port_id);
 		debug_port_id = 0;
@@ -475,7 +476,6 @@ static struct platform_device *grouper_devices[] __initdata = {
 #ifdef CONFIG_TOUCHSCREEN_ELAN_TF_3K
 // Interrupt pin: TEGRA_GPIO_PH4
 // Reset pin: TEGRA_GPIO_PH6
-// Power pin:
 
 #include <linux/i2c/ektf3k.h>
 
@@ -514,7 +514,7 @@ static int __init grouper_touch_init(void)
 
 #ifdef CONFIG_TOUCHSCREEN_ELAN_TF_3K
 	elan_i2c_devices[0].irq = gpio_to_irq(TEGRA_GPIO_PH4);
-	printk("%s: registering ELAN touchscreen driver\n", __func__);
+	pr_info("%s: registering ELAN touchscreen driver\n", __func__);
 	i2c_register_board_info(1, elan_i2c_devices, 1);
 #endif
 	return 0;
@@ -615,26 +615,22 @@ static void grouper_audio_init(void)
 	grouper_audio_pdata.codec_dai_name = "rt5640-aif1";
 }
 
-unsigned int boot_reason = 0;
 void grouper_booting_info(void)
 {
 	static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	unsigned int boot_reason, reg;
+	unsigned int reg;
 	#define PMC_RST_STATUS_WDT (1)
 	#define PMC_RST_STATUS_SW (3)
 
 	reg = readl(pmc + 0x1b4);
-	printk("%s: reg=%x\n", __func__, reg);
+	pr_info("%s: reg=%x\n", __func__, reg);
 
 	if (reg == PMC_RST_STATUS_SW) {
-		boot_reason = PMC_RST_STATUS_SW;
-		printk("%s: SW reboot\n", __func__);
+		pr_info("%s: SW reboot\n", __func__);
 	} else if (reg == PMC_RST_STATUS_WDT) {
-		boot_reason = PMC_RST_STATUS_WDT;
-		printk("%s: watchdog reboot\n", __func__);
+		pr_info("%s: watchdog reboot\n", __func__);
 	} else {
-		boot_reason = 0;
-		printk("%s: normal\n", __func__);
+		pr_info("%s: normal\n", __func__);
 	}
 }
 

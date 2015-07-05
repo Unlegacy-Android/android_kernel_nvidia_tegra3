@@ -16,15 +16,11 @@
  * 02111-1307, USA
  */
 
-#include <linux/kernel.h>
-#include <linux/init.h>
 #include <linux/gpio.h>
 #include <linux/platform_data/tegra_emc.h>
 
-#include "board.h"
 #include "board-grouper.h"
 #include "tegra3_emc.h"
-#include "fuse.h"
 #include "devices.h"
 
 #include <mach/board-grouper-misc.h>
@@ -2945,44 +2941,25 @@ static struct tegra30_emc_pdata ME370TG_chip_Hynix_0831 = {
 	.num_tables = ARRAY_SIZE(ME370TG_dvfs_table_Hynix_0831)
 };
 
-#include "gpio-names.h"
-
-int __init grouper_emc_init(void)
+static struct tegra30_emc_pdata *grouper_get_emc_data(void)
 {
-	int ret = 0;
+	int err = 0;
 	int mem_bootstrap_ad4 = 0, mem_bootstrap_ad5 = 0;
-	struct tegra30_emc_pdata *emc_platdata = NULL;
 	#define MEMORY_BOOSTRAP_PIN_AD4 TEGRA_GPIO_PG4
 	#define MEMORY_BOOSTRAP_PIN_AD5 TEGRA_GPIO_PG5
 
-	ret = gpio_request(MEMORY_BOOSTRAP_PIN_AD4, "memory_bootstrap_ad4");
-	if (ret < 0) {
-		printk("%s: request MEMORY_BOOSTRAP_PIN_AD4 failed\n", __func__);
-		WARN_ON(1);
-		return 0;
-	}
+	err = gpio_request(MEMORY_BOOSTRAP_PIN_AD4, "memory_bootstrap_ad4");
+	WARN(err < 0, "request MEMORY_BOOSTRAP_PIN_AD4 failed\n");
 
-	ret = gpio_direction_input(MEMORY_BOOSTRAP_PIN_AD4);
-	if (ret < 0) {
-		printk("%s: failed to configure MEMORY_BOOSTRAP_PIN_AD4\n", __func__);
-		WARN_ON(1);
-		return 0;
-	}
+	err = gpio_direction_input(MEMORY_BOOSTRAP_PIN_AD4);
+	WARN(err < 0, "failed to configure MEMORY_BOOSTRAP_PIN_AD4\n");
 	mem_bootstrap_ad4 = gpio_get_value(MEMORY_BOOSTRAP_PIN_AD4);
 
-	ret = gpio_request(MEMORY_BOOSTRAP_PIN_AD5, "memory_bootstrap_ad5");
-	if (ret < 0) {
-		printk("%s: request MEMORY_BOOSTRAP_PIN_AD5 failed\n", __func__);
-		WARN_ON(1);
-		return 0;
-	}
+	err = gpio_request(MEMORY_BOOSTRAP_PIN_AD5, "memory_bootstrap_ad5");
+	WARN(err < 0, "request MEMORY_BOOSTRAP_PIN_AD5 failed\n");
 
-	ret = gpio_direction_input(MEMORY_BOOSTRAP_PIN_AD5);
-	if (ret < 0) {
-		printk("%s: failed to configure MEMORY_BOOSTRAP_PIN_AD4\n", __func__);
-		WARN_ON(1);
-		return 0;
-	}
+	err = gpio_direction_input(MEMORY_BOOSTRAP_PIN_AD5);
+	WARN(err < 0, "failed to configure MEMORY_BOOSTRAP_PIN_AD5\n");
 	mem_bootstrap_ad5 = gpio_get_value(MEMORY_BOOSTRAP_PIN_AD5);
 
 	pr_debug("%s: mem_bootstrap_ad4=%u mem_bootstrap_ad5=%u\n", __func__,
@@ -2990,26 +2967,27 @@ int __init grouper_emc_init(void)
 
 	if (grouper_get_project_id() == GROUPER_PROJECT_NAKASI) {
 		if (!mem_bootstrap_ad4 && !mem_bootstrap_ad5) {
-			emc_platdata = &Nakasi_chip_Elpida_0430;
-			printk("%s: Nakasi_dvfs_Elpida_table_0430\n", __func__);
+			pr_info("%s: %s", __func__, Nakasi_chip_Elpida_0430.description);
+			return &Nakasi_chip_Elpida_0430;
 		} else {
-			emc_platdata = &Nakasi_chip_Hynix_0430;
-			printk("%s: Nakasi_dvfs_Hynix_table_0430\n", __func__);
+			pr_info("%s: %s", __func__, Nakasi_chip_Hynix_0430.description);
+			return &Nakasi_chip_Hynix_0430;
 		}
 	} else {
-			if (!mem_bootstrap_ad4 && !mem_bootstrap_ad5) {
-				emc_platdata = &ME370TG_chip_Elpida_0831;
-				printk("%s: ME370TG_dvfs_table_Elpida_0831\n", __func__);
-			} else {
-				emc_platdata = &ME370TG_chip_Hynix_0831;
-				printk("%s: ME370TG_dvfs_table_Hynix_0831\n", __func__);
-			}
+		if (!mem_bootstrap_ad4 && !mem_bootstrap_ad5) {
+			pr_info("%s: %s", __func__, ME370TG_chip_Elpida_0831.description);
+			return &ME370TG_chip_Elpida_0831;
+		} else {
+			pr_info("%s: %s", __func__, ME370TG_chip_Hynix_0831.description);
+			return &ME370TG_chip_Hynix_0831;
+		}
 	}
+}
 
-	tegra_emc_device.dev.platform_data = emc_platdata;
+int __init grouper_emc_init(void)
+{
+	tegra_emc_device.dev.platform_data = grouper_get_emc_data();
 	platform_device_register(&tegra_emc_device);
-
 	tegra30_init_emc();
-
 	return 0;
 }

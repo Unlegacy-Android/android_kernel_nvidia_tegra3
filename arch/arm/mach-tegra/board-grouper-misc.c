@@ -14,14 +14,11 @@
  * GNU General Public License for more details.
  *
  */
-#include <linux/kernel.h>
-#include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
 #include <linux/module.h>
 
 #include <mach/board-grouper-misc.h>
-#include <mach/pinmux.h>
 #include <mach/pinmux-tegra30.h>
 #include "gpio-names.h"
 #include "fuse.h"
@@ -245,7 +242,7 @@ int __init grouper_misc_init(void)
 	}
 
 	/* print out pcb_id and project_id info */
-	pr_info("%s: pcbid=0x%04x (projectid=0x%02x)\n", __func__,
+	pr_info("%s: pcbid=0x%04x projectid=0x%02x\n", __func__,
 		grouper_get_pcb_id(), grouper_get_project_id());
 
 	return ret;

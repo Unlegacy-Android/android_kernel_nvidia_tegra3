@@ -15,22 +15,16 @@
  *
  */
 
-#include <linux/resource.h>
 #include <linux/platform_device.h>
 #include <linux/wlan_plat.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
-#include <linux/clk.h>
-#include <linux/err.h>
-#include <linux/mmc/host.h>
 
 #include <asm/mach-types.h>
-#include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/sdhci.h>
 
 #include "gpio-names.h"
-#include "board.h"
 #include "board-grouper.h"
 
 #define GROUPER_WLAN_PWR	TEGRA_GPIO_PD4

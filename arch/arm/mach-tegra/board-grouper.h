@@ -20,21 +20,9 @@
 #ifndef _MACH_TEGRA_BOARD_GROUPER_H
 #define _MACH_TEGRA_BOARD_GROUPER_H
 
-#include <mach/gpio.h>
 #include <mach/irqs.h>
 #include <linux/mfd/max77663-core.h>
 #include "gpio-names.h"
-
-/* Processor Board  ID */
-#define BOARD_E1565	0xF41
-
-/* Board Fab version */
-#define BOARD_FAB_A00			0x0
-#define BOARD_FAB_A01			0x1
-#define BOARD_FAB_A02			0x2
-#define BOARD_FAB_A03			0x3
-#define BOARD_FAB_A04			0x4
-#define BOARD_FAB_A05			0x5
 
 /* External peripheral act as gpio */
 /* TPS6591x GPIOs */
@@ -46,25 +34,24 @@
 
 /* MAX77663 GPIO */
 #define MAX77663_GPIO_BASE	TEGRA_NR_GPIOS
-#define MAX77663_GPIO_END	(MAX77663_GPIO_BASE + MAX77663_GPIO_NR)
 
-/* CAMERA RELATED GPIOs on GROUPER */
+/* Camera related GPIOs */
 #define CAM2_LDO_EN_GPIO	TEGRA_GPIO_PR6
 #define CAM2_RST_GPIO		TEGRA_GPIO_PO0
 #define CAM2_RST_GPIO_BACH	TEGRA_GPIO_PBB0
+
 /* Audio-related GPIOs */
 #define TEGRA_GPIO_CDC_IRQ		TEGRA_GPIO_PW3
 #define TEGRA_GPIO_SPKR_EN		-1
 #define TEGRA_GPIO_HP_DET		TEGRA_GPIO_PW2
 #define TEGRA_GPIO_INT_MIC_EN		TEGRA_GPIO_PK3
 #define TEGRA_GPIO_EXT_MIC_EN		TEGRA_GPIO_PK4
+
 /* Tegra Modem related GPIOs */
 #define TEGRA_GPIO_W_DISABLE		TEGRA_GPIO_PDD7
 #define TEGRA_GPIO_MODEM_RSVD1		TEGRA_GPIO_PV0
 #define TEGRA_GPIO_MODEM_RSVD2		TEGRA_GPIO_PH7
 
-/*****************Interrupt tables ******************/
-/* External peripheral act as interrupt controller */
 /* TPS6591x IRQs */
 #define TPS6591X_IRQ_BASE	TEGRA_NR_IRQS
 
@@ -74,44 +61,35 @@
 #define MAX77663_IRQ_ACOK_RISING MAX77663_IRQ_ONOFF_ACOK_RISING
 #define MAX77663_IRQ_ACOK_FALLING MAX77663_IRQ_ONOFF_ACOK_FALLING
 
-/* UART port which is used by bluetooth*/
+/* UART port which is used by bluetooth */
 #define BLUETOOTH_UART_DEV_NAME "/dev/ttyHS2"
 
-int grouper_charge_init(void);
-void __init grouper_regulator_init(void);
-void __init grouper_suspend_init(void);
-int grouper_sdhci_init(void);
-int grouper_pinmux_init(void);
-int grouper_panel_init(void);
-int grouper_sensors_init(void);
-int grouper_keys_init(void);
-int grouper_pins_state_init(void);
-int grouper_emc_init(void);
+int __init grouper_charge_init(void);
+int __init grouper_sdhci_init(void);
+int __init grouper_pinmux_init(void);
+int __init grouper_panel_init(void);
+int __init grouper_sensors_init(void);
+int __init grouper_keys_init(void);
+int __init grouper_pins_state_init(void);
+int __init grouper_emc_init(void);
+int __init touch_init_synaptics_grouper(void);
 void __init grouper_edp_init(void);
-int grouper_ti_regulator_init(void);
-int grouper_ti_suspend_init(void);
-int grouper_ti_edp_init(void);
+void __init grouper_regulator_init(void);
 void __init grouper_tps6591x_regulator_init(void);
 void __init grouper_max77663_regulator_init(void);
+void __init grouper_suspend_init(void);
 void __init grouper_tsensor_init(void);
-int __init touch_init_raydium(int irq_gpio, int reset_gpio, int platform);
-int __init touch_init_synaptics_grouper(void);
 
-#define TOUCH_GPIO_IRQ_RAYDIUM_SPI      TEGRA_GPIO_PZ3
-#define TOUCH_GPIO_RST_RAYDIUM_SPI      TEGRA_GPIO_PN5
+#define SYNAPTICS_ATTN_GPIO		TEGRA_GPIO_PZ3
+#define SYNAPTICS_RESET_GPIO	TEGRA_GPIO_PN5
 
-#define SYNAPTICS_ATTN_GPIO             TEGRA_GPIO_PZ3
-#define SYNAPTICS_RESET_GPIO            TEGRA_GPIO_PN5
+#define GROUPER_TS_ID1		TEGRA_GPIO_PI7
+#define GROUPER_TS_ID2		TEGRA_GPIO_PC7
+#define GROUPER_TS_ID1_PG	TEGRA_PINGROUP_GMI_WAIT
+#define GROUPER_TS_ID2_PG	TEGRA_PINGROUP_GMI_WP_N
 
-#define GROUPER_TS_ID1      TEGRA_GPIO_PI7
-#define GROUPER_TS_ID2      TEGRA_GPIO_PC7
-#define GROUPER_TS_ID1_PG   TEGRA_PINGROUP_GMI_WAIT
-#define GROUPER_TS_ID2_PG   TEGRA_PINGROUP_GMI_WP_N
-
-#define MPU_TYPE_MPU3050	1
-#define MPU_TYPE_MPU6050	2
+/* Invensense MPU Definitions */
 #define MPU_GYRO_NAME		"mpu6050"
-#define MPU_GYRO_TYPE		MPU_TYPE_MPU6050
 #define MPU_GYRO_IRQ_GPIO	TEGRA_GPIO_PX1
 #define MPU_GYRO_ADDR		0x68
 #define MPU_GYRO_BUS_NUM	2
@@ -124,7 +102,7 @@ int __init touch_init_synaptics_grouper(void);
 
 #define GROUPER_TEMP_ALERT_GPIO		TEGRA_GPIO_PS3
 
-#define EN_HSIC_GPIO				TEGRA_GPIO_PR7
+#define EN_HSIC_GPIO			TEGRA_GPIO_PR7
 
 #define XMM_GPIO_BB_ON			TEGRA_GPIO_PX7
 #define XMM_GPIO_BB_RST			TEGRA_GPIO_PU3
@@ -137,7 +115,7 @@ int __init touch_init_synaptics_grouper(void);
 #define XMM_GPIO_BB_VBUS			TEGRA_GPIO_PD2
 #define XMM_GPIO_BB_SW_SEL			TEGRA_GPIO_PP1
 #define XMM_GPIO_IPC_BB_RST_IND		TEGRA_GPIO_PEE1
-#define XMM_GPIO_SIM_CARD_DET			TEGRA_GPIO_PW3
-#define XMM_GPIO_IPC_BB_FORCE_CRASH            TEGRA_GPIO_PN1
+#define XMM_GPIO_SIM_CARD_DET		TEGRA_GPIO_PW3
+#define XMM_GPIO_IPC_BB_FORCE_CRASH		TEGRA_GPIO_PN1
 
 #endif
