@@ -641,4 +641,10 @@ source	"drivers/input/misc/compass/Kconfig"
 source	"drivers/input/misc/mpu/Kconfig"
 source	"drivers/input/misc/pressure/Kconfig"
 
+config INPUT_SOLTEAM_JSA1127
+	tristate "JSA1127 light sensor"
+	depends on I2C
+	help
+	  Say Y here to enable the JSA1127 Ambient Light Sensor.
+
 endif
