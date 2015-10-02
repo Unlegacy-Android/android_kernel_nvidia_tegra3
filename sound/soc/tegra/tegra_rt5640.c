@@ -37,7 +37,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/delay.h>
 #include <linux/edp.h>
-#ifdef CONFIG_SWITCH
+#if defined(CONFIG_SWITCH) && !defined(CONFIG_HEADSET_FUNCTION)
 #include <linux/switch.h>
 #endif
 #include <mach/tegra_asoc_pdata.h>
@@ -83,7 +83,7 @@ struct tegra_rt5640 {
 	struct snd_soc_card *pcard;
 	struct edp_client *spk_edp_client;
 	int gpio_requested;
-#ifdef CONFIG_SWITCH
+#if defined(CONFIG_SWITCH) && !defined(CONFIG_HEADSET_FUNCTION)
 	int jack_status;
 #endif
 	enum snd_soc_bias_level bias_level;
@@ -354,7 +354,7 @@ static struct snd_soc_jack_gpio tegra_rt5640_hp_jack_gpio = {
 	.invert = 1,
 };
 
-#ifdef CONFIG_SWITCH
+#if defined(CONFIG_SWITCH) && !defined(CONFIG_HEADSET_FUNCTION)
 /* These values are copied from Android WiredAccessoryObserver */
 enum headset_state {
 	BIT_NO_HEADSET = 0,
@@ -438,7 +438,7 @@ static struct notifier_block tegra_rt5640_jack_detect_nb = {
 	.notifier_call = tegra_rt5640_jack_notifier,
 };
 #else
-static struct snd_soc_jack_pin tegra_rt5640_hp_jack_pins[] = {
+static struct snd_soc_jack_pin tegra_rt5640_hp_jack_pins[] __maybe_unused = {
 	{
 		.pin = "Headphone Jack",
 		.mask = SND_JACK_HEADPHONE,
@@ -729,6 +729,7 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 		}
 	}
 
+#ifndef CONFIG_HEADSET_FUNCTION
 	if (gpio_is_valid(pdata->gpio_hp_det)) {
 		tegra_rt5640_hp_jack_gpio.gpio = pdata->gpio_hp_det;
 		snd_soc_jack_new(codec, "Headphone Jack", SND_JACK_HEADPHONE,
@@ -746,6 +747,7 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 					&tegra_rt5640_hp_jack_gpio);
 		machine->gpio_requested |= GPIO_HP_DET;
 	}
+#endif
 
 	ret = tegra_asoc_utils_register_ctls(&machine->util_data);
 	if (ret < 0)
@@ -1006,7 +1008,7 @@ static __devinit int tegra_rt5640_driver_probe(struct platform_device *pdev)
 		machine->spk_reg = 0;
 	}
 
-#ifdef CONFIG_SWITCH
+#if defined(CONFIG_SWITCH) && !defined(CONFIG_HEADSET_FUNCTION)
 	/* Addd h2w swith class support */
 	ret = tegra_asoc_switch_register(&tegra_rt5640_headset_switch);
 	if (ret < 0)
@@ -1095,7 +1097,7 @@ static __devinit int tegra_rt5640_driver_probe(struct platform_device *pdev)
 err_unregister_card:
 	snd_soc_unregister_card(card);
 err_unregister_switch:
-#ifdef CONFIG_SWITCH
+#if defined(CONFIG_SWITCH) && !defined(CONFIG_HEADSET_FUNCTION)
 	tegra_asoc_switch_unregister(&tegra_rt5640_headset_switch);
 err_fini_utils:
 #endif
@@ -1144,7 +1146,7 @@ static int __devexit tegra_rt5640_driver_remove(struct platform_device *pdev)
 
 	tegra_asoc_utils_fini(&machine->util_data);
 
-#ifdef CONFIG_SWITCH
+#if defined(CONFIG_SWITCH) && !defined(CONFIG_HEADSET_FUNCTION)
 	tegra_asoc_switch_unregister(&tegra_rt5640_headset_switch);
 #endif
 	kfree(machine);

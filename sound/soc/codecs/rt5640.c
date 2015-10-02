@@ -39,6 +39,11 @@
 dev_err(c->dev, "error: i2c state is 'shutdown'\n"); \
 mutex_unlock(&r->lock); return -ENODEV; } }
 
+#ifdef CONFIG_HEADSET_FUNCTION
+struct snd_soc_codec *rt5640_audio_codec = NULL;
+EXPORT_SYMBOL(rt5640_audio_codec);
+#endif
+
 #ifdef RT5640_DEMO
 struct rt5640_init_reg {
 	u8 reg;
@@ -2805,6 +2810,10 @@ static int rt5640_probe(struct snd_soc_codec *codec)
 		ARRAY_SIZE(rt5640_snd_controls));
 
 	rt5640->codec = codec;
+#ifdef CONFIG_HEADSET_FUNCTION
+	rt5640_audio_codec = codec;
+#endif
+
 	ret = device_create_file(codec->dev, &dev_attr_index_reg);
 	if (ret != 0) {
 		dev_err(codec->dev,

@@ -47,7 +47,7 @@
 #include <linux/usb/audio.h>
 #include <linux/usb/audio-v2.h>
 #include <linux/module.h>
-#ifdef CONFIG_SWITCH
+#if defined(CONFIG_SWITCH) && !defined(CONFIG_HEADSET_FUNCTION)
 #include <linux/switch.h>
 #endif
 
@@ -118,7 +118,7 @@ static DEFINE_MUTEX(register_mutex);
 static struct snd_usb_audio *usb_chip[SNDRV_CARDS];
 static struct usb_driver usb_audio_driver;
 
-#ifdef CONFIG_SWITCH
+#if defined(CONFIG_SWITCH) && !defined(CONFIG_HEADSET_FUNCTION)
 enum switch_state {
 	STATE_CONNECTED_UNKNOWN = -1,
 	STATE_DISCONNECTED = 0,
@@ -538,7 +538,7 @@ snd_usb_audio_probe(struct usb_device *dev,
 		goto __error;
 	}
 
-#ifdef CONFIG_SWITCH
+#if defined(CONFIG_SWITCH) && !defined(CONFIG_HEADSET_FUNCTION)
 	switch_set_state(&usb_switch_dev, STATE_CONNECTED);
 #endif
 
@@ -582,7 +582,7 @@ static void snd_usb_audio_disconnect(struct usb_device *dev,
 	mutex_lock(&register_mutex);
 	chip->num_interfaces--;
 
-#ifdef CONFIG_SWITCH
+#if defined(CONFIG_SWITCH) && !defined(CONFIG_HEADSET_FUNCTION)
 	switch_set_state(&usb_switch_dev, STATE_DISCONNECTED);
 #endif
 
@@ -749,7 +749,7 @@ static int __init snd_usb_audio_init(void)
 		return -EINVAL;
 	}
 
-#ifdef CONFIG_SWITCH
+#if defined(CONFIG_SWITCH) && !defined(CONFIG_HEADSET_FUNCTION)
 	/* Add usb_audio swith class support */
 	err = switch_dev_register(&usb_switch_dev);
 	if (err < 0){
@@ -760,7 +760,7 @@ static int __init snd_usb_audio_init(void)
 
 	err = usb_register(&usb_audio_driver);
 	if (err) {
-#ifdef CONFIG_SWITCH
+#if defined(CONFIG_SWITCH) && !defined(CONFIG_HEADSET_FUNCTION)
 		switch_dev_unregister(&usb_switch_dev);
 #endif
 	}
@@ -770,7 +770,7 @@ static int __init snd_usb_audio_init(void)
 
 static void __exit snd_usb_audio_cleanup(void)
 {
-#ifdef CONFIG_SWITCH
+#if defined(CONFIG_SWITCH) && !defined(CONFIG_HEADSET_FUNCTION)
 	switch_dev_unregister(&usb_switch_dev);
 #endif
 	usb_deregister(&usb_audio_driver);
