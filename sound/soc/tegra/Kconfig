@@ -257,3 +257,7 @@ config SND_SOC_TEGRA_CS42L73
 	  Say Y or M here if you want to add support for SoC audio on Tegra
 	  boards using the CS42L73 codec. Currently, only supported board is
 	  Pluto.
+
+config HEADSET_FUNCTION
+    tristate "Headset detection function"
+    default n
