@@ -771,6 +771,10 @@ static int rt5640_vol_rescale_put(struct snd_kcontrol *kcontrol,
 
 static const struct snd_kcontrol_new rt5640_snd_controls[] = {
 	/* Speaker Output Volume */
+#ifdef CONFIG_MACH_GROUPER
+	SOC_DOUBLE("Speaker Playback Switch", RT5640_SPK_VOL,
+		RT5640_L_MUTE_SFT, RT5640_R_MUTE_SFT, 1, 1),
+#endif
 	SOC_DOUBLE_EXT_TLV("Speaker Playback Volume", RT5640_SPK_VOL,
 		RT5640_L_VOL_SFT, RT5640_R_VOL_SFT, VOL_RESCALE_MIX_RANGE, 0,
 		rt5640_vol_rescale_get, rt5640_vol_rescale_put, out_vol_tlv),
@@ -831,6 +835,10 @@ static const struct snd_kcontrol_new rt5640_snd_controls[] = {
 	/* DMIC */
 	SOC_ENUM_EXT("DMIC Switch", rt5640_dmic_enum,
 		rt5640_dmic_get, rt5640_dmic_put),
+#ifdef CONFIG_MACH_GROUPER
+	SOC_ENUM("ADC IF1 SWITCH", rt5640_if1_adc_enum),
+	SOC_ENUM("DAC IF1 SWITCH", rt5640_if1_dac_enum),
+#endif
 
 #ifdef RT5640_REG_RW
 	{
