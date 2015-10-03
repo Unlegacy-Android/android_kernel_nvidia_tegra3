@@ -2622,10 +2622,6 @@ dhd_wlfc_init(dhd_pub_t *dhd)
 		WLFC_FLAGS_HOST_RXRERODER_ACTIVE : 0;
 		/* WLFC_FLAGS_HOST_PROPTXSTATUS_ACTIVE | WLFC_FLAGS_HOST_RXRERODER_ACTIVE : 0; */
 
-	if (!dhd) {
-		DHD_ERROR(("dhd_wlfc_init(): dhd == NULL\n"));
-		return -ENODEV;
-	}
 
 	/*
 	try to enable/disable signaling by sending "tlv" iovar. if that fails,
