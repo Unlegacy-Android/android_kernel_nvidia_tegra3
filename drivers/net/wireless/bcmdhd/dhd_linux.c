@@ -350,6 +350,7 @@ struct semaphore dhd_registration_sem;
 struct semaphore dhd_init_sem;
 bool init_power_off = TRUE;
 #endif
+struct semaphore dhd_chipup_sem;
 int dhd_registration_check = FALSE;
 
 #define DHD_REGISTRATION_TIMEOUT  12000  /* msec : allowed time to finished dhd registration */
@@ -2838,6 +2839,9 @@ dhd_osl_detach(osl_t *osh)
 #if 1 && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 	dhd_registration_check = FALSE;
 	up(&dhd_registration_sem);
+#if	defined(BCMLXSDMMC)
+	up(&dhd_chipup_sem);
+#endif
 #endif
 }
 
