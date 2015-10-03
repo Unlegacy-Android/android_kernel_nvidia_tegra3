@@ -511,7 +511,7 @@ pci_restore_state(struct pci_dev *dev, u32 *buffer)
 typedef struct {
 	void 	*parent;  /* some external entity that the thread supposed to work for */
 	struct	task_struct *p_task;
-	pid_t 	thr_pid;
+	long 	thr_pid;
 	int 	prio; 
 	struct	semaphore sema;
 	int	terminated;
@@ -556,7 +556,7 @@ typedef struct {
 	(tsk_ctl)->terminated = FALSE; \
 	(tsk_ctl)->p_task  = kthread_run(thread_func, tsk_ctl, (char*)name); \
 	(tsk_ctl)->thr_pid = (tsk_ctl)->p_task->pid; \
-	DBG_THR(("%s thr:%d created\n", __FUNCTION__, (tsk_ctl)->thr_pid)); \
+	DBG_THR(("%s thr:%lx created\n", __FUNCTION__, (tsk_ctl)->thr_pid)); \
 }
 #endif
 
