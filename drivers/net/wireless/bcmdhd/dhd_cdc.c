@@ -2613,21 +2613,19 @@ int
 dhd_wlfc_init(dhd_pub_t *dhd)
 {
 	char iovbuf[12]; /* Room for "tlv" + '\0' + parameter */
-	uint32 tlv;
-
-	if (!dhd) {
-		DHD_ERROR(("dhd_wlfc_init(): dhd == NULL\n"));
-		return -ENODEV;
-	}
-
 	/* enable all signals & indicate host proptxstatus logic is active */
-	tlv = dhd->wlfc_enabled ?
+	uint32 tlv = dhd->wlfc_enabled?
 		WLFC_FLAGS_RSSI_SIGNALS |
 		WLFC_FLAGS_XONXOFF_SIGNALS |
 		WLFC_FLAGS_CREDIT_STATUS_SIGNALS |
 		WLFC_FLAGS_HOST_PROPTXSTATUS_ACTIVE |
 		WLFC_FLAGS_HOST_RXRERODER_ACTIVE : 0;
 		/* WLFC_FLAGS_HOST_PROPTXSTATUS_ACTIVE | WLFC_FLAGS_HOST_RXRERODER_ACTIVE : 0; */
+
+	if (!dhd) {
+		DHD_ERROR(("dhd_wlfc_init(): dhd == NULL\n"));
+		return -ENODEV;
+	}
 
 	/*
 	try to enable/disable signaling by sending "tlv" iovar. if that fails,
@@ -2785,12 +2783,7 @@ void
 dhd_wlfc_deinit(dhd_pub_t *dhd)
 {
 	/* cleanup all psq related resources */
-	athost_wl_status_info_t* wlfc = NULL;
-
-	if (dhd == NULL)
-		return;
-
-	wlfc = (athost_wl_status_info_t*)
+	athost_wl_status_info_t* wlfc = (athost_wl_status_info_t*)
 		dhd->wlfc_state;
 
 	DHD_TRACE(("Enter %s\n", __FUNCTION__));
