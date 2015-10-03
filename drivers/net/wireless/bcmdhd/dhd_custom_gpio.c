@@ -20,7 +20,7 @@
 * software in any way with any other Broadcom software provided under a license
 * other than the GPL, without Broadcom's express prior written consent.
 *
-* $Id: dhd_custom_gpio.c 353167 2012-08-24 22:11:30Z $
+* $Id: dhd_custom_gpio.c 345514 2012-07-18 07:47:36Z $
 */
 
 #include <typedefs.h>
@@ -53,7 +53,7 @@ int wifi_get_irq_number(unsigned long *irq_flags_ptr) { return -1; }
 int wifi_get_mac_addr(unsigned char *buf) { return -1; }
 void *wifi_get_country_code(char *ccode) { return NULL; }
 #endif /* CONFIG_WIFI_CONTROL_FUNC */
-#endif 
+#endif /* CUSTOMER_HW2 */
 
 #if defined(OOB_INTR_ONLY)
 
@@ -112,11 +112,11 @@ int dhd_customer_oob_irq_map(unsigned long *irq_flags_ptr)
 	host_oob_irq = gpio_to_irq(dhd_oob_gpio_num);
 	gpio_direction_input(dhd_oob_gpio_num);
 #endif /* CUSTOMER_HW */
-#endif 
+#endif /* CUSTOMER_HW2 */
 
 	return (host_oob_irq);
 }
-#endif 
+#endif /* defined(OOB_INTR_ONLY) */
 
 /* Customer function to control hw specific wlan gpios */
 void

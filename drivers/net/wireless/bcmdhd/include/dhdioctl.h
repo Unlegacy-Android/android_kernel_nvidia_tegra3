@@ -95,7 +95,6 @@ enum {
 #define DHD_WL_VAL		0x10000
 #define DHD_WL_VAL2		0x20000
 
-
 #ifdef SDTEST
 /* For pktgen iovar */
 typedef struct dhd_pktgen {

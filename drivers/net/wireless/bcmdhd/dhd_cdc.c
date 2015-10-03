@@ -2,13 +2,13 @@
  * DHD Protocol Module for CDC and BDC.
  *
  * Copyright (C) 1999-2012, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- *
+ * 
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,7 +16,7 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- *
+ * 
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -114,13 +114,11 @@ dhdcdc_cmplt(dhd_pub_t *dhd, uint32 id, uint32 len)
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
-
 	do {
 		ret = dhd_bus_rxctl(dhd->bus, (uchar*)&prot->msg, cdc_len);
 		if (ret < 0)
 			break;
 	} while (CDC_IOC_ID(ltoh32(prot->msg.flags)) != id);
-
 
 	return ret;
 }
@@ -213,7 +211,6 @@ done:
 	return ret;
 }
 
-
 static int
 dhdcdc_set_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len, uint8 action)
 {
@@ -236,7 +233,6 @@ dhdcdc_set_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len, uint8
 			__FUNCTION__));
 		return -EIO;
 	}
-
 
 	memset(msg, 0, sizeof(cdc_ioctl_t));
 
@@ -374,112 +370,6 @@ dhd_prot_iovar_op(dhd_pub_t *dhdp, const char *name,
 }
 
 #ifdef PROP_TXSTATUS
-
-#ifdef QUEUE_BW
-#define DHD_WLFC_QUEUE_BW_COMPLETE(entry) dhd_wlfc_queue_bw_complete(entry)
-#define TRANSIT_COUNT(entry) entry->transitallq_count
-
-static void
-dhd_wlfc_queue_bw_reset(wlfc_mac_descriptor_t* entry)
-{
-	entry->transitallq_count = 0;
-	entry->queued_time_cumul = 0;
-	entry->queued_time_cumul_last = 0;
-	entry->queued_time_last = 0;
-	entry->queued_time_last_io = 0;
-}
-
-static void
-dhd_wlfc_queue_bw_complete(wlfc_mac_descriptor_t* entry)
-{
-	uint64 now = QUEUE_BW_SYSUPTIME();
-	entry->transitallq_count--;
-	if ((TRANSIT_COUNT(entry) <= entry->queued_time_thres) &&
-	    (entry->queued_time_last != 0)) {
-		/* Set timestamp when transit packet above a threshold */
-		entry->queued_time_cumul += now - entry->queued_time_last;
-		entry->queued_time_last = 0;
-	}
-	else if (TRANSIT_COUNT(entry) > entry->queued_time_thres) {
-		entry->queued_time_cumul += now - entry->queued_time_last;
-		entry->queued_time_last = now;
-	}
-}
-
-static wlfc_mac_descriptor_t *
-dhd_wlfc_queue_bw_p2p_entry(dhd_pub_t *dhdp)
-{
-	wlfc_mac_descriptor_t* interfaces =
-		((athost_wl_status_info_t*)dhdp->wlfc_state)->destination_entries.interfaces;
-	wlfc_mac_descriptor_t* nodes =
-		((athost_wl_status_info_t*)dhdp->wlfc_state)->destination_entries.nodes;
-	uint8 i, j;
-
-	ASSERT(interfaces != NULL);
-	ASSERT(nodes != NULL);
-
-	for (i = 0; i < WLFC_MAX_IFNUM; i++) {
-		if (!interfaces[i].occupied)
-			continue;
-
-		if (interfaces[i].iftype == WLC_E_IF_ROLE_P2P_CLIENT)
-			return &interfaces[i];
-		else if (interfaces[i].iftype == WLC_E_IF_ROLE_P2P_GO) {
-			for (j = 0; j < WLFC_MAC_DESC_TABLE_SIZE; j++) {
-				if (nodes[j].occupied &&
-				    (nodes[j].iftype == WLC_E_IF_ROLE_P2P_GO))
-				return &nodes[j];
-			}
-		}
-	}
-	return NULL;
-}
-
-int
-dhd_wlfc_queue_bw_iovar_getpercent(dhd_pub_t *dhdp)
-{
-	int percent = 0;
-	wlfc_mac_descriptor_t *entry;
-
-	entry = dhd_wlfc_queue_bw_p2p_entry(dhdp);
-	if (entry) {
-		uint64 queued_time_cumul = entry->queued_time_cumul;
-		uint64 queued_time_last = entry->queued_time_last;
-		uint64 now =  QUEUE_BW_SYSUPTIME();
-		uint64 time_cumul_adjust = 0;
-
-		if (queued_time_last)
-			time_cumul_adjust = now - queued_time_last;
-
-		percent = (uint32)((time_cumul_adjust + queued_time_cumul
-			- entry->queued_time_cumul_last) * 100) /
-			(uint32)(now - entry->queued_time_last_io);
-
-		entry->queued_time_cumul_last = queued_time_cumul + time_cumul_adjust;
-		entry->queued_time_last_io = now;
-	}
-	return percent;
-}
-
-int
-dhd_wlfc_queue_bw_iovar_thres(dhd_pub_t *dhdp, int set, int setval)
-{
-	int val = 0;
-	wlfc_mac_descriptor_t *entry;
-
-	entry = dhd_wlfc_queue_bw_p2p_entry(dhdp);
-	if (entry) {
-		if (set)
-			entry->queued_time_thres = setval;
-		else
-			val = entry->queued_time_thres;
-	}
-	return val;
-}
-#else
-#define DHD_WLFC_QUEUE_BW_COMPLETE(entry)
-#endif /* QUEUE_BW */
-
 void
 dhd_wlfc_dump(dhd_pub_t *dhdp, struct bcmstrbuf *strbuf)
 {
@@ -1484,10 +1374,6 @@ _dhd_wlfc_mac_entry_update(athost_wl_status_info_t* ctx, wlfc_mac_descriptor_t* 
 {
 	int rc = BCME_OK;
 
-#ifdef QUEUE_BW
-	dhd_wlfc_queue_bw_reset(entry);
-#endif
-
 	if (action == eWLFC_MAC_ENTRY_ACTION_ADD) {
 		entry->occupied = 1;
 		entry->state = WLFC_STATE_OPEN;
@@ -1601,19 +1487,6 @@ dhd_wlfc_enque_sendq(void* state, int prec, void* p)
 		PKTFREE(ctx->osh, p, TRUE);
 		return BCME_ERROR;
 	}
-
-#ifdef QUEUE_BW
-	wlfc_mac_descriptor_t* entry =  _dhd_wlfc_find_table_entry(ctx, p);
-	if (entry) {
-		entry->transitallq_count++;
-		if ((TRANSIT_COUNT(entry) > entry->queued_time_thres) &&
-		    (entry->queued_time_last == 0)) {
-			/* Set timestamp when transit packet above a threshold */
-			entry->queued_time_last = QUEUE_BW_SYSUPTIME();
-		}
-	}
-#endif
-
 	ctx->stats.pktin++;
 	/* _dhd_wlfc_flow_control_check(ctx, &ctx->SENDQ, DHD_PKTTAG_IF(PKTTAG(p))); */
 	return BCME_OK;
@@ -2079,7 +1952,6 @@ dhd_wlfc_compressed_txstatus_update(dhd_pub_t *dhd, uint8* pkt_info, uint8 len)
 				/* indicate failure and free the packet */
 				dhd_txcomplete(dhd, pktbuf, FALSE);
 				entry->transit_count--;
-				DHD_WLFC_QUEUE_BW_COMPLETE(entry);
 				/* packet is transmitted Successfully by dongle
 				 * after first suppress.
 				 */
@@ -2098,7 +1970,6 @@ dhd_wlfc_compressed_txstatus_update(dhd_pub_t *dhd, uint8* pkt_info, uint8 len)
 		else {
 			dhd_txcomplete(dhd, pktbuf, TRUE);
 			entry->transit_count--;
-			DHD_WLFC_QUEUE_BW_COMPLETE(entry);
 
 			/* This packet is transmitted Successfully by dongle
 			 * even after first suppress.
@@ -2242,7 +2113,6 @@ dhd_wlfc_txstatus_update(dhd_pub_t *dhd, uint8* pkt_info)
 			/* indicate failure and free the packet */
 			dhd_txcomplete(dhd, pktbuf, FALSE);
 			entry->transit_count--;
-			DHD_WLFC_QUEUE_BW_COMPLETE(entry);
 			/* This packet is transmitted Successfully by
 			 *  dongle even after first suppress.
 			 */
@@ -2260,7 +2130,6 @@ dhd_wlfc_txstatus_update(dhd_pub_t *dhd, uint8* pkt_info)
 	else {
 		dhd_txcomplete(dhd, pktbuf, TRUE);
 		entry->transit_count--;
-		DHD_WLFC_QUEUE_BW_COMPLETE(entry);
 
 		/* This packet is transmitted Successfully by dongle even after first suppress. */
 		if (entry->suppressed) {
@@ -2764,14 +2633,19 @@ dhd_wlfc_cleanup(dhd_pub_t *dhd)
 	/* flush remained pkt in hanger queue, not in bus->txq */
 	for (i = 0; i < h->max_items; i++) {
 		if (h->items[i].state == WLFC_HANGER_ITEM_STATE_INUSE) {
-			PKTFREE(wlfc->osh, h->items[i].pkt, TRUE);
+			if (!dhd->hang_was_sent) {
+				PKTFREE(wlfc->osh, h->items[i].pkt, TRUE);
+			} else {
+				printk("%s: Skip freeing skb %p\n", __func__, h->items[i].pkt);
+			}
 			h->items[i].state = WLFC_HANGER_ITEM_STATE_FREE;
+			h->items[i].pkt = NULL;
+			h->items[i].identifier = 0;
 		} else if (h->items[i].state == WLFC_HANGER_ITEM_STATE_INUSE_SUPPRESSED) {
 			/* These are freed from the psq so no need to free again */
 			h->items[i].state = WLFC_HANGER_ITEM_STATE_FREE;
 		}
 	}
-
 	return;
 }
 
@@ -2789,7 +2663,6 @@ dhd_wlfc_deinit(dhd_pub_t *dhd)
 		dhd_os_wlfc_unblock(dhd);
 		return;
 	}
-
 #ifdef PROP_TXSTATUS_DEBUG
 	{
 		int i;
@@ -2810,8 +2683,6 @@ dhd_wlfc_deinit(dhd_pub_t *dhd)
 	MFREE(dhd->osh, dhd->wlfc_state, sizeof(athost_wl_status_info_t));
 	dhd->wlfc_state = NULL;
 	dhd_os_wlfc_unblock(dhd);
-
-
 	return;
 }
 #endif /* PROP_TXSTATUS */
@@ -2885,7 +2756,7 @@ dhd_prot_hdrpull(dhd_pub_t *dhd, int *ifidx, void *pktbuf, uchar *reorder_buf_in
 #endif
 
 	if (!ifidx) {
-		/* for tx packet, skip the analysis */
+		/* for tx packet, skip the analysis and just exit */
 		data_offset = h->dataOffset;
 		PKTPULL(dhd->osh, pktbuf, BDC_HEADER_LEN);
 		goto exit;
@@ -2939,7 +2810,6 @@ dhd_prot_hdrpull(dhd_pub_t *dhd, int *ifidx, void *pktbuf, uchar *reorder_buf_in
 		dhd_os_wlfc_unblock(dhd);
 	}
 #endif /* PROP_TXSTATUS */
-
 exit:
 #if !defined(NDIS630)
 		PKTPULL(dhd->osh, pktbuf, (data_offset << 2));
@@ -2961,7 +2831,6 @@ dhd_wlfc_trigger_pktcommit(dhd_pub_t *dhd)
 	}
 }
 #endif
-
 
 int
 dhd_prot_attach(dhd_pub_t *dhd)

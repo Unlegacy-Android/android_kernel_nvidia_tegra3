@@ -133,15 +133,6 @@ typedef struct wlfc_mac_descriptor {
 	uint suppress_count;
     uint8 suppressed;
 
-#ifdef QUEUE_BW       
-	uint32	transitallq_count;
-	uint32  queued_time_thres;
-	uint64  queued_time_cumul;
-	uint64  queued_time_cumul_last;
-	uint64  queued_time_last;
-	uint64  queued_time_last_io;
-#endif /* QUEUE_BW */
-
 #ifdef PROP_TXSTATUS_DEBUG
 	uint32 dstncredit_sent_packets;
 	uint32 dstncredit_acks;

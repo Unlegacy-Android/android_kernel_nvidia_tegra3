@@ -2,13 +2,13 @@
  * Broadcom Dongle Host Driver (DHD), common DHD core.
  *
  * Copyright (C) 1999-2012, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- *
+ * 
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,12 +16,12 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- *
+ * 
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_common.c 386753 2013-02-21 20:37:53Z $
+ * $Id: dhd_common.c 375022 2012-12-17 06:11:41Z $
  */
 #include <typedefs.h>
 #include <osl.h>
@@ -134,10 +134,6 @@ enum {
 #ifdef PROP_TXSTATUS
 	IOV_PROPTXSTATUS_ENABLE,
 	IOV_PROPTXSTATUS_MODE,
-#ifdef QUEUE_BW
-	IOV_QUEUED_TIME_THRES,
-	IOV_QUEUED_TIME_PERCENT,
-#endif /* QUEUE_BW */
 #endif
 	IOV_BUS_TYPE,
 #ifdef WLMEDIA_HTSF
@@ -177,10 +173,6 @@ const bcm_iovar_t dhd_iovars[] = {
 	2 - Use explicit credit
 	*/
 	{"ptxmode",	IOV_PROPTXSTATUS_MODE,	0,	IOVT_UINT32,	0 },
-#ifdef QUEUE_BW
-	{"qtime_thres",	IOV_QUEUED_TIME_THRES,	0,	IOVT_UINT32,	0 },
-	{"qtime_percent", IOV_QUEUED_TIME_PERCENT, 0,	IOVT_UINT32,	0 },
-#endif /* QUEUE_BW */
 #endif
 	{"bustype", IOV_BUS_TYPE, 0, IOVT_UINT32, 0},
 #ifdef WLMEDIA_HTSF
@@ -208,7 +200,6 @@ dhd_common_init(osl_t *osh)
 #ifdef SOFTAP
 	fw_path2[0] = '\0';
 #endif
-	DHD_ERROR(("bcmdhd: fw_path: %s nvram_path: %s\n", fw_path, nv_path));
 }
 
 static int
@@ -291,7 +282,6 @@ dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifindex, wl_ioctl_t *ioc, void *buf, int le
 		dhd_os_check_hang(dhd_pub, ifindex, ret);
 
 	dhd_os_proto_unblock(dhd_pub);
-
 
 	return ret;
 }
@@ -479,22 +469,6 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 			wlfc->proptxstatus_mode = int_val & 0xff;
 		}
 		break;
-
-#ifdef QUEUE_BW
-	case IOV_GVAL(IOV_QUEUED_TIME_THRES):
-		int_val = dhd_wlfc_queue_bw_iovar_thres(dhd_pub, FALSE, int_val);
-		bcopy(&int_val, arg, val_size);
-		break;
-
-	case IOV_SVAL(IOV_QUEUED_TIME_THRES):
-		dhd_wlfc_queue_bw_iovar_thres(dhd_pub, TRUE, int_val);
-		break;
-
-	case IOV_GVAL(IOV_QUEUED_TIME_PERCENT):
-		int_val = dhd_wlfc_queue_bw_iovar_getpercent(dhd_pub);
-		bcopy(&int_val, arg, val_size);
-		break;
-#endif /* QUEUE_BW */
 #endif /* PROP_TXSTATUS */
 
 	case IOV_GVAL(IOV_BUS_TYPE):
@@ -1048,13 +1022,6 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 	case WLC_E_IF:
 		{
 		dhd_if_event_t *ifevent = (dhd_if_event_t *)event_data;
-
-		/* Ignore the event if NOIF is set */
-		if (ifevent->flags & WLC_E_IF_FLAGS_BSSCFG_NOIF) {
-			WLFC_DBGMESG(("WLC_E_IF: NO_IF set, event Ignored\r\n"));
-			return (BCME_OK);
-		}
-
 #ifdef PROP_TXSTATUS
 			{
 		uint8* ea = pvt_data->eth.ether_dhost;
@@ -1138,7 +1105,7 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 		memcpy((void *)(&pvt_data->event.event_type), &temp,
 		       sizeof(pvt_data->event.event_type));
 	}
-#endif
+#endif 
 		/* These are what external supplicant/authenticator wants */
 		/* fall through */
 	case WLC_E_LINK:
@@ -1218,6 +1185,7 @@ dhd_print_buf(void *pbuf, int len, int bytes_per_line)
 	printf("\n");
 #endif /* DHD_DEBUG */
 }
+
 #ifndef strtoul
 #define strtoul(nptr, endptr, base) bcm_strtoul((nptr), (endptr), (base))
 #endif

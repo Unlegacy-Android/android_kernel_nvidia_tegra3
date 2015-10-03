@@ -26,4 +26,4 @@
 
 #ifndef _bcm_cfg_h_
 #define _bcm_cfg_h_
-#endif /* _bcm_cfg_h_ */
+#endif 

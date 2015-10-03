@@ -23,7 +23,7 @@
  *
  * Dependencies: proto/bcmeth.h
  *
- * $Id: bcmevent.h 386753 2013-02-21 20:37:53Z $
+ * $Id: bcmevent.h 374275 2012-12-12 11:44:18Z $
  *
  */
 
@@ -309,9 +309,6 @@ typedef struct wl_event_data_if {
 #define WLC_E_IF_ADD		1	/* bsscfg add */
 #define WLC_E_IF_DEL		2	/* bsscfg delete */
 #define WLC_E_IF_CHANGE		3	/* bsscfg role change */
-
-/* WLC_E_IF flag */
-#define WLC_E_IF_FLAGS_BSSCFG_NOIF	0x1	/* no host I/F creation needed */
 
 /* I/F role code in WLC_E_IF event */
 #define WLC_E_IF_ROLE_STA		0	/* Infra STA */

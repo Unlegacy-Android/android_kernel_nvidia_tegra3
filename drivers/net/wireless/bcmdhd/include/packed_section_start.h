@@ -38,10 +38,7 @@
  */
 
 
-/* Error check - BWL_PACKED_SECTION is defined in packed_section_start.h
- * and undefined in packed_section_end.h. If it is already defined at this
- * point, then there is a missing include of packed_section_end.h.
- */
+
 #ifdef BWL_PACKED_SECTION
 	#error "BWL_PACKED_SECTION is already defined!"
 #else
@@ -51,7 +48,7 @@
 
 
 
-/* Declare compiler-specific directives for structure packing. */
+
 #if defined(__GNUC__) || defined(__lint)
 	#define	BWL_PRE_PACKED_STRUCT
 	#define	BWL_POST_PACKED_STRUCT	__attribute__ ((packed))

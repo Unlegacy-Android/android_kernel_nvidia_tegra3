@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: siutils.c 384898 2013-02-13 14:20:11Z $
+ * $Id: siutils.c 347632 2012-07-27 11:00:35Z $
  */
 
 #include <bcm_cfg.h>
@@ -106,7 +106,7 @@ si_kattach(osl_t *osh)
 	static bool ksii_attached = FALSE;
 
 	if (!ksii_attached) {
-		void *regs = NULL;
+		void *regs;
 		regs = REG_MAP(SI_ENUM_BASE, SI_CORE_SIZE);
 
 		if (si_doattach(&ksii, BCM4710_DEVICE_ID, osh, regs,
@@ -1240,7 +1240,7 @@ si_clkctl_init(si_t *sih)
 	chipcregs_t *cc;
 	bool fast;
 
-	if (sih == NULL || !CCCTL_ENAB(sih))
+	if (!CCCTL_ENAB(sih))
 		return;
 
 	sii = SI_INFO(sih);
@@ -1249,10 +1249,8 @@ si_clkctl_init(si_t *sih)
 		origidx = sii->curidx;
 		if ((cc = (chipcregs_t *)si_setcore(sih, CC_CORE_ID, 0)) == NULL)
 			return;
-	} else {
-		cc = (chipcregs_t *)CCREGS_FAST(sii);
-	}
-
+	} else if ((cc = (chipcregs_t *)CCREGS_FAST(sii)) == NULL)
+		return;
 	ASSERT(cc != NULL);
 
 	/* set all Instaclk chip ILP to 1 MHz */

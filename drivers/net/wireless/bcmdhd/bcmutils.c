@@ -20,7 +20,7 @@
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
- * $Id: bcmutils.c 384898 2013-02-13 14:20:11Z $
+ * $Id: bcmutils.c 312855 2012-02-04 02:01:18Z $
  */
 
 #include <bcm_cfg.h>
@@ -1625,8 +1625,11 @@ bcm_format_flags(const bcm_bit_desc_t *bd, uint32 flags, char* buf, int len)
 	}
 
 	/* indicate the str was too short */
-	if (flags != 0)
+	if (flags != 0) {
+		if (len < 2)
+			p -= 2 - len;	/* overwrite last char */
 		p += snprintf(p, 2, ">");
+	}
 
 	return (int)(p - buf);
 }
