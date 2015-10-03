@@ -2,8 +2,6 @@
  *
  * Copyright (C) 2010 Google, Inc.
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
- *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -28,7 +26,7 @@
  * N seconds apart, where N is 1 << bucket index.
  */
 #define BUCKET_MAX 10
-#define BUFFSIZE (30 * BUCKET_MAX + 22)
+
 /* Track network activity frequency */
 static unsigned long activity_stats[BUCKET_MAX];
 static ktime_t last_transmit;
@@ -69,13 +67,7 @@ static int activity_stats_read_proc(char *page, char **start, off_t off,
 	char *p = page;
 
 	/* Only print if offset is 0, or we have enough buffer space */
-
-	if (off != 0) {
-		*eof = 1;
-		return 0;
-	}
-
-	else if (count < BUFFSIZE)
+	if (off || count < (30 * BUCKET_MAX + 22))
 		return -ENOMEM;
 
 	len = snprintf(p, count, "Min Bucket(sec) Count\n");

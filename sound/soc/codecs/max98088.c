@@ -2115,7 +2115,7 @@ static int max98088_probe(struct snd_soc_codec *codec)
                ret = -ENODEV;
                goto err_access;
        }
-       dev_info(codec->dev, "revision %c\n", ret + 'A');
+       dev_info(codec->dev, "revision %c\n", ret - 0x40 + 'A');
 
        if (max98088->irq) {
                /* register an audio interrupt */
