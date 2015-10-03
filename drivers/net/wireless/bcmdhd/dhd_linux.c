@@ -346,10 +346,6 @@ module_param(op_mode, int, 0644);
 extern int wl_control_wl_start(struct net_device *dev);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 struct semaphore dhd_registration_sem;
-#if defined(WL_CFG80211)
-struct semaphore dhd_init_sem;
-bool init_power_off = TRUE;
-#endif
 struct semaphore dhd_chipup_sem;
 int dhd_registration_check = FALSE;
 
@@ -2716,15 +2712,6 @@ dhd_open(struct net_device *net)
 		atomic_set(&dhd->pend_8021x_cnt, 0);
 #if defined(WL_CFG80211)
 		DHD_ERROR(("\n%s\n", dhd_version));
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
-		/*
-		 * if we are here before powering off the chip
-		 * in init, put a request of not powering off
-		 */
-		down(&dhd_init_sem);
-		init_power_off = FALSE;
-		up(&dhd_init_sem);
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
 		if (!dhd_download_fw_on_driverload) {
 			ret = wl_android_wifi_on(net);
 			if (ret != 0) {
@@ -4383,9 +4370,6 @@ dhd_module_init(void)
 
 #if 1 && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 	sema_init(&dhd_registration_sem, 0);
-#if defined(WL_CFG80211)
-	sema_init(&dhd_init_sem, 1);
-#endif
 #endif
 	error = dhd_bus_register();
 
@@ -4411,15 +4395,7 @@ dhd_module_init(void)
 	}
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
 #if defined(WL_CFG80211)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
-	down(&dhd_init_sem);
-	if (init_power_off)
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
-		wl_android_post_init();
-	/* init is done, allow open to continue */
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
-	up(&dhd_init_sem);
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
+	wl_android_post_init();
 #endif /* defined(WL_CFG80211) */
 
 	return error;
