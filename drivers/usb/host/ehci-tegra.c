@@ -27,6 +27,9 @@
 
 #include <mach/usb_phy.h>
 #include <mach/iomap.h>
+#ifdef CONFIG_MACH_GROUPER
+#include <mach/board-grouper-misc.h>
+#endif
 #include <linux/pm_qos.h>
 
 #if 0
@@ -36,6 +39,9 @@
 #endif
 
 static const char driver_name[] = "tegra-ehci";
+#ifdef CONFIG_MACH_GROUPER
+extern void baseband_xmm_ap_resume_work(void);
+#endif
 
 #define TEGRA_USB_DMA_ALIGN 32
 
@@ -645,6 +651,10 @@ static int tegra_ehci_resume(struct platform_device *pdev)
 {
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
 	struct tegra_usb_platform_data *pdata = dev_get_platdata(&pdev->dev);
+#ifdef CONFIG_MACH_GROUPER
+	if (grouper_get_project_id() == GROUPER_PROJECT_NAKASI_3G)
+		baseband_xmm_ap_resume_work();
+#endif
 	if (pdata->u_data.host.turn_off_vbus_on_lp0 && pdata->port_otg)
 		tegra_usb_enable_vbus(tegra->phy, true);
 	return tegra_usb_phy_power_on(tegra->phy);

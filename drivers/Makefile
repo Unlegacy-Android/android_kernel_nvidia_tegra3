@@ -138,3 +138,7 @@ obj-$(CONFIG_HYPERV)		+= hv/
 
 obj-$(CONFIG_PM_DEVFREQ)	+= devfreq/
 obj-$(CONFIG_EXTCON)		+= extcon/
+
+# ASUS customized RIL drivers
+obj-$(CONFIG_RIL)		+= ril/
+

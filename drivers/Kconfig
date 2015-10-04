@@ -144,4 +144,6 @@ source "drivers/devfreq/Kconfig"
 
 source "drivers/extcon/Kconfig"
 
+source "drivers/ril/Kconfig"
+
 endmenu

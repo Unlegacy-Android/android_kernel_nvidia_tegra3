@@ -2284,6 +2284,7 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 	}
 }
 
+#ifndef CONFIG_MACH_GROUPER
 static int hsic_rail_enable(struct tegra_usb_phy *phy)
 {
 	int ret;
@@ -2324,11 +2325,13 @@ static int hsic_rail_disable(struct tegra_usb_phy *phy)
 
 	return 0;
 }
+#endif
 
 static int uhsic_phy_open(struct tegra_usb_phy *phy)
 {
 	unsigned long parent_rate;
 	int i;
+#ifndef CONFIG_MACH_GROUPER
 	int ret;
 
 	phy->hsic_reg = NULL;
@@ -2337,6 +2340,7 @@ static int uhsic_phy_open(struct tegra_usb_phy *phy)
 		pr_err("%s avdd_hsic could not be enabled\n", __func__);
 		return ret;
 	}
+#endif
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 	parent_rate = clk_get_rate(clk_get_parent(phy->pllu_clk));
@@ -2358,14 +2362,18 @@ static int uhsic_phy_open(struct tegra_usb_phy *phy)
 
 static void uhsic_phy_close(struct tegra_usb_phy *phy)
 {
+#ifndef CONFIG_MACH_GROUPER
 	int ret;
+#endif
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 	uhsic_powerdown_pmc_wake_detect(phy);
 
+#ifndef CONFIG_MACH_GROUPER
 	ret = hsic_rail_disable(phy);
 	if (ret < 0)
 		pr_err("%s avdd_hsic could not be disabled\n", __func__);
+#endif
 }
 
 static int uhsic_phy_irq(struct tegra_usb_phy *phy)
