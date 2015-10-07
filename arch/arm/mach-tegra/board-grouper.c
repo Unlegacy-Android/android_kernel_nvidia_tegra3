@@ -259,8 +259,8 @@ static void grouper_i2c_init(void)
 		nfc_pdata.firm_gpio = TEGRA_GPIO_PP3;
 		grouper_nfc_board_info[0].addr = (0x2A);
 		grouper_nfc_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PS7);
-	}
-	grouper_nfc_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PX0);
+	} else
+		grouper_nfc_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PX0);
 	i2c_register_board_info(2, grouper_nfc_board_info, 1);
 }
 
