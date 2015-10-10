@@ -8,7 +8,6 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/i2c.h>
-#include <linux/earlysuspend.h>
 #include <linux/err.h>
 #include <linux/mutex.h>
 #include <linux/delay.h>
@@ -18,9 +17,8 @@
 #include <linux/device.h>
 #include <linux/slab.h>
 #include <linux/switch.h>
-#include <asm/gpio.h>
-
-#include "include/mach/board-grouper-misc.h"
+#include <linux/gpio.h>
+#include <mach/board-grouper-misc.h>
 
 MODULE_DESCRIPTION("SMSC Proximity Sensor CAP1106 Driver");
 MODULE_LICENSE("GPL");
@@ -505,7 +503,6 @@ static ssize_t store_sensor_recal(struct device *dev, struct device_attribute *a
 {
     struct i2c_client *client = to_i2c_client(dev);
     struct cap1106_data *data = i2c_get_clientdata(client);
-    long value;
 
     PROX_DEBUG("\n");
 
@@ -693,7 +690,7 @@ static irqreturn_t cap1106_interrupt_handler(int irq, void *dev)
 static int cap1106_config_irq(struct i2c_client *client)
 {
     int rc = 0 ;
-    unsigned gpio = irq_to_gpio(client->irq);
+    unsigned int gpio = gpio_get_value(SAR_DET_3G_PR3);
     const char* label = "cap1106_alert";
 
     PROX_DEBUG("\n");
@@ -817,7 +814,7 @@ static int __devinit cap1106_probe(struct i2c_client *client, const struct i2c_d
 
     /* Touch data processing workqueue initialization */
     INIT_DELAYED_WORK(&prox_data->work, cap1106_work_function);
-    INIT_DELAYED_WORK(&prox_data->checking_work,cap1106_checking_work_function);
+    INIT_DELAYED_WORK(&prox_data->checking_work, cap1106_checking_work_function);
 
     i2c_set_clientdata(client, prox_data);
     prox_data->client->flags = 0;
@@ -931,9 +928,6 @@ static int __init cap1106_init(void)
         PROX_ERROR("i2c_add_driver failed!\n");
         goto err_i2c_add_driver_failed;
     }
-
-    tegra_gpio_enable(SAR_DET_3G_PR3);
-    tegra_gpio_disable(SAR_DET_3G_PS5);
 
     PROX_INFO("Driver intialization done, SAR_DET_3G_PR3=%d", gpio_get_value(SAR_DET_3G_PR3));
 
