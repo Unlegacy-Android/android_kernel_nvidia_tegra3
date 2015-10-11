@@ -154,7 +154,7 @@ static struct regulator_consumer_supply tps6591x_ldo8_supply_0[] = {
 		.init_apply = _init_apply,				\
 		.ectrl = _ectrl,					\
 		.flags = _flags,					\
-		/* .shutdown_state_off = _off,	*/			\
+		.shutdown_state_off = _off,			\
 	};
 
 TPS_PDATA_INIT(vdd1, skubit0_1, 600,  1500, 0, 1, 1, 0, -1, 0, 0, EXT_CTRL_SLEEP_OFF, 0, true);
