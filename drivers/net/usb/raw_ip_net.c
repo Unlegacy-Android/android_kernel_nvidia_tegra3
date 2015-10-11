@@ -59,8 +59,7 @@ static unsigned long usb_net_raw_ip_intf[MAX_INTFS] = { 3, 5, 9, 11, 13};
 unsigned long usb_net_raw_ip_rx_debug;
 unsigned long usb_net_raw_ip_tx_debug;
 
-/* max_intfs should not be changed at runtime */
-module_param(max_intfs, int, S_IRUGO);
+module_param(max_intfs, int, 0644);
 MODULE_PARM_DESC(max_intfs, "usb net (raw-ip) - max. interfaces supported");
 module_param(usb_net_raw_ip_rx_debug, ulong, 0644);
 MODULE_PARM_DESC(usb_net_raw_ip_rx_debug, "usb net (raw-ip) - rx debug");
@@ -1032,7 +1031,7 @@ static int usb_net_raw_ip_init(void)
 	int err;
 	char name[32];
 
-	pr_debug("usb_net_raw_ip_init { max_intfs %d\n", max_intfs);
+	pr_debug("usb_net_raw_ip_init {\n");
 
 	err = usb_register(&baseband_usb_driver);
 	if (err < 0) {
