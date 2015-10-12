@@ -234,7 +234,7 @@ static struct tegra_dc_mode grouper_panel_modes[] = {
 };
 
 static struct tegra_dc_sd_settings grouper_sd_settings = {
-	.enable = 1, /* enabled by default. */
+	.enable = 0, /* disabled by default. */
 	.use_auto_pwm = false,
 	.hw_update_delay = 0,
 	.bin_width = -1,
