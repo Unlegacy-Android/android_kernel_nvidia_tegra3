@@ -639,6 +639,15 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 	info->var.activate		= FB_ACTIVATE_VBL;
 	info->var.height		= tegra_dc_get_out_height(dc);
 	info->var.width			= tegra_dc_get_out_width(dc);
+#ifdef CONFIG_MACH_GROUPER
+	info->var.pixclock		= 0;
+	info->var.left_margin		= 0;
+	info->var.right_margin		= 0;
+	info->var.upper_margin		= 0;
+	info->var.lower_margin		= 0;
+	info->var.hsync_len		= 0;
+	info->var.vsync_len		= 0;
+#endif
 
 	win->x.full = dfixed_const(0);
 	win->y.full = dfixed_const(0);
