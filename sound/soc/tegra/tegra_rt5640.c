@@ -377,6 +377,7 @@ static int tegra_rt5640_jack_notifier(struct notifier_block *self,
 	enum headset_state state = BIT_NO_HEADSET;
 	unsigned char status_jack = 0;
 
+#ifndef CONFIG_SND_SOC_RT5642
 	if (jack == &tegra_rt5640_hp_jack) {
 		if (action) {
 			/* Enable ext mic; enable signal is active-low */
@@ -415,6 +416,7 @@ static int tegra_rt5640_jack_notifier(struct notifier_block *self,
 			machine->jack_status &= ~SND_JACK_MICROPHONE;
 		}
 	}
+#endif
 
 	switch (machine->jack_status) {
 	case SND_JACK_HEADPHONE:
@@ -495,6 +497,7 @@ static void tegra_speaker_throttle(unsigned int new_state,  void *priv_data)
 
 }
 
+#ifndef CONFIG_SND_SOC_RT5642
 static int tegra_rt5640_event_int_spk(struct snd_soc_dapm_widget *w,
 					struct snd_kcontrol *k, int event)
 {
@@ -624,12 +627,21 @@ static int tegra_rt5640_event_ext_mic(struct snd_soc_dapm_widget *w,
 
 	return 0;
 }
+#endif
 
 static const struct snd_soc_dapm_widget tegra_rt5640_dapm_widgets[] = {
+#ifdef CONFIG_SND_SOC_RT5642
+	SND_SOC_DAPM_SPK("Int Spk", NULL),
+	SND_SOC_DAPM_HP("Headphone Jack", NULL),
+	SND_SOC_DAPM_MIC("Mic Jack", NULL),
+	SND_SOC_DAPM_MIC("Int Mic", NULL),
+	SND_SOC_DAPM_SPK("AUX", NULL),
+#else
 	SND_SOC_DAPM_SPK("Int Spk", tegra_rt5640_event_int_spk),
 	SND_SOC_DAPM_HP("Headphone Jack", tegra_rt5640_event_hp),
 	SND_SOC_DAPM_MIC("Mic Jack", tegra_rt5640_event_ext_mic),
 	SND_SOC_DAPM_MIC("Int Mic", tegra_rt5640_event_int_mic),
+#endif
 };
 
 static const struct snd_soc_dapm_route tegra_rt5640_audio_map[] = {
@@ -639,15 +651,26 @@ static const struct snd_soc_dapm_route tegra_rt5640_audio_map[] = {
 	{"Int Spk", NULL, "SPORN"},
 	{"Int Spk", NULL, "SPOLP"},
 	{"Int Spk", NULL, "SPOLN"},
+#ifndef CONFIG_SND_SOC_RT5642
 	{"micbias1", NULL, "Mic Jack"},
 	{"IN1P", NULL, "micbias1"},
 	{"IN1N", NULL, "micbias1"},
 	{"micbias1", NULL, "Int Mic"},
 	{"IN2P", NULL, "micbias1"},
+#endif
 	{"DMIC L1", NULL, "Int Mic"},
+#ifndef CONFIG_SND_SOC_RT5642
 	{"DMIC L2", NULL, "Int Mic"},
+#endif
 	{"DMIC R1", NULL, "Int Mic"},
+#ifndef CONFIG_SND_SOC_RT5642
 	{"DMIC R2", NULL, "Int Mic"},
+#else
+	{"micbias2", NULL, "Mic Jack"},
+	{"MIC2", NULL, "micbias2"},
+	{"AUX", NULL, "LOUTL"},
+	{"AUX", NULL, "LOUTR"},
+#endif
 };
 
 static const struct snd_soc_dapm_route tegra_rt5640_no_micbias_audio_map[] = {
@@ -670,6 +693,9 @@ static const struct snd_kcontrol_new tegra_rt5640_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Headphone Jack"),
 	SOC_DAPM_PIN_SWITCH("Mic Jack"),
 	SOC_DAPM_PIN_SWITCH("Int Mic"),
+#ifdef CONFIG_SND_SOC_RT5642
+	SOC_DAPM_PIN_SWITCH("AUX"),
+#endif
 };
 
 static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
@@ -678,11 +704,14 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_card *card = codec->card;
 	struct tegra_rt5640 *machine = snd_soc_card_get_drvdata(card);
+#ifndef CONFIG_SND_SOC_RT5642
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
+#endif
 	int ret;
 
 	codec_rt = codec;
 
+#ifndef CONFIG_SND_SOC_RT5642
 	if (gpio_is_valid(pdata->gpio_spkr_en)) {
 		ret = gpio_request(pdata->gpio_spkr_en, "spkr_en");
 		if (ret) {
@@ -748,6 +777,10 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 		machine->gpio_requested |= GPIO_HP_DET;
 	}
 #endif
+#else
+	machine->bias_level = SND_SOC_BIAS_STANDBY;
+	machine->clock_enabled = 1;
+#endif
 
 	ret = tegra_asoc_utils_register_ctls(&machine->util_data);
 	if (ret < 0)
@@ -757,6 +790,13 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_nc_pin(dapm, "LOUTL");
 	snd_soc_dapm_nc_pin(dapm, "LOUTR");
 
+#ifdef CONFIG_SND_SOC_RT5642
+	snd_soc_dapm_disable_pin(dapm, "Headphone Jack");
+	snd_soc_dapm_disable_pin(dapm, "Int Spk");
+	snd_soc_dapm_disable_pin(dapm, "Mic Jack");
+	snd_soc_dapm_disable_pin(dapm, "Int Mic");
+	snd_soc_dapm_disable_pin(dapm, "AUX");
+#endif
 	snd_soc_dapm_sync(dapm);
 
 	return 0;
@@ -988,6 +1028,7 @@ static __devinit int tegra_rt5640_driver_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_free_machine;
 
+#ifndef CONFIG_SND_SOC_RT5642
 	machine->bias_level = SND_SOC_BIAS_STANDBY;
 	machine->clock_enabled = 1;
 
@@ -1014,6 +1055,7 @@ static __devinit int tegra_rt5640_driver_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_fini_utils;
 #endif
+#endif
 
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
@@ -1023,14 +1065,22 @@ static __devinit int tegra_rt5640_driver_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
 			ret);
+#ifndef CONFIG_SND_SOC_RT5642
 		goto err_unregister_switch;
+#else
+		goto err_fini_utils;
+#endif
 	}
 
 	if (!card->instantiated) {
 		ret = -ENODEV;
 		dev_err(&pdev->dev, "sound card not instantiated (%d)\n",
 			ret);
+#ifndef CONFIG_SND_SOC_RT5642
 		goto err_unregister_card;
+#else
+		goto err_fini_utils;
+#endif
 	}
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
@@ -1096,9 +1146,13 @@ static __devinit int tegra_rt5640_driver_probe(struct platform_device *pdev)
 
 err_unregister_card:
 	snd_soc_unregister_card(card);
+#ifndef CONFIG_SND_SOC_RT5642
 err_unregister_switch:
 #if defined(CONFIG_SWITCH) && !defined(CONFIG_HEADSET_FUNCTION)
 	tegra_asoc_switch_unregister(&tegra_rt5640_headset_switch);
+ err_fini_utils:
+#endif
+#else
 err_fini_utils:
 #endif
 	tegra_asoc_utils_fini(&machine->util_data);

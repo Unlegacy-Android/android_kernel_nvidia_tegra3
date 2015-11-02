@@ -99,7 +99,8 @@ snd-soc-wm9712-objs := wm9712.o
 snd-soc-wm9713-objs := wm9713.o
 snd-soc-wm-hubs-objs := wm_hubs.o
 snd-soc-rt5639-objs := rt5639.o rt56xx_ioctl.o rt5639_ioctl.o
-snd-soc-rt5640-objs := rt5640.o
+snd-soc-rt5640-objs := rt5640.o rt56xx_ioctl.o
+snd-soc-rt5640-dsp-objs := rt5640-dsp.o
 
 # Amp
 snd-soc-max9877-objs := max9877.o
@@ -207,6 +208,7 @@ obj-$(CONFIG_SND_SOC_WM9713)	+= snd-soc-wm9713.o
 obj-$(CONFIG_SND_SOC_WM_HUBS)	+= snd-soc-wm-hubs.o
 obj-$(CONFIG_SND_SOC_RT5639)	+= snd-soc-rt5639.o
 obj-$(CONFIG_SND_SOC_RT5640)	+= snd-soc-rt5640.o
+obj-$(CONFIG_SND_SOC_RT5642)	+= snd-soc-rt5640-dsp.o
 
 # Amp
 obj-$(CONFIG_SND_SOC_MAX9877)	+= snd-soc-max9877.o
