@@ -27,8 +27,13 @@
 #include <linux/cpu.h>
 #include <linux/sched.h>
 #include <linux/tick.h>
+#include <linux/sched.h>
+#include <linux/kthread.h>
+#include <linux/input.h>
 #include <asm/cputime.h>
 
+/* default timeout for core lock down */
+#define DEFAULT_CORE_LOCK_PERIOD 200000 /* 200 ms */
 #define CPUNAMELEN 8
 
 typedef enum {
@@ -50,9 +55,29 @@ struct idle_info {
 	u64 timestamp;
 };
 
+struct cpuquiet_balanced_core_lock {
+	struct pm_qos_request qos_min_req;
+	struct pm_qos_request qos_max_req;
+	struct task_struct *lock_task;
+	struct work_struct unlock_work;
+	struct timer_list unlock_timer;
+	int request_active;
+	int init;
+	unsigned long lock_period;
+	unsigned int core_lock_count;
+	struct mutex mutex;
+};
+
+struct cpuquiet_balanced_inputopen {
+	struct input_handle *handle;
+	struct work_struct inputopen_work;
+};
+
 static DEFINE_PER_CPU(struct idle_info, idleinfo);
 static DEFINE_PER_CPU(unsigned int, cpu_load);
 
+static struct cpuquiet_balanced_core_lock core_lock;
+static struct cpuquiet_balanced_inputopen inputopen;
 static struct timer_list load_timer;
 static bool load_timer_active;
 
@@ -64,10 +89,184 @@ static unsigned long up_delay;
 static unsigned long down_delay;
 static unsigned long last_change_time;
 static unsigned int  load_sample_rate = 20; /* msec */
+static unsigned int  core_lock_count;
+static unsigned long core_lock_period;
+static unsigned int  core_lock_trigger;
 static struct workqueue_struct *balanced_wq;
+static struct workqueue_struct *cpu_unlock_wq;
+static struct workqueue_struct *inputopen_wq;
 static struct delayed_work balanced_work;
 static BALANCED_STATE balanced_state;
 static struct kobject *balanced_kobject;
+
+static void cpuquiet_balanced_core_lock_timer(unsigned long data)
+{
+	queue_work(cpu_unlock_wq, &core_lock.unlock_work);
+}
+
+static void cpuquiet_balanced_unlock_cores(struct work_struct *wq)
+{
+	struct cpuquiet_balanced_core_lock *cl =
+		container_of(wq, struct cpuquiet_balanced_core_lock,
+				unlock_work);
+
+	mutex_lock(&cl->mutex);
+
+	if (--cl->request_active) {
+		goto done;
+	}
+
+	pm_qos_update_request(&cl->qos_min_req,
+			PM_QOS_MIN_ONLINE_CPUS_DEFAULT_VALUE);
+
+	pm_qos_update_request(&cl->qos_max_req,
+			PM_QOS_MAX_ONLINE_CPUS_DEFAULT_VALUE);
+
+done:
+	mutex_unlock(&cl->mutex);
+}
+
+/* Lock down to whatever # of cores online
+ * right now.
+ *
+ * A pm_qos request for 1 online CPU results in
+ * an instant cluster switch.
+ */
+static void cpuquiet_balanced_lock_cores(void)
+{
+	unsigned int ncpus;
+
+	mutex_lock(&core_lock.mutex);
+
+	if (core_lock.request_active) {
+		goto arm_timer;
+	}
+
+	ncpus = num_online_cpus();
+
+	if (core_lock.core_lock_count) {
+		if (ncpus < core_lock.core_lock_count) {
+			pr_debug("%s: num_online_cpus %d < core_lock_count %d, overriding\n",
+				 __func__,
+				 ncpus,
+				 core_lock.core_lock_count);
+			ncpus = core_lock.core_lock_count;
+		}
+		pr_debug("%s: forcing %d cores online for %lu ns\n",
+			 __func__,
+			 ncpus,
+			 core_lock.lock_period);
+	}
+	else {
+		pr_debug("%s: forcing %d already-online cores online for %lu ns\n",
+			 __func__,
+			 ncpus,
+			 core_lock.lock_period);
+	}
+
+	pm_qos_update_request(&core_lock.qos_min_req, ncpus);
+	pm_qos_update_request(&core_lock.qos_max_req, ncpus);
+	core_lock.request_active++;
+
+arm_timer:
+	mod_timer(&core_lock.unlock_timer,
+			jiffies + usecs_to_jiffies(core_lock.lock_period));
+
+	mutex_unlock(&core_lock.mutex);
+}
+
+static int cpuquiet_balanced_lock_cores_task(void *data)
+{
+	while(1) {
+		cpuquiet_balanced_lock_cores();
+		set_current_state(TASK_INTERRUPTIBLE);
+		schedule();
+	}
+	return 0;
+}
+
+static void cpuquiet_balanced_input_event(struct input_handle *handle,
+					    unsigned int type,
+					    unsigned int code, int value)
+{
+	if (core_lock_trigger && type == EV_SYN && code == SYN_REPORT) {
+		wake_up_process(core_lock.lock_task);
+	}
+}
+
+static void cpuquiet_balanced_input_open(struct work_struct *w)
+{
+	struct cpuquiet_balanced_inputopen *io =
+		container_of(w, struct cpuquiet_balanced_inputopen,
+			     inputopen_work);
+	int error;
+
+	error = input_open_device(io->handle);
+	if (error)
+		input_unregister_handle(io->handle);
+}
+
+static int cpuquiet_balanced_input_connect(struct input_handler *handler,
+					     struct input_dev *dev,
+					     const struct input_device_id *id)
+{
+	struct input_handle *handle;
+	int error;
+
+	pr_info("%s: connect to %s\n", __func__, dev->name);
+	handle = kzalloc(sizeof(struct input_handle), GFP_KERNEL);
+	if (!handle)
+		return -ENOMEM;
+
+	handle->dev = dev;
+	handle->handler = handler;
+	handle->name = "cpuquiet_balanced";
+
+	error = input_register_handle(handle);
+	if (error)
+		goto err;
+
+	inputopen.handle = handle;
+	queue_work(inputopen_wq, &inputopen.inputopen_work);
+	return 0;
+err:
+	kfree(handle);
+	return error;
+}
+
+static void cpuquiet_balanced_input_disconnect(struct input_handle *handle)
+{
+	input_close_device(handle);
+	input_unregister_handle(handle);
+	kfree(handle);
+}
+
+static const struct input_device_id cpuquiet_balanced_ids[] = {
+	{
+		.flags = INPUT_DEVICE_ID_MATCH_EVBIT |
+			 INPUT_DEVICE_ID_MATCH_ABSBIT,
+		.evbit = { BIT_MASK(EV_ABS) },
+		.absbit = { [BIT_WORD(ABS_MT_POSITION_X)] =
+			    BIT_MASK(ABS_MT_POSITION_X) |
+			    BIT_MASK(ABS_MT_POSITION_Y) },
+	}, /* multi-touch touchscreen */
+	{
+		.flags = INPUT_DEVICE_ID_MATCH_KEYBIT |
+			 INPUT_DEVICE_ID_MATCH_ABSBIT,
+		.keybit = { [BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH) },
+		.absbit = { [BIT_WORD(ABS_X)] =
+			    BIT_MASK(ABS_X) | BIT_MASK(ABS_Y) },
+	}, /* touchpad */
+	{ },
+};
+
+static struct input_handler cpuquiet_balanced_input_handler = {
+	.event          = cpuquiet_balanced_input_event,
+	.connect        = cpuquiet_balanced_input_connect,
+	.disconnect     = cpuquiet_balanced_input_disconnect,
+	.name           = "cpuquiet_balanced",
+	.id_table       = cpuquiet_balanced_ids,
+};
 
 static void calculate_load_timer(unsigned long data)
 {
@@ -424,13 +623,48 @@ static void core_bias_callback (struct cpuquiet_attribute *attr)
 	}
 }
 
+static void core_lock_count_callback (struct cpuquiet_attribute *attr)
+{
+	unsigned long val;
+	if (attr) {
+		val = (*((unsigned int*)(attr->param)));
+		if (val >= 0 &&
+			val <= num_possible_cpus()) {
+			core_lock.core_lock_count = val;
+			core_lock_count = val;
+		}
+		else {	//Revert the change due to invalid range
+			core_lock_count = core_lock.core_lock_count;
+		}
+	}
+}
+
+static void core_lock_period_callback (struct cpuquiet_attribute *attr)
+{
+	unsigned long val;
+	if (attr) {
+		val = (*((unsigned long*)(attr->param)));
+		if (val > 0) {
+			core_lock.lock_period = val;
+			core_lock_period = val;
+		}
+		else {	//Revert the change due to invalid range
+			core_lock_period = core_lock.lock_period;
+		}
+	}
+}
+
 CPQ_BASIC_ATTRIBUTE(balance_level, 0644, uint);
 CPQ_BASIC_ATTRIBUTE(idle_bottom_freq, 0644, uint);
 CPQ_BASIC_ATTRIBUTE(idle_top_freq, 0644, uint);
 CPQ_BASIC_ATTRIBUTE(load_sample_rate, 0644, uint);
+CPQ_BASIC_ATTRIBUTE(core_lock_trigger, 0644, uint);
 CPQ_ATTRIBUTE(core_bias, 0644, uint, core_bias_callback);
 CPQ_ATTRIBUTE(up_delay, 0644, ulong, delay_callback);
 CPQ_ATTRIBUTE(down_delay, 0644, ulong, delay_callback);
+CPQ_ATTRIBUTE(core_lock_count, 0644, uint, core_lock_count_callback);
+CPQ_ATTRIBUTE(core_lock_period, 0644, ulong, core_lock_period_callback);
+
 
 static struct attribute *balanced_attributes[] = {
 	&balance_level_attr.attr,
@@ -440,6 +674,9 @@ static struct attribute *balanced_attributes[] = {
 	&down_delay_attr.attr,
 	&load_sample_rate_attr.attr,
 	&core_bias_attr.attr,
+	&core_lock_count_attr.attr,
+	&core_lock_period_attr.attr,
+	&core_lock_trigger_attr.attr,
 	NULL,
 };
 
@@ -488,6 +725,19 @@ static void balanced_stop(void)
 	del_timer(&load_timer);
 
 	kobject_put(balanced_kobject);
+
+	if (core_lock.init) {
+		mutex_lock(&core_lock.mutex);
+		input_unregister_handler(&cpuquiet_balanced_input_handler);
+		flush_work(&inputopen.inputopen_work);
+		destroy_workqueue(cpu_unlock_wq);
+		pm_qos_remove_request(&core_lock.qos_min_req);
+		pm_qos_remove_request(&core_lock.qos_max_req);
+		kthread_stop(core_lock.lock_task);
+		put_task_struct(core_lock.lock_task);
+		mutex_unlock(&core_lock.mutex);
+	}
+	core_lock.init = false;
 }
 
 static int balanced_start(void)
@@ -495,6 +745,7 @@ static int balanced_start(void)
 	int err, count;
 	struct cpufreq_frequency_table *table;
 	struct cpufreq_freqs initial_freq;
+	struct sched_param param = { .sched_priority = MAX_RT_PRIO-1 };
 
 	err = balanced_sysfs();
 	if (err)
@@ -502,10 +753,13 @@ static int balanced_start(void)
 
 	balanced_wq = alloc_workqueue("cpuquiet-balanced",
 			WQ_UNBOUND | WQ_RESCUER | WQ_FREEZABLE, 1);
-	if (!balanced_wq)
+	inputopen_wq = create_workqueue("cqbalanced-lock");
+	cpu_unlock_wq = create_workqueue("cqbalanced-lock");
+	if (!balanced_wq || !cpu_unlock_wq || !inputopen_wq)
 		return -ENOMEM;
 
 	INIT_DELAYED_WORK(&balanced_work, balanced_work_func);
+	INIT_WORK(&inputopen.inputopen_work, cpuquiet_balanced_input_open);
 
 	up_delay = msecs_to_jiffies(100);
 	down_delay = msecs_to_jiffies(2000);
@@ -525,9 +779,42 @@ static int balanced_start(void)
 	cpufreq_register_notifier(&balanced_cpufreq_nb,
 		CPUFREQ_TRANSITION_NOTIFIER);
 
+	if(input_register_handler(&cpuquiet_balanced_input_handler))
+		pr_warn("%s: failed to register input handler\n", __func__);
+
 	init_timer(&load_timer);
 	load_timer.function = calculate_load_timer;
 
+	pm_qos_add_request(&core_lock.qos_min_req, PM_QOS_MIN_ONLINE_CPUS,
+			PM_QOS_MIN_ONLINE_CPUS_DEFAULT_VALUE);
+
+	pm_qos_add_request(&core_lock.qos_max_req, PM_QOS_MAX_ONLINE_CPUS,
+			PM_QOS_MAX_ONLINE_CPUS_DEFAULT_VALUE);
+
+	init_timer(&core_lock.unlock_timer);
+	core_lock.unlock_timer.function = cpuquiet_balanced_core_lock_timer;
+	core_lock.unlock_timer.data = 0;
+
+	core_lock.request_active = 0;
+	core_lock.lock_period = DEFAULT_CORE_LOCK_PERIOD;
+	core_lock_period = DEFAULT_CORE_LOCK_PERIOD;
+	core_lock.core_lock_count = 0; /* defaults to num_online_cpus() */
+	core_lock_count = 0;
+	core_lock_trigger = 0;
+	mutex_init(&core_lock.mutex);
+
+	core_lock.lock_task = kthread_create(cpuquiet_balanced_lock_cores_task, NULL,
+						"kbalanced_lockcores");
+
+	if (IS_ERR(core_lock.lock_task))
+		return PTR_ERR(core_lock.lock_task);
+
+	sched_setscheduler_nocheck(core_lock.lock_task, SCHED_FIFO, &param);
+	get_task_struct(core_lock.lock_task);
+
+	INIT_WORK(&core_lock.unlock_work, cpuquiet_balanced_unlock_cores);
+
+	core_lock.init = true;
 	/*FIXME: Kick start the state machine by faking a freq notification*/
 	initial_freq.new = cpufreq_get(0);
 	if (initial_freq.new != 0)
