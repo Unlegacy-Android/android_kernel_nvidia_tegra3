@@ -345,6 +345,18 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 	struct input_dev *input = bdata->input;
 	unsigned int type = button->type ?: EV_KEY;
 	int state = (gpio_get_value_cansleep(button->gpio) ? 1 : 0) ^ button->active_low;
+	static int prev_state = 0;
+
+	if (button->code == KEY_POWER) {
+		if (!prev_state && (prev_state == state)) {
+			pr_debug("gpio_keys: Reported KEY_POWER pressed event\n");
+			input_event(input, type, button->code, 1);
+			input_sync(input);
+		}
+		prev_state = state;
+		pr_debug("gpio_keys: KEY_POWER %s\n",
+			state ? "pressed" : "released");
+	}
 
 	if (type == EV_ABS) {
 		if (state)
@@ -828,9 +840,6 @@ static int gpio_keys_resume(struct device *dev)
 			if (wakeup_key == bdata->button->code)
 				gpio_keys_gpio_report_wake(bdata);
 		}
-
-		if (gpio_is_valid(bdata->button->gpio))
-			gpio_keys_gpio_report_event(bdata);
 	}
 	input_sync(ddata->input);
 
