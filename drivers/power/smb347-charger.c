@@ -113,7 +113,7 @@
 
 /* Functions declaration */
 static int smb347_configure_charger(struct i2c_client *client, int value);
-extern int battery_callback(unsigned usb_cable_state);
+extern int bq27541_battery_callback(unsigned usb_cable_state);
 /* Enable or disable the callback for the battery driver. */
 #define TOUCH_CALLBACK_ENABLED
 #ifdef TOUCH_CALLBACK_ENABLED
@@ -873,7 +873,7 @@ static void cable_type_detect(struct work_struct *dat)
 		printk(KERN_INFO "INOK=H\n");
 		charger->cur_cable_type = non_cable;
 		smb347_set_InputCurrentlimit(client, 900);
-		battery_callback(non_cable);
+		bq27541_battery_callback(non_cable);
 #ifdef TOUCH_CALLBACK_ENABLED
                touch_callback(non_cable);
 #endif
@@ -884,7 +884,7 @@ static void cable_type_detect(struct work_struct *dat)
 		SMB_NOTICE("Reg39 : 0x%02x\n", retval);
 		if (!(retval & DCIN_OV_UV_STS) && !gpio_get_value(dock_in)) {
 			SMB_NOTICE("DC_IN\n");
-			battery_callback(ac_cable);
+			bq27541_battery_callback(ac_cable);
 		} else {
 
 			/* cable type dection */
@@ -899,20 +899,20 @@ static void cable_type_detect(struct work_struct *dat)
 					if (retval == APSD_CDP) {
 						printk(KERN_INFO "Cable: CDP\n");
 						charger->cur_cable_type = ac_cable;
-						battery_callback(ac_cable);
+						bq27541_battery_callback(ac_cable);
 #ifdef TOUCH_CALLBACK_ENABLED
 	                                    touch_callback(ac_cable);
 #endif
 					} else if (retval == APSD_DCP) {
 						printk(KERN_INFO "Cable: DCP\n");
 						charger->cur_cable_type = ac_cable;
-						battery_callback(ac_cable);
+						bq27541_battery_callback(ac_cable);
 #ifdef TOUCH_CALLBACK_ENABLED
 	                                    touch_callback(ac_cable);
 #endif
 					} else if (retval == APSD_OTHER) {
 						charger->cur_cable_type = ac_cable;
-						battery_callback(ac_cable);
+						bq27541_battery_callback(ac_cable);
 #ifdef TOUCH_CALLBACK_ENABLED
 	                                   touch_callback(ac_cable);
 #endif
@@ -920,7 +920,7 @@ static void cable_type_detect(struct work_struct *dat)
 					} else if (retval == APSD_SDP) {
 						printk(KERN_INFO "Cable: SDP\n");
 						charger->cur_cable_type = usb_cable;
-						battery_callback(usb_cable);
+						bq27541_battery_callback(usb_cable);
 #ifdef TOUCH_CALLBACK_ENABLED
 	                                    touch_callback(usb_cable);
 #endif
@@ -932,7 +932,7 @@ static void cable_type_detect(struct work_struct *dat)
 							printk(KERN_INFO "Use usb det %s cable to report\n",
 								(usb_det_cable_type == ac_cable) ? "ac" : "usb");
 							charger->cur_cable_type = usb_det_cable_type;
-							battery_callback(usb_det_cable_type);
+							bq27541_battery_callback(usb_det_cable_type);
 						}
 					}
 				} else {

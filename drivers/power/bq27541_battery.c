@@ -442,7 +442,7 @@ fail:
 	return ret;
 }
 
-int battery_callback(unsigned usb_cable_state)
+int bq27541_battery_callback(unsigned usb_cable_state)
 {
 	int old_cable_status;
 
@@ -487,7 +487,7 @@ int battery_callback(unsigned usb_cable_state)
 
 	return 1;
 }
-EXPORT_SYMBOL(battery_callback);
+EXPORT_SYMBOL(bq27541_battery_callback);
 
 static int bq27541_get_health(enum power_supply_property psp,
 	union power_supply_propval *val)
@@ -693,7 +693,7 @@ static int bq27541_get_capacity(union power_supply_propval *val)
 				bq27541_device->cap_zero_count = 0;
 				bq27541_device->shutdown_disable = 1;
 				BAT_NOTICE("cheat cable out to shutdown system !!!\n");
-				battery_callback(0);
+				bq27541_battery_callback(0);
 			//}
 		}
 	} else {
