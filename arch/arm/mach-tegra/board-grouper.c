@@ -216,7 +216,7 @@ static struct tegra_i2c_platform_data grouper_i2c5_platform_data = {
 
 static struct i2c_board_info cardhu_i2c4_bq27541_board_info[] = {
 	{
-		I2C_BOARD_INFO("bq27541-battery", 0x55),
+		I2C_BOARD_INFO("bq27541", 0x55),
 	}
 };
 

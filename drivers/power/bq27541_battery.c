@@ -905,7 +905,7 @@ static int bq27541_shutdown(struct device *dev)
 }
 
 static const struct i2c_device_id bq27541_id[] = {
-	{ "bq27541-battery", 0 },
+	{ "bq27541", 0 },
 	{},
 };
 
