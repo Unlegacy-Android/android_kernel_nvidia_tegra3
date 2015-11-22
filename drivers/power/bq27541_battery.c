@@ -880,29 +880,28 @@ static int bq27541_remove(struct i2c_client *client)
 	return 0;
 }
 
-#if defined (CONFIG_PM)
-static int bq27541_suspend(struct i2c_client *client, pm_message_t state)
+static int bq27541_suspend(struct device *dev)
 {
 	cancel_delayed_work_sync(&bq27541_device->status_poll_work);
-	flush_workqueue(battery_work_queue);;
+	flush_workqueue(battery_work_queue);
+
 	return 0;
 }
 
 /* any smbus transaction will wake up pad */
-static int bq27541_resume(struct i2c_client *client)
+static int bq27541_resume(struct device *dev)
 {
 	cancel_delayed_work(&bq27541_device->status_poll_work);
-	queue_delayed_work(battery_work_queue,&bq27541_device->status_poll_work, 5*HZ);
+	queue_delayed_work(battery_work_queue, &bq27541_device->status_poll_work, 5 * HZ);
 
 	return 0;
 }
-#endif
 
-static void bq27541_shutdown(struct i2c_client *client)
+static int bq27541_shutdown(struct device *dev)
 {
-	BAT_NOTICE("+\n");
 	bq27541_device->shutdown_disable = 0;
-	BAT_NOTICE("-\n");
+
+	return 0;
 }
 
 static const struct i2c_device_id bq27541_id[] = {
@@ -910,17 +909,21 @@ static const struct i2c_device_id bq27541_id[] = {
 	{},
 };
 
-static struct i2c_driver bq27541_battery_driver = {
-	.probe	= bq27541_probe,
-	.remove 	= bq27541_remove,
-#if defined (CONFIG_PM)
+static const struct dev_pm_ops bq27541_pm_ops = {
 	.suspend	= bq27541_suspend,
-	.resume 	= bq27541_resume,
-	.shutdown = bq27541_shutdown,
-#endif
+	.resume		= bq27541_resume,
+	.poweroff	= bq27541_shutdown,
+};
+
+static struct i2c_driver bq27541_battery_driver = {
+	.probe		= bq27541_probe,
+	.remove 	= bq27541_remove,
 	.id_table	= bq27541_id,
 	.driver = {
-		.name = "bq27541-battery",
+		.name	= "bq27541-battery",
+#ifdef CONFIG_PM
+		.pm		= &bq27541_pm_ops,
+#endif
 	},
 };
 static int __init bq27541_battery_init(void)
