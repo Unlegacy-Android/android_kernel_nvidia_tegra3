@@ -410,7 +410,7 @@ EXPORT_SYMBOL_GPL(tty_ldisc_flush);
  *	prevent the ldisc driver from re-using stale information for
  *	the new ldisc instance.
  *
- *	Locking: takes termios_rwsem
+ *	Locking: takes termios_mutex
  */
 
 static void tty_set_termios_ldisc(struct tty_struct *tty, int num)
