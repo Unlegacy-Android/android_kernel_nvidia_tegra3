@@ -214,15 +214,45 @@ static struct tegra_i2c_platform_data grouper_i2c5_platform_data = {
 	.arb_recovery = arb_lost_recovery,
 };
 
-static struct i2c_board_info cardhu_i2c4_bq27541_board_info[] = {
+static struct i2c_board_info grouper_i2c4_bq27541_board_info[] = {
 	{
 		I2C_BOARD_INFO("bq27541", 0x55),
 	}
 };
 
+static char *grouper_battery[] = {
+	"battery",
+};
+
+static struct smb347_charger_platform_data smb347_charger_pdata = {
+	.battery_info = {
+		.name		= "ME370",
+		.technology	= POWER_SUPPLY_TECHNOLOGY_LION,
+		.voltage_max_design	= 4200000,
+		.voltage_min_design	= 3500000,
+	},
+	.max_charge_current	= 1800000,
+	.max_charge_voltage	= 4500000,
+	.usb_hc_current_limit	= 900000,
+	.soft_cold_temp_limit	= SMB347_TEMP_USE_DEFAULT,
+	.soft_hot_temp_limit	= 40,
+	.hard_cold_temp_limit	= SMB347_TEMP_USE_DEFAULT,
+	.hard_hot_temp_limit	= 45,
+	.suspend_on_hard_temp_limit = true,
+	.use_mains		= true,
+	.use_usb		= true,
+	.use_usb_otg		= true,
+	.irq_gpio		= TEGRA_GPIO_PV1,
+	.enable_control		= SMB347_CHG_ENABLE_SW,
+	.usb_mode_pin_ctrl	= true,
+	.supplied_to		= grouper_battery,
+	.num_supplicants	= ARRAY_SIZE(grouper_battery),
+};
+
 static struct i2c_board_info grouper_i2c4_smb347_board_info[] = {
 	{
 		I2C_BOARD_INFO("smb347", 0x6a),
+		.platform_data = &smb347_charger_pdata,
 	},
 };
 
@@ -244,14 +274,14 @@ static void grouper_i2c_init(void)
 	platform_device_register(&tegra_i2c_device2);
 	platform_device_register(&tegra_i2c_device1);
 
+	i2c_register_board_info(4, grouper_i2c4_bq27541_board_info,
+		ARRAY_SIZE(grouper_i2c4_bq27541_board_info));
+
 	i2c_register_board_info(4, grouper_i2c4_smb347_board_info,
 		ARRAY_SIZE(grouper_i2c4_smb347_board_info));
 
 	rt5640_board_info.irq = gpio_to_irq(TEGRA_GPIO_CDC_IRQ);
 	i2c_register_board_info(4, &rt5640_board_info, 1);
-
-	i2c_register_board_info(4, cardhu_i2c4_bq27541_board_info,
-		ARRAY_SIZE(cardhu_i2c4_bq27541_board_info));
 
 	if (grouper_get_project_id() == GROUPER_PROJECT_NAKASI_3G) {
 		nfc_pdata.irq_gpio = TEGRA_GPIO_PS7;
