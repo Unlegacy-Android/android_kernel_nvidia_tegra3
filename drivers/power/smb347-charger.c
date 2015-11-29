@@ -850,7 +850,7 @@ static int smb347_irq_init(struct smb347_charger *smb)
 	ret = request_threaded_irq(irq, NULL, smb347_interrupt,
 				   pdata->disable_stat_interrupts ?
 				   IRQF_TRIGGER_RISING | IRQF_ONESHOT :
-				   IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+				   IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING | IRQF_ONESHOT,
 				   smb->client->name, smb);
 	if (ret < 0)
 		goto fail_gpio;
