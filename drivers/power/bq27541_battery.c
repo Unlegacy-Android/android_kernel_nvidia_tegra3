@@ -63,6 +63,8 @@
 #define BATT_STS_FC			0x0200
 #define BATT_STS_CHG_INH			0x0800
 
+#define BATT_TEMP_LIMIT		45
+
 /* Global variable */
 unsigned battery_cable_status = 0;
 unsigned battery_driver_ready = 0;
@@ -79,9 +81,9 @@ struct workqueue_struct *battery_work_queue = NULL;
 static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,union power_supply_propval *val);
 static int bq27541_get_property(struct power_supply *psy,
 	enum power_supply_property psp, union power_supply_propval *val);
+int bq27541_battery_callback(unsigned usb_cable_state);
+extern void touch_callback(unsigned cable_status);
 //extern unsigned  get_usb_cable_status(void);
-extern int smb347_charger_enable(bool enable);
-extern int smb347_config_thermal_charging(int temp);
 
 module_param(battery_current, uint, 0644);
 module_param(battery_remaining_capacity, uint, 0644);
@@ -193,6 +195,39 @@ static char *supply_list[] = {
 #endif
 };
 
+static void charger_enable(int enable) {
+	struct power_supply *smb = power_supply_get_by_name("smb347-battery");
+	union power_supply_propval prop_charge_enabled;
+
+	if (!smb)
+		return;
+
+	prop_charge_enabled.intval = enable;
+
+	smb->set_property(smb, POWER_SUPPLY_PROP_CHARGE_ENABLED, &prop_charge_enabled);
+}
+
+static void bq27541_external_power_changed(struct power_supply *psy)
+{
+
+	struct power_supply *smb_usb = power_supply_get_by_name("smb347-usb");
+	struct power_supply *smb_ac = power_supply_get_by_name("smb347-mains");
+	union power_supply_propval usb_online, ac_online;
+
+	if (!smb_usb || !smb_ac)
+		return;
+
+	smb_usb->get_property(smb_usb, POWER_SUPPLY_PROP_ONLINE, &usb_online);
+	smb_ac->get_property(smb_ac, POWER_SUPPLY_PROP_ONLINE, &ac_online);
+
+	if (usb_online.intval)
+		bq27541_battery_callback(USB_Cable);
+	else if (ac_online.intval)
+		bq27541_battery_callback(USB_AC_Adapter);
+	else
+		bq27541_battery_callback(USB_NO_Cable);
+}
+
 static struct power_supply bq27541_supply[] = {
 	{
 		.name		= "battery",
@@ -200,6 +235,7 @@ static struct power_supply bq27541_supply[] = {
 		.properties	= bq27541_properties,
 		.num_properties = ARRAY_SIZE(bq27541_properties),
 		.get_property	= bq27541_get_property,
+		.external_power_changed = bq27541_external_power_changed,
        },
 	{
 		.name		= "ac",
@@ -358,16 +394,25 @@ static int bq27541_battery_current(void)
 
 static void battery_status_poll(struct work_struct *work)
 {
-       struct bq27541_device_info *batt_dev = container_of(work, struct bq27541_device_info, status_poll_work.work);
+	struct bq27541_device_info *batt_dev = container_of(work, struct bq27541_device_info, status_poll_work.work);
+	static bool batt_overheat = false;
 
 	if (!battery_driver_ready)
 		pr_warning("bq27541: %s: battery driver not ready\n", __func__);
 
-	power_supply_changed(&bq27541_supply[Charger_Type_Battery]);
+	if ((ac_on || usb_on) && (bq27541_device->old_temperature / 10 > BATT_TEMP_LIMIT) && !batt_overheat) {
+		charger_enable(0);
+		batt_overheat = true;
+		dev_info(&bq27541_device->client->dev,
+					"battery temperature too high, disabling charging\n");
+	} else if (batt_overheat) {
+		charger_enable(1);
+		batt_overheat = false;
+		dev_info(&bq27541_device->client->dev,
+					"temperature reduced, enabling charging\n");
+	}
 
-	if (!bq27541_device->temp_err)
-		if (ac_on || usb_on)
-			smb347_config_thermal_charging(bq27541_device->old_temperature/10);
+	power_supply_changed(&bq27541_supply[Charger_Type_Battery]);
 
 	/* Schedule next polling */
 	queue_delayed_work(battery_work_queue, &batt_dev->status_poll_work, bat_check_interval*HZ);
@@ -456,6 +501,8 @@ int bq27541_battery_callback(unsigned usb_cable_state)
 	}
 	check_cabe_type();
 
+	touch_callback(battery_cable_status);
+
 	if(!battery_cable_status) {
 		if (old_cable_status == USB_AC_Adapter) {
 			power_supply_changed(&bq27541_supply[Charger_Type_AC]);
@@ -467,11 +514,11 @@ int bq27541_battery_callback(unsigned usb_cable_state)
 		#endif
 	}
 	#ifndef REMOVE_USB_POWER_SUPPLY
-	else if (battery_cable_status == USB_Cable) {
+	else if (battery_cable_status == USB_Cable && old_cable_status != USB_Cable) {
 		power_supply_changed(&bq27541_supply[Charger_Type_USB]);
 	}
 	#endif
-	else if (battery_cable_status == USB_AC_Adapter) {
+	else if (battery_cable_status == USB_AC_Adapter && old_cable_status != USB_AC_Adapter) {
 		power_supply_changed(&bq27541_supply[Charger_Type_AC]);
 	}
 	cancel_delayed_work(&bq27541_device->status_poll_work);
@@ -479,7 +526,6 @@ int bq27541_battery_callback(unsigned usb_cable_state)
 
 	return 1;
 }
-EXPORT_SYMBOL(bq27541_battery_callback);
 
 static int bq27541_get_health(enum power_supply_property psp,
 	union power_supply_propval *val)
@@ -513,7 +559,7 @@ static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,
 			}
 			if(bq27541_i2c_error == 3) {
 				dev_info(&bq27541_device->client->dev, "disabling charging\n");
-				smb347_charger_enable(0);
+				charger_enable(0);
 			}
 			dev_info(&bq27541_device->client->dev, "bq27541_i2c_error=%d\n", bq27541_i2c_error);
 		}
@@ -549,14 +595,14 @@ static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,
 					if (ota_flag == 0) {
 						dev_info(&bq27541_device->client->dev,
 							"temperature is outside the range, disabling charging\n");
-						smb347_charger_enable(0);
+						charger_enable(0);
 						ota_flag = 1;
 					}
 					val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
 				} else {
 					if (ota_flag) {
 						dev_info(&bq27541_device->client->dev, "enabling charging\n");
-						smb347_charger_enable(1);
+						charger_enable(1);
 						ota_flag = 0;
 					}
 				}
@@ -813,7 +859,7 @@ static int bq27541_probe(struct i2c_client *client,
 
 	if(!is_legal_pack()) {
 		dev_info(&bq27541_device->client->dev, "disabling charging\n");
-		smb347_charger_enable(0);
+		charger_enable(0);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(bq27541_supply); i++) {
