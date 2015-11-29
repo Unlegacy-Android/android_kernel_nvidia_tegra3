@@ -123,7 +123,12 @@
 #define STAT_C_CHG_MASK				0x06
 #define STAT_C_CHG_SHIFT			1
 #define STAT_C_CHARGER_ERROR			BIT(6)
+#define STAT_D					0x3e
 #define STAT_E					0x3f
+
+/* APSD */
+#define APSD_RESULT			0x07
+#define APSD_SDP			0x04
 
 /**
  * struct smb347_charger - smb347 charger instance
@@ -277,6 +282,20 @@ static int smb347_update_status(struct smb347_charger *smb)
 		dc = !(ret & IRQSTAT_E_DCIN_UV_STAT);
 	if (smb->pdata->use_usb)
 		usb = !(ret & IRQSTAT_E_USBIN_UV_STAT);
+
+#ifdef CONFIG_MACH_GROUPER
+	if (gpio_get_value(smb->pdata->irq_gpio)) {
+		dc = false;
+		usb = false;
+	} else if (smb->pdata->use_mains) {
+		ret = smb347_read(smb, STAT_D);
+		ret &= APSD_RESULT;
+		if (ret != APSD_SDP) {
+			dc = true;
+			usb = false;
+		}
+	}
+#endif
 
 	mutex_lock(&smb->lock);
 	ret = smb->mains_online != dc || smb->usb_online != usb;
