@@ -403,6 +403,10 @@ static int tegra_otg_set_peripheral(struct usb_otg *otg,
 	tegra = (struct tegra_otg_data *)container_of(otg->phy, struct tegra_otg_data, phy);
 	otg->gadget = gadget;
 
+#ifdef CONFIG_MACH_GROUPER
+	msleep(10);
+#endif
+
 	val = enable_interrupt(tegra, true);
 
 	if ((val & USB_ID_STATUS) && (val & USB_VBUS_STATUS)
