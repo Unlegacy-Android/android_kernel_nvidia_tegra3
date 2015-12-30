@@ -43,41 +43,28 @@
 
 #include "inv_ami306_iio.h"
 
-#define AMI30X_CALIBRATION_PATH "/data/sensors/AMI304_Config.ini"
-#define AMI306_CALIBRATION_PATH "/data/sensors/AMI306_Config.ini"
+#define AMI30X_CALIBRATION_PATH "/per/sensors/AMI304_Config.ini"
+#define AMI306_CALIBRATION_PATH "/per/sensors/AMI306_Config.ini"
 enum Compass_cali_File {
 	AMI30X = 0,
 	AMI306,
 	AMICaliMax
 };
 
-/* function for loading compass calibration file. */
-static int access_cali_file(int *gain, int target)
+/* function for loading compass calibration data. */
+static int access_cali_data(int *gain, char *calib_data)
 {
-	char buf[256];
-	int ret;
-	struct file *fp = NULL;
 	mm_segment_t oldfs;
 	int data[23];
 	int ii;
 
 	oldfs = get_fs();
 	set_fs(get_ds());
-	memset(buf, 0, sizeof(u8)*256);
 
-	if (target == AMI30X)
-		fp = filp_open(AMI30X_CALIBRATION_PATH, O_RDONLY, 0);
-	else if (target == AMI306)
-		fp = filp_open(AMI306_CALIBRATION_PATH, O_RDONLY, 0);
-	else
-		goto LoadFileFail;
-
-	if (!IS_ERR(fp)) {
-
-		pr_info("ami306 open calibration file success\n");
-		ret = fp->f_op->read(fp, buf, sizeof(buf), &fp->f_pos);
-		pr_info("ami306 calibration content is :\n%s\n", buf);
-		sscanf(buf, "%6d\n%6d %6d %6d\n"
+	if (calib_data[6] == '\n') {
+		pr_info("ami306 calibration content is:\n%s\n", calib_data);
+		sscanf(calib_data,
+			"%6d\n%6d %6d %6d\n"
 			"%6d %6d %6d\n%6d %6d %6d\n"
 			"%6d %6d %6d\n%6d %6d %6d\n"
 			"%6d %6d %6d\n%6d %6d %6d\n%6d\n",
@@ -105,14 +92,10 @@ static int access_cali_file(int *gain, int target)
 
 		return 0;
 	} else {
-		pr_info("Compass compensation: No target File. (%d)\n",
-		    target);
+		pr_info("Compass compensation: No target data.\n");
 		set_fs(oldfs);
 		return -1;
 	}
-
-LoadFileFail:
-	return -1;
 }
 
 static int put_scan_to_buf(struct iio_dev *indio_dev, unsigned char *d,
@@ -155,13 +138,9 @@ int inv_read_ami306_fifo(struct iio_dev *indio_dev)
 		}
 
 		if (!st->data_chk.load_cali) {
-			for (ii = 0; ii < AMICaliMax; ii++) {
-				result =
-				    access_cali_file(st->data_chk.gain, ii);
-				if (!result) {
-					st->data_chk.fexist = 0;
-					break;
-				}
+			result = access_cali_data(st->data_chk.gain, st->calibration_data);
+			if (!result) {
+				st->data_chk.fexist = 0;
 			}
 			st->data_chk.load_cali = true;
 		}

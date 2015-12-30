@@ -458,15 +458,35 @@ static const struct iio_chan_spec compass_channels[] = {
 	IIO_CHAN_SOFT_TIMESTAMP(INV_AMI306_SCAN_TIMESTAMP)
 };
 
+static ssize_t compass_cali_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct inv_ami306_state_s *st = iio_priv(indio_dev);
+
+	if (count <= 256) {
+		memset(st->calibration_data, 0, sizeof(char) * 256);
+		memcpy(st->calibration_data, buf, count);
+	} else {
+		return -EINVAL;
+	}
+
+	return count;
+}
+
 static DEVICE_ATTR(compass_matrix, S_IRUGO, inv_compass_matrix_show, NULL);
 static DEVICE_ATTR(sampling_frequency, S_IRUGO | S_IWUSR, ami306_rate_show,
 		ami306_rate_store);
 static DEVICE_ATTR(compass_cali_test, S_IRUGO, compass_cali_test, NULL);
+static DEVICE_ATTR(compass_cali_data, S_IWUSR, NULL,
+		compass_cali_store);
 
 static struct attribute *inv_ami306_attributes[] = {
 	&dev_attr_compass_matrix.attr,
 	&dev_attr_sampling_frequency.attr,
 	&dev_attr_compass_cali_test.attr,
+	&dev_attr_compass_cali_data.attr,
 	NULL,
 };
 static const struct attribute_group inv_attribute_group = {

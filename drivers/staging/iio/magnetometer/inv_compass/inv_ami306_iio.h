@@ -103,6 +103,7 @@ struct inv_ami306_state_s {
 	short compass_data[3];
 	s64 timestamp;
 	struct cali_data_check data_chk;
+	char calibration_data[256];
 };
 
 /* scan element definition */
