@@ -366,6 +366,8 @@ int snd_soc_jack_add_gpios(struct snd_soc_jack *jack, int count,
 			struct snd_soc_jack_gpio *gpios);
 void snd_soc_jack_free_gpios(struct snd_soc_jack *jack, int count,
 			struct snd_soc_jack_gpio *gpios);
+//&*&*&*BC1_120524: headset can't detect after device resume
+void snd_soc_jack_gpio_detect(struct snd_soc_jack_gpio *gpio);
 #endif
 
 /* codec register bit access */
