@@ -1503,6 +1503,10 @@ static int dapm_power_widgets(struct snd_soc_dapm_context *dapm, int event)
 		default:
 			break;
 		}
+#ifdef CONFIG_MACH_CL2N
+                list_for_each_entry(d, &card->dapm_list, list)
+                d->target_bias_level = dapm->target_bias_level;
+#endif
 	}
 
 	/* Force all contexts in the card to the same bias state if
