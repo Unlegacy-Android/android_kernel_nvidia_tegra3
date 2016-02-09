@@ -41,7 +41,11 @@
 #include <sound/soc.h>
 #include <linux/mfd/tlv320aic3262-registers.h>
 #include <linux/mfd/tlv320aic3xxx-core.h>
+#ifdef CONFIG_MACH_CL2N
+#include "../codecs/tlv320aic326x_cl2n.h"
+#else
 #include "../codecs/tlv320aic326x.h"
+#endif
 
 #include "tegra_pcm.h"
 #include "tegra_asoc_utils.h"
@@ -90,6 +94,11 @@ struct tegra_aic326x {
 	bool init_done;
 	int is_call_mode;
 	int is_device_bt;
+#ifdef CONFIG_MACH_CL2N
+//&*&*&*BC1_120514: use gpio interrupt to detect headset
+	int jack_status;
+//&*&*&*BC2_120514: use gpio interrupt to detect headset
+#endif
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	struct codec_config codec_info[NUM_I2S_DEVICES];
 	struct snd_soc_card *pcard;
@@ -300,6 +309,9 @@ static int tegra_aic326x_hw_params(struct snd_pcm_substream *substream,
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 	int srate, mclk, sample_size, i2s_daifmt;
 	int err, rate;
+#ifdef CONFIG_MACH_CL2N
+	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(cpu_dai);
+#endif
 
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
@@ -366,6 +378,14 @@ static int tegra_aic326x_hw_params(struct snd_pcm_substream *substream,
 		return err;
 	}
 
+#ifdef CONFIG_MACH_CL2N
+	err = snd_soc_dai_set_sysclk(codec_dai, 0, rate, SND_SOC_CLOCK_IN);
+	if (err < 0) {
+		dev_err(card->dev, "codec_dai clock not set\n");
+		return err;
+	}
+#endif
+
 	err = snd_soc_dai_set_pll(codec_dai, 0, AIC3262_PLL_CLKIN_MCLK1 , rate,
 		params_rate(params));
 
@@ -383,6 +403,12 @@ static int tegra_aic326x_hw_params(struct snd_pcm_substream *substream,
 		dev_err(card->dev, "failed to set dac-dap path\n");
 		return err;
 	}
+#endif
+#ifdef CONFIG_MACH_CL2N
+	/*assumes tegra3*/
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK  && i2s->is_dam_used)
+		tegra_aic326x_set_dam_cif(i2s->dam_ifc, srate,
+			params_channels(params), sample_size, 0, 0, 0, 0);
 #endif
 	return 0;
 }
@@ -793,7 +819,6 @@ static void tegra_aic326x_shutdown(struct snd_pcm_substream *substream)
 }
 #endif
 
-
 static int tegra_aic326x_hw_free(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -869,6 +894,13 @@ static int tegra_aic326x_voice_call_hw_params(
 		return err;
 	}
 
+#ifdef CONFIG_MACH_CL2N
+	err = snd_soc_dai_set_sysclk(codec_dai, 0, rate, SND_SOC_CLOCK_IN);
+	if (err < 0) {
+		dev_err(card->dev, "codec_dai clock not set\n");
+		return err;
+	}
+#endif
 
 	err = snd_soc_dai_set_pll(codec_dai, 0, AIC3262_PLL_CLKIN_MCLK1 , rate,
 			params_rate(params));
@@ -1031,6 +1063,65 @@ enum headset_state {
 
 static int aic326x_headset_switch_notify(struct notifier_block *self,
 	unsigned long action, void *dev)
+#if defined CONFIG_MACH_CL2N
+//&*&*&*BC1_120514: use gpio interrupt to detect headset
+{
+	struct snd_soc_jack *jack = dev;
+	struct snd_soc_codec *codec = jack->codec;
+	struct snd_soc_card *card = codec->card;
+	struct tegra_aic326x *machine = snd_soc_card_get_drvdata(card);
+	enum headset_state state = BIT_NO_HEADSET;
+	unsigned char status_jack;
+
+	printk("%s, %ld\n", __FUNCTION__, action);
+
+	if (jack == &tegra_aic326x_hp_jack) {
+		if (action) {
+//&*&*&*BC1_120608: fix device no sound when headset plug in
+//			switch_set_state(&aic326x_wired_switch_dev, BIT_HEADSET_NO_MIC);
+//&*&*&*BC2_120608: fix device no sound when headset plug in
+			status_jack = aic326x_headset_type(codec, 1);
+			//status_jack = AIC326X_HEADPHO_DET;
+
+			machine->jack_status &= ~SND_JACK_HEADPHONE;
+			machine->jack_status &= ~SND_JACK_MICROPHONE;
+			if (status_jack == AIC326X_HEADPHO_DET )
+					machine->jack_status |=
+							SND_JACK_HEADPHONE;
+			else if (status_jack == AIC326X_HEADSET_DET ) {
+					machine->jack_status |=
+							SND_JACK_HEADPHONE;
+					machine->jack_status |=
+							SND_JACK_MICROPHONE;
+			}
+		} else {
+
+			aic326x_headset_type(codec, 0);
+
+			machine->jack_status &= ~SND_JACK_HEADPHONE;
+			machine->jack_status &= ~SND_JACK_MICROPHONE;
+		}
+	}
+
+	switch (machine->jack_status) {
+	case SND_JACK_HEADPHONE:
+		state = BIT_HEADSET_NO_MIC;
+		break;
+	case SND_JACK_HEADSET:
+		state = BIT_HEADSET;
+		break;
+	case SND_JACK_MICROPHONE:
+		/* mic: would not report */
+	default:
+		state = BIT_NO_HEADSET;
+	}
+
+	switch_set_state(&aic326x_wired_switch_dev, state);
+
+	return NOTIFY_OK;
+}
+//&*&*&*BC2_120514: use gpio interrupt to detect headset
+#else
 {
 	int state = BIT_NO_HEADSET;
 
@@ -1053,6 +1144,7 @@ static int aic326x_headset_switch_notify(struct notifier_block *self,
 
 	return NOTIFY_OK;
 }
+#endif
 
 static struct notifier_block aic326x_headset_switch_nb = {
 	.notifier_call = aic326x_headset_switch_notify,
@@ -1208,9 +1300,19 @@ static const struct snd_soc_dapm_route aic326x_audio_map[] = {
 	{"IN1 Left Capture", NULL, "Mic Bias Ext"},
 	{"Mic Bias Ext" , NULL, "Mic Jack"},
 	/* Connect LDMIC and RDMIC to DMIC widget*/
+#if defined CONFIG_MACH_CL2N
+	{"LIP", NULL, "Left Input"},
+	{"RIP", NULL, "Right Input"},
+	{"Left Input", NULL, "Ext Mic"},
+	{"Right Input", NULL, "Ext Mic"},
+	{"ADC Left DMIC", NULL, "Mic Bias Int"},
+	{"ADC Right DMIC", NULL, "Mic Bias Int"},
+	{"Mic Bias Int", NULL, "Int Mic"},
+#else
 	{"Left DMIC Capture", NULL, "Mic Bias Int"},
 	{"Right DMIC Capture", NULL, "Mic Bias Int"},
 	{"Mic Bias Int", NULL, "Int Mic"},
+#endif
 };
 
 static const struct snd_kcontrol_new tegra_aic326x_controls[] = {
@@ -1338,12 +1440,11 @@ static int tegra_aic326x_init(struct snd_soc_pcm_runtime *rtd)
 		machine->gpio_requested |= GPIO_HP_DET;
 	}
 
-#ifndef CONFIG_ARCH_TEGRA_11x_SOC
+#if !defined(CONFIG_ARCH_TEGRA_11x_SOC) && !defined(CONFIG_MACH_CL2N)
 	/* update jack status during boot */
 	aic3262_hs_jack_detect(codec, &tegra_aic326x_hp_jack,
 		SND_JACK_HEADSET);
 #endif
-
 	/* Add call mode switch control */
 	ret = snd_ctl_add(codec->card->snd_card,
 			snd_ctl_new1(&tegra_aic326x_call_mode_control,
@@ -1506,7 +1607,11 @@ static struct snd_soc_card snd_soc_tegra_aic326x = {
 	.num_dapm_widgets = ARRAY_SIZE(tegra_aic326x_dapm_widgets),
 	.dapm_routes = aic326x_audio_map,
 	.num_dapm_routes = ARRAY_SIZE(aic326x_audio_map),
+#if defined CONFIG_MACH_CL2N
+	.fully_routed = false,
+#else
 	.fully_routed = true,
+#endif
 };
 
 static __devinit int tegra_aic326x_driver_probe(struct platform_device *pdev)
@@ -1612,6 +1717,21 @@ static __devinit int tegra_aic326x_driver_probe(struct platform_device *pdev)
 		tegra_aic326x_dai[DAI_LINK_VOICE_CALL].codec_dai_name =
 						"aic326x-asi1";
 	}
+
+#ifdef CONFIG_MACH_CL2N
+	if (machine_is_kai()) {
+		tegra_aic326x_dai[DAI_LINK_HIFI].codec_name =
+						"spi0.1";
+		tegra_aic326x_dai[DAI_LINK_HIFI].codec_dai_name =
+						"aic3262-asi1";
+		tegra_aic326x_dai[DAI_LINK_VOICE_CALL].codec_name =
+						"spi0.1";
+		tegra_aic326x_dai[DAI_LINK_VOICE_CALL].codec_dai_name =
+						"aic3262-asi2";
+		tegra_aic326x_dai[DAI_LINK_BT_VOICE_CALL].codec_name =
+						"spdif-dit.0";
+	}
+#endif
 
 	ret = snd_soc_register_card(card);
 	if (ret) {

@@ -80,6 +80,7 @@ union aic3xxx_reg_union {
 	unsigned int aic3xxx_register_int;
 };
 
+#if !defined(CONFIG_MACH_CL2N)
 /****************************             ************************************/
 
 /*
@@ -98,6 +99,7 @@ union aic3xxx_reg_union {
 struct aic3262_setup_data {
 	unsigned short i2c_address;
 };
+#endif
 
 /* GPIO API */
 #define AIC3262_NUM_GPIO 5	/* include 2 GPI and 1 GPO pins */
