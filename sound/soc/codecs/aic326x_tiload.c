@@ -42,7 +42,7 @@
 #include <linux/irq.h>
 #include <linux/interrupt.h>
 
-#include <linux/mfd/tlv320aic3262-core.h>
+#include <linux/mfd/tlv320aic3xxx-core.h>
 #include "tlv320aic326x.h"
 #include "aic326x_tiload.h"
 
@@ -66,7 +66,7 @@ static void aic3262_dump_page(struct i2c_client *i2c, u8 page);
 /************** Dynamic aic3262 driver, TI LOAD support  ***************/
 
 static struct cdev *aic3262_cdev;
-static union aic326x_reg_union aic_reg;
+static union aic3xxx_reg_union aic_reg;
 static int aic3262_major;	/* Dynamic allocation of Mjr No. */
 static int aic3262_opened;	/* Dynamic allocation of Mjr No. */
 static struct snd_soc_codec *aic3262_codec;
@@ -154,7 +154,7 @@ static ssize_t tiload_read(struct file *file, char __user *buf,
 #ifdef DEBUG
 	int i;
 #endif
-	struct aic3262 *control = aic3262_codec->control_data;
+	struct aic3xxx *control = aic3262_codec->control_data;
 
 	dprintk("TiLoad DRIVER : %s\n", __func__);
 	if (count > 128) {
@@ -170,9 +170,9 @@ static ssize_t tiload_read(struct file *file, char __user *buf,
 	}
 	/* Send the address to device thats is to be read */
 
-	aic_reg.aic326x_register.offset = reg_addr;
+	aic_reg.aic3xxx_register.offset = reg_addr;
 	size =
-	    aic3262_bulk_read(control, aic_reg.aic326x_register_int, count,
+	    aic3xxx_bulk_read(control, aic_reg.aic3xxx_register_int, count,
 				rd_data);
 
 #ifdef DEBUG
@@ -208,7 +208,7 @@ static ssize_t tiload_write(struct file *file, const char __user *buf,
 #ifdef DEBUG
 	int i;
 #endif
-	struct aic3262 *control = aic3262_codec->control_data;
+	struct aic3xxx *control = aic3262_codec->control_data;
 
 	dprintk("TiLoad DRIVER : %s\n", __func__);
 	/* copy buffer from user space  */
@@ -223,18 +223,18 @@ static ssize_t tiload_write(struct file *file, const char __user *buf,
 #endif
 	if (wr_data[0] == 0) {
 		/*change of page seen, but will only be registered */
-		aic_reg.aic326x_register.page = wr_data[1];
+		aic_reg.aic3xxx_register.page = wr_data[1];
 		return count;
 
 	} else
 	    if (wr_data[0] == 127) {
 		/* change of book seen, but will not be sent for I2C write */
-		aic_reg.aic326x_register.book = wr_data[1];
+		aic_reg.aic3xxx_register.book = wr_data[1];
 		return count;
 
 	} else {
-		aic_reg.aic326x_register.offset = wr_data[0];
-		aic3262_bulk_write(control, aic_reg.aic326x_register_int,
+		aic_reg.aic3xxx_register.offset = wr_data[0];
+		aic3xxx_bulk_write(control, aic_reg.aic3xxx_register_int,
 				   count - 1, &wr_data[1]);
 		return count;
 	}
@@ -309,8 +309,8 @@ int aic3262_driver_init(struct snd_soc_codec *codec)
 	aic3262_cdev->owner = THIS_MODULE;
 	aic3262_cdev->ops = &aic3262_fops;
 
-	aic_reg.aic326x_register.page = 0;
-	aic_reg.aic326x_register.book = 0;
+	aic_reg.aic3xxx_register.page = 0;
+	aic_reg.aic3xxx_register.book = 0;
 
 	if (cdev_add(aic3262_cdev, dev, 1) < 0) {
 		dprintk("aic3262_driver: cdev_add failed\n");
