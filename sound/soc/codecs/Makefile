@@ -43,7 +43,11 @@ snd-soc-stac9766-objs := stac9766.o
 snd-soc-tlv320aic23-objs := tlv320aic23.o
 snd-soc-tlv320aic26-objs := tlv320aic26.o
 snd-soc-tlv320aic3x-objs := tlv320aic3x.o
+ifeq ($(CONFIG_MACH_CL2N),y)
+snd-soc-tlv320aic326x-objs := tlv320aic326x_cl2n.o aic3xxx/aic3xxx_cfw_ops.o aic326x_tiload.o
+else
 snd-soc-tlv320aic326x-objs := tlv320aic326x.o aic3xxx/aic3xxx_cfw_ops.o
+endif
 snd-soc-tlv320aic32x4-objs := tlv320aic32x4.o
 snd-soc-tlv320dac33-objs := tlv320dac33.o
 snd-soc-twl4030-objs := twl4030.o
