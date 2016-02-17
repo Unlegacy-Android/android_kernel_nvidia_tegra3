@@ -758,6 +758,9 @@ void *nvmap_mmap(struct nvmap_handle_ref *ref)
 
 	nvmap_usecount_inc(h);
 
+	if (!h->carveout)
+		return NULL;
+
 	adj_size = h->carveout->base & ~PAGE_MASK;
 	adj_size += h->size;
 	adj_size = PAGE_ALIGN(adj_size);
