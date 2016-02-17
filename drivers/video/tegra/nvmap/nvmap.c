@@ -756,6 +756,11 @@ void *nvmap_mmap(struct nvmap_handle_ref *ref)
 
 	/* carveout - explicitly map the pfns into a vmalloc area */
 
+	if (!h->carveout) {
+		nvmap_handle_put(h);
+		return NULL;
+        }
+  
 	nvmap_usecount_inc(h);
 
 	adj_size = h->carveout->base & ~PAGE_MASK;
