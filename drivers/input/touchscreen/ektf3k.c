@@ -108,29 +108,6 @@ static int work_lock=0x00;
 static unsigned now_usb_cable_status=0;
 static unsigned int gPrint_point = 0; 
 
-//#define TOUCH_STRESS_TEST
-#ifdef TOUCH_STRESS_TEST
-#define STRESS_IOC_MAGIC 0xF3
-#define STRESS_IOC_MAXNR 4
-#define STRESS_POLL_DATA _IOR(STRESS_IOC_MAGIC,2,int )
-#define STRESS_IOCTL_START_HEAVY 2
-#define STRESS_IOCTL_START_NORMAL 1
-#define STRESS_IOCTL_END 0
-#define START_NORMAL	(HZ/5)
-#define START_HEAVY	(HZ/200)
-static int poll_mode=0;
-static struct delayed_work elan_poll_data_work;
-static struct workqueue_struct *stress_work_queue;
-static atomic_t touch_char_available = ATOMIC_INIT(1);
-#endif
-
-#define _ENABLE_DBG_LEVEL    
-#ifdef _ENABLE_DBG_LEVEL
-	#define PROC_FS_NAME	"ektf_dbg"
-	#define PROC_FS_MAX_LEN	8
-	static struct proc_dir_entry *dbgProcFile;
-#endif
-
 struct elan_ktf3k_ts_data {
 	struct i2c_client *client;
 	struct input_dev *input_dev;
@@ -152,9 +129,6 @@ struct elan_ktf3k_ts_data {
 	int abs_y_max;
 	int rst_gpio;
 	struct wake_lock wakelock;
-#ifdef TOUCH_STRESS_TEST
-      struct miscdevice  misc_dev;
-#endif 
 };
 
 static struct elan_ktf3k_ts_data *private_ts = NULL;
@@ -1098,70 +1072,6 @@ static ssize_t elan_touch_switch_state(struct switch_dev *sdev, char *buf)
       	return sprintf(buf, "%s\n", "0");
 }
 
-#ifdef _ENABLE_DBG_LEVEL
-static int ektf_proc_read(char *buffer, char **buffer_location, off_t offset, int buffer_length, int *eof, void *data )
-{
-	int ret;
-	
-	touch_debug(DEBUG_MESSAGES, "call proc_read\n");
-	
-	if(offset > 0)  /* we have finished to read, return 0 */
-		ret  = 0;
-	else 
-		ret = sprintf(buffer, "Debug Level: Release Date: %s\n","2011/10/05");
-
-	return ret;
-}
-
-static int ektf_proc_write(struct file *file, const char *buffer, unsigned long count, void *data)
-{
-	char procfs_buffer_size = 0; 
-	int i, ret = 0;
-	unsigned char procfs_buf[PROC_FS_MAX_LEN+1] = {0};
-	unsigned int command;
-
-	procfs_buffer_size = count;
-	if(procfs_buffer_size > PROC_FS_MAX_LEN ) 
-		procfs_buffer_size = PROC_FS_MAX_LEN+1;
-	
-	if( copy_from_user(procfs_buf, buffer, procfs_buffer_size) ) 
-	{
-		touch_debug(DEBUG_ERROR, " proc_write faied at copy_from_user\n");
-		return -EFAULT;
-	}
-
-	command = 0;
-	for(i=0; i<procfs_buffer_size-1; i++)
-	{
-		if( procfs_buf[i]>='0' && procfs_buf[i]<='9' )
-			command |= (procfs_buf[i]-'0');
-		else if( procfs_buf[i]>='A' && procfs_buf[i]<='F' )
-			command |= (procfs_buf[i]-'A'+10);
-		else if( procfs_buf[i]>='a' && procfs_buf[i]<='f' )
-			command |= (procfs_buf[i]-'a'+10);
-		
-		if(i!=procfs_buffer_size-2)
-			command <<= 4;
-	}
-
-	command = command&0xFFFFFFFF;
-      switch(command){
-      case 0xF1: 
-	  	 gPrint_point = 1; 
-	  	 break;
-      case 0xF2: 
-	  	 gPrint_point = 0; 
-	  	 break;
-      case 0xFF:
-	      	ret = elan_ktf3k_ts_rough_calibrate(private_ts->client);
-		break;
-	}
-	touch_debug(DEBUG_INFO, "Run command: 0x%08X  result:%d\n", command, ret);
-
-	return count; // procfs_buffer_size;
-}
-#endif // #ifdef _ENABLE_DBG_LEV
-
 #ifdef FIRMWARE_UPDATE_WITH_HEADER
 #define FIRMWARE_PAGE_SIZE 132
 static unsigned char touch_firmware[] = {
@@ -1308,86 +1218,6 @@ fw_update_finish:
 
 #endif
 
-#ifdef TOUCH_STRESS_TEST
-static void  stress_poll_data(struct work_struct * work)
-{
-	bool status;
-	u8 count[7];
-	status = elan_ktf3k_ts_recv_data(private_ts->client, count, 7);
-	if(status < 0)
-		printk("Read touch sensor data fail\n");
-
-	if(poll_mode ==0)
-		msleep(5);
-
-	queue_delayed_work(stress_work_queue, &elan_poll_data_work, poll_mode);
-}
-
-int elan_stress_open(struct inode *inode, struct file *filp)
-{
-	printk("%s\n", __func__);
-	if( !atomic_dec_and_test(&touch_char_available)){
-		atomic_inc(&touch_char_available);
-		return -EBUSY; /* already open */
-	}
-	return 0;          /* success */
-}
-
-
-int elan_stress_release(struct inode *inode, struct file *filp)
-{
-	printk("%s\n", __func__);
-	atomic_inc(&touch_char_available); /* release the device */
-	return 0;          /* success */
-}
-
-long elan_stress_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
-{
-	int err = 1;
-
-	printk("%s\n", __func__);
-	if (_IOC_TYPE(cmd) != STRESS_IOC_MAGIC)
-	return -ENOTTY;
-	if (_IOC_NR(cmd) > STRESS_IOC_MAXNR)
-	return -ENOTTY;
-	if (_IOC_DIR(cmd) & _IOC_READ)
-	err = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
-	else if (_IOC_DIR(cmd) & _IOC_WRITE)
-	err =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
-	if (err) return -EFAULT;
-	switch (cmd) {
-		case STRESS_POLL_DATA:
-			if (arg == STRESS_IOCTL_START_HEAVY){
-				printk("touch sensor heavey\n");
-			poll_mode = START_HEAVY;
-			queue_delayed_work(stress_work_queue, &elan_poll_data_work, poll_mode);
-			}
-			else if (arg == STRESS_IOCTL_START_NORMAL){
-				printk("touch sensor normal\n");
-				poll_mode = START_NORMAL;
-				queue_delayed_work(stress_work_queue, &elan_poll_data_work, poll_mode);
-			}
-			else if  (arg == STRESS_IOCTL_END){
-			printk("touch sensor end\n");
-			cancel_delayed_work_sync(&elan_poll_data_work);
-			}
-			else
-				return -ENOTTY;
-		break;
-	default: /* redundant, as cmd was checked against MAXNR */
-	    return -ENOTTY;
-	}
-	return 0;
-}
-
-static struct file_operations stress_fops = {
-		.owner =    THIS_MODULE,
-		.unlocked_ioctl =	elan_stress_ioctl,
-		.open =		elan_stress_open,
-		.release =	elan_stress_release,
-		};
-#endif
-
 static int elan_ktf3k_ts_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -1492,35 +1322,6 @@ static int elan_ktf3k_ts_probe(struct i2c_client *client,
 		dev_err(&client->dev, "Not able to create the sysfs\n");
 	}
 	
-#ifdef _ENABLE_DBG_LEVEL
-	dbgProcFile = create_proc_entry(PROC_FS_NAME, 0600, NULL);
-	if (dbgProcFile == NULL) 
-	{
-		remove_proc_entry(PROC_FS_NAME, NULL);
-		touch_debug(DEBUG_INFO, " Could not initialize /proc/%s\n", PROC_FS_NAME);
-	}
-	else
-	{
-		dbgProcFile->read_proc = ektf_proc_read;
-		dbgProcFile->write_proc = ektf_proc_write;
-		touch_debug(DEBUG_INFO, " /proc/%s created\n", PROC_FS_NAME);
-	}
-#endif // #ifdef _ENABLE_DBG_LEVEL
-
-#ifdef TOUCH_STRESS_TEST
-      stress_work_queue = create_singlethread_workqueue("i2c_touchsensor_wq");
-	if(!stress_work_queue){
-		dev_err(&client->dev, "Unable to create stress_work_queue workqueue\n");
-	}
-      INIT_DELAYED_WORK(&elan_poll_data_work, stress_poll_data);
-	ts->misc_dev.minor  = MISC_DYNAMIC_MINOR;
-	ts->misc_dev.name = "touchpanel";
-	ts->misc_dev.fops = &stress_fops;
-	err = misc_register(&ts->misc_dev);
-	if (err) {
-	    dev_err(&client->dev, "elan stress test: Unable to register %s \\misc device\n", ts->misc_dev.name);
-	}
-#endif
       /* Register Switch file */
       ts->touch_sdev.name = "touch";
       ts->touch_sdev.print_name = elan_touch_switch_name;
@@ -1576,9 +1377,6 @@ static int elan_ktf3k_ts_remove(struct i2c_client *client)
 		destroy_workqueue(ts->elan_wq);
 	input_unregister_device(ts->input_dev);
 	wake_lock_destroy(&ts->wakelock);
-#ifdef TOUCH_STRESS_TEST
-	misc_deregister(&ts->misc_dev);
-#endif
 	kfree(ts);
 #ifdef _ENABLE_DBG_LEVEL
 	remove_proc_entry(PROC_FS_NAME, NULL);
