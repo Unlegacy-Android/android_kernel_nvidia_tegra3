@@ -16,6 +16,7 @@
 #define ELAN_BUFFER_MODE
 
 #include <linux/module.h>
+#include <linux/firmware.h>
 #include <linux/input/mt.h>
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
@@ -89,6 +90,8 @@
 #define IOCTL_FW_UPDATE _IOR(ELAN_IOCTLID, 22, int) 
 
 #define FIRMWARE_UPDATE_WITH_HEADER 1 
+#define FIRMWARE_NAME "elan/ektf3k.fw"
+MODULE_FIRMWARE(FIRMWARE_NAME);
 
 uint16_t checksum_err=0;
 static uint8_t RECOVERY=0x00;
@@ -359,57 +362,42 @@ static int check_fw_version(const unsigned char*firmware, unsigned int size, int
 	     return 0; // this buffer doesn't contain the touch firmware
 	 
 }
-static ssize_t update_firmware(struct device *dev, struct device_attribute *devattr,const char *buf, size_t count)
+
+static void process_firmware(const struct firmware *fw, void *context)
 {
-	 struct i2c_client *client = to_i2c_client(dev);
-	 struct elan_ktf3k_ts_data *ts = i2c_get_clientdata(client);
-	 struct file *firmware_fp;
-	 char file_path[100];
-        unsigned int pos = 0;
-	 unsigned int page_number;
-	 static unsigned char firmware[MAX_FIRMWARE_SIZE];
-	 int ret = 0, retry = 0;
-	 
-	 set_fs(KERNEL_DS);
-	 memset(file_path, 0, 100);
-	 sscanf(buf, "%s\n", file_path);
-	 touch_debug(DEBUG_INFO, "Update touch firmware with the file path:%s\n", file_path);
-	 firmware_fp = filp_open(file_path, O_RDONLY, S_IRUSR |S_IRGRP);
-	 if(PTR_ERR(firmware_fp) == -ENOENT){
-	     dev_err(&client->dev, "Error to open file %s\n", file_path);
-	     return -1;
-	 }    
-       //start move the firmware file into memory
-       firmware_fp->f_pos = 0;
-       for(pos = 0, page_number = 0; pos < MAX_FIRMWARE_SIZE; pos += FIRMWARE_PAGE_SIZE, page_number++){
-	     if(firmware_fp->f_op->read(firmware_fp, firmware + pos,
-		 	FIRMWARE_PAGE_SIZE, &firmware_fp->f_pos) != FIRMWARE_PAGE_SIZE){
-	         break;
-	     }
-	 }
-	 filp_close(firmware_fp, NULL);
-	 // check the firmware ID and version
-	 if(RECOVERY || check_fw_version(firmware, pos, ts->fw_ver) > 0){
-	     touch_debug(DEBUG_INFO, "Firmware update start!\n");	
-	     do{
-	         ret = firmware_update_header(client, firmware, page_number);
-	         touch_debug(DEBUG_INFO, "Firmware update finish ret=%d retry=%d !\n", ret, retry++);
-	     }while(ret != 0 && retry < 3);
-	     if(ret == 0 && RECOVERY) RECOVERY = 0;
-	 }else 
-	     touch_debug(DEBUG_INFO, "No need to update firmware\n");
-	     
-	 return count;
+	struct elan_ktf3k_ts_data *ts = context;
+	int ret, retry = 0;
+
+	if (!fw) {
+		dev_err(&ts->client->dev, "could not load firmware file\n");
+		return;
+	}
+
+	// check the firmware ID and version, and update it if needed
+	if (RECOVERY || check_fw_version(fw->data, ((fw->size / FIRMWARE_PAGE_SIZE) * FIRMWARE_PAGE_SIZE), ts->fw_ver) > 0){
+		dev_info(&ts->client->dev, "starting firmware update\n");
+		do {
+			ret = firmware_update_header(ts->client, fw->data, fw->size / FIRMWARE_PAGE_SIZE);
+			dev_info(&ts->client->dev, "updating firmware - ret=%d, retry=%d\n", ret, retry);
+			++retry;
+		} while (ret != 0 && retry < 3);
+		if (ret == 0 && RECOVERY) RECOVERY = 0;
+	} else
+		dev_info(&ts->client->dev, "firmware is up-to-date\n");
 }
 
-DEVICE_ATTR(update_fw,  S_IWUSR, NULL, update_firmware);
-
+static void update_firmware(struct elan_ktf3k_ts_data *ts) {
+	int ret = request_firmware_nowait(THIS_MODULE, true, FIRMWARE_NAME,
+						&ts->client->dev, GFP_KERNEL,
+						ts, process_firmware);
+	if (ret)
+		dev_err(&ts->client->dev, "request_firmware_nowait failed (%d)\n", ret);
+}
 
 static struct attribute *elan_attr[] = {
 	&dev_attr_elan_touchpanel_status.attr,
 	&dev_attr_vendor.attr,
 	&dev_attr_gpio.attr,
-	&dev_attr_update_fw.attr,
 	NULL
 };
 
@@ -1332,6 +1320,8 @@ static int elan_ktf3k_ts_probe(struct i2c_client *client,
 	}
 	switch_set_state(&ts->touch_sdev, 0);
 	   
+	update_firmware(ts);
+
 	touch_debug(DEBUG_INFO, "[elan] Start touchscreen %s in interrupt mode\n",
 		ts->input_dev->name);
 
