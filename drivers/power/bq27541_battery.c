@@ -82,7 +82,7 @@ static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,union 
 static int bq27541_get_property(struct power_supply *psy,
 	enum power_supply_property psp, union power_supply_propval *val);
 int bq27541_battery_callback(unsigned usb_cable_state);
-extern void touch_callback(unsigned cable_status);
+extern void touch_callback(uint8_t cable_status);
 //extern unsigned  get_usb_cable_status(void);
 
 module_param(battery_current, uint, 0644);
