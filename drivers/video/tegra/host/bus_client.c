@@ -58,6 +58,10 @@ static int validate_reg(struct platform_device *ndev, u32 offset, int count)
 	struct resource *r = platform_get_resource(ndev, IORESOURCE_MEM, 0);
 	int err = 0;
 
+	/* check if offset is u32 aligned */
+	if (offset & 3)
+		return -EINVAL;
+
 	if (offset + 4 * count > resource_size(r)
 			|| (offset + 4 * count < offset))
 		err = -EPERM;
