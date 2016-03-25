@@ -39,6 +39,7 @@
 #include <linux/skbuff.h>
 #include <linux/regulator/consumer.h>
 #include <linux/power/smb347-charger.h>
+#include <linux/power/gpio-charger.h>
 #include <linux/rfkill-gpio.h>
 
 #include <asm/hardware/gic.h>
@@ -222,6 +223,20 @@ static struct i2c_board_info grouper_i2c4_bq27541_board_info[] = {
 
 static char *grouper_battery[] = {
 	"battery",
+};
+
+static struct gpio_charger_platform_data dock_charger_pdata = {
+	.name				= "grouper-dock-charger",
+	.type				= POWER_SUPPLY_TYPE_USB_ACA,
+	.gpio				= TEGRA_GPIO_PU4,
+	.gpio_active_low	= 1,
+	.supplied_to		= grouper_battery,
+	.num_supplicants	= ARRAY_SIZE(grouper_battery),
+};
+
+static struct platform_device dock_device = {
+	.name	= "grouper-dock",
+	.id		= -1,
 };
 
 static struct smb347_charger_platform_data smb347_charger_pdata = {
@@ -815,6 +830,17 @@ static void grouper_usb_init(void) { }
 static void grouper_modem_init(void) { }
 #endif
 
+static void grouper_dock_charger_init(void)
+{
+	pr_info("%s\n", __func__);
+	if (grouper_get_project_id() == GROUPER_PROJECT_NAKASI_3G)
+		dock_charger_pdata.gpio = TEGRA_GPIO_PO5;
+	else
+		dock_charger_pdata.gpio = TEGRA_GPIO_PU4;
+	dock_device.dev.platform_data = &dock_charger_pdata;
+	platform_device_register(&dock_device);
+}
+
 static void grouper_audio_init(void)
 {
 	pr_info("%s\n", __func__);
@@ -860,6 +886,7 @@ static void __init tegra_grouper_init(void)
 	grouper_uart_init();
 	grouper_audio_init();
 	platform_add_devices(grouper_devices, ARRAY_SIZE(grouper_devices));
+	grouper_dock_charger_init();
 	tegra_ram_console_debug_init();
 	grouper_sdhci_init();
 	grouper_regulator_init();

@@ -125,7 +125,11 @@ static int __devinit gpio_charger_probe(struct platform_device *pdev)
 	irq = gpio_to_irq(pdata->gpio);
 	if (irq > 0) {
 		ret = request_any_context_irq(irq, gpio_charger_irq,
+#ifdef CONFIG_MACH_GROUPER
+				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_SHARED,
+#else
 				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+#endif
 				dev_name(&pdev->dev), charger);
 		if (ret < 0)
 			dev_warn(&pdev->dev, "Failed to request irq: %d\n", ret);
