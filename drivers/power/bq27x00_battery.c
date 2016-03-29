@@ -931,7 +931,7 @@ static int bq27x00_battery_suspend(struct device *dev)
 	cancel_delayed_work_sync(&di->work);
 	cancel_delayed_work_sync(&di->external_power_changed_work);
 
-	if (di->chip == BQ27510 || di->chip == BQ27541) {
+	if (di->chip == BQ27510) {
 		ret = bq27x00_write(di, BQ27510_CNTL,
 					BQ27510_CNTL_SET_SLEEP, false);
 		if (ret < 0) {
@@ -953,7 +953,7 @@ static int bq27x00_battery_resume(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct bq27x00_device_info *di = platform_get_drvdata(pdev);
 
-	if (di->chip == BQ27510 || di->chip == BQ27541) {
+	if (di->chip == BQ27510) {
 		ret = bq27x00_write(di, BQ27510_CNTL,
 				BQ27510_CNTL_CLEAR_SLEEP, false);
 		if (ret < 0) {
