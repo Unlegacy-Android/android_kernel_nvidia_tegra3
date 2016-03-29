@@ -501,7 +501,7 @@ static int bq27x00_battery_capacity_level(struct bq27x00_device_info *di,
 {
 	int level;
 
-	if (di->chip == BQ27500) {
+	if ((di->chip == BQ27500) || (di->chip == BQ27541)) {
 		if (di->cache.flags & BQ27500_FLAG_FC)
 			level = POWER_SUPPLY_CAPACITY_LEVEL_FULL;
 		else if (di->cache.flags & BQ27500_FLAG_SOC1)
