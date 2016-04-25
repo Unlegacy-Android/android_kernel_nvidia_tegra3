@@ -45,4 +45,6 @@ nvhost_client_request_firmware(struct platform_device *dev,
 int nvhost_client_device_get_resources(struct platform_device *dev);
 void nvhost_client_device_put_resources(struct platform_device *dev);
 
+
+int validate_max_size(struct platform_device *ndev, u32 size);
 #endif
