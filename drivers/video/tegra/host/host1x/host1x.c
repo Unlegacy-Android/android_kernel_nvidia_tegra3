@@ -30,6 +30,8 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_platform.h>
+#include <linux/vmalloc.h>
+#include <linux/mm.h>
 
 #include "dev.h"
 #include <trace/events/nvhost.h>
@@ -173,52 +175,83 @@ static int nvhost_ioctl_ctrl_module_regrdwr(struct nvhost_ctrl_userctx *ctx,
 	u32 num_offsets = args->num_offsets;
 	u32 *offsets = args->offsets;
 	u32 *values = args->values;
-	u32 vals[64];
+	u32 *vals;
+	u32 count;
+	int err;
 	struct platform_device *ndev;
 
 	trace_nvhost_ioctl_ctrl_module_regrdwr(args->id,
 			args->num_offsets, args->write);
 
-	/* Check that there is something to read and that block size is
-	 * u32 aligned */
-	if (num_offsets == 0 || args->block_size & 3)
+	/* Check that there is something to read */
+	if (num_offsets == 0)
 		return -EINVAL;
 
 	ndev = nvhost_device_list_match_by_id(args->id);
+
 	BUG_ON(!ndev);
 
-	while (num_offsets--) {
-		int err;
-		int remaining = args->block_size >> 2;
-		u32 offs;
-		if (get_user(offs, offsets))
-			return -EFAULT;
-		offsets++;
-		while (remaining) {
-			int batch = min(remaining, 64);
-			if (args->write) {
-				if (copy_from_user(vals, values,
-							batch*sizeof(u32)))
-					return -EFAULT;
-				err = nvhost_write_module_regs(ndev,
-						offs, batch, vals);
-				if (err)
-					return err;
-			} else {
-				err = nvhost_read_module_regs(ndev,
-						offs, batch, vals);
-				if (err)
-					return err;
-				if (copy_to_user(values, vals,
-							batch*sizeof(u32)))
-					return -EFAULT;
+	err = validate_max_size(ndev, args->block_size);
+	if (err)
+		return err;
+
+	count = args->block_size >> 2;
+
+	vals = kmalloc(args->block_size, GFP_KERNEL);
+	if (!vals) {
+		vals = vmalloc(args->block_size);
+		if (!vals)
+			return -ENOMEM;
+	}
+
+	if (args->write) {
+		while (num_offsets--) {
+			u32 offs;
+
+			if (copy_from_user((char *)vals,
+					(char __user *)values,
+					args->block_size)) {
+				kvfree(vals);
+				return -EFAULT;
 			}
-			remaining -= batch;
-			offs += batch*sizeof(u32);
-			values += batch;
+			if (get_user(offs, offsets)) {
+				kvfree(vals);
+				return -EFAULT;
+			}
+			err = nvhost_write_module_regs(ndev,
+					offs, count, vals);
+			if (err) {
+				kvfree(vals);
+				return err;
+			}
+			offsets++;
+			values += count;
+		}
+	} else {
+		while (num_offsets--) {
+			u32 offs;
+			if (get_user(offs, offsets)) {
+				kvfree(vals);
+				return -EFAULT;
+			}
+			err = nvhost_read_module_regs(ndev,
+					offs, count, vals);
+			if (err) {
+				kvfree(vals);
+				return err;
+			}
+			if (copy_to_user((void __user *)values,
+					(void const *)vals,
+					args->block_size)) {
+				kvfree(vals);
+				return -EFAULT;
+			}
+			offsets++;
+			values += count;
 		}
 	}
 
+	kvfree(vals);
 	return 0;
 }
 
