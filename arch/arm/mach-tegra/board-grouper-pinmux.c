@@ -529,6 +529,7 @@ static struct gpio_init_pin_info init_gpio_mode_grouper_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PDD7, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PCC6, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR0, false, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU4, false, 1),
 };
 
 static struct gpio_init_pin_info init_gpio_mode_grouper3g[] = {
@@ -548,6 +549,7 @@ static struct gpio_init_pin_info init_gpio_mode_grouper3g[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PY3, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR7, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU4, false, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PO5, false, 1),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU3, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PN1, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PN2, false, 0),
