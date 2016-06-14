@@ -121,6 +121,7 @@ struct nvavp_info {
 	int				mbox_from_avp_pend_irq;
 
 	struct mutex			open_lock;
+	struct mutex			submit_lock;
 	int				refcount;
 	int				video_initialized;
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
@@ -1231,24 +1232,31 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 
 	syncpt.id = NVSYNCPT_INVALID;
 	syncpt.value = 0;
+	mutex_lock(&nvavp->submit_lock);
 
 	if (_IOC_DIR(cmd) & _IOC_WRITE) {
 		if (copy_from_user(&hdr, (void __user *)arg,
-			sizeof(struct nvavp_pushbuffer_submit_hdr)))
+			sizeof(struct nvavp_pushbuffer_submit_hdr))) {
+			mutex_unlock(&nvavp->submit_lock);
 			return -EFAULT;
+		}
 	}
 
-	if (!hdr.cmdbuf.mem)
+	if (!hdr.cmdbuf.mem) {
+		mutex_unlock(&nvavp->submit_lock);
 		return 0;
+	}
 
 	if (hdr.num_relocs > NVAVP_MAX_RELOCATION_COUNT) {
 		dev_err(&nvavp->nvhost_dev->dev,
 			"invalid num_relocs %d\n", hdr.num_relocs);
+		mutex_unlock(&nvavp->submit_lock);
 		return -EFAULT;
 	}
 
 	if (copy_from_user(clientctx->relocs, (void __user *)hdr.relocs,
 			sizeof(struct nvavp_reloc) * hdr.num_relocs)) {
+		mutex_unlock(&nvavp->submit_lock);
 		return -EFAULT;
 	}
 
@@ -1256,6 +1264,7 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 	if (cmdbuf_handle == NULL) {
 		dev_err(&nvavp->nvhost_dev->dev,
 			"invalid cmd buffer handle %08x\n", hdr.cmdbuf.mem);
+		mutex_unlock(&nvavp->submit_lock);
 		return -EPERM;
 	}
 
@@ -1268,6 +1277,7 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 	if (IS_ERR(cmdbuf_dupe)) {
 		dev_err(&nvavp->nvhost_dev->dev,
 			"could not duplicate handle\n");
+		mutex_unlock(&nvavp->submit_lock);
 		return PTR_ERR(cmdbuf_dupe);
 	}
 
@@ -1275,6 +1285,7 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 	if (IS_ERR((void *)phys_addr)) {
 		dev_err(&nvavp->nvhost_dev->dev, "could not pin handle\n");
 		nvmap_free(nvavp->nvmap, cmdbuf_dupe);
+		mutex_unlock(&nvavp->submit_lock);
 		return PTR_ERR((void *)phys_addr);
 	}
 
@@ -1324,6 +1335,7 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 		if (target_handle == NULL) {
 			dev_err(&nvavp->nvhost_dev->dev,
 				"invalid target buffer handle %08x\n", clientctx->relocs[i].target);
+			mutex_unlock(&nvavp->submit_lock);
 			return -EPERM;
 		}
 
@@ -1363,6 +1375,7 @@ err_reloc_info:
 err_cmdbuf_mmap:
 	nvmap_unpin(nvavp->nvmap, cmdbuf_dupe);
 	nvmap_free(nvavp->nvmap, cmdbuf_dupe);
+	mutex_unlock(&nvavp->submit_lock);
 	return ret;
 }
 
@@ -1747,6 +1760,7 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 
 	nvavp->mbox_from_avp_pend_irq = irq;
 	mutex_init(&nvavp->open_lock);
+	mutex_init(&nvavp->submit_lock);
 
 	for (channel_id = 0; channel_id < NVAVP_NUM_CHANNELS; channel_id++)
 		mutex_init(&nvavp->channel_info[channel_id].pushbuffer_lock);
