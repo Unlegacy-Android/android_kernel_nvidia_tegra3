@@ -971,6 +971,11 @@ static int smb347_hw_init(struct smb347_charger *smb)
 	/* Disable Automatic Power Source Detection (APSD) interrupt. */
 	ret &= ~CFG_PIN_EN_APSD_IRQ;
 
+#ifdef CONFIG_MACH_GROUPER
+	// retain compatibility with the bootloader driver
+	ret |= CFG_PIN_EN_CTRL_ACTIVE_LOW;
+#endif
+
 	ret = smb347_write(smb, CFG_PIN, ret);
 	if (ret < 0)
 		goto fail;

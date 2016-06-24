@@ -247,7 +247,7 @@ static struct smb347_charger_platform_data smb347_charger_pdata = {
 		.voltage_min_design	= 3500000,
 	},
 	.max_charge_current	= 1800000,
-	.max_charge_voltage	= 4500000,
+	.max_charge_voltage	= 4200000,
 	.usb_hc_current_limit	= 900000,
 	.soft_cold_temp_limit	= SMB347_TEMP_USE_DEFAULT,
 	.soft_hot_temp_limit	= 40,
