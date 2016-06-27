@@ -18,6 +18,7 @@
  */
 
 #include <linux/delay.h>
+#include <linux/input/cap1106.h>
 #include <linux/i2c.h>
 #include <linux/nct1008.h>
 #include <linux/mpu.h>
@@ -137,12 +138,6 @@ static struct i2c_board_info grouper_i2c1_al3010_board_info[] = {
 	{
 		I2C_BOARD_INFO("al3010", 0x1C),
 	},
-};
-
-static struct i2c_board_info grouper_i2c1_cap1106_board_info[] = {
-    {
-        I2C_BOARD_INFO("cap1106", 0x28),
-    },
 };
 
 static int grouper_camera_init(void)
@@ -285,6 +280,24 @@ static void mpuirq_init(void)
 		ARRAY_SIZE(inv_mpu_i2c2_board_info));
 }
 
+static struct cap1106_i2c_platform_data grouper_cap1106_pdata = {
+	.irq_gpio = TEGRA_GPIO_PR3,
+};
+
+static struct i2c_board_info grouper_i2c1_cap1106_board_info[] = {
+    {
+        I2C_BOARD_INFO("cap1106", 0x28),
+        .platform_data	= &grouper_cap1106_pdata,
+    },
+};
+
+static void capirq_init(void)
+{
+	if (GROUPER_PROJECT_BACH == grouper_get_project_id())
+		i2c_register_board_info(2, grouper_i2c1_cap1106_board_info,
+			ARRAY_SIZE(grouper_i2c1_cap1106_board_info));
+}
+
 int __init grouper_sensors_init(void)
 {
 	int err;
@@ -307,12 +320,7 @@ int __init grouper_sensors_init(void)
 	i2c_register_board_info(2, grouper_i2c1_al3010_board_info,
 		ARRAY_SIZE(grouper_i2c1_al3010_board_info));
 
-	if (GROUPER_PROJECT_BACH == grouper_get_project_id()) {
-		grouper_i2c1_cap1106_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PR3);
-		i2c_register_board_info(2, grouper_i2c1_cap1106_board_info,
-		ARRAY_SIZE(grouper_i2c1_cap1106_board_info));
-	}
-
+	capirq_init();
 	mpuirq_init();
 
 	return 0;
