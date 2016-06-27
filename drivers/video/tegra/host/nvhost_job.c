@@ -37,20 +37,21 @@
 
 static size_t job_size(u32 num_cmdbufs, u32 num_relocs, u32 num_waitchks)
 {
-	s64 num_unpins = num_cmdbufs + num_relocs;
-	s64 total;
+	u64 num_unpins = (u64)num_cmdbufs + (u64)num_relocs;
+	u64 total;
 
 	total = sizeof(struct nvhost_job)
-			+ num_relocs * sizeof(struct nvhost_reloc)
-			+ num_relocs * sizeof(struct nvhost_reloc_shift)
+			+ (u64)num_relocs * sizeof(struct nvhost_reloc)
+			+ (u64)num_relocs * sizeof(struct nvhost_reloc_shift)
 			+ num_unpins * sizeof(struct nvhost_job_unpin)
-			+ num_waitchks * sizeof(struct nvhost_waitchk)
-			+ num_cmdbufs * sizeof(struct nvhost_job_gather)
+			+ (u64)num_waitchks * sizeof(struct nvhost_waitchk)
+			+ (u64)num_cmdbufs * sizeof(struct nvhost_job_gather)
 			+ num_unpins * sizeof(dma_addr_t)
-			+ num_unpins * sizeof(u32 *);
+			+ num_unpins * sizeof(u64 *);
 
-	if(total > ULONG_MAX)
+	if (total > UINT_MAX)
 		return 0;
+
 	return (size_t)total;
 }
 
