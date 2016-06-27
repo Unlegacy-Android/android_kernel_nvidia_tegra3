@@ -446,7 +446,7 @@ static int nvhost_ioctl_channel_submit(struct nvhost_channel_userctx *ctx,
 	int err;
 
 	/* We don't yet support other than one nvhost_syncpt_incrs per submit */
-	if (args->num_syncpt_incrs != 1)
+	if (args->num_syncpt_incrs != 1 || num_cmdbufs < 0)
 		return -EINVAL;
 
 	job = nvhost_job_alloc(ctx->ch,
