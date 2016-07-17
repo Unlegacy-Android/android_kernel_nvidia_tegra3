@@ -84,9 +84,10 @@
 #define DEDICATED_CHARGER	0x04
 #define CHRG_DOWNSTRM_PORT	0x08
 #define ENABLE_CHARGE		0x02
+#define ENABLE_HC_MODE		0x01
 
 static struct smb349_charger *charger;
-static int smb349_configure_charger(struct i2c_client *client, int value);
+static int smb349_configure_charger(struct i2c_client *client, int value, int max_uA);
 
 static int smb349_read(struct i2c_client *client, int reg)
 {
@@ -235,7 +236,7 @@ error:
 	return ret;
 }
 
-static int smb349_configure_charger(struct i2c_client *client, int value)
+static int smb349_configure_charger(struct i2c_client *client, int value, int max_uA)
 {
 	int ret = 0;
 
@@ -262,6 +263,31 @@ static int smb349_configure_charger(struct i2c_client *client, int value)
 			dev_err(&client->dev, "%s: err %d\n", __func__, ret);
 			goto error;
 		}
+		/* use 0x31 command to enhance AC power */
+		if(max_uA == 1800*1000)
+		{
+			ret = smb349_write(client, SMB349_CHARGE, 0x6A);
+			if (ret < 0) {
+				dev_err(&client->dev, "%s: err %d\n", __func__, ret);
+				goto error;
+			}
+			ret = smb349_write(client, SMB349_CMD_REG_B, ENABLE_HC_MODE);
+			if (ret < 0) {
+				dev_err(&client->dev, "%s: err %d\n", __func__, ret);
+				goto error;
+			}
+			ret = smb349_read(client, SMB349_PIN_CTRL);
+			if (ret < 0) {
+				dev_err(&client->dev, "%s: err %d\n", __func__, ret);
+				goto error;
+			}
+			ret = smb349_write(client, SMB349_PIN_CTRL, (ret & (~(1<<4))));
+			if (ret < 0) {
+				dev_err(&client->dev, "%s: err %d\n", __func__, ret);
+				goto error;
+			}
+		}
+		/* end of enhanced AC power*/
 	} else {
 		ret = smb349_read(client, SMB349_CMD_REG);
 		if (ret < 0) {
@@ -302,11 +328,10 @@ int update_charger_status(void)
 			"0x%02x\n", __func__, SMB349_STS_REG_D);
 		goto val_error;
 	} else if (val != 0) {
-		if (val & DEDICATED_CHARGER)
-			charger->chrg_type = AC;
-		else
-			charger->chrg_type = USB;
-
+		if(charger->chrg_type == USB)
+			printk("[smb349 charger]cable type is %s\n", "USB");
+		else if(charger->chrg_type == AC)
+			printk("[smb349 charger]cable type is %s\n", "AC adapter");
 		charger->state = progress;
 	} else {
 		charger->state = stopped;
@@ -356,7 +381,7 @@ static int smb349_enable_otg(struct regulator_dev *otg_rdev)
 	int ret;
 
 	/* configure charger */
-	ret = smb349_configure_charger(client, 0);
+	ret = smb349_configure_charger(client, 0, 0);
 	if (ret < 0)
 		goto error;
 	/* ENABLE OTG */
@@ -382,7 +407,7 @@ static int smb349_disable_otg(struct regulator_dev *otg_rdev)
 	if (ret < 0)
 		goto error;
 	/* configure charger */
-	ret = smb349_configure_charger(client, 1);
+	ret = smb349_configure_charger(client, 1, 0);
 	if (ret < 0)
 		goto error;
 
@@ -405,6 +430,8 @@ static int smb349_enable_charging(struct regulator_dev *rdev,
 	struct i2c_client *client = charger->client;
 	int ret;
 
+	printk("smb349-charger.c: smb349_enable_charging called...\n");
+
 	if (!max_uA) {
 		/* Wait for SMB349 to debounce and get reset to POR when cable is unpluged */
 		msleep(50);
@@ -422,22 +449,33 @@ static int smb349_enable_charging(struct regulator_dev *rdev,
 		charger->state = stopped;
 		charger->chrg_type = NONE;
 	} else {
+		printk("smb349-charger.c: smb349_enable_charging called with max_uA = %d\n", max_uA);
+
 		/* Wait for SMB349 to reload OTP setting and detect type*/
 		msleep(500);
 
 		ret =  smb349_read(client, SMB349_STS_REG_D);
+
 		if (ret < 0) {
 			dev_err(&client->dev, "%s(): Failed in reading register"
 					"0x%02x\n", __func__, SMB349_STS_REG_D);
 			return ret;
 		} else if (ret != 0) {
-			if (ret & DEDICATED_CHARGER)
+			if (max_uA == 1800 * 1000) {
+				printk("smb349-charger.c: AC charger type detected...\n");
 				charger->chrg_type = AC;
-			else
+				ret = smb349_configure_charger(client, 1, max_uA);
+				if (ret < 0) {
+					dev_err(&client->dev, "%s() error in configuring charger..\n", __func__);
+					return ret;
+				}
+			} else {
+				printk("smb349-charger.c: USB charger type detected...\n");
 				charger->chrg_type = USB;
+			}
 
 			/* configure charger */
-			ret = smb349_configure_charger(client, 1);
+			ret = smb349_configure_charger(client, 1, 0);
 			if (ret < 0) {
 				dev_err(&client->dev, "%s() error in"
 					"configuring charger..\n", __func__);
@@ -579,7 +617,6 @@ static int __devinit smb349_probe(struct i2c_client *client,
 	charger->reg_desc.ops   = &smb349_tegra_regulator_ops;
 	charger->reg_desc.type  = REGULATOR_CURRENT;
 	charger->reg_desc.id    = pdata->regulator_id;
-	charger->reg_desc.type  = REGULATOR_CURRENT;
 	charger->reg_desc.owner = THIS_MODULE;
 
 	charger->reg_init_data.supply_regulator         = NULL;
@@ -619,7 +656,6 @@ static int __devinit smb349_probe(struct i2c_client *client,
 	charger->otg_reg_desc.ops   = &smb349_tegra_otg_regulator_ops;
 	charger->otg_reg_desc.type  = REGULATOR_CURRENT;
 	charger->otg_reg_desc.id    = pdata->otg_regulator_id;
-	charger->otg_reg_desc.type  = REGULATOR_CURRENT;
 	charger->otg_reg_desc.owner = THIS_MODULE;
 
 	charger->otg_reg_init_data.supply_regulator         = NULL;
@@ -631,7 +667,7 @@ static int __devinit smb349_probe(struct i2c_client *client,
 	charger->otg_reg_init_data.driver_data              = charger;
 	charger->otg_reg_init_data.constraints.name         = "vbus_otg";
 	charger->otg_reg_init_data.constraints.min_uA       = 0;
-	charger->otg_reg_init_data.constraints.max_uA       = 500000;
+	charger->otg_reg_init_data.constraints.max_uA       = 1000000;
 
 	charger->otg_reg_init_data.constraints.valid_modes_mask =
 					REGULATOR_MODE_NORMAL |
@@ -666,7 +702,7 @@ static int __devinit smb349_probe(struct i2c_client *client,
 		goto error;
 	} else if (ret != 0) {
 		/* configure charger */
-		ret = smb349_configure_charger(client, 1);
+		ret = smb349_configure_charger(client, 1, 0);
 		if (ret < 0) {
 			dev_err(&client->dev, "%s() error in configuring"
 				"charger..\n", __func__);
@@ -674,7 +710,7 @@ static int __devinit smb349_probe(struct i2c_client *client,
 		}
 	} else {
 		/* disable charger */
-		ret = smb349_configure_charger(client, 0);
+		ret = smb349_configure_charger(client, 0, 0);
 		if (ret < 0) {
 			dev_err(&client->dev, "%s() error in configuring"
 				"charger..\n", __func__);
