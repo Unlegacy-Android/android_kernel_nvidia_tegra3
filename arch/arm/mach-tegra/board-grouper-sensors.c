@@ -19,6 +19,7 @@
 
 #include <linux/delay.h>
 #include <linux/input/cap1106.h>
+#include <linux/input/lid.h>
 #include <linux/i2c.h>
 #include <linux/nct1008.h>
 #include <linux/mpu.h>
@@ -298,6 +299,22 @@ static void capirq_init(void)
 			ARRAY_SIZE(grouper_i2c1_cap1106_board_info));
 }
 
+static struct lid_sensor_platform_data grouper_lid_pdata = {
+	.irq_gpio = TEGRA_GPIO_PS6,
+};
+
+static struct platform_device lid_device = {
+	.name	= "lid-sensor",
+	.id		= -1,
+};
+
+static void lid_init(void)
+{
+	pr_info("%s\n", __func__);
+	lid_device.dev.platform_data = &grouper_lid_pdata;
+	platform_device_register(&lid_device);
+}
+
 int __init grouper_sensors_init(void)
 {
 	int err;
@@ -322,6 +339,7 @@ int __init grouper_sensors_init(void)
 
 	capirq_init();
 	mpuirq_init();
+	lid_init();
 
 	return 0;
 }
