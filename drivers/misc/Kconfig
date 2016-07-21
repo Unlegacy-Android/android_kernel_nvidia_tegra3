@@ -572,6 +572,12 @@ config THERM_EST
 	---help---
 	Thermal driver which estimates temperature based of other sensors.
 
+config LIS3DH_ACCELEROMETER
+	bool "LIS3DH Accelerometer driver"
+	default n
+	---help---
+	This driver is for LIS3DH Accelerometer of ST Microelectronics
+
 config TEGRA_THROUGHPUT
 	bool "Device node to set throughput target"
 	depends on TEGRA_DC && TEGRA_DC_EXTENSIONS
