@@ -1828,6 +1828,7 @@ static int cl_register_show(struct seq_file *s, void *data)
 	return 0;
 }
 
+#if defined(BUG_29518457)
 static int cl_register_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, cl_register_show, inode->i_private);
@@ -1869,6 +1870,7 @@ static const struct file_operations cl_register_fops = {
 	.llseek		= seq_lseek,
 	.release	= single_release,
 };
+#endif
 
 int __init tegra_cl_dvfs_debug_init(struct clk *dfll_clk)
 {
@@ -1913,9 +1915,11 @@ int __init tegra_cl_dvfs_debug_init(struct clk *dfll_clk)
 		cl_dvfs_dentry, dfll_clk, &undershoot_fops))
 		goto err_out;
 
+#if defined(BUG_29518457)
 	if (!debugfs_create_file("registers", S_IRUGO | S_IWUSR,
 		cl_dvfs_dentry, dfll_clk, &cl_register_fops))
 		goto err_out;
+#endif
 
 	return 0;
 
