@@ -256,7 +256,7 @@ static struct smb347_charger_platform_data smb347_charger_pdata = {
 	.suspend_on_hard_temp_limit = true,
 	.use_mains		= true,
 	.use_usb		= true,
-	.use_usb_otg		= true,
+	.use_usb_otg		= false,
 	.irq_gpio		= TEGRA_GPIO_PV1,
 	.enable_control		= SMB347_CHG_ENABLE_SW,
 	.usb_mode_pin_ctrl	= true,
@@ -631,6 +631,32 @@ void grouper_hsic_platform_open(void)
 	udelay(1000);
 }
 
+static void grouper_otg_power(int enable)
+{
+	struct power_supply *smb_usb = power_supply_get_by_name("smb347-usb");
+	union power_supply_propval usb_otg = { enable };
+
+	pr_debug("%s: %d\n", __func__, enable);
+
+	if (smb_usb && smb_usb->set_property)
+		smb_usb->set_property(
+			smb_usb,
+			POWER_SUPPLY_PROP_USB_OTG,
+			&usb_otg);
+	else
+		pr_err("%s: couldn't get power supply\n", __func__);
+}
+
+void grouper_usb_ehci1_phy_on(void)
+{
+	grouper_otg_power(1);
+}
+
+void grouper_usb_echi1_phy_off(void)
+{
+	grouper_otg_power(0);
+}
+
 static struct tegra_usb_phy_platform_ops uhsic_pdata_ops = {
 	.open = &grouper_hsic_platform_open,
 	.pre_phy_on = &grouper_usb_hsic_phy_on,
@@ -639,6 +665,11 @@ static struct tegra_usb_phy_platform_ops uhsic_pdata_ops = {
 	.post_resume = &grouper_usb_hsic_post_resume,
 	.port_power = &grouper_usb_hsic_phy_ready,
 	.post_phy_off = &grouper_usb_hsic_phy_off,
+};
+
+static struct tegra_usb_phy_platform_ops ehci1_pdata_ops = {
+	.pre_phy_on = &grouper_usb_ehci1_phy_on,
+	.post_phy_off = &grouper_usb_echi1_phy_off,
 };
 
 static struct tegra_usb_platform_data tegra_ehci_uhsic_pdata = {
@@ -701,6 +732,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 		.xcvr_setup_offset = 0,
 		.xcvr_use_fuses = 1,
 	},
+	.ops = &ehci1_pdata_ops,
 };
 
 static struct tegra_usb_otg_data tegra_otg_pdata = {
