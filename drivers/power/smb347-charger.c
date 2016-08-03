@@ -1153,6 +1153,24 @@ static int smb347_usb_set_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_USB_OTG:
+#ifdef CONFIG_MACH_GROUPER
+		smb347_set_writable(smb, true);
+
+		ret = smb347_read(smb, CFG_SYSOK);
+
+		if (ret < 0)
+			return ret;
+
+		if (val->intval)
+			ret |= BIT(0);
+		else
+			ret &= ~BIT(0);
+
+		ret = smb347_write(smb, CFG_SYSOK, ret);
+
+		smb347_set_writable(smb, false);
+#endif
+
 		ret = smb347_read(smb, CMD_A);
 
 		if (ret < 0)
