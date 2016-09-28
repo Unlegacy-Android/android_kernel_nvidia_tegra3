@@ -38,6 +38,7 @@ struct smb349_charger_platform_data {
 	int otg_regulator_id;
 	int num_otg_consumer_supplies;
 	struct regulator_consumer_supply *otg_consumer_supplies;
+	u8 configuration_data[17];
 };
 
 enum charging_states {

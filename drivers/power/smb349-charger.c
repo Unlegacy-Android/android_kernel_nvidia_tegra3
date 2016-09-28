@@ -86,6 +86,8 @@
 #define ENABLE_CHARGE		0x02
 #define ENABLE_HC_MODE		0x01
 
+#define ARRAYSIZE(a)           (sizeof(a)/sizeof(a[0]))
+
 static struct smb349_charger *charger;
 static int smb349_configure_charger(struct i2c_client *client, int value, int max_uA);
 
@@ -312,6 +314,38 @@ error:
 	return ret;
 }
 
+static void smb349_reconfigure_charger(void)
+{
+	struct i2c_client *client = charger->client;
+	struct smb349_charger_platform_data *pdata;
+	int ret, i;
+
+	pdata = client->dev.platform_data;
+
+	/* Now let's configure the charger with the original config */
+	ret = smb349_volatile_writes(client, SMB349_ENABLE_WRITE);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s() error in configuring charger..\n",
+									__func__);
+	}
+	for(i=0; i<ARRAYSIZE(pdata->configuration_data); i++)
+	{
+		if(pdata->configuration_data[i] == 0xFF) {
+			printk("[smb349 charger] Register 0x%02x skipped\n", i);
+			continue;
+		}
+		printk("[smb349 charger] Register 0x%02x value 0x%02x\n", i, pdata->configuration_data[i]);
+		ret = smb349_write(client, i, pdata->configuration_data[i]);
+	}
+	/* Disable volatile writes to registers */
+	ret = smb349_volatile_writes(client, SMB349_DISABLE_WRITE);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s() error in configuring charger..\n",
+									__func__);
+	}
+	/* end of configure charger */
+}
+
 int update_charger_status(void)
 {
 	struct i2c_client *client;
@@ -448,6 +482,9 @@ static int smb349_enable_charging(struct regulator_dev *rdev,
 
 		charger->state = stopped;
 		charger->chrg_type = NONE;
+
+		smb349_reconfigure_charger();
+
 	} else {
 		printk("smb349-charger.c: smb349_enable_charging called with max_uA = %d\n", max_uA);
 
@@ -717,6 +754,8 @@ static int __devinit smb349_probe(struct i2c_client *client,
 			goto error;
 		}
 	}
+
+	smb349_reconfigure_charger();
 
 	return 0;
 error:
