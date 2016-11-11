@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bae84128_40412e39",
+        "filename": "lib/lzo/lzo1x_decompress_safe.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-11T15:16:41Z",
+      "side": 0,
+      "message": "We should definitely keep: a7bfda3 lib/lzo: huge LZO decompression speedup on ARM by using unaligned access (see https://github.com/airend/android_kernel_asus_grouper/blob/grouper/3.4.113/lib/lzo/lzo1x_decompress_safe.c).",
+      "range": {
+        "startLine": 75,
+        "startChar": 0,
+        "endLine": 75,
+        "endChar": 23
+      },
+      "revId": "371c86ca07292c481e5942f0246bb6c1530de520",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bae84128_203eaab8",
+        "filename": "lib/lzo/lzo1x_decompress_safe.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-11T15:16:41Z",
+      "side": 0,
+      "message": "Same as above",
+      "range": {
+        "startLine": 164,
+        "startChar": 0,
+        "endLine": 164,
+        "endChar": 23
+      },
+      "revId": "371c86ca07292c481e5942f0246bb6c1530de520",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bae84128_804b3659",
+        "filename": "lib/lzo/lzodefs.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-11T15:16:41Z",
+      "side": 0,
+      "message": "We should definitely keep: a7bfda3 \"lib/lzo: huge LZO decompression speedup on ARM by using unaligned access\" (see https://github.com/airend/android_kernel_asus_grouper/blob/grouper/3.4.113/lib/lzo/lzodefs.h)",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 5
+      },
+      "revId": "371c86ca07292c481e5942f0246bb6c1530de520",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}

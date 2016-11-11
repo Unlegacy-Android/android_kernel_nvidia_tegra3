@@ -1,0 +1,188 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bae84128_6031d2ec",
+        "filename": "drivers/base/regmap/regmap-debugfs.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-11T15:16:41Z",
+      "side": 1,
+      "message": "Should not discard: a3f3ff3 \"regmap: debugfs: fix possbile NULL pointer dereference\".",
+      "range": {
+        "startLine": 246,
+        "startChar": 0,
+        "endLine": 258,
+        "endChar": 28
+      },
+      "revId": "7de402e08b15725e8836a5df8f02f9410eaaeb3c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bae84128_c04c1e79",
+        "filename": "drivers/i2c/busses/i2c-tegra.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 522,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-11T15:16:41Z",
+      "side": 1,
+      "message": "Looks like tegra_i2c_clock_enable() does its own validation, so this change is probably redundant.",
+      "range": {
+        "startLine": 518,
+        "startChar": 1,
+        "endLine": 522,
+        "endChar": 2
+      },
+      "revId": "7de402e08b15725e8836a5df8f02f9410eaaeb3c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bae84128_a0511a11",
+        "filename": "drivers/i2c/busses/i2c-tegra.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1019,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-11T15:16:41Z",
+      "side": 1,
+      "message": "Same as above",
+      "range": {
+        "startLine": 1015,
+        "startChar": 1,
+        "endLine": 1019,
+        "endChar": 2
+      },
+      "revId": "7de402e08b15725e8836a5df8f02f9410eaaeb3c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bae84128_00572603",
+        "filename": "drivers/usb/class/cdc-acm.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-11T15:16:41Z",
+      "side": 1,
+      "message": "This is not needed; we should adapt cdc-acm.c to upstream changes, should we incorporate any, possibly like: https://github.com/airend/android_kernel_asus_grouper/blob/grouper/3.4.113/drivers/usb/class/cdc-acm.c",
+      "range": {
+        "startLine": 122,
+        "startChar": 1,
+        "endLine": 122,
+        "endChar": 28
+      },
+      "revId": "7de402e08b15725e8836a5df8f02f9410eaaeb3c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bae84128_e05b222d",
+        "filename": "kernel/time/timekeeping.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1378,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-11T15:16:41Z",
+      "side": 1,
+      "message": "This was removed in: 0fbe99f Revert \"Input: add infrastructure for selecting clockid for event time stamps\", and doesn\u0027t seem to be needed.",
+      "range": {
+        "startLine": 1378,
+        "startChar": 0,
+        "endLine": 1378,
+        "endChar": 46
+      },
+      "revId": "7de402e08b15725e8836a5df8f02f9410eaaeb3c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bae84128_6048b25c",
+        "filename": "security/selinux/nlmsgtab.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-11T15:16:41Z",
+      "side": 1,
+      "message": "Some sort of whitespace error; Google\u0027s version is probably better here.",
+      "range": {
+        "startLine": 111,
+        "startChar": 0,
+        "endLine": 111,
+        "endChar": 67
+      },
+      "revId": "7de402e08b15725e8836a5df8f02f9410eaaeb3c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bae84128_c0737eb3",
+        "filename": "sound/pci/hda/hda_intel.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3248,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-11T15:16:41Z",
+      "side": 1,
+      "message": "Inconsistent/mixed whitespace; should convert spaces to tabs like surround code.",
+      "range": {
+        "startLine": 3241,
+        "startChar": 0,
+        "endLine": 3248,
+        "endChar": 68
+      },
+      "revId": "7de402e08b15725e8836a5df8f02f9410eaaeb3c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bae84128_a078fa90",
+        "filename": "sound/pci/hda/patch_conexant.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 4523,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-11T15:16:41Z",
+      "side": 1,
+      "message": "Removed in: fe7095d \"ALSA: hda/conexant - Set up the missing docking-station pins\"",
+      "range": {
+        "startLine": 4523,
+        "startChar": 2,
+        "endLine": 4523,
+        "endChar": 32
+      },
+      "revId": "7de402e08b15725e8836a5df8f02f9410eaaeb3c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
