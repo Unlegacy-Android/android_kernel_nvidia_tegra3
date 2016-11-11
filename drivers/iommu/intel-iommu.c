@@ -778,7 +778,11 @@ static struct dma_pte *pfn_to_dma_pte(struct dmar_domain *domain,
 	int offset;
 
 	BUG_ON(!domain->pgd);
-	BUG_ON(addr_width < BITS_PER_LONG && pfn >> addr_width);
+
+	if (addr_width < BITS_PER_LONG && pfn >> addr_width)
+		/* Address beyond IOMMU's addressing capabilities. */
+		return NULL;
+
 	parent = domain->pgd;
 
 	while (level > 0) {
@@ -909,7 +913,7 @@ static void dma_pte_free_level(struct dmar_domain *domain, int level,
 
 		/* If range covers entire pagetable, free it */
 		if (!(start_pfn > level_pfn ||
-		      last_pfn < level_pfn + level_size(level))) {
+		      last_pfn < level_pfn + level_size(level) - 1)) {
 			dma_clear_pte(pte);
 			domain_flush_cache(domain, pte, sizeof(*pte));
 			free_pgtable_page(level_pte);
@@ -1788,7 +1792,7 @@ static int __domain_mapping(struct dmar_domain *domain, unsigned long iov_pfn,
 	struct dma_pte *first_pte = NULL, *pte = NULL;
 	phys_addr_t uninitialized_var(pteval);
 	int addr_width = agaw_to_width(domain->agaw) - VTD_PAGE_SHIFT;
-	unsigned long sg_res;
+	unsigned long sg_res = 0;
 	unsigned int largepage_lvl = 0;
 	unsigned long lvl_pages = 0;
 
@@ -1799,10 +1803,8 @@ static int __domain_mapping(struct dmar_domain *domain, unsigned long iov_pfn,
 
 	prot &= DMA_PTE_READ | DMA_PTE_WRITE | DMA_PTE_SNP;
 
-	if (sg)
-		sg_res = 0;
-	else {
-		sg_res = nr_pages + 1;
+	if (!sg) {
+		sg_res = nr_pages;
 		pteval = ((phys_addr_t)phys_pfn << VTD_PAGE_SHIFT) | prot;
 	}
 
@@ -1825,13 +1827,20 @@ static int __domain_mapping(struct dmar_domain *domain, unsigned long iov_pfn,
 				return -ENOMEM;
 			/* It is large page*/
 			if (largepage_lvl > 1) {
+				unsigned long nr_superpages, end_pfn, lvl_pages;
+
 				pteval |= DMA_PTE_LARGE_PAGE;
-				/* Ensure that old small page tables are removed to make room
-				   for superpage, if they exist. */
-				dma_pte_clear_range(domain, iov_pfn,
-						    iov_pfn + lvl_to_nr_pages(largepage_lvl) - 1);
-				dma_pte_free_pagetable(domain, iov_pfn,
-						       iov_pfn + lvl_to_nr_pages(largepage_lvl) - 1);
+				lvl_pages = lvl_to_nr_pages(largepage_lvl);
+
+				nr_superpages = sg_res / lvl_pages;
+				end_pfn = iov_pfn + nr_superpages * lvl_pages - 1;
+
+				/*
+				 * Ensure that old small page tables are
+				 * removed to make room for superpage(s).
+				 */
+				dma_pte_clear_range(domain, iov_pfn, end_pfn);
+				dma_pte_free_pagetable(domain, iov_pfn, end_pfn);
 			} else {
 				pteval &= ~(uint64_t)DMA_PTE_LARGE_PAGE;
 			}
@@ -3577,10 +3586,15 @@ found:
 	for (bus = dev->bus; bus; bus = bus->parent) {
 		struct pci_dev *bridge = bus->self;
 
-		if (!bridge || !pci_is_pcie(bridge) ||
+		/* If it's an integrated device, allow ATS */
+		if (!bridge)
+			return 1;
+		/* Connected via non-PCIe: no ATS */
+		if (!pci_is_pcie(bridge) ||
 		    bridge->pcie_type == PCI_EXP_TYPE_PCI_BRIDGE)
 			return 0;
 
+		/* If we found the root port, look it up in the ATSR */
 		if (bridge->pcie_type == PCI_EXP_TYPE_ROOT_PORT) {
 			for (i = 0; i < atsru->devices_cnt; i++)
 				if (atsru->devices[i] == bridge)
@@ -3655,6 +3669,7 @@ static struct notifier_block device_nb = {
 int __init intel_iommu_init(void)
 {
 	int ret = 0;
+	struct dmar_drhd_unit *drhd;
 
 	/* VT-d is required for a TXT/tboot launch, so enforce that */
 	force_on = tboot_force_iommu();
@@ -3663,6 +3678,20 @@ int __init intel_iommu_init(void)
 		if (force_on)
 			panic("tboot: Failed to initialize DMAR table\n");
 		return 	-ENODEV;
+	}
+
+	/*
+	 * Disable translation if already enabled prior to OS handover.
+	 */
+	for_each_drhd_unit(drhd) {
+		struct intel_iommu *iommu;
+
+		if (drhd->ignored)
+			continue;
+
+		iommu = drhd->iommu;
+		if (iommu->gcmd & DMA_GCMD_TE)
+			iommu_disable_translation(iommu);
 	}
 
 	if (dmar_dev_scope_init() < 0) {
