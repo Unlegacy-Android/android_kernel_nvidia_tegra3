@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5aef4532_7d4b375a",
+        "filename": "drivers/base/regmap/regmap-debugfs.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-12T15:48:13Z",
+      "side": 1,
+      "message": "If we do the NULL check like in https://github.com/airend/android_kernel_asus_grouper/blob/test/3.4.113/drivers/base/regmap/regmap-debugfs.c#L248, we don\u0027t need to do it twice (again in kasprintf).",
+      "range": {
+        "startLine": 253,
+        "startChar": 2,
+        "endLine": 254,
+        "endChar": 46
+      },
+      "revId": "06fa0a3231f4fe3e2ef28e8f3b23f27f9aaacdcf",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
