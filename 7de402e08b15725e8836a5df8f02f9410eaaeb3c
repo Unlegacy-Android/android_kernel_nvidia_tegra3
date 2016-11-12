@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "bae84128_40680ebb",
+        "filename": "drivers/base/regmap/regmap-debugfs.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2016-11-12T11:03:45Z",
+      "side": 1,
+      "message": "This is not discarding that, if look carefully, I\u0027m using both ways here, the debugfs fix for NULL pointer deref in the first if clause and in the else clause the upstream way.",
+      "parentUuid": "bae84128_6031d2ec",
+      "range": {
+        "startLine": 246,
+        "startChar": 0,
+        "endLine": 258,
+        "endChar": 28
+      },
+      "revId": "7de402e08b15725e8836a5df8f02f9410eaaeb3c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bae84128_c04c1e79",
         "filename": "drivers/i2c/busses/i2c-tegra.c",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2016-11-11T15:16:41Z",
       "side": 1,
       "message": "Looks like tegra_i2c_clock_enable() does its own validation, so this change is probably redundant.",
+      "range": {
+        "startLine": 518,
+        "startChar": 1,
+        "endLine": 522,
+        "endChar": 2
+      },
+      "revId": "7de402e08b15725e8836a5df8f02f9410eaaeb3c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bae84128_806216d7",
+        "filename": "drivers/i2c/busses/i2c-tegra.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 522,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2016-11-12T11:03:45Z",
+      "side": 1,
+      "message": "Yeah, right:\nstatic inline int tegra_i2c_clock_enable(struct tegra_i2c_dev *i2c_dev)\n{\n\tint ret;\n\tif (i2c_dev-\u003echipdata-\u003ehas_fast_clock) {\n\t\tret \u003d clk_prepare_enable(i2c_dev-\u003efast_clk);\n\t\tif (ret \u003c 0) {\n\t\t\tdev_err(i2c_dev-\u003edev,\n\t\t\t\t\"Error in enabling fast clock err %d\\n\", ret);\n\t\t\treturn ret;\n\t\t}\n\t}\n\tret \u003d clk_prepare_enable(i2c_dev-\u003ediv_clk);\n\tif (ret \u003c 0) {\n\t\tdev_err(i2c_dev-\u003edev,\n\t\t\t\"Error in enabling div clock err %d\\n\", ret);\n\t\tclk_disable_unprepare(i2c_dev-\u003efast_clk);\n\t}\n\treturn ret;\n}",
+      "parentUuid": "bae84128_c04c1e79",
       "range": {
         "startLine": 518,
         "startChar": 1,
@@ -82,6 +130,30 @@
       "writtenOn": "2016-11-11T15:16:41Z",
       "side": 1,
       "message": "This is not needed; we should adapt cdc-acm.c to upstream changes, should we incorporate any, possibly like: https://github.com/airend/android_kernel_asus_grouper/blob/grouper/3.4.113/drivers/usb/class/cdc-acm.c",
+      "range": {
+        "startLine": 122,
+        "startChar": 1,
+        "endLine": 122,
+        "endChar": 28
+      },
+      "revId": "7de402e08b15725e8836a5df8f02f9410eaaeb3c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bae84128_e07202ad",
+        "filename": "drivers/usb/class/cdc-acm.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2016-11-12T11:03:45Z",
+      "side": 1,
+      "message": "\u003e This is not needed; we should adapt cdc-acm.c to upstream changes,\n \u003e should we incorporate any, possibly like: https://github.com/airend/android_kernel_asus_grouper/blob/grouper/3.4.113/drivers/usb/class/cdc-acm.c\n\nI noticed that too, upstream already implements PM, until stable 3.4.67 this was patched to make it possible.\nbtw, you should fix yours cdc-acm.c you are initializing usb anchor 2x:\nhttps://github.com/airend/android_kernel_asus_grouper/blob/grouper/3.4.113/drivers/usb/class/cdc-acm.c#L1288\nand\nhttps://github.com/airend/android_kernel_asus_grouper/blob/grouper/3.4.113/drivers/usb/class/cdc-acm.c#L1300",
+      "parentUuid": "bae84128_00572603",
       "range": {
         "startLine": 122,
         "startChar": 1,
