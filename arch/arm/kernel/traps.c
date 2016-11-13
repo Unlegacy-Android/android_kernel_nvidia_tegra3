@@ -791,11 +791,19 @@ static void __init kuser_init(void *vectors)
 	 */
 	if (tls_emu || has_tls_reg)
 		memcpy(vectors + 0xfe0, vectors + 0xfe8, 4);
+<<<<<<< HEAD
 }
 #else
 static void __init kuser_init(void *vectors)
 {
 }
+=======
+}
+#else
+static void __init kuser_init(void *vectors)
+{
+}
+>>>>>>> google-common/android-3.4
 #endif
 
 void __init early_trap_init(void *vectors_base)

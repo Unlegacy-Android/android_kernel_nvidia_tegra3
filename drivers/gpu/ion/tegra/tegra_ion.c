@@ -2,7 +2,10 @@
  * drivers/gpu/tegra/tegra_ion.c
  *
  * Copyright (C) 2011 Google, Inc.
+<<<<<<< HEAD
  * Copyright (C) 2011, NVIDIA Corporation.
+=======
+>>>>>>> google-common/android-3.4
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -15,6 +18,7 @@
  *
  */
 
+<<<<<<< HEAD
 #define pr_fmt(fmt)	"%s():%d: " fmt, __func__, __LINE__
 
 #include <linux/err.h>
@@ -298,17 +302,37 @@ static long tegra_ion_ioctl(struct ion_client *client,
 	}
 	return ret;
 }
+=======
+#include <linux/err.h>
+#include <linux/ion.h>
+#include <linux/platform_device.h>
+#include <linux/slab.h>
+#include "../ion_priv.h"
+
+struct ion_device *idev;
+struct ion_mapper *tegra_user_mapper;
+int num_heaps;
+struct ion_heap **heaps;
+>>>>>>> google-common/android-3.4
 
 int tegra_ion_probe(struct platform_device *pdev)
 {
 	struct ion_platform_data *pdata = pdev->dev.platform_data;
+<<<<<<< HEAD
+=======
+	int err;
+>>>>>>> google-common/android-3.4
 	int i;
 
 	num_heaps = pdata->nr;
 
 	heaps = kzalloc(sizeof(struct ion_heap *) * pdata->nr, GFP_KERNEL);
 
+<<<<<<< HEAD
 	idev = ion_device_create(tegra_ion_ioctl);
+=======
+	idev = ion_device_create(NULL);
+>>>>>>> google-common/android-3.4
 	if (IS_ERR_OR_NULL(idev)) {
 		kfree(heaps);
 		return PTR_ERR(idev);
@@ -320,18 +344,34 @@ int tegra_ion_probe(struct platform_device *pdev)
 
 		heaps[i] = ion_heap_create(heap_data);
 		if (IS_ERR_OR_NULL(heaps[i])) {
+<<<<<<< HEAD
 			pr_warn("%s(type:%d id:%d) isn't supported\n",
 				heap_data->name,
 				heap_data->type, heap_data->id);
 			continue;
+=======
+			err = PTR_ERR(heaps[i]);
+			goto err;
+>>>>>>> google-common/android-3.4
 		}
 		ion_device_add_heap(idev, heaps[i]);
 	}
 	platform_set_drvdata(pdev, idev);
+<<<<<<< HEAD
 #if !defined(CONFIG_TEGRA_NVMAP)
 	nvmap_dev = (struct nvmap_device *)idev;
 #endif
 	return 0;
+=======
+	return 0;
+err:
+	for (i = 0; i < num_heaps; i++) {
+		if (heaps[i])
+			ion_heap_destroy(heaps[i]);
+	}
+	kfree(heaps);
+	return err;
+>>>>>>> google-common/android-3.4
 }
 
 int tegra_ion_remove(struct platform_device *pdev)
@@ -362,6 +402,7 @@ static void __exit ion_exit(void)
 	platform_driver_unregister(&ion_driver);
 }
 
+<<<<<<< HEAD
 fs_initcall(ion_init);
 module_exit(ion_exit);
 
@@ -597,3 +638,8 @@ void nvmap_handle_put(struct nvmap_handle *h)
 }
 
 #endif
+=======
+module_init(ion_init);
+module_exit(ion_exit);
+
+>>>>>>> google-common/android-3.4

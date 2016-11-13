@@ -61,8 +61,11 @@ endif
 ifeq ($(CONFIG_TRACING),y)
 obj-$(CONFIG_KGDB_KDB) += trace_kdb.o
 endif
+<<<<<<< HEAD
 obj-$(CONFIG_TRACELEVEL) += tracelevel.o
 obj-$(CONFIG_TRACEDUMP) += tracedump.o
+=======
+>>>>>>> google-common/android-3.4
 obj-$(CONFIG_GPU_TRACEPOINTS) += gpu-traces.o
 
 libftrace-y := ftrace.o

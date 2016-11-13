@@ -920,9 +920,12 @@ static void debug_fiq(struct fiq_glue_handler *h, void *regs, void *svc_sp)
 	unsigned int this_cpu = THREAD_INFO(svc_sp)->cpu;
 	bool need_irq;
 
+<<<<<<< HEAD
 	/* Spew regs and callstack immediately after entering FIQ handler */
 	debug_fiq_exec(state, "allregs", regs, svc_sp);
 	debug_fiq_exec(state, "bt", regs, svc_sp);
+=======
+>>>>>>> google-common/android-3.4
 	need_irq = debug_handle_uart_interrupt(state, this_cpu, regs, svc_sp);
 	if (need_irq)
 		debug_force_irq(state);

@@ -34,8 +34,11 @@
 #include <linux/console.h>
 
 #include <asm/cacheflush.h>
+<<<<<<< HEAD
 #include <asm/idmap.h>
 #include <asm/leds.h>
+=======
+>>>>>>> google-common/android-3.4
 #include <asm/processor.h>
 #include <asm/thread_notify.h>
 #include <asm/stacktrace.h>
@@ -339,6 +342,10 @@ void machine_restart(char *cmd)
 	local_fiq_disable();
 
 	machine_shutdown();
+
+	/* Flush the console to make sure all the relevant messages make it
+	 * out to the console drivers */
+	arm_machine_flush_console();
 
 	arm_pm_restart(reboot_mode, cmd);
 
@@ -704,18 +711,30 @@ const char *arch_vma_name(struct vm_area_struct *vma)
 		 "[sigpage]" : NULL;
 }
 
+<<<<<<< HEAD
 static struct page *signal_page;
+=======
+>>>>>>> google-common/android-3.4
 extern struct page *get_signal_page(void);
 
 int arch_setup_additional_pages(struct linux_binprm *bprm, int uses_interp)
 {
 	struct mm_struct *mm = current->mm;
+<<<<<<< HEAD
 	unsigned long addr;
 	int ret;
 
 	if (!signal_page)
 		signal_page = get_signal_page();
 	if (!signal_page)
+=======
+	struct page *page;
+	unsigned long addr;
+	int ret;
+
+	page = get_signal_page();
+	if (!page)
+>>>>>>> google-common/android-3.4
 		return -ENOMEM;
 
 	down_write(&mm->mmap_sem);
@@ -727,7 +746,11 @@ int arch_setup_additional_pages(struct linux_binprm *bprm, int uses_interp)
 
 	ret = install_special_mapping(mm, addr, PAGE_SIZE,
 		VM_READ | VM_EXEC | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC,
+<<<<<<< HEAD
 		&signal_page);
+=======
+		&page);
+>>>>>>> google-common/android-3.4
 
 	if (ret == 0)
 		mm->context.sigpage = addr;

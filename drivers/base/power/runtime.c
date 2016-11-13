@@ -404,6 +404,15 @@ static int rpm_suspend(struct device *dev, int rpmflags)
 		goto out;
 	}
 
+<<<<<<< HEAD
+=======
+	if (__dev_pm_qos_read_value(dev) < 0) {
+		/* Negative PM QoS constraint means "never suspend". */
+		retval = -EPERM;
+		goto out;
+	}
+
+>>>>>>> google-common/android-3.4
 	__update_runtime_status(dev, RPM_SUSPENDING);
 
 	if (dev->pm_domain)

@@ -24,7 +24,10 @@
 #include <linux/rslib.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
+<<<<<<< HEAD
 #include <linux/spinlock.h>
+=======
+>>>>>>> google-common/android-3.4
 
 struct persistent_ram_buffer {
 	uint32_t sig;

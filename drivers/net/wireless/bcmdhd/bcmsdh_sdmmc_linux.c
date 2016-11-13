@@ -34,7 +34,10 @@
 
 #include <linux/mmc/core.h>
 #include <linux/mmc/card.h>
+<<<<<<< HEAD
 #include <linux/mmc/host.h>
+=======
+>>>>>>> google-common/android-3.4
 #include <linux/mmc/sdio_func.h>
 #include <linux/mmc/sdio_ids.h>
 
@@ -142,8 +145,11 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 			ret = bcmsdh_probe(&func->dev);
 			if (ret < 0)
 				gInstance->func[2] = NULL;
+<<<<<<< HEAD
 			if (mmc_power_save_host(func->card->host))
 				sd_err(("%s: card power save fail", __FUNCTION__));
+=======
+>>>>>>> google-common/android-3.4
 		}
 	} else {
 		ret = -ENODEV;
@@ -220,6 +226,7 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 	}
 #if defined(OOB_INTR_ONLY)
 	bcmsdh_oob_intr_set(0);
+<<<<<<< HEAD
 #endif	/* defined(OOB_INTR_ONLY) */
 
 	sdio_flags = sdio_get_host_pm_caps(func);
@@ -243,6 +250,13 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 
 out:
 	return ret;
+=======
+#endif 
+	dhd_mmc_suspend = TRUE;
+	smp_mb();
+
+	return 0;
+>>>>>>> google-common/android-3.4
 }
 
 static int bcmsdh_sdmmc_resume(struct device *pdev)

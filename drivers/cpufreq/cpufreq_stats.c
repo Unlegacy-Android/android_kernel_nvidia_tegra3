@@ -82,8 +82,12 @@ static int cpufreq_stats_update(unsigned int cpu)
 		spin_unlock(&cpufreq_stats_lock);
 		return 0;
 	}
+<<<<<<< HEAD
 
 	if (stat->time_in_state && stat->last_index >= 0) {
+=======
+	if (stat->time_in_state) {
+>>>>>>> google-common/android-3.4
 		stat->time_in_state[stat->last_index] +=
 			cur_time - stat->last_time;
 		if (all_stat)

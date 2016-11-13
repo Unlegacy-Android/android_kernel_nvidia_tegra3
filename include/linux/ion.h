@@ -27,6 +27,10 @@ struct ion_handle;
  * @ION_HEAP_TYPE_CARVEOUT:	 memory allocated from a prereserved
  * 				 carveout heap, allocations are physically
  * 				 contiguous
+<<<<<<< HEAD
+=======
+ * @ION_HEAP_TYPE_DMA:		 memory allocated via DMA API
+>>>>>>> google-common/android-3.4
  * @ION_NUM_HEAPS:		 helper for iterating over heaps, a bit mask
  * 				 is used to identify the heaps, so only 32
  * 				 total heap types are supported
@@ -35,7 +39,12 @@ enum ion_heap_type {
 	ION_HEAP_TYPE_SYSTEM,
 	ION_HEAP_TYPE_SYSTEM_CONTIG,
 	ION_HEAP_TYPE_CARVEOUT,
+<<<<<<< HEAD
 	ION_HEAP_TYPE_IOMMU,
+=======
+	ION_HEAP_TYPE_CHUNK,
+	ION_HEAP_TYPE_DMA,
+>>>>>>> google-common/android-3.4
 	ION_HEAP_TYPE_CUSTOM, /* must be last so device specific heaps always
 				 are at the end of this enum */
 	ION_NUM_HEAPS = 16,
@@ -44,11 +53,19 @@ enum ion_heap_type {
 #define ION_HEAP_SYSTEM_MASK		(1 << ION_HEAP_TYPE_SYSTEM)
 #define ION_HEAP_SYSTEM_CONTIG_MASK	(1 << ION_HEAP_TYPE_SYSTEM_CONTIG)
 #define ION_HEAP_CARVEOUT_MASK		(1 << ION_HEAP_TYPE_CARVEOUT)
+<<<<<<< HEAD
+=======
+#define ION_HEAP_TYPE_DMA_MASK		(1 << ION_HEAP_TYPE_DMA)
+>>>>>>> google-common/android-3.4
 
 #define ION_NUM_HEAP_IDS		sizeof(unsigned int) * 8
 
 /**
+<<<<<<< HEAD
  * heap flags - the lower 16 bits are used by core ion, the upper 16
+=======
+ * allocation flags - the lower 16 bits are used by core ion, the upper 16
+>>>>>>> google-common/android-3.4
  * bits are reserved for use by the heaps themselves.
  */
 #define ION_FLAG_CACHED 1		/* mappings of this buffer should be
@@ -81,7 +98,12 @@ struct ion_buffer;
  * @name:	used for debug purposes
  * @base:	base address of heap in physical memory if applicable
  * @size:	size of the heap in bytes if applicable
+<<<<<<< HEAD
  * @priv:	heap specific data
+=======
+ * @align:	required alignment in physical memory if applicable
+ * @priv:	private info passed from the board file
+>>>>>>> google-common/android-3.4
  *
  * Provided by the board file.
  */
@@ -91,6 +113,10 @@ struct ion_platform_heap {
 	const char *name;
 	ion_phys_addr_t base;
 	size_t size;
+<<<<<<< HEAD
+=======
+	ion_phys_addr_t align;
+>>>>>>> google-common/android-3.4
 	void *priv;
 };
 
@@ -124,7 +150,10 @@ void ion_reserve(struct ion_platform_data *data);
  * @name:		used for debugging
  */
 struct ion_client *ion_client_create(struct ion_device *dev,
+<<<<<<< HEAD
 				     unsigned int heap_type_mask,
+=======
+>>>>>>> google-common/android-3.4
 				     const char *name);
 
 /**

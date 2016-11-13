@@ -36,7 +36,10 @@
 
 #include <linux/mmc/core.h>
 #include <linux/mmc/card.h>
+<<<<<<< HEAD
 #include <linux/mmc/host.h>
+=======
+>>>>>>> google-common/android-3.4
 #include <linux/mmc/sdio_func.h>
 #include <linux/mmc/sdio_ids.h>
 
@@ -1527,7 +1530,11 @@ sdioh_start(sdioh_info_t *si, int stage)
 		   2.6.27. The implementation prior to that is buggy, and needs broadcom's
 		   patch for it
 		*/
+<<<<<<< HEAD
 		if ((ret = mmc_power_restore_host((gInstance->func[0])->card->host))) {
+=======
+		if ((ret = sdio_reset_comm(gInstance->func[0]->card))) {
+>>>>>>> google-common/android-3.4
 			sd_err(("%s Failed, error = %d\n", __FUNCTION__, ret));
 			return ret;
 		}
@@ -1612,8 +1619,11 @@ sdioh_stop(sdioh_info_t *si)
 #endif
 		bcmsdh_oob_intr_set(FALSE);
 #endif /* !defined(OOB_INTR_ONLY) */
+<<<<<<< HEAD
 		if (mmc_power_save_host((gInstance->func[0])->card->host))
 			sd_err(("%s card power save fail\n", __FUNCTION__));
+=======
+>>>>>>> google-common/android-3.4
 	}
 	else
 		sd_err(("%s Failed\n", __FUNCTION__));

@@ -104,7 +104,10 @@
 #define L2X0_ADDR_FILTER_EN		1
 
 #define REV_PL310_R2P0				4
+<<<<<<< HEAD
 #define REV_PL310_R3P1_50			7
+=======
+>>>>>>> google-common/android-3.4
 
 #ifndef __ASSEMBLY__
 extern void l2x0_init(void __iomem *base, u32 aux_val, u32 aux_mask);

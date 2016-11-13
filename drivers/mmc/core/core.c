@@ -28,10 +28,13 @@
 #include <linux/fault-inject.h>
 #include <linux/random.h>
 #include <linux/wakelock.h>
+<<<<<<< HEAD
 #include <linux/devfreq.h>
 #include <linux/slab.h>
 
 #include <trace/events/mmc.h>
+=======
+>>>>>>> google-common/android-3.4
 
 #include <trace/events/mmc.h>
 
@@ -2850,6 +2853,7 @@ int mmc_suspend_host(struct mmc_host *host)
 	if (host->df) {
 		cancel_delayed_work_sync(&host->dfs_work);
 
+<<<<<<< HEAD
 		t = ktime_get();
 		host->dev_stats->total_time = ktime_us_delta(t,
 			host->dev_stats->t_interval);
@@ -2859,6 +2863,10 @@ int mmc_suspend_host(struct mmc_host *host)
 	if (mmc_card_mmc(host->card) && mmc_card_doing_bkops(host->card))
 		mmc_interrupt_hpi(host->card);
 	mmc_card_clr_need_bkops(host->card);
+=======
+	if (mmc_bus_needs_resume(host))
+		return 0;
+>>>>>>> google-common/android-3.4
 
 	if (cancel_delayed_work(&host->detect))
 		wake_unlock(&host->detect_wake_lock);

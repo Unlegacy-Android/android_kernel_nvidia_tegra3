@@ -22,8 +22,11 @@
 #include <sound/pcm.h>
 
 #define SAMPLE_RATE 44100
+<<<<<<< HEAD
 /* Each frame is two 16 bit integers (one per channel) */
 #define BYTES_PER_FRAME 4
+=======
+>>>>>>> google-common/android-3.4
 #define FRAMES_PER_MSEC (SAMPLE_RATE / 1000)
 
 #define IN_EP_MAX_PACKET_SIZE 256
@@ -245,7 +248,10 @@ struct audio_dev {
 
 	struct list_head		idle_reqs;
 	struct usb_ep			*in_ep;
+<<<<<<< HEAD
 	struct usb_endpoint_descriptor	*in_desc;
+=======
+>>>>>>> google-common/android-3.4
 
 	spinlock_t			lock;
 
@@ -789,7 +795,10 @@ int audio_source_bind_config(struct usb_configuration *c,
 	config->card = -1;
 	config->device = -1;
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> google-common/android-3.4
 	audio = &_audio_dev;
 
 	err = snd_card_create(SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1,

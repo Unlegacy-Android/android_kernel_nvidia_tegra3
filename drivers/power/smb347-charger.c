@@ -850,7 +850,11 @@ static int smb347_irq_init(struct smb347_charger *smb)
 	ret = request_threaded_irq(irq, NULL, smb347_interrupt,
 				   pdata->disable_stat_interrupts ?
 				   IRQF_TRIGGER_RISING | IRQF_ONESHOT :
+<<<<<<< HEAD
 				   IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING | IRQF_ONESHOT,
+=======
+				   IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+>>>>>>> google-common/android-3.4
 				   smb->client->name, smb);
 	if (ret < 0)
 		goto fail_gpio;
@@ -994,6 +998,7 @@ static int smb347_hw_init(struct smb347_charger *smb)
 		 * active low.
 		 */
 		ret = smb347_read(smb, CFG_STAT);
+<<<<<<< HEAD
 		if (ret < 0)
 			goto fail;
 
@@ -1054,6 +1059,201 @@ static int smb347_mains_set_property(struct power_supply *psy,
 		smb347_set_writable(smb, true);
 
 		ret = smb347_read(smb, CMD_A);
+=======
+>>>>>>> google-common/android-3.4
+		if (ret < 0)
+			return -EINVAL;
+
+<<<<<<< HEAD
+		ret &= ~CMD_A_SUSPEND_ENABLED;
+		if (val->intval)
+			ret |= CMD_A_SUSPEND_ENABLED;
+
+		ret = smb347_write(smb, CMD_A, ret);
+
+		smb347_hw_init(smb);
+
+		smb347_set_writable(smb, false);
+
+		if (smb->mains_online != oldval)
+			power_supply_changed(psy);
+		return 0;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		smb->mains_current_limit = val->intval;
+		smb347_hw_init(smb);
+		return 0;
+
+	default:
+		return -EINVAL;
+=======
+		ret &= ~CFG_STAT_ACTIVE_HIGH;
+		ret |= CFG_STAT_DISABLED;
+
+		ret = smb347_write(smb, CFG_STAT, ret);
+		if (ret < 0)
+			goto fail;
+
+		ret = smb347_irq_enable(smb);
+		if (ret < 0)
+			goto fail;
+>>>>>>> google-common/android-3.4
+	}
+
+	return -EINVAL;
+}
+
+<<<<<<< HEAD
+static int smb347_mains_property_is_writeable(struct power_supply *psy,
+					     enum power_supply_property prop)
+{
+	switch (prop) {
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		return 1;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static enum power_supply_property smb347_mains_properties[] = {
+	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_CURRENT_MAX,
+};
+
+static int smb347_usb_get_property(struct power_supply *psy,
+				   enum power_supply_property prop,
+				   union power_supply_propval *val)
+{
+	struct smb347_charger *smb =
+		container_of(psy, struct smb347_charger, usb);
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_ONLINE:
+		val->intval = smb->usb_online;
+		return 0;
+
+	case POWER_SUPPLY_PROP_USB_HC:
+		val->intval = smb->usb_hc_mode;
+		return 0;
+
+	case POWER_SUPPLY_PROP_USB_OTG:
+		val->intval = smb->usb_otg_enabled;
+		return 0;
+
+	default:
+		break;
+=======
+static int smb347_mains_get_property(struct power_supply *psy,
+				     enum power_supply_property prop,
+				     union power_supply_propval *val)
+{
+	struct smb347_charger *smb =
+		container_of(psy, struct smb347_charger, mains);
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_ONLINE:
+		val->intval = smb->mains_online;
+		return 0;
+
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		val->intval = smb->mains_current_limit;
+		return 0;
+
+	default:
+		return -EINVAL;
+>>>>>>> google-common/android-3.4
+	}
+	return -EINVAL;
+}
+
+<<<<<<< HEAD
+static int smb347_usb_set_property(struct power_supply *psy,
+				   enum power_supply_property prop,
+				   const union power_supply_propval *val)
+{
+	int ret = -EINVAL;
+	struct smb347_charger *smb =
+		container_of(psy, struct smb347_charger, usb);
+=======
+static int smb347_mains_set_property(struct power_supply *psy,
+				     enum power_supply_property prop,
+				     const union power_supply_propval *val)
+{
+	struct smb347_charger *smb =
+		container_of(psy, struct smb347_charger, mains);
+	int ret;
+>>>>>>> google-common/android-3.4
+	bool oldval;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_ONLINE:
+<<<<<<< HEAD
+		oldval = smb->usb_online;
+		smb->usb_online = val->intval;
+
+		if (smb->usb_online != oldval)
+			power_supply_changed(psy);
+		ret = 0;
+		break;
+	case POWER_SUPPLY_PROP_USB_HC:
+		smb347_set_writable(smb, true);
+		ret = smb347_write(smb, CMD_B, val->intval ?
+				   CMD_B_HC_MODE : CMD_B_USB59_MODE);
+		smb347_set_writable(smb, false);
+		smb->usb_hc_mode = val->intval;
+		break;
+
+	case POWER_SUPPLY_PROP_USB_OTG:
+#ifdef CONFIG_MACH_GROUPER
+		smb347_set_writable(smb, true);
+
+		ret = smb347_read(smb, CFG_SYSOK);
+
+		if (ret < 0)
+			return ret;
+
+		if (val->intval)
+			ret |= BIT(0);
+		else
+			ret &= ~BIT(0);
+
+		ret = smb347_write(smb, CFG_SYSOK, ret);
+
+		smb347_set_writable(smb, false);
+#endif
+
+		ret = smb347_read(smb, CMD_A);
+
+		if (ret < 0)
+			return ret;
+
+		if (val->intval)
+			ret |= CMD_A_OTG_ENABLE;
+		else
+			ret &= ~CMD_A_OTG_ENABLE;
+
+		ret = smb347_write(smb, CMD_A, ret);
+
+		if (ret >= 0)
+			smb->usb_otg_enabled = val->intval;
+
+		break;
+
+	default:
+		break;
+	}
+
+	return ret;
+}
+=======
+		oldval = smb->mains_online;
+
+		smb->mains_online = val->intval;
+
+		smb347_set_writable(smb, true);
+
+		ret = smb347_read(smb, CMD_A);
 		if (ret < 0)
 			return -EINVAL;
 
@@ -1099,11 +1299,17 @@ static enum power_supply_property smb347_mains_properties[] = {
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 };
+>>>>>>> google-common/android-3.4
 
-static int smb347_usb_get_property(struct power_supply *psy,
-				   enum power_supply_property prop,
-				   union power_supply_propval *val)
+static int smb347_usb_property_is_writeable(struct power_supply *psy,
+					    enum power_supply_property prop)
 {
+<<<<<<< HEAD
+	switch (prop) {
+	case POWER_SUPPLY_PROP_USB_HC:
+	case POWER_SUPPLY_PROP_USB_OTG:
+		return 1;
+=======
 	struct smb347_charger *smb =
 		container_of(psy, struct smb347_charger, usb);
 
@@ -1120,10 +1326,12 @@ static int smb347_usb_get_property(struct power_supply *psy,
 		val->intval = smb->usb_otg_enabled;
 		return 0;
 
+>>>>>>> google-common/android-3.4
 	default:
 		break;
 	}
-	return -EINVAL;
+
+	return 0;
 }
 
 static int smb347_usb_set_property(struct power_supply *psy,
@@ -1153,24 +1361,6 @@ static int smb347_usb_set_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_USB_OTG:
-#ifdef CONFIG_MACH_GROUPER
-		smb347_set_writable(smb, true);
-
-		ret = smb347_read(smb, CFG_SYSOK);
-
-		if (ret < 0)
-			return ret;
-
-		if (val->intval)
-			ret |= BIT(0);
-		else
-			ret &= ~BIT(0);
-
-		ret = smb347_write(smb, CFG_SYSOK, ret);
-
-		smb347_set_writable(smb, false);
-#endif
-
 		ret = smb347_read(smb, CMD_A);
 
 		if (ret < 0)

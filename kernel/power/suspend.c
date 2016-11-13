@@ -26,6 +26,7 @@
 #include <linux/syscore_ops.h>
 #include <linux/rtc.h>
 #include <linux/ftrace.h>
+#include <linux/rtc.h>
 #include <trace/events/power.h>
 
 #include "power.h"

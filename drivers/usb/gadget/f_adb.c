@@ -497,6 +497,10 @@ adb_function_unbind(struct usb_configuration *c, struct usb_function *f)
 	struct adb_dev	*dev = func_to_adb(f);
 	struct usb_request *req;
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> google-common/android-3.4
 	dev->online = 0;
 	dev->error = 1;
 

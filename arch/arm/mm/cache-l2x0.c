@@ -35,6 +35,7 @@ static u32 l2x0_size;
 static u32 l2x0_cache_id;
 static unsigned int l2x0_sets;
 static unsigned int l2x0_ways;
+<<<<<<< HEAD
 
 static inline bool is_pl310_rev(int rev)
 {
@@ -43,7 +44,16 @@ static inline bool is_pl310_rev(int rev)
 			(L2X0_CACHE_ID_PART_L310 | rev);
 }
 
+=======
+>>>>>>> google-common/android-3.4
 static unsigned long sync_reg_offset = L2X0_CACHE_SYNC;
+
+static inline bool is_pl310_rev(int rev)
+{
+	return (l2x0_cache_id &
+		(L2X0_CACHE_ID_PART_MASK | L2X0_CACHE_ID_REV_MASK)) ==
+			(L2X0_CACHE_ID_PART_L310 | rev);
+}
 
 struct l2x0_regs l2x0_saved_regs;
 
@@ -173,7 +183,11 @@ static void l2x0_flush_all(void)
 	unsigned long flags;
 
 #ifdef CONFIG_PL310_ERRATA_727915
+<<<<<<< HEAD
 	if (is_pl310_rev(REV_PL310_R2P0) || is_pl310_rev(REV_PL310_R3P1_50)) {
+=======
+	if (is_pl310_rev(REV_PL310_R2P0)) {
+>>>>>>> google-common/android-3.4
 		l2x0_for_each_set_way(l2x0_base + L2X0_CLEAN_INV_LINE_IDX);
 		return;
 	}
@@ -190,7 +204,11 @@ static void l2x0_clean_all(void)
 	unsigned long flags;
 
 #ifdef CONFIG_PL310_ERRATA_727915
+<<<<<<< HEAD
 	if (is_pl310_rev(REV_PL310_R2P0) || is_pl310_rev(REV_PL310_R3P1_50)) {
+=======
+	if (is_pl310_rev(REV_PL310_R2P0)) {
+>>>>>>> google-common/android-3.4
 		l2x0_for_each_set_way(l2x0_base + L2X0_CLEAN_LINE_IDX);
 		return;
 	}
@@ -429,9 +447,12 @@ void l2x0_init(void __iomem *base, u32 aux_val, u32 aux_mask)
 	if (!(readl_relaxed(l2x0_base + L2X0_CTRL) & 1)) {
 		/* Make sure that I&D is not locked down when starting */
 		l2x0_unlock(l2x0_cache_id);
+<<<<<<< HEAD
 
 		aux &= aux_mask;
 		aux |= aux_val;
+=======
+>>>>>>> google-common/android-3.4
 
 		/* l2x0 controller is disabled */
 		writel_relaxed(aux, l2x0_base + L2X0_AUX_CTRL);
@@ -454,8 +475,13 @@ void l2x0_init(void __iomem *base, u32 aux_val, u32 aux_mask)
 	outer_cache.inv_all = l2x0_inv_all;
 	outer_cache.disable = l2x0_disable;
 
+<<<<<<< HEAD
 	pr_info_once("%s cache controller enabled\n", type);
 	pr_info_once("l2x0: %d ways, CACHE_ID 0x%08x, AUX_CTRL 0x%08x, Cache size: %d B\n",
+=======
+	printk(KERN_INFO "%s cache controller enabled\n", type);
+	printk(KERN_INFO "l2x0: %d ways, CACHE_ID 0x%08x, AUX_CTRL 0x%08x, Cache size: %d B\n",
+>>>>>>> google-common/android-3.4
 			l2x0_ways, l2x0_cache_id, aux, l2x0_size);
 }
 

@@ -1273,7 +1273,11 @@ static int yaffs_writepage(struct page *page, struct writeback_control *wbc)
 	return (n_written == n_bytes) ? 0 : -ENOSPC;
 }
 
+<<<<<<< HEAD
 /* Space holding and freeing is done to ensure we have space available for
+=======
+/* Space holding and freeing is done to ensure we have space available for 
+>>>>>>> google-common/android-3.4
  * write_begin/end.
  * For now we just assume few parallel writes and check against a small
  * number.
@@ -1604,7 +1608,11 @@ static int yaffs_do_sync_fs(struct super_block *sb, int request_checkpoint)
  * yaffs_bg_start() launches the background thread.
  * yaffs_bg_stop() cleans up the background thread.
  *
+<<<<<<< HEAD
  * NB:
+=======
+ * NB: 
+>>>>>>> google-common/android-3.4
  * The thread should only run after the yaffs is initialised
  * The thread should be stopped before yaffs is unmounted.
  * The thread should not do any writing while the fs is in read only.
@@ -2262,7 +2270,11 @@ static struct super_block *yaffs_internal_read_super(int yaffs_version,
 		param->read_chunk_tags_fn = nandmtd2_read_chunk_tags;
 		param->bad_block_fn = nandmtd2_mark_block_bad;
 		param->query_block_fn = nandmtd2_query_block;
+<<<<<<< HEAD
 		yaffs_dev_to_lc(dev)->spare_buffer =
+=======
+		yaffs_dev_to_lc(dev)->spare_buffer = 
+>>>>>>> google-common/android-3.4
 		                kmalloc(mtd->oobsize, GFP_NOFS);
 		param->is_yaffs2 = 1;
 		param->total_bytes_per_chunk = mtd->writesize;
@@ -2562,7 +2574,11 @@ static struct {
 	char *mask_name;
 	unsigned mask_bitfield;
 } mask_flags[] = {
+<<<<<<< HEAD
 	{"allocate", YAFFS_TRACE_ALLOCATE},
+=======
+	{"allocate", YAFFS_TRACE_ALLOCATE}, 
+>>>>>>> google-common/android-3.4
 	{"always", YAFFS_TRACE_ALWAYS},
 	{"background", YAFFS_TRACE_BACKGROUND},
 	{"bad_blocks", YAFFS_TRACE_BAD_BLOCKS},

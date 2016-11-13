@@ -218,6 +218,7 @@ config SW_SYNC_USER
          Provides a user space API to the sw sync object.
          *WARNING* improper use of this can result in deadlocking kernel
 	 drivers from userspace.
+<<<<<<< HEAD
 
 config CMA
 	bool "Contiguous Memory Allocator (EXPERIMENTAL)"
@@ -312,4 +313,6 @@ config PLATFORM_ENABLE_IOMMU
         bool "Make platform devices iommuable"
 	depends on IOMMU_API
 
+=======
+>>>>>>> google-common/android-3.4
 endmenu

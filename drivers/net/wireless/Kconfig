@@ -277,7 +277,10 @@ source "drivers/net/wireless/ath/Kconfig"
 source "drivers/net/wireless/b43/Kconfig"
 source "drivers/net/wireless/b43legacy/Kconfig"
 source "drivers/net/wireless/bcmdhd/Kconfig"
+<<<<<<< HEAD
 source "drivers/net/wireless/bcm4335/Kconfig"
+=======
+>>>>>>> google-common/android-3.4
 source "drivers/net/wireless/brcm80211/Kconfig"
 source "drivers/net/wireless/sd8797/Kconfig"
 source "drivers/net/wireless/sd8897/Kconfig"

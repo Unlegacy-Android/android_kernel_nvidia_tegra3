@@ -2,8 +2,11 @@
  * Gadget Function Driver for MTP
  *
  * Copyright (C) 2010 Google, Inc.
+<<<<<<< HEAD
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
+=======
+>>>>>>> google-common/android-3.4
  * Author: Mike Lockwood <lockwood@android.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -38,7 +41,11 @@
 #include <linux/usb/ch9.h>
 #include <linux/usb/f_mtp.h>
 
+<<<<<<< HEAD
 #define MTP_BULK_BUFFER_SIZE       32768
+=======
+#define MTP_BULK_BUFFER_SIZE       16384
+>>>>>>> google-common/android-3.4
 #define INTR_BUFFER_SIZE           28
 
 /* String IDs */
@@ -734,7 +741,10 @@ static void receive_file_work(struct work_struct *data)
 	int64_t count;
 	int ret, cur_buf = 0;
 	int r = 0;
+<<<<<<< HEAD
 	int first_packet = 0;
+=======
+>>>>>>> google-common/android-3.4
 
 	/* read our parameters */
 	smp_rmb();
@@ -750,6 +760,7 @@ static void receive_file_work(struct work_struct *data)
 			read_req = dev->rx_req[cur_buf];
 			cur_buf = (cur_buf + 1) % RX_REQ_MAX;
 
+<<<<<<< HEAD
 			if (first_packet == 0) {
 				read_req->length = 16384;
 				first_packet = 1;
@@ -758,6 +769,10 @@ static void receive_file_work(struct work_struct *data)
 					? MTP_BULK_BUFFER_SIZE : count);
 			}
 
+=======
+			read_req->length = (count > MTP_BULK_BUFFER_SIZE
+					? MTP_BULK_BUFFER_SIZE : count);
+>>>>>>> google-common/android-3.4
 			dev->rx_done = 0;
 			ret = usb_ep_queue(dev->ep_out, read_req, GFP_KERNEL);
 			if (ret < 0) {

@@ -290,7 +290,11 @@ static void check_for_release(struct cgroup *cgrp);
 
 /*
  * A queue for waiters to do rmdir() cgroup. A tasks will sleep when
+<<<<<<< HEAD
  * cgroup->count == 0 && list_empty(&cgroup->children) && subsys has some
+=======
+ * list_empty(&cgroup->children) && subsys has some
+>>>>>>> google-common/android-3.4
  * reference to css->refcnt. In general, this refcnt is expected to goes down
  * to zero, soon.
  *
@@ -386,16 +390,23 @@ static void free_css_set_work(struct work_struct *work)
 		struct cgroup *cgrp = link->cgrp;
 		list_del(&link->cg_link_list);
 		list_del(&link->cgrp_link_list);
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> google-common/android-3.4
 		/*
 		 * We may not be holding cgroup_mutex, and if cgrp->count is
 		 * dropped to 0 the cgroup can be destroyed at any time, hence
 		 * rcu_read_lock is used to keep it alive.
 		 */
 		rcu_read_lock();
+<<<<<<< HEAD
 		if (atomic_dec_and_test(&cgrp->count) &&
 		    notify_on_release(cgrp)) {
+=======
+		if (atomic_dec_and_test(&cgrp->count)) {
+>>>>>>> google-common/android-3.4
 			check_for_release(cgrp);
 			cgroup_wakeup_rmdir_waiter(cgrp);
 		}
@@ -407,6 +418,7 @@ static void free_css_set_work(struct work_struct *work)
 	write_unlock(&css_set_lock);
 
 	kfree(cg);
+<<<<<<< HEAD
 }
 
 static void free_css_set_rcu(struct rcu_head *obj)
@@ -417,6 +429,18 @@ static void free_css_set_rcu(struct rcu_head *obj)
 	schedule_work(&cg->work);
 }
 
+=======
+}
+
+static void free_css_set_rcu(struct rcu_head *obj)
+{
+	struct css_set *cg = container_of(obj, struct css_set, rcu_head);
+
+	INIT_WORK(&cg->work, free_css_set_work);
+	schedule_work(&cg->work);
+}
+
+>>>>>>> google-common/android-3.4
 /* We don't maintain the lists running through each css_set to its
  * task until after the first call to cgroup_iter_start(). This
  * reduces the fork()/exit() overhead for people who have cgroups
@@ -2227,8 +2251,12 @@ retry_find_task:
 			ret = cgroup_allow_attach(cgrp, &tset);
 			if (ret) {
 				rcu_read_unlock();
+<<<<<<< HEAD
 				cgroup_unlock();
 				return ret;
+=======
+				goto out_unlock_cgroup;
+>>>>>>> google-common/android-3.4
 			}
 		}
 	} else
@@ -3948,6 +3976,10 @@ static int cgroup_clear_css_refs(struct cgroup *cgrp)
 	struct cgroup_subsys *ss;
 	unsigned long flags;
 	bool failed = false;
+
+	if (atomic_read(&cgrp->count) != 0)
+		return false;
+
 	local_irq_save(flags);
 	for_each_subsys(cgrp->root, ss) {
 		struct cgroup_subsys_state *css = cgrp->subsys[ss->subsys_id];

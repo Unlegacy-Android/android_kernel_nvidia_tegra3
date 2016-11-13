@@ -14,8 +14,11 @@
 #include <linux/kernel.h>
 #include <linux/percpu.h>
 #include <linux/slab.h>
+<<<<<<< HEAD
 #include <linux/syscore_ops.h>
 #include <linux/cpu_pm.h>
+=======
+>>>>>>> google-common/android-3.4
 #include <asm/fiq.h>
 #include <asm/fiq_glue.h>
 
@@ -100,6 +103,7 @@ void fiq_glue_resume(void)
 		current_handler->resume(current_handler);
 }
 
+<<<<<<< HEAD
 static int fiq_glue_cpu_pm_notify(struct notifier_block *self, unsigned long cmd,
 	void *v)
 {
@@ -153,3 +157,5 @@ static int __init fiq_glue_syscore_init(void)
 }
 late_initcall(fiq_glue_syscore_init);
 #endif
+=======
+>>>>>>> google-common/android-3.4

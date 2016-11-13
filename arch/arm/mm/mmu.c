@@ -46,6 +46,8 @@ EXPORT_SYMBOL(empty_zero_page);
  */
 pmd_t *top_pmd;
 
+pmdval_t user_pmd_table = _PAGE_USER_TABLE;
+
 #define CPOLICY_UNCACHED	0
 #define CPOLICY_BUFFERED	1
 #define CPOLICY_WRITETHROUGH	2
@@ -466,6 +468,25 @@ static void __init build_mem_type_table(void)
 		}
 	}
 
+#ifndef CONFIG_ARM_LPAE
+        /*
+         * We don't use domains on ARMv6 (since this causes problems with
+         * v6/v7 kernels), so we must use a separate memory type for user
+         * r/o, kernel r/w to map the vectors page.
+         */
+        if (cpu_arch == CPU_ARCH_ARMv6)
+                vecs_pgprot |= L_PTE_MT_VECTORS;
+
+	/*
+	 * Check is it with support for the PXN bit
+	 * in the Short-descriptor translation table format descriptors.
+	 */
+	if (cpu_arch == CPU_ARCH_ARMv7 &&
+		(read_cpuid_ext(CPUID_EXT_MMFR0) & 0xF) == 4) {
+		user_pmd_table |= PMD_PXNTABLE;
+	}
+#endif
+
 	/*
 	 * Non-cacheable Normal - intended for memory areas that must
 	 * not cause dirty cache line writebacks when used
@@ -495,6 +516,11 @@ static void __init build_mem_type_table(void)
 	}
 	kern_pgprot |= PTE_EXT_AF;
 	vecs_pgprot |= PTE_EXT_AF;
+
+	/*
+	 * Set PXN for user mappings
+	 */
+	user_pgprot |= PTE_EXT_PXN;
 #endif
 
 	for (i = 0; i < 16; i++) {
@@ -621,8 +647,12 @@ static void __init alloc_init_section(pud_t *pud, unsigned long addr,
 	 * L1 entries, whereas PGDs refer to a group of L1 entries making
 	 * up one logical pointer to an L2 table.
 	 */
+<<<<<<< HEAD
 	if (type->prot_sect && ((addr | end | phys) & ~SECTION_MASK) == 0 &&
 	    !force_pages) {
+=======
+	if (((addr | end | phys) & ~SECTION_MASK) == 0 && !force_pages) {
+>>>>>>> google-common/android-3.4
 		pmd_t *p = pmd;
 
 		pages_2m = (end - addr) >> (PGDIR_SHIFT);

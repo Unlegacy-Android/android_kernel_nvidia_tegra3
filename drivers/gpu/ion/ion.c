@@ -15,6 +15,7 @@
  *
  */
 
+<<<<<<< HEAD
 #define pr_fmt(fmt)	"%s():%d: " fmt, __func__, __LINE__
 
 #include <linux/device.h>
@@ -22,6 +23,15 @@
 #include <linux/fs.h>
 #include <linux/anon_inodes.h>
 #include <linux/ion.h>
+=======
+#include <linux/device.h>
+#include <linux/file.h>
+#include <linux/freezer.h>
+#include <linux/fs.h>
+#include <linux/anon_inodes.h>
+#include <linux/ion.h>
+#include <linux/kthread.h>
+>>>>>>> google-common/android-3.4
 #include <linux/list.h>
 #include <linux/memblock.h>
 #include <linux/miscdevice.h>
@@ -29,12 +39,22 @@
 #include <linux/mm.h>
 #include <linux/mm_types.h>
 #include <linux/rbtree.h>
+<<<<<<< HEAD
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>
 #include <linux/dma-buf.h>
+=======
+#include <linux/slab.h>
+#include <linux/seq_file.h>
+#include <linux/uaccess.h>
+#include <linux/vmalloc.h>
+#include <linux/debugfs.h>
+#include <linux/dma-buf.h>
+#include <linux/idr.h>
+>>>>>>> google-common/android-3.4
 
 #include "ion_priv.h"
 
@@ -52,7 +72,11 @@ struct ion_device {
 	struct rb_root buffers;
 	struct mutex buffer_lock;
 	struct rw_semaphore lock;
+<<<<<<< HEAD
 	struct rb_root heaps;
+=======
+	struct plist_head heaps;
+>>>>>>> google-common/android-3.4
 	long (*custom_ioctl) (struct ion_client *client, unsigned int cmd,
 			      unsigned long arg);
 	struct rb_root clients;
@@ -64,8 +88,13 @@ struct ion_device {
  * @node:		node in the tree of all clients
  * @dev:		backpointer to ion device
  * @handles:		an rb tree of all the handles in this client
+<<<<<<< HEAD
  * @lock:		lock protecting the tree of handles
  * @heap_type_mask:	mask of all supported heap types
+=======
+ * @idr:		an idr space for allocating handle ids
+ * @lock:		lock protecting the tree of handles
+>>>>>>> google-common/android-3.4
  * @name:		used for debugging
  * @task:		used for debugging
  *
@@ -77,8 +106,13 @@ struct ion_client {
 	struct rb_node node;
 	struct ion_device *dev;
 	struct rb_root handles;
+<<<<<<< HEAD
 	struct mutex lock;
 	unsigned int heap_type_mask;
+=======
+	struct idr idr;
+	struct mutex lock;
+>>>>>>> google-common/android-3.4
 	const char *name;
 	struct task_struct *task;
 	pid_t pid;
@@ -92,7 +126,11 @@ struct ion_client {
  * @buffer:		pointer to the buffer
  * @node:		node in the client's handle rbtree
  * @kmap_cnt:		count of times this client has mapped to kernel
+<<<<<<< HEAD
  * @dmap_cnt:		count of times this client has mapped for dma
+=======
+ * @id:			client-unique id allocated by client->idr
+>>>>>>> google-common/android-3.4
  *
  * Modifications to node, map_cnt or mapping should be protected by the
  * lock in the client.  Other fields are never changed after initialization.
@@ -103,17 +141,50 @@ struct ion_handle {
 	struct ion_buffer *buffer;
 	struct rb_node node;
 	unsigned int kmap_cnt;
+<<<<<<< HEAD
+=======
+	int id;
+>>>>>>> google-common/android-3.4
 };
 
 bool ion_buffer_fault_user_mappings(struct ion_buffer *buffer)
 {
+<<<<<<< HEAD
         return ((buffer->flags & ION_FLAG_CACHED) &&
                 !(buffer->flags & ION_FLAG_CACHED_NEEDS_SYNC));
+=======
+	return ((buffer->flags & ION_FLAG_CACHED) &&
+		!(buffer->flags & ION_FLAG_CACHED_NEEDS_SYNC));
+>>>>>>> google-common/android-3.4
 }
 
 bool ion_buffer_cached(struct ion_buffer *buffer)
 {
+<<<<<<< HEAD
         return !!(buffer->flags & ION_FLAG_CACHED);
+=======
+	return !!(buffer->flags & ION_FLAG_CACHED);
+}
+
+static inline struct page *ion_buffer_page(struct page *page)
+{
+	return (struct page *)((unsigned long)page & ~(1UL));
+}
+
+static inline bool ion_buffer_page_is_dirty(struct page *page)
+{
+	return !!((unsigned long)page & 1UL);
+}
+
+static inline void ion_buffer_page_dirty(struct page **page)
+{
+	*page = (struct page *)((unsigned long)(*page) | 1UL);
+}
+
+static inline void ion_buffer_page_clean(struct page **page)
+{
+	*page = (struct page *)((unsigned long)(*page) & ~(1UL));
+>>>>>>> google-common/android-3.4
 }
 
 /* this function should only be called while dev->lock is held */
@@ -133,7 +204,11 @@ static void ion_buffer_add(struct ion_device *dev,
 		} else if (buffer > entry) {
 			p = &(*p)->rb_right;
 		} else {
+<<<<<<< HEAD
 			pr_err("buffer already found.");
+=======
+			pr_err("%s: buffer already found.", __func__);
+>>>>>>> google-common/android-3.4
 			BUG();
 		}
 	}
@@ -142,8 +217,11 @@ static void ion_buffer_add(struct ion_device *dev,
 	rb_insert_color(&buffer->node, &dev->buffers);
 }
 
+<<<<<<< HEAD
 static int ion_buffer_alloc_dirty(struct ion_buffer *buffer);
 
+=======
+>>>>>>> google-common/android-3.4
 /* this function should only be called while dev->lock is held */
 static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 				     struct ion_device *dev,
@@ -165,22 +243,42 @@ static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 	kref_init(&buffer->ref);
 
 	ret = heap->ops->allocate(heap, buffer, len, align, flags);
+<<<<<<< HEAD
 	if (ret) {
 		kfree(buffer);
 		return ERR_PTR(ret);
+=======
+
+	if (ret) {
+		if (!(heap->flags & ION_HEAP_FLAG_DEFER_FREE))
+			goto err2;
+
+		ion_heap_freelist_drain(heap, 0);
+		ret = heap->ops->allocate(heap, buffer, len, align,
+					  flags);
+		if (ret)
+			goto err2;
+>>>>>>> google-common/android-3.4
 	}
 
 	buffer->dev = dev;
 	buffer->size = len;
 
 	table = heap->ops->map_dma(heap, buffer);
+<<<<<<< HEAD
 	if (IS_ERR_OR_NULL(table)) {
+=======
+	if (WARN_ONCE(table == NULL, "heap->ops->map_dma should return ERR_PTR on error"))
+		table = ERR_PTR(-EINVAL);
+	if (IS_ERR(table)) {
+>>>>>>> google-common/android-3.4
 		heap->ops->free(buffer);
 		kfree(buffer);
 		return ERR_PTR(PTR_ERR(table));
 	}
 	buffer->sg_table = table;
 	if (ion_buffer_fault_user_mappings(buffer)) {
+<<<<<<< HEAD
 		for_each_sg(buffer->sg_table->sgl, sg, buffer->sg_table->nents,
 			    i) {
 			if (sg_dma_len(sg) == PAGE_SIZE)
@@ -192,6 +290,25 @@ static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 		}
 
 		ret = ion_buffer_alloc_dirty(buffer);
+=======
+		int num_pages = PAGE_ALIGN(buffer->size) / PAGE_SIZE;
+		struct scatterlist *sg;
+		int i, j, k = 0;
+
+		buffer->pages = vmalloc(sizeof(struct page *) * num_pages);
+		if (!buffer->pages) {
+			ret = -ENOMEM;
+			goto err1;
+		}
+
+		for_each_sg(table->sgl, sg, table->nents, i) {
+			struct page *page = sg_page(sg);
+
+			for (j = 0; j < sg_dma_len(sg) / PAGE_SIZE; j++)
+				buffer->pages[k++] = page++;
+		}
+
+>>>>>>> google-common/android-3.4
 		if (ret)
 			goto err;
 	}
@@ -218,19 +335,32 @@ static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 err:
 	heap->ops->unmap_dma(heap, buffer);
 	heap->ops->free(buffer);
+<<<<<<< HEAD
+=======
+err1:
+	if (buffer->pages)
+		vfree(buffer->pages);
+err2:
+>>>>>>> google-common/android-3.4
 	kfree(buffer);
 	return ERR_PTR(ret);
 }
 
+<<<<<<< HEAD
 static void ion_buffer_destroy(struct kref *kref)
 {
 	struct ion_buffer *buffer = container_of(kref, struct ion_buffer, ref);
 	struct ion_device *dev = buffer->dev;
 
+=======
+void ion_buffer_destroy(struct ion_buffer *buffer)
+{
+>>>>>>> google-common/android-3.4
 	if (WARN_ON(buffer->kmap_cnt > 0))
 		buffer->heap->ops->unmap_kernel(buffer->heap, buffer);
 	buffer->heap->ops->unmap_dma(buffer->heap, buffer);
 	buffer->heap->ops->free(buffer);
+<<<<<<< HEAD
 	mutex_lock(&dev->buffer_lock);
 	rb_erase(&buffer->node, &dev->buffers);
 	mutex_unlock(&dev->buffer_lock);
@@ -240,13 +370,41 @@ static void ion_buffer_destroy(struct kref *kref)
 }
 
 void ion_buffer_get(struct ion_buffer *buffer)
+=======
+	if (buffer->pages)
+		vfree(buffer->pages);
+	kfree(buffer);
+}
+
+static void _ion_buffer_destroy(struct kref *kref)
+{
+	struct ion_buffer *buffer = container_of(kref, struct ion_buffer, ref);
+	struct ion_heap *heap = buffer->heap;
+	struct ion_device *dev = buffer->dev;
+
+	mutex_lock(&dev->buffer_lock);
+	rb_erase(&buffer->node, &dev->buffers);
+	mutex_unlock(&dev->buffer_lock);
+
+	if (heap->flags & ION_HEAP_FLAG_DEFER_FREE)
+		ion_heap_freelist_add(heap, buffer);
+	else
+		ion_buffer_destroy(buffer);
+}
+
+static void ion_buffer_get(struct ion_buffer *buffer)
+>>>>>>> google-common/android-3.4
 {
 	kref_get(&buffer->ref);
 }
 
 static int ion_buffer_put(struct ion_buffer *buffer)
 {
+<<<<<<< HEAD
 	return kref_put(&buffer->ref, ion_buffer_destroy);
+=======
+	return kref_put(&buffer->ref, _ion_buffer_destroy);
+>>>>>>> google-common/android-3.4
 }
 
 static void ion_buffer_add_to_handle(struct ion_buffer *buffer)
@@ -311,6 +469,10 @@ static void ion_handle_destroy(struct kref *kref)
 		ion_handle_kmap_put(handle);
 	mutex_unlock(&buffer->lock);
 
+<<<<<<< HEAD
+=======
+	idr_remove(&client->idr, handle->id);
+>>>>>>> google-common/android-3.4
 	if (!RB_EMPTY_NODE(&handle->node))
 		rb_erase(&handle->node, &client->handles);
 
@@ -325,11 +487,16 @@ struct ion_buffer *ion_handle_buffer(struct ion_handle *handle)
 	return handle->buffer;
 }
 
+<<<<<<< HEAD
 void ion_handle_get(struct ion_handle *handle)
+=======
+static void ion_handle_get(struct ion_handle *handle)
+>>>>>>> google-common/android-3.4
 {
 	kref_get(&handle->ref);
 }
 
+<<<<<<< HEAD
 int ion_handle_put(struct ion_handle *handle)
 {
 	return kref_put(&handle->ref, ion_handle_destroy);
@@ -350,10 +517,27 @@ static struct ion_handle *ion_handle_lookup(struct ion_client *client,
 }
 
 bool ion_handle_validate(struct ion_client *client, struct ion_handle *handle)
+=======
+static int ion_handle_put(struct ion_handle *handle)
+{
+	struct ion_client *client = handle->client;
+	int ret;
+
+	mutex_lock(&client->lock);
+	ret = kref_put(&handle->ref, ion_handle_destroy);
+	mutex_unlock(&client->lock);
+
+	return ret;
+}
+
+static struct ion_handle *ion_handle_lookup(struct ion_client *client,
+					    struct ion_buffer *buffer)
+>>>>>>> google-common/android-3.4
 {
 	struct rb_node *n = client->handles.rb_node;
 
 	while (n) {
+<<<<<<< HEAD
 		struct ion_handle *handle_node = rb_entry(n, struct ion_handle,
 							  node);
 		if (handle < handle_node)
@@ -370,17 +554,74 @@ bool ion_handle_validate(struct ion_client *client, struct ion_handle *handle)
 
 void ion_handle_add(struct ion_client *client, struct ion_handle *handle)
 {
+=======
+		struct ion_handle *entry = rb_entry(n, struct ion_handle, node);
+		if (buffer < entry->buffer)
+			n = n->rb_left;
+		else if (buffer > entry->buffer)
+			n = n->rb_right;
+		else
+			return entry;
+	}
+	return ERR_PTR(-EINVAL);
+}
+
+static struct ion_handle *ion_handle_get_by_id(struct ion_client *client,
+						int id)
+{
+	struct ion_handle *handle;
+
+	mutex_lock(&client->lock);
+	handle = idr_find(&client->idr, id);
+	if (handle)
+		ion_handle_get(handle);
+	mutex_unlock(&client->lock);
+
+	return handle ? handle : ERR_PTR(-EINVAL);
+}
+
+static bool ion_handle_validate(struct ion_client *client, struct ion_handle *handle)
+{
+	WARN_ON(!mutex_is_locked(&client->lock));
+	return (idr_find(&client->idr, handle->id) == handle);
+}
+
+static int ion_handle_add(struct ion_client *client, struct ion_handle *handle)
+{
+	int rc;
+>>>>>>> google-common/android-3.4
 	struct rb_node **p = &client->handles.rb_node;
 	struct rb_node *parent = NULL;
 	struct ion_handle *entry;
 
+<<<<<<< HEAD
+=======
+	do {
+		int id;
+		rc = idr_pre_get(&client->idr, GFP_KERNEL);
+		if (!rc)
+			return -ENOMEM;
+		rc = idr_get_new_above(&client->idr, handle, 1, &id);
+		handle->id = id;
+	} while (rc == -EAGAIN);
+
+	if (rc < 0)
+		return rc;
+
+>>>>>>> google-common/android-3.4
 	while (*p) {
 		parent = *p;
 		entry = rb_entry(parent, struct ion_handle, node);
 
+<<<<<<< HEAD
 		if (handle < entry)
 			p = &(*p)->rb_left;
 		else if (handle > entry)
+=======
+		if (handle->buffer < entry->buffer)
+			p = &(*p)->rb_left;
+		else if (handle->buffer > entry->buffer)
+>>>>>>> google-common/android-3.4
 			p = &(*p)->rb_right;
 		else
 			WARN(1, "%s: buffer already found.", __func__);
@@ -388,16 +629,29 @@ void ion_handle_add(struct ion_client *client, struct ion_handle *handle)
 
 	rb_link_node(&handle->node, parent, p);
 	rb_insert_color(&handle->node, &client->handles);
+<<<<<<< HEAD
+=======
+
+	return 0;
+>>>>>>> google-common/android-3.4
 }
 
 struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 			     size_t align, unsigned int heap_id_mask,
 			     unsigned int flags)
 {
+<<<<<<< HEAD
 	struct rb_node *n;
 	struct ion_handle *handle;
 	struct ion_device *dev = client->dev;
 	struct ion_buffer *buffer = NULL;
+=======
+	struct ion_handle *handle;
+	struct ion_device *dev = client->dev;
+	struct ion_buffer *buffer = NULL;
+	struct ion_heap *heap;
+	int ret;
+>>>>>>> google-common/android-3.4
 
 	pr_debug("%s: len %d align %d heap_id_mask %u flags %x\n", __func__,
 		 len, align, heap_id_mask, flags);
@@ -413,16 +667,24 @@ struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 	len = PAGE_ALIGN(len);
 
 	down_read(&dev->lock);
+<<<<<<< HEAD
 	for (n = rb_first(&dev->heaps); n != NULL; n = rb_next(n)) {
 		struct ion_heap *heap = rb_entry(n, struct ion_heap, node);
 		/* if the client doesn't support this heap type */
 		if (!((1 << heap->type) & client->heap_type_mask))
 			continue;
+=======
+	plist_for_each_entry(heap, &dev->heaps, node) {
+>>>>>>> google-common/android-3.4
 		/* if the caller didn't specify this heap id */
 		if (!((1 << heap->id) & heap_id_mask))
 			continue;
 		buffer = ion_buffer_create(heap, dev, len, align, flags);
+<<<<<<< HEAD
 		if (!IS_ERR_OR_NULL(buffer))
+=======
+		if (!IS_ERR(buffer))
+>>>>>>> google-common/android-3.4
 			break;
 	}
 	up_read(&dev->lock);
@@ -441,12 +703,25 @@ struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 	 */
 	ion_buffer_put(buffer);
 
+<<<<<<< HEAD
 	if (!IS_ERR(handle)) {
 		mutex_lock(&client->lock);
 		ion_handle_add(client, handle);
 		mutex_unlock(&client->lock);
 	}
 
+=======
+	if (IS_ERR(handle))
+		return handle;
+
+	mutex_lock(&client->lock);
+	ret = ion_handle_add(client, handle);
+	mutex_unlock(&client->lock);
+	if (ret) {
+		ion_handle_put(handle);
+		handle = ERR_PTR(ret);
+	}
+>>>>>>> google-common/android-3.4
 
 	return handle;
 }
@@ -466,8 +741,13 @@ void ion_free(struct ion_client *client, struct ion_handle *handle)
 		mutex_unlock(&client->lock);
 		return;
 	}
+<<<<<<< HEAD
 	ion_handle_put(handle);
 	mutex_unlock(&client->lock);
+=======
+	mutex_unlock(&client->lock);
+	ion_handle_put(handle);
+>>>>>>> google-common/android-3.4
 }
 EXPORT_SYMBOL(ion_free);
 
@@ -486,7 +766,12 @@ int ion_phys(struct ion_client *client, struct ion_handle *handle,
 	buffer = handle->buffer;
 
 	if (!buffer->heap->ops->phys) {
+<<<<<<< HEAD
 		pr_err("ion_phys is not implemented by this heap.\n");
+=======
+		pr_err("%s: ion_phys is not implemented by this heap.\n",
+		       __func__);
+>>>>>>> google-common/android-3.4
 		mutex_unlock(&client->lock);
 		return -ENODEV;
 	}
@@ -505,7 +790,13 @@ static void *ion_buffer_kmap_get(struct ion_buffer *buffer)
 		return buffer->vaddr;
 	}
 	vaddr = buffer->heap->ops->map_kernel(buffer->heap, buffer);
+<<<<<<< HEAD
 	if (IS_ERR_OR_NULL(vaddr))
+=======
+	if (WARN_ONCE(vaddr == NULL, "heap->ops->map_kernel should return ERR_PTR on error"))
+		return ERR_PTR(-EINVAL);
+	if (IS_ERR(vaddr))
+>>>>>>> google-common/android-3.4
 		return vaddr;
 	buffer->vaddr = vaddr;
 	buffer->kmap_cnt++;
@@ -522,7 +813,11 @@ static void *ion_handle_kmap_get(struct ion_handle *handle)
 		return buffer->vaddr;
 	}
 	vaddr = ion_buffer_kmap_get(buffer);
+<<<<<<< HEAD
 	if (IS_ERR_OR_NULL(vaddr))
+=======
+	if (IS_ERR(vaddr))
+>>>>>>> google-common/android-3.4
 		return vaddr;
 	handle->kmap_cnt++;
 	return vaddr;
@@ -562,7 +857,12 @@ void *ion_map_kernel(struct ion_client *client, struct ion_handle *handle)
 	buffer = handle->buffer;
 
 	if (!handle->buffer->heap->ops->map_kernel) {
+<<<<<<< HEAD
 		pr_err("map_kernel is not implemented by this heap.\n");
+=======
+		pr_err("%s: map_kernel is not implemented by this heap.\n",
+		       __func__);
+>>>>>>> google-common/android-3.4
 		mutex_unlock(&client->lock);
 		return ERR_PTR(-ENODEV);
 	}
@@ -588,6 +888,7 @@ void ion_unmap_kernel(struct ion_client *client, struct ion_handle *handle)
 }
 EXPORT_SYMBOL(ion_unmap_kernel);
 
+<<<<<<< HEAD
 struct scatterlist *iommu_heap_remap_dma(struct ion_heap *heap,
 					      struct ion_buffer *buf,
 					      unsigned long addr);
@@ -614,6 +915,8 @@ int ion_remap_dma(struct ion_client *client,
 	return ret;
 }
 
+=======
+>>>>>>> google-common/android-3.4
 static int ion_debug_client_show(struct seq_file *s, void *unused)
 {
 	struct ion_client *client = s->private;
@@ -656,7 +959,10 @@ static const struct file_operations debug_client_fops = {
 };
 
 struct ion_client *ion_client_create(struct ion_device *dev,
+<<<<<<< HEAD
 				     unsigned int heap_type_mask,
+=======
+>>>>>>> google-common/android-3.4
 				     const char *name)
 {
 	struct ion_client *client;
@@ -689,9 +995,15 @@ struct ion_client *ion_client_create(struct ion_device *dev,
 
 	client->dev = dev;
 	client->handles = RB_ROOT;
+<<<<<<< HEAD
 	mutex_init(&client->lock);
 	client->name = name;
 	client->heap_type_mask = heap_type_mask;
+=======
+	idr_init(&client->idr);
+	mutex_init(&client->lock);
+	client->name = name;
+>>>>>>> google-common/android-3.4
 	client->task = task;
 	client->pid = pid;
 
@@ -724,12 +1036,23 @@ void ion_client_destroy(struct ion_client *client)
 	struct ion_device *dev = client->dev;
 	struct rb_node *n;
 
+<<<<<<< HEAD
 	pr_debug("\n");
+=======
+	pr_debug("%s: %d\n", __func__, __LINE__);
+>>>>>>> google-common/android-3.4
 	while ((n = rb_first(&client->handles))) {
 		struct ion_handle *handle = rb_entry(n, struct ion_handle,
 						     node);
 		ion_handle_destroy(&handle->ref);
 	}
+<<<<<<< HEAD
+=======
+
+	idr_remove_all(&client->idr);
+	idr_destroy(&client->idr);
+
+>>>>>>> google-common/android-3.4
 	down_write(&dev->lock);
 	if (client->task)
 		put_task_struct(client->task);
@@ -781,6 +1104,7 @@ static void ion_unmap_dma_buf(struct dma_buf_attachment *attachment,
 {
 }
 
+<<<<<<< HEAD
 static int ion_buffer_alloc_dirty(struct ion_buffer *buffer)
 {
 	unsigned long pages = buffer->sg_table->nents;
@@ -792,6 +1116,8 @@ static int ion_buffer_alloc_dirty(struct ion_buffer *buffer)
 	return 0;
 }
 
+=======
+>>>>>>> google-common/android-3.4
 struct ion_vma_list {
 	struct list_head list;
 	struct vm_area_struct *vma;
@@ -801,9 +1127,15 @@ static void ion_buffer_sync_for_device(struct ion_buffer *buffer,
 				       struct device *dev,
 				       enum dma_data_direction dir)
 {
+<<<<<<< HEAD
 	struct scatterlist *sg;
 	int i;
 	struct ion_vma_list *vma_list;
+=======
+	struct ion_vma_list *vma_list;
+	int pages = PAGE_ALIGN(buffer->size) / PAGE_SIZE;
+	int i;
+>>>>>>> google-common/android-3.4
 
 	pr_debug("%s: syncing for device %s\n", __func__,
 		 dev ? dev_name(dev) : "null");
@@ -812,11 +1144,20 @@ static void ion_buffer_sync_for_device(struct ion_buffer *buffer,
 		return;
 
 	mutex_lock(&buffer->lock);
+<<<<<<< HEAD
 	for_each_sg(buffer->sg_table->sgl, sg, buffer->sg_table->nents, i) {
 		if (!test_bit(i, buffer->dirty))
 			continue;
 		dma_sync_sg_for_device(dev, sg, 1, dir);
 		clear_bit(i, buffer->dirty);
+=======
+	for (i = 0; i < pages; i++) {
+		struct page *page = buffer->pages[i];
+
+		if (ion_buffer_page_is_dirty(page))
+			__dma_page_cpu_to_dev(page, 0, PAGE_SIZE, dir);
+		ion_buffer_page_clean(buffer->pages + i);
+>>>>>>> google-common/android-3.4
 	}
 	list_for_each_entry(vma_list, &buffer->vmas, list) {
 		struct vm_area_struct *vma = vma_list->vma;
@@ -830,6 +1171,7 @@ static void ion_buffer_sync_for_device(struct ion_buffer *buffer,
 int ion_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 {
 	struct ion_buffer *buffer = vma->vm_private_data;
+<<<<<<< HEAD
 	struct scatterlist *sg;
 	int i;
 
@@ -845,6 +1187,20 @@ int ion_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		break;
 	}
 	mutex_unlock(&buffer->lock);
+=======
+	int ret;
+
+	mutex_lock(&buffer->lock);
+	ion_buffer_page_dirty(buffer->pages + vmf->pgoff);
+
+	BUG_ON(!buffer->pages || !buffer->pages[vmf->pgoff]);
+	ret = vm_insert_page(vma, (unsigned long)vmf->virtual_address,
+			     ion_buffer_page(buffer->pages[vmf->pgoff]));
+	mutex_unlock(&buffer->lock);
+	if (ret)
+		return VM_FAULT_ERROR;
+
+>>>>>>> google-common/android-3.4
 	return VM_FAULT_NOPAGE;
 }
 
@@ -956,8 +1312,11 @@ static int ion_dma_buf_begin_cpu_access(struct dma_buf *dmabuf, size_t start,
 	mutex_unlock(&buffer->lock);
 	if (IS_ERR(vaddr))
 		return PTR_ERR(vaddr);
+<<<<<<< HEAD
 	if (!vaddr)
 		return -ENOMEM;
+=======
+>>>>>>> google-common/android-3.4
 	return 0;
 }
 
@@ -994,6 +1353,7 @@ struct dma_buf *ion_share_dma_buf(struct ion_client *client,
 
 	mutex_lock(&client->lock);
 	valid_handle = ion_handle_validate(client, handle);
+<<<<<<< HEAD
 	mutex_unlock(&client->lock);
 	if (!valid_handle) {
 		WARN(1, "%s: invalid handle passed to share.\n", __func__);
@@ -1002,6 +1362,17 @@ struct dma_buf *ion_share_dma_buf(struct ion_client *client,
 
 	buffer = handle->buffer;
 	ion_buffer_get(buffer);
+=======
+	if (!valid_handle) {
+		WARN(1, "%s: invalid handle passed to share.\n", __func__);
+		mutex_unlock(&client->lock);
+		return ERR_PTR(-EINVAL);
+	}
+	buffer = handle->buffer;
+	ion_buffer_get(buffer);
+	mutex_unlock(&client->lock);
+
+>>>>>>> google-common/android-3.4
 	dmabuf = dma_buf_export(buffer, &dma_buf_ops, buffer->size, O_RDWR);
 	if (IS_ERR(dmabuf)) {
 		ion_buffer_put(buffer);
@@ -1034,9 +1405,16 @@ struct ion_handle *ion_import_dma_buf(struct ion_client *client, int fd)
 	struct dma_buf *dmabuf;
 	struct ion_buffer *buffer;
 	struct ion_handle *handle;
+<<<<<<< HEAD
 
 	dmabuf = dma_buf_get(fd);
 	if (IS_ERR_OR_NULL(dmabuf))
+=======
+	int ret;
+
+	dmabuf = dma_buf_get(fd);
+	if (IS_ERR(dmabuf))
+>>>>>>> google-common/android-3.4
 		return ERR_PTR(PTR_ERR(dmabuf));
 	/* if this memory came from ion */
 
@@ -1051,6 +1429,7 @@ struct ion_handle *ion_import_dma_buf(struct ion_client *client, int fd)
 	mutex_lock(&client->lock);
 	/* if a handle exists for this buffer just take a reference to it */
 	handle = ion_handle_lookup(client, buffer);
+<<<<<<< HEAD
 	if (!IS_ERR_OR_NULL(handle)) {
 		ion_handle_get(handle);
 		goto end;
@@ -1061,6 +1440,28 @@ struct ion_handle *ion_import_dma_buf(struct ion_client *client, int fd)
 	ion_handle_add(client, handle);
 end:
 	mutex_unlock(&client->lock);
+=======
+	if (!IS_ERR(handle)) {
+		ion_handle_get(handle);
+		mutex_unlock(&client->lock);
+		goto end;
+	}
+
+	handle = ion_handle_create(client, buffer);
+	if (IS_ERR(handle)) {
+		mutex_unlock(&client->lock);
+		goto end;
+	}
+
+	ret = ion_handle_add(client, handle);
+	mutex_unlock(&client->lock);
+	if (ret) {
+		ion_handle_put(handle);
+		handle = ERR_PTR(ret);
+	}
+
+end:
+>>>>>>> google-common/android-3.4
 	dma_buf_put(dmabuf);
 	return handle;
 }
@@ -1072,7 +1473,11 @@ static int ion_sync_for_device(struct ion_client *client, int fd)
 	struct ion_buffer *buffer;
 
 	dmabuf = dma_buf_get(fd);
+<<<<<<< HEAD
 	if (IS_ERR_OR_NULL(dmabuf))
+=======
+	if (IS_ERR(dmabuf))
+>>>>>>> google-common/android-3.4
 		return PTR_ERR(dmabuf);
 
 	/* if this memory came from ion */
@@ -1098,6 +1503,7 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case ION_IOC_ALLOC:
 	{
 		struct ion_allocation_data data;
+<<<<<<< HEAD
 
 		if (copy_from_user(&data, (void __user *)arg, sizeof(data)))
 			return -EFAULT;
@@ -1109,6 +1515,22 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		if (copy_to_user((void __user *)arg, &data, sizeof(data))) {
 			ion_free(client, data.handle);
+=======
+		struct ion_handle *handle;
+
+		if (copy_from_user(&data, (void __user *)arg, sizeof(data)))
+			return -EFAULT;
+		handle = ion_alloc(client, data.len, data.align,
+					     data.heap_id_mask, data.flags);
+
+		if (IS_ERR(handle))
+			return PTR_ERR(handle);
+
+		data.handle = (struct ion_handle *)handle->id;
+
+		if (copy_to_user((void __user *)arg, &data, sizeof(data))) {
+			ion_free(client, handle);
+>>>>>>> google-common/android-3.4
 			return -EFAULT;
 		}
 		break;
@@ -1116,27 +1538,49 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case ION_IOC_FREE:
 	{
 		struct ion_handle_data data;
+<<<<<<< HEAD
 		bool valid;
+=======
+		struct ion_handle *handle;
+>>>>>>> google-common/android-3.4
 
 		if (copy_from_user(&data, (void __user *)arg,
 				   sizeof(struct ion_handle_data)))
 			return -EFAULT;
+<<<<<<< HEAD
 		mutex_lock(&client->lock);
 		valid = ion_handle_validate(client, data.handle);
 		mutex_unlock(&client->lock);
 		if (!valid)
 			return -EINVAL;
 		ion_free(client, data.handle);
+=======
+		handle = ion_handle_get_by_id(client, (int)data.handle);
+		if (IS_ERR(handle))
+			return PTR_ERR(handle);
+		ion_free(client, handle);
+		ion_handle_put(handle);
+>>>>>>> google-common/android-3.4
 		break;
 	}
 	case ION_IOC_SHARE:
 	case ION_IOC_MAP:
 	{
 		struct ion_fd_data data;
+<<<<<<< HEAD
 
 		if (copy_from_user(&data, (void __user *)arg, sizeof(data)))
 			return -EFAULT;
 		data.fd = ion_share_dma_buf_fd(client, data.handle);
+=======
+		struct ion_handle *handle;
+
+		if (copy_from_user(&data, (void __user *)arg, sizeof(data)))
+			return -EFAULT;
+		handle = ion_handle_get_by_id(client, (int)data.handle);
+		data.fd = ion_share_dma_buf_fd(client, handle);
+		ion_handle_put(handle);
+>>>>>>> google-common/android-3.4
 		if (copy_to_user((void __user *)arg, &data, sizeof(data)))
 			return -EFAULT;
 		if (data.fd < 0)
@@ -1146,15 +1590,28 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case ION_IOC_IMPORT:
 	{
 		struct ion_fd_data data;
+<<<<<<< HEAD
+=======
+		struct ion_handle *handle;
+>>>>>>> google-common/android-3.4
 		int ret = 0;
 		if (copy_from_user(&data, (void __user *)arg,
 				   sizeof(struct ion_fd_data)))
 			return -EFAULT;
+<<<<<<< HEAD
 		data.handle = ion_import_dma_buf(client, data.fd);
 		if (IS_ERR(data.handle)) {
 			ret = PTR_ERR(data.handle);
 			data.handle = NULL;
 		}
+=======
+		handle = ion_import_dma_buf(client, data.fd);
+		if (IS_ERR(handle))
+			ret = PTR_ERR(handle);
+		else
+			data.handle = (struct ion_handle *)handle->id;
+
+>>>>>>> google-common/android-3.4
 		if (copy_to_user((void __user *)arg, &data,
 				 sizeof(struct ion_fd_data)))
 			return -EFAULT;
@@ -1204,9 +1661,15 @@ static int ion_open(struct inode *inode, struct file *file)
 	struct ion_device *dev = container_of(miscdev, struct ion_device, dev);
 	struct ion_client *client;
 
+<<<<<<< HEAD
 	pr_debug("\n");
 	client = ion_client_create(dev, -1, "user");
 	if (IS_ERR_OR_NULL(client))
+=======
+	pr_debug("%s: %d\n", __func__, __LINE__);
+	client = ion_client_create(dev, "user");
+	if (IS_ERR(client))
+>>>>>>> google-common/android-3.4
 		return PTR_ERR(client);
 	file->private_data = client;
 
@@ -1221,7 +1684,11 @@ static const struct file_operations ion_fops = {
 };
 
 static size_t ion_debug_heap_total(struct ion_client *client,
+<<<<<<< HEAD
 				   enum ion_heap_type type)
+=======
+				   unsigned int id)
+>>>>>>> google-common/android-3.4
 {
 	size_t size = 0;
 	struct rb_node *n;
@@ -1231,7 +1698,11 @@ static size_t ion_debug_heap_total(struct ion_client *client,
 		struct ion_handle *handle = rb_entry(n,
 						     struct ion_handle,
 						     node);
+<<<<<<< HEAD
 		if (handle->buffer->heap->type == type)
+=======
+		if (handle->buffer->heap->id == id)
+>>>>>>> google-common/android-3.4
 			size += handle->buffer->size;
 	}
 	mutex_unlock(&client->lock);
@@ -1252,7 +1723,11 @@ static int ion_debug_heap_show(struct seq_file *s, void *unused)
 	for (n = rb_first(&dev->clients); n; n = rb_next(n)) {
 		struct ion_client *client = rb_entry(n, struct ion_client,
 						     node);
+<<<<<<< HEAD
 		size_t size = ion_debug_heap_total(client, heap->type);
+=======
+		size_t size = ion_debug_heap_total(client, heap->id);
+>>>>>>> google-common/android-3.4
 		if (!size)
 			continue;
 		if (client->task) {
@@ -1273,7 +1748,11 @@ static int ion_debug_heap_show(struct seq_file *s, void *unused)
 	for (n = rb_first(&dev->buffers); n; n = rb_next(n)) {
 		struct ion_buffer *buffer = rb_entry(n, struct ion_buffer,
 						     node);
+<<<<<<< HEAD
 		if (buffer->heap->type != heap->type)
+=======
+		if (buffer->heap->id != heap->id)
+>>>>>>> google-common/android-3.4
 			continue;
 		total_size += buffer->size;
 		if (!buffer->handle_count) {
@@ -1311,17 +1790,61 @@ static const struct file_operations debug_heap_fops = {
 	.release = single_release,
 };
 
+<<<<<<< HEAD
 void ion_device_add_heap(struct ion_device *dev, struct ion_heap *heap)
 {
 	struct rb_node **p = &dev->heaps.rb_node;
 	struct rb_node *parent = NULL;
 	struct ion_heap *entry;
 
+=======
+#ifdef DEBUG_HEAP_SHRINKER
+static int debug_shrink_set(void *data, u64 val)
+{
+        struct ion_heap *heap = data;
+        struct shrink_control sc;
+        int objs;
+
+        sc.gfp_mask = -1;
+        sc.nr_to_scan = 0;
+
+        if (!val)
+                return 0;
+
+        objs = heap->shrinker.shrink(&heap->shrinker, &sc);
+        sc.nr_to_scan = objs;
+
+        heap->shrinker.shrink(&heap->shrinker, &sc);
+        return 0;
+}
+
+static int debug_shrink_get(void *data, u64 *val)
+{
+        struct ion_heap *heap = data;
+        struct shrink_control sc;
+        int objs;
+
+        sc.gfp_mask = -1;
+        sc.nr_to_scan = 0;
+
+        objs = heap->shrinker.shrink(&heap->shrinker, &sc);
+        *val = objs;
+        return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(debug_shrink_fops, debug_shrink_get,
+                        debug_shrink_set, "%llu\n");
+#endif
+
+void ion_device_add_heap(struct ion_device *dev, struct ion_heap *heap)
+{
+>>>>>>> google-common/android-3.4
 	if (!heap->ops->allocate || !heap->ops->free || !heap->ops->map_dma ||
 	    !heap->ops->unmap_dma)
 		pr_err("%s: can not add heap with invalid ops struct.\n",
 		       __func__);
 
+<<<<<<< HEAD
 	heap->dev = dev;
 	down_write(&dev->lock);
 	while (*p) {
@@ -1344,6 +1867,28 @@ void ion_device_add_heap(struct ion_device *dev, struct ion_heap *heap)
 	debugfs_create_file(heap->name, 0664, dev->debug_root, heap,
 			    &debug_heap_fops);
 end:
+=======
+	if (heap->flags & ION_HEAP_FLAG_DEFER_FREE)
+		ion_heap_init_deferred_free(heap);
+
+	heap->dev = dev;
+	down_write(&dev->lock);
+	/* use negative heap->id to reverse the priority -- when traversing
+	   the list later attempt higher id numbers first */
+	plist_node_init(&heap->node, -heap->id);
+	plist_add(&heap->node, &dev->heaps);
+	debugfs_create_file(heap->name, 0664, dev->debug_root, heap,
+			    &debug_heap_fops);
+#ifdef DEBUG_HEAP_SHRINKER
+	if (heap->shrinker.shrink) {
+		char debug_name[64];
+
+		snprintf(debug_name, 64, "%s_shrink", heap->name);
+		debugfs_create_file(debug_name, 0644, dev->debug_root, heap,
+				    &debug_shrink_fops);
+	}
+#endif
+>>>>>>> google-common/android-3.4
 	up_write(&dev->lock);
 }
 
@@ -1370,14 +1915,22 @@ struct ion_device *ion_device_create(long (*custom_ioctl)
 	}
 
 	idev->debug_root = debugfs_create_dir("ion", NULL);
+<<<<<<< HEAD
 	if (IS_ERR_OR_NULL(idev->debug_root))
+=======
+	if (!idev->debug_root)
+>>>>>>> google-common/android-3.4
 		pr_err("ion: failed to create debug files.\n");
 
 	idev->custom_ioctl = custom_ioctl;
 	idev->buffers = RB_ROOT;
 	mutex_init(&idev->buffer_lock);
 	init_rwsem(&idev->lock);
+<<<<<<< HEAD
 	idev->heaps = RB_ROOT;
+=======
+	plist_head_init(&idev->heaps);
+>>>>>>> google-common/android-3.4
 	idev->clients = RB_ROOT;
 	return idev;
 }
@@ -1389,6 +1942,7 @@ void ion_device_destroy(struct ion_device *dev)
 	kfree(dev);
 }
 
+<<<<<<< HEAD
 struct ion_client *ion_client_get_file(int fd)
 {
 	struct ion_client *client = ERR_PTR(-EFAULT);
@@ -1405,6 +1959,8 @@ struct ion_client *ion_client_get_file(int fd)
 	return client;
 }
 
+=======
+>>>>>>> google-common/android-3.4
 void __init ion_reserve(struct ion_platform_data *data)
 {
 	int i;

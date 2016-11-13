@@ -389,6 +389,7 @@ config HMC6352
 	  This driver provides support for the Honeywell HMC6352 compass,
 	  providing configuration and heading data via sysfs.
 
+<<<<<<< HEAD
 config SENSORS_NCT1008
 	tristate "ON Semiconductor Temperature Sensor"
 	default n
@@ -397,6 +398,8 @@ config SENSORS_NCT1008
 	 Say yes here if you wish to include the ON Semiconductor
 	 NCT1008 Temperature sensor.
 
+=======
+>>>>>>> google-common/android-3.4
 config SENSORS_AK8975
 	tristate "AK8975 compass support"
 	default n
@@ -532,6 +535,7 @@ config WL127X_RFKILL
 	---help---
 	 Creates an rfkill entry in sysfs for power control of Bluetooth
 	 TI wl127x chips.
+<<<<<<< HEAD
 
 config BCM4329_RFKILL
 	bool "Enable BCM4329 RFKILL driver"
@@ -612,6 +616,9 @@ config UID_CPUTIME
 	help
 	  Per UID based cpu time statistics exported to /proc/uid_cputime
 
+=======
+	 
+>>>>>>> google-common/android-3.4
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"

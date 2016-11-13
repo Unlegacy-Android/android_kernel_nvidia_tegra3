@@ -197,7 +197,11 @@ typedef struct {
 	/* attach to device */
 	void *(*attach)(uint16 vend_id, uint16 dev_id, uint16 bus, uint16 slot,
 	                uint16 func, uint bustype, void * regsva, osl_t * osh,
+<<<<<<< HEAD
 	                void * param, void *dev);
+=======
+	                void * param);
+>>>>>>> google-common/android-3.4
 	/* detach from device */
 	void (*detach)(void *ch);
 } bcmsdh_driver_t;

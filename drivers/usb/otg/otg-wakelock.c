@@ -2,7 +2,10 @@
  * otg-wakelock.c
  *
  * Copyright (C) 2011 Google, Inc.
+<<<<<<< HEAD
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+=======
+>>>>>>> google-common/android-3.4
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -23,7 +26,11 @@
 #include <linux/spinlock.h>
 #include <linux/usb/otg.h>
 
+<<<<<<< HEAD
 #define TEMPORARY_HOLD_TIME	5000
+=======
+#define TEMPORARY_HOLD_TIME	2000
+>>>>>>> google-common/android-3.4
 
 static bool enabled = true;
 static struct usb_phy *otgwl_xceiv;

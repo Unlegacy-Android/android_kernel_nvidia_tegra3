@@ -17,7 +17,10 @@
 #include <linux/device.h>
 #include <linux/fault-inject.h>
 #include <linux/wakelock.h>
+<<<<<<< HEAD
 #include <linux/devfreq.h>
+=======
+>>>>>>> google-common/android-3.4
 
 #include <linux/mmc/core.h>
 #include <linux/mmc/pm.h>

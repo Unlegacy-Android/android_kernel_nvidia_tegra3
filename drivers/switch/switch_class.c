@@ -2,7 +2,10 @@
  *  drivers/switch/switch_class.c
  *
  * Copyright (C) 2008 Google, Inc.
+<<<<<<< HEAD
  * Copyright (C) 2012-2013, NVIDIA CORPORATION. All rights reserved.
+=======
+>>>>>>> google-common/android-3.4
  * Author: Mike Lockwood <lockwood@android.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -152,8 +155,13 @@ void switch_dev_unregister(struct switch_dev *sdev)
 {
 	device_remove_file(sdev->dev, &dev_attr_name);
 	device_remove_file(sdev->dev, &dev_attr_state);
+<<<<<<< HEAD
 	dev_set_drvdata(sdev->dev, NULL);
 	device_destroy(switch_class, MKDEV(0, sdev->index));
+=======
+	device_destroy(switch_class, MKDEV(0, sdev->index));
+	dev_set_drvdata(sdev->dev, NULL);
+>>>>>>> google-common/android-3.4
 }
 EXPORT_SYMBOL_GPL(switch_dev_unregister);
 

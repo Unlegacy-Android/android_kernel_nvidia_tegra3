@@ -1,7 +1,11 @@
 /* include/linux/wlan_plat.h
  *
+<<<<<<< HEAD
  * Copyright (c) 2010 Google, Inc.
  * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
+=======
+ * Copyright (C) 2010 Google, Inc.
+>>>>>>> google-common/android-3.4
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -16,6 +20,7 @@
 #ifndef _LINUX_WLAN_PLAT_H_
 #define _LINUX_WLAN_PLAT_H_
 
+<<<<<<< HEAD
 #include <linux/edp.h>
 
 #if defined(CONFIG_BCMDHD_EDP_SUPPORT)
@@ -25,6 +30,8 @@ typedef enum e_edp_state {
 }wifi_edp_state;
 #endif
 
+=======
+>>>>>>> google-common/android-3.4
 struct wifi_platform_data {
 	int (*set_power)(int val);
 	int (*set_reset)(int val);
@@ -32,9 +39,12 @@ struct wifi_platform_data {
 	void *(*mem_prealloc)(int section, unsigned long size);
 	int (*get_mac_addr)(unsigned char *buf);
 	void *(*get_country_code)(char *ccode);
+<<<<<<< HEAD
 #if defined(CONFIG_BCMDHD_EDP_SUPPORT)
 	struct edp_client client_info;
 #endif
+=======
+>>>>>>> google-common/android-3.4
 };
 
 #endif

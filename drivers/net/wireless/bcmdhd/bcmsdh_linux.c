@@ -35,7 +35,10 @@
 
 #include <linux/pci.h>
 #include <linux/completion.h>
+<<<<<<< HEAD
 #include <linux/mmc/sdio_func.h>
+=======
+>>>>>>> google-common/android-3.4
 
 #include <osl.h>
 #include <pcicfg.h>
@@ -158,7 +161,10 @@ int bcmsdh_probe(struct device *dev)
 	bcmsdh_hc_t *sdhc = NULL, *sdhc_org = sdhcinfo;
 	ulong regs = 0;
 	bcmsdh_info_t *sdh = NULL;
+<<<<<<< HEAD
 	struct sdio_func *func = container_of(dev, struct sdio_func, dev);
+=======
+>>>>>>> google-common/android-3.4
 #if !defined(BCMLXSDMMC) && defined(BCMPLATFORM_BUS)
 	struct platform_device *pdev;
 	struct resource *r;
@@ -241,8 +247,13 @@ int bcmsdh_probe(struct device *dev)
 	vendevid = bcmsdh_query_device(sdh);
 	/* try to attach to the target device */
 	if (!(sdhc->ch = drvinfo.attach((vendevid >> 16),
+<<<<<<< HEAD
 					func->device, 0, 0, 0, 0,
 					(void *)regs, NULL, sdh, dev))) {
+=======
+	                                 (vendevid & 0xFFFF), 0, 0, 0, 0,
+	                                (void *)regs, NULL, sdh))) {
+>>>>>>> google-common/android-3.4
 		SDLX_MSG(("%s: device attach failed\n", __FUNCTION__));
 		goto err;
 	}
@@ -481,7 +492,11 @@ bcmsdh_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	/* try to attach to the target device */
 	if (!(sdhc->ch = drvinfo.attach(VENDOR_BROADCOM, /* pdev->vendor, */
 	                                bcmsdh_query_device(sdh) & 0xFFFF, 0, 0, 0, 0,
+<<<<<<< HEAD
 	                                (void *)regs, NULL, sdh, pdev->dev))) {
+=======
+	                                (void *)regs, NULL, sdh))) {
+>>>>>>> google-common/android-3.4
 		SDLX_MSG(("%s: device attach failed\n", __FUNCTION__));
 		goto err;
 	}

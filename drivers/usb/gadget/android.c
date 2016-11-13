@@ -42,7 +42,10 @@
 #include "epautoconf.c"
 #include "composite.c"
 
+<<<<<<< HEAD
 #include "f_nvusb.c"
+=======
+>>>>>>> google-common/android-3.4
 #include "f_fs.c"
 #include "f_audio_source.c"
 #include "f_mass_storage.c"
@@ -162,6 +165,11 @@ static struct usb_configuration android_config_driver = {
 	.label		= "android",
 	.unbind		= android_unbind_config,
 	.bConfigurationValue = 1,
+<<<<<<< HEAD
+=======
+	.bmAttributes	= USB_CONFIG_ATT_ONE | USB_CONFIG_ATT_SELFPOWER,
+	.bMaxPower	= 0xFA, /* 500ma */
+>>>>>>> google-common/android-3.4
 };
 
 static void android_work(struct work_struct *data)
@@ -465,7 +473,11 @@ static void adb_closed_callback(void)
 }
 
 
+<<<<<<< HEAD
 #define MAX_ACM_INSTANCES 2
+=======
+#define MAX_ACM_INSTANCES 4
+>>>>>>> google-common/android-3.4
 struct acm_function_config {
 	int instances;
 };
@@ -591,6 +603,7 @@ static int mtp_function_ctrlrequest(struct android_usb_function *f,
 	return mtp_ctrlrequest(cdev, c);
 }
 
+<<<<<<< HEAD
 static int ptp_function_ctrlrequest(struct android_usb_function *f,
 						struct usb_composite_dev *cdev,
 						const struct usb_ctrlrequest *c)
@@ -598,6 +611,8 @@ static int ptp_function_ctrlrequest(struct android_usb_function *f,
 	return mtp_ctrlrequest(cdev, c);
 }
 
+=======
+>>>>>>> google-common/android-3.4
 static struct android_usb_function mtp_function = {
 	.name		= "mtp",
 	.init		= mtp_function_init,
@@ -612,7 +627,10 @@ static struct android_usb_function ptp_function = {
 	.init		= ptp_function_init,
 	.cleanup	= ptp_function_cleanup,
 	.bind_config	= ptp_function_bind_config,
+<<<<<<< HEAD
 	.ctrlrequest	= ptp_function_ctrlrequest,
+=======
+>>>>>>> google-common/android-3.4
 };
 
 
@@ -892,6 +910,10 @@ static struct android_usb_function mass_storage_function = {
 	.attributes	= mass_storage_function_attributes,
 };
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> google-common/android-3.4
 static int accessory_function_init(struct android_usb_function *f,
 					struct usb_composite_dev *cdev)
 {
@@ -986,6 +1008,7 @@ static struct android_usb_function audio_source_function = {
 	.attributes	= audio_source_function_attributes,
 };
 
+<<<<<<< HEAD
 static int
 nvusb_function_init(struct android_usb_function *f,
 		struct usb_composite_dev *cdev)
@@ -1011,6 +1034,8 @@ static struct android_usb_function nvusb_function = {
 	.bind_config	= nvusb_function_bind_config,
 };
 
+=======
+>>>>>>> google-common/android-3.4
 static struct android_usb_function *supported_functions[] = {
 	&ffs_function,
 	&adb_function,
@@ -1021,7 +1046,10 @@ static struct android_usb_function *supported_functions[] = {
 	&mass_storage_function,
 	&accessory_function,
 	&audio_source_function,
+<<<<<<< HEAD
 	&nvusb_function,
+=======
+>>>>>>> google-common/android-3.4
 	NULL
 };
 
@@ -1440,6 +1468,10 @@ static int android_bind(struct usb_composite_dev *cdev)
 		device_desc.bcdDevice = __constant_cpu_to_le16(0x9999);
 	}
 
+<<<<<<< HEAD
+=======
+	usb_gadget_set_selfpowered(gadget);
+>>>>>>> google-common/android-3.4
 	dev->cdev = cdev;
 
 	return 0;

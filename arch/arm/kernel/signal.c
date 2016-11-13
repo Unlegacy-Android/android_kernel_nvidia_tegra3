@@ -711,6 +711,7 @@ do_work_pending(struct pt_regs *regs, unsigned int thread_flags, int syscall)
 	return 0;
 }
 
+<<<<<<< HEAD
 struct page *get_signal_page(void)
 {
 	unsigned long ptr;
@@ -739,4 +740,37 @@ struct page *get_signal_page(void)
 	flush_icache_range(ptr, ptr + sizeof(sigreturn_codes));
 
 	return page;
+=======
+static struct page *signal_page;
+
+struct page *get_signal_page(void)
+{
+	if (!signal_page) {
+		unsigned long ptr;
+		unsigned offset;
+		void *addr;
+
+		signal_page = alloc_pages(GFP_KERNEL, 0);
+
+		if (!signal_page)
+			return NULL;
+
+		addr = page_address(signal_page);
+
+		/* Give the signal return code some randomness */
+		offset = 0x200 + (get_random_int() & 0x7fc);
+		signal_return_offset = offset;
+
+		/*
+		 * Copy signal return handlers into the vector page, and
+		 * set sigreturn to be a pointer to these.
+		 */
+		memcpy(addr + offset, sigreturn_codes, sizeof(sigreturn_codes));
+
+		ptr = (unsigned long)addr + offset;
+		flush_icache_range(ptr, ptr + sizeof(sigreturn_codes));
+	}
+
+	return signal_page;
+>>>>>>> google-common/android-3.4
 }

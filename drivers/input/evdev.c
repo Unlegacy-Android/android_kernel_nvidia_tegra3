@@ -37,6 +37,8 @@ struct evdev {
 	struct mutex mutex;
 	struct device dev;
 	bool exist;
+	int hw_ts_sec;
+	int hw_ts_nsec;
 };
 
 struct evdev_client {
@@ -102,7 +104,27 @@ static void evdev_event(struct input_handle *handle,
 	struct evdev *evdev = handle->private;
 	struct evdev_client *client;
 	struct input_event event;
+<<<<<<< HEAD
 	struct timespec ts;
+=======
+	ktime_t time_mono, time_real;
+
+	if (type == EV_SYN && code == SYN_TIME_SEC) {
+		evdev->hw_ts_sec = value;
+		return;
+	}
+	if (type == EV_SYN && code == SYN_TIME_NSEC) {
+		evdev->hw_ts_nsec = value;
+		return;
+	}
+
+	if (evdev->hw_ts_sec != -1 && evdev->hw_ts_nsec != -1)
+		time_mono = ktime_set(evdev->hw_ts_sec, evdev->hw_ts_nsec);
+	else
+		time_mono = ktime_get();
+
+	time_real = ktime_sub(time_mono, ktime_get_monotonic_offset());
+>>>>>>> google-common/android-3.4
 
 	ktime_get_ts(&ts);
 	event.time.tv_sec = ts.tv_sec;
@@ -122,8 +144,11 @@ static void evdev_event(struct input_handle *handle,
 
 	rcu_read_unlock();
 
-	if (type == EV_SYN && code == SYN_REPORT)
+	if (type == EV_SYN && code == SYN_REPORT) {
+		evdev->hw_ts_sec = -1;
+		evdev->hw_ts_nsec = -1;
 		wake_up_interruptible(&evdev->wait);
+	}
 }
 
 static int evdev_fasync(int fd, struct file *file, int on)
@@ -691,6 +716,35 @@ static int evdev_handle_mt_request(struct input_dev *dev,
 	return 0;
 }
 
+static int evdev_enable_suspend_block(struct evdev *evdev,
+				      struct evdev_client *client)
+{
+	if (client->use_wake_lock)
+		return 0;
+
+	spin_lock_irq(&client->buffer_lock);
+	wake_lock_init(&client->wake_lock, WAKE_LOCK_SUSPEND, client->name);
+	client->use_wake_lock = true;
+	if (client->packet_head != client->tail)
+		wake_lock(&client->wake_lock);
+	spin_unlock_irq(&client->buffer_lock);
+	return 0;
+}
+
+static int evdev_disable_suspend_block(struct evdev *evdev,
+				       struct evdev_client *client)
+{
+	if (!client->use_wake_lock)
+		return 0;
+
+	spin_lock_irq(&client->buffer_lock);
+	client->use_wake_lock = false;
+	wake_lock_destroy(&client->wake_lock);
+	spin_unlock_irq(&client->buffer_lock);
+
+	return 0;
+}
+
 static long evdev_do_ioctl(struct file *file, unsigned int cmd,
 			   void __user *p, int compat_mode)
 {
@@ -1015,6 +1069,8 @@ static int evdev_connect(struct input_handler *handler, struct input_dev *dev,
 	dev_set_name(&evdev->dev, "event%d", minor);
 	evdev->exist = true;
 	evdev->minor = minor;
+	evdev->hw_ts_sec = -1;
+	evdev->hw_ts_nsec = -1;
 
 	evdev->handle.dev = input_get_device(dev);
 	evdev->handle.name = dev_name(&evdev->dev);

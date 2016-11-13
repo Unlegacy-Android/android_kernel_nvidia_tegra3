@@ -339,6 +339,7 @@ TRACE_EVENT(clock_set_parent,
 	TP_printk("%s parent=%s", __get_str(name), __get_str(parent_name))
 );
 
+<<<<<<< HEAD
 DEFINE_EVENT(clock, clock_lock,
 
 	TP_PROTO(const char *name, unsigned int state, unsigned int cpu_id),
@@ -353,6 +354,8 @@ DEFINE_EVENT(clock, clock_unlock,
 	TP_ARGS(name, state, cpu_id)
 );
 
+=======
+>>>>>>> google-common/android-3.4
 /*
  * The power domain events are used for power domains transitions
  */

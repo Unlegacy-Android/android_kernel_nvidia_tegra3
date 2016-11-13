@@ -1259,7 +1259,10 @@ int sdio_reset_comm(struct mmc_card *card)
 	int err;
 
 	printk("%s():\n", __func__);
+<<<<<<< HEAD
 
+=======
+>>>>>>> google-common/android-3.4
 	mmc_claim_host(host);
 
 	mmc_go_idle(host);

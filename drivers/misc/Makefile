@@ -54,6 +54,7 @@ obj-$(CONFIG_ALTERA_STAPL)	+=altera-stapl/
 obj-$(CONFIG_MAX8997_MUIC)	+= max8997-muic.o
 obj-$(CONFIG_WL127X_RFKILL)	+= wl127x-rfkill.o
 obj-$(CONFIG_SENSORS_AK8975)	+= akm8975.o
+<<<<<<< HEAD
 obj-$(CONFIG_SENSORS_NCT1008)	+= nct1008.o
 obj-$(CONFIG_BCM4329_RFKILL)	+= bcm4329_rfkill.o
 CFLAGS_tegra-cryptodev.o	 = -Werror
@@ -69,3 +70,5 @@ obj-$(CONFIG_FAN_THERM_EST)	+= therm_fan_est.o
 obj-$(CONFIG_BLUEDROID_PM)      += bluedroid_pm.o
 obj-$(CONFIG_CPULOAD_MONITOR)	+= cpuload.o
 obj-$(CONFIG_UID_CPUTIME)	+= uid_cputime.o
+=======
+>>>>>>> google-common/android-3.4

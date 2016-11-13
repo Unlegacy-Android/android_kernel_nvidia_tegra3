@@ -15,7 +15,10 @@
 #include <linux/err.h>
 #include <linux/of.h>
 #include <linux/notifier.h>
+<<<<<<< HEAD
 #include <linux/cpuidle.h>
+=======
+>>>>>>> google-common/android-3.4
 
 enum gpd_status {
 	GPD_STATE_ACTIVE = 0,	/* PM domain is active */
