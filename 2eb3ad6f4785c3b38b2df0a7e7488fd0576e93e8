@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5aef4532_dda9abe1",
+        "filename": "drivers/cpufreq/cpufreq.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 394,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-13T14:20:35Z",
+      "side": 1,
+      "message": "Is this change needed? I\u0027m thinking that since we discard all other changes, maybe we can keep current version as is.",
+      "range": {
+        "startLine": 383,
+        "startChar": 0,
+        "endLine": 394,
+        "endChar": 0
+      },
+      "revId": "2eb3ad6f4785c3b38b2df0a7e7488fd0576e93e8",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5aef4532_1dacb3ec",
+        "filename": "drivers/usb/class/cdc-acm.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 649,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-13T14:20:35Z",
+      "side": 1,
+      "message": "Whitespace",
+      "range": {
+        "startLine": 649,
+        "startChar": 0,
+        "endLine": 649,
+        "endChar": 2
+      },
+      "revId": "2eb3ad6f4785c3b38b2df0a7e7488fd0576e93e8",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5aef4532_7db9772e",
+        "filename": "drivers/usb/class/cdc-acm.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1133,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-13T14:20:35Z",
+      "side": 1,
+      "message": "Weird whitespace/split; if we need this line split, the dangling space should go",
+      "range": {
+        "startLine": 1132,
+        "startChar": 5,
+        "endLine": 1133,
+        "endChar": 9
+      },
+      "revId": "2eb3ad6f4785c3b38b2df0a7e7488fd0576e93e8",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5aef4532_5db63b3e",
+        "filename": "drivers/usb/class/cdc-acm.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1174,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-13T14:20:35Z",
+      "side": 1,
+      "message": "Whitespace",
+      "range": {
+        "startLine": 1174,
+        "startChar": 0,
+        "endLine": 1174,
+        "endChar": 2
+      },
+      "revId": "2eb3ad6f4785c3b38b2df0a7e7488fd0576e93e8",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5aef4532_bd813f50",
+        "filename": "drivers/usb/class/cdc-acm.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1596,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-13T14:20:35Z",
+      "side": 1,
+      "message": "Orphan space ;-)",
+      "range": {
+        "startLine": 1596,
+        "startChar": 0,
+        "endLine": 1596,
+        "endChar": 1
+      },
+      "revId": "2eb3ad6f4785c3b38b2df0a7e7488fd0576e93e8",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5aef4532_3dafefe4",
+        "filename": "security/selinux/nlmsgtab.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-13T14:20:35Z",
+      "side": 1,
+      "message": "Not sure this line shuffling is needed; if we do it, it should be same whitespace like surrounding code (e.g., one tab vs. spaces).",
+      "range": {
+        "startLine": 111,
+        "startChar": 0,
+        "endLine": 111,
+        "endChar": 66
+      },
+      "revId": "2eb3ad6f4785c3b38b2df0a7e7488fd0576e93e8",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
