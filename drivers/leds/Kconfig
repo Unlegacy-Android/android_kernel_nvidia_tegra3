@@ -24,6 +24,10 @@ config LEDS_CLASS
 
 comment "LED drivers"
 
+config ACER_LEDS
+	tristate "LED Support for ACER"
+	default n
+
 config LEDS_MAX8831
 	tristate "LED Support for Maxim MAX8831"
 	depends on LEDS_CLASS
