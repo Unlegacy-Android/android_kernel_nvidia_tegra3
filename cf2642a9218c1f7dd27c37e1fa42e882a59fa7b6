@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1af94dfe_dea9a1e1",
+        "filename": "drivers/usb/class/cdc-acm.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-25T18:55:45Z",
+      "side": 1,
+      "message": "These two identical statements can be condensed after the #endif now",
+      "range": {
+        "startLine": 254,
+        "startChar": 0,
+        "endLine": 257,
+        "endChar": 6
+      },
+      "revId": "cf2642a9218c1f7dd27c37e1fa42e882a59fa7b6",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1af94dfe_9e9f19b4",
+        "filename": "drivers/usb/class/cdc-acm.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 649,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-25T18:55:45Z",
+      "side": 1,
+      "message": "Extraneous space",
+      "range": {
+        "startLine": 649,
+        "startChar": 0,
+        "endLine": 649,
+        "endChar": 1
+      },
+      "revId": "cf2642a9218c1f7dd27c37e1fa42e882a59fa7b6",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1af94dfe_3eafe5e4",
+        "filename": "drivers/usb/class/cdc-acm.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1133,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-25T18:55:45Z",
+      "side": 1,
+      "message": "Dangling EOL space + check indentation",
+      "range": {
+        "startLine": 1132,
+        "startChar": 5,
+        "endLine": 1133,
+        "endChar": 7
+      },
+      "revId": "cf2642a9218c1f7dd27c37e1fa42e882a59fa7b6",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1af94dfe_fea45d09",
+        "filename": "drivers/usb/class/cdc-acm.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1174,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-25T18:55:45Z",
+      "side": 1,
+      "message": "Extraneous space",
+      "range": {
+        "startLine": 1174,
+        "startChar": 0,
+        "endLine": 1174,
+        "endChar": 1
+      },
+      "revId": "cf2642a9218c1f7dd27c37e1fa42e882a59fa7b6",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1af94dfe_1eaca9ec",
+        "filename": "drivers/usb/class/cdc-acm.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 1000003
+      },
+      "writtenOn": "2016-11-25T18:55:45Z",
+      "side": 1,
+      "message": "Funky whitespace",
+      "range": {
+        "startLine": 122,
+        "startChar": 0,
+        "endLine": 122,
+        "endChar": 1
+      },
+      "revId": "cf2642a9218c1f7dd27c37e1fa42e882a59fa7b6",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
