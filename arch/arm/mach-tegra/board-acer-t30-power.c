@@ -70,7 +70,9 @@ static struct regulator_consumer_supply tps6591x_vddctrl_supply_0[] = {
 static struct regulator_consumer_supply tps6591x_vio_supply_0[] = {
 	REGULATOR_SUPPLY("vdd_gen1v8", NULL),
 	REGULATOR_SUPPLY("avdd_hdmi_pll", NULL),
-	REGULATOR_SUPPLY("avdd_usb_pll", NULL),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("avdd_osc", NULL),
 	REGULATOR_SUPPLY("vddio_sys", NULL),
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.3"),
@@ -556,6 +558,14 @@ static struct tegra_suspend_platform_data cardhu_suspend_data = {
 	.cpu_lp2_min_residency = 2000,
 	.board_suspend = cardhu_board_suspend,
 	.board_resume = cardhu_board_resume,
+#ifdef CONFIG_TEGRA_LP1_950
+	.lp1_lowvolt_support = true,
+	.i2c_base_addr = TEGRA_I2C5_BASE,
+	.pmuslave_addr = 0x78,
+	.core_reg_addr = 0x17,
+	.lp1_core_volt_low = 0x0C,
+	.lp1_core_volt_high = 0x20,
+#endif
 };
 
 int __init cardhu_suspend_init(void)
