@@ -326,7 +326,6 @@ static struct bq27541_platform_data bq27541_pdata = {
 static struct i2c_board_info __initdata bq27541_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("bq27541-battery", 0x55),
-		.irq = TEGRA_GPIO_TO_IRQ(AC_DETECT_GPIO),
 		.platform_data = &bq27541_pdata,
 	},
 };
@@ -373,6 +372,7 @@ int __init cardhu_regulator_init(void)
 
 #ifdef CONFIG_BATTERY_BQ27541
 	bq27541_gpio_init();
+	bq27541_boardinfo[0].irq = gpio_to_irq(AC_DETECT_GPIO);
 	i2c_register_board_info(4, bq27541_boardinfo, 1);
 #endif
 

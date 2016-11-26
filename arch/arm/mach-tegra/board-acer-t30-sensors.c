@@ -47,9 +47,9 @@
 #include <linux/mpu.h>
 #include <media/sh532u.h>
 #include <media/ad5816.h>
-#include <mach/gpio.h>
 #include <mach/edp.h>
 #include <linux/therm_est.h>
+#include <linux/gpio.h>
 
 #include "gpio-names.h"
 #include "board-acer-t30.h"
@@ -258,10 +258,9 @@ static const struct i2c_board_info cardhu_camera_i2c3_board_info[] = {
 };
 
 #ifdef CONFIG_STK2203_LIGHT_SENSOR
-static const struct i2c_board_info cardhu_i2c0_stk2203_board_info[] = {
+static struct i2c_board_info cardhu_i2c0_stk2203_board_info[] = {
 	{
 		I2C_BOARD_INFO("stk_als", 0x10),
-		.irq = TEGRA_GPIO_TO_IRQ(STK_INTR),
 	},
 };
 
@@ -280,6 +279,7 @@ static void cardhu_stk2203_init(void)
 		pr_err("%s: gpio_direction_input failed for gpio %s\n",
 		__func__, "TEGRA_GPIO_PX3");
 
+	cardhu_i2c0_stk2203_board_info[0].irq = gpio_to_irq(STK_INTR);
 	i2c_register_board_info(0, cardhu_i2c0_stk2203_board_info,
 		ARRAY_SIZE(cardhu_i2c0_stk2203_board_info));
 }
@@ -474,7 +474,6 @@ static struct mpu_platform_data mpu_data = {
 #else
 	.get_slave_descr = get_accel_slave_descr,
 #endif
-	.irq         = TEGRA_GPIO_TO_IRQ(G_ACC_INT),
 	.adapt_num   = 0,
 	.bus         = EXT_SLAVE_BUS_SECONDARY,
 	.address     = 0x0F,
@@ -491,7 +490,6 @@ static struct mpu_platform_data mpu_data = {
 #else
 	.get_slave_descr = get_compass_slave_descr,
 #endif
-	.irq         = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PX7),
 	.adapt_num   = 0,
 	.bus         = EXT_SLAVE_BUS_PRIMARY,
 	.address     = 0x0C,
@@ -506,7 +504,6 @@ static struct mpu_platform_data mpu_data = {
 static struct i2c_board_info __initdata mpu3050_i2c0_boardinfo[] = {
 	{
 		I2C_BOARD_INFO(SENSOR_MPU_NAME, 0x68),
-		.irq = TEGRA_GPIO_TO_IRQ(GYRO_INT_R),
 		.platform_data = &mpu_data,
 	},
 };
@@ -593,6 +590,9 @@ int __init cardhu_sensors_init(void)
 		return err;
 
 #ifdef CONFIG_MPU_SENSORS_MPU3050
+	mpu_data.accel.irq = gpio_to_irq(G_ACC_INT);
+	mpu_data.compass.irq = gpio_to_irq(TEGRA_GPIO_PX7),
+	mpu3050_i2c0_boardinfo[0].irq = gpio_to_irq(GYRO_INT_R);
 	i2c_register_board_info(0, mpu3050_i2c0_boardinfo,
 		ARRAY_SIZE(mpu3050_i2c0_boardinfo));
 
