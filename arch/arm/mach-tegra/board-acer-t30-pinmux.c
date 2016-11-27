@@ -121,6 +121,42 @@ static __initdata struct tegra_drive_pingroup_config cardhu_drive_pinmux[] = {
 			.ioreset        = TEGRA_PIN_IO_RESET_DEFAULT,   \
 	}
 
+#define DEFAULT_PINMUX(_pingroup, _mux, _pupd, _tri, _io)		\
+	{								\
+		.pingroup	= TEGRA_PINGROUP_##_pingroup,		\
+		.func		= TEGRA_MUX_##_mux,			\
+		.pupd		= TEGRA_PUPD_##_pupd,			\
+		.tristate	= TEGRA_TRI_##_tri,			\
+		.io		= TEGRA_PIN_##_io,			\
+		.lock		= TEGRA_PIN_LOCK_DEFAULT,		\
+		.od		= TEGRA_PIN_OD_DEFAULT,			\
+		.ioreset	= TEGRA_PIN_IO_RESET_DEFAULT,		\
+	}
+
+#define I2C_PINMUX(_pingroup, _mux, _pupd, _tri, _io, _lock, _od)	\
+	{								\
+		.pingroup	= TEGRA_PINGROUP_##_pingroup,		\
+		.func		= TEGRA_MUX_##_mux,			\
+		.pupd		= TEGRA_PUPD_##_pupd,			\
+		.tristate	= TEGRA_TRI_##_tri,			\
+		.io		= TEGRA_PIN_##_io,			\
+		.lock		= TEGRA_PIN_LOCK_##_lock,		\
+		.od		= TEGRA_PIN_OD_##_od,			\
+		.ioreset	= TEGRA_PIN_IO_RESET_DEFAULT,		\
+	}
+
+#define VI_PINMUX(_pingroup, _mux, _pupd, _tri, _io, _lock, _ioreset)	\
+	{								\
+		.pingroup	= TEGRA_PINGROUP_##_pingroup,		\
+		.func		= TEGRA_MUX_##_mux,			\
+		.pupd		= TEGRA_PUPD_##_pupd,			\
+		.tristate	= TEGRA_TRI_##_tri,			\
+		.io		= TEGRA_PIN_##_io,			\
+		.lock		= TEGRA_PIN_LOCK_##_lock,		\
+		.od		= TEGRA_PIN_OD_DEFAULT,			\
+		.ioreset	= TEGRA_PIN_IO_RESET_##_ioreset		\
+	}
+
 static __initdata struct tegra_pingroup_config picasso2_pinmux_common[] = {
 	DEFAULT_PINMUX(GMI_WP_N,        GMI,             PULL_UP,       NORMAL,     INPUT), //
 	DEFAULT_PINMUX(CLK1_OUT,        EXTPERIPH1,      NORMAL,        NORMAL,     INPUT), // Function o

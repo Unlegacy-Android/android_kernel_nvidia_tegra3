@@ -908,7 +908,6 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.op_mode = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
 		.vbus_gpio = TEGRA_GPIO_PN1,
-		.vbus_reg = NULL,
 		.hot_plug = true,
 		.remote_wakeup_supported = false,
 		.power_off_on_suspend = true,

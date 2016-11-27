@@ -157,13 +157,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.power_gpio = -1,
 	.tap_delay = 0x0F,
 	.ddr_clk_limit = 41000000,
-/*	.is_voltage_switch_supported = false,
-	.vdd_rail_name = NULL,
-	.slot_rail_name = NULL,
-	.vdd_max_uv = -1,
-	.vdd_min_uv = -1,
-	.max_clk = 0,
-	.is_8bit_supported = false, */
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
@@ -172,13 +165,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.power_gpio = -1,
 	.tap_delay = 0x0F,
 	.ddr_clk_limit = 41000000,
-	.is_voltage_switch_supported = true,
-	.vdd_rail_name = "vddio_sdmmc1",
-	.slot_rail_name = "vddio_sd_slot",
-	.vdd_max_uv = 3320000,
-	.vdd_min_uv = 3280000,
-	.max_clk_limit = 208000000,
-	.is_8bit = false,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
@@ -191,12 +177,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.mmc_data = {
 		.built_in = 1,
 	},
-	.is_voltage_switch_supported = false,
-	.vdd_rail_name = NULL,
-	.slot_rail_name = NULL,
-	.vdd_max_uv = -1,
-	.vdd_min_uv = -1,
-	.max_clk_limit = 96000000,
 };
 
 static struct platform_device tegra_sdhci_device0 = {
@@ -258,7 +238,7 @@ static void set_pin_pupd_input(int pin , int pupd , int input)
 	if (err < 0)
 		printk(KERN_ERR "%s: can't set pin %d pullupdown to %d\n", __func__, pin , pupd);
 
-	err = tegra_pinmux_set_e_input_bit(pin , input);
+	err = tegra_pinmux_set_io(pin , input);
 	if (err < 0)
 		printk(KERN_ERR "%s: can't set pin %d e_input to %d\n", __func__, pin , input);
 }
@@ -281,12 +261,12 @@ static int enable_wifi_sdio_func(void)
 		gpio_free(wifi_sdio_gpio[i]);
 	}
 
-	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_CLK , TEGRA_PUPD_NORMAL , TEGRA_E_INPUT_ENABLE);
-	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_CMD , TEGRA_PUPD_PULL_UP, TEGRA_E_INPUT_ENABLE);
-	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_DAT3 , TEGRA_PUPD_PULL_UP , TEGRA_E_INPUT_ENABLE);
-	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_DAT2 , TEGRA_PUPD_PULL_UP , TEGRA_E_INPUT_ENABLE);
-	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_DAT1 , TEGRA_PUPD_PULL_UP , TEGRA_E_INPUT_ENABLE);
-	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_DAT0 , TEGRA_PUPD_PULL_UP , TEGRA_E_INPUT_ENABLE);
+	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_CLK , TEGRA_PUPD_NORMAL , TEGRA_PIN_INPUT);
+	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_CMD , TEGRA_PUPD_PULL_UP, TEGRA_PIN_INPUT);
+	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_DAT3 , TEGRA_PUPD_PULL_UP , TEGRA_PIN_INPUT);
+	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_DAT2 , TEGRA_PUPD_PULL_UP , TEGRA_PIN_INPUT);
+	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_DAT1 , TEGRA_PUPD_PULL_UP , TEGRA_PIN_INPUT);
+	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_DAT0 , TEGRA_PUPD_PULL_UP , TEGRA_PIN_INPUT);
 
 	return 0;
 }
@@ -312,12 +292,12 @@ static int disable_wifi_sdio_func(void)
 		}
 	}
 
-	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_CLK , TEGRA_PUPD_NORMAL , TEGRA_E_INPUT_DISABLE);
-	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_CMD , TEGRA_PUPD_NORMAL , TEGRA_E_INPUT_DISABLE);
-	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_DAT3 , TEGRA_PUPD_NORMAL , TEGRA_E_INPUT_DISABLE);
-	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_DAT2 , TEGRA_PUPD_NORMAL , TEGRA_E_INPUT_DISABLE);
-	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_DAT1 , TEGRA_PUPD_NORMAL , TEGRA_E_INPUT_DISABLE);
-	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_DAT0 , TEGRA_PUPD_NORMAL , TEGRA_E_INPUT_DISABLE);
+	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_CLK , TEGRA_PUPD_NORMAL , TEGRA_PIN_OUTPUT);
+	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_CMD , TEGRA_PUPD_NORMAL , TEGRA_PIN_OUTPUT);
+	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_DAT3 , TEGRA_PUPD_NORMAL , TEGRA_PIN_OUTPUT);
+	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_DAT2 , TEGRA_PUPD_NORMAL , TEGRA_PIN_OUTPUT);
+	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_DAT1 , TEGRA_PUPD_NORMAL , TEGRA_PIN_OUTPUT);
+	set_pin_pupd_input(TEGRA_PINGROUP_SDMMC3_DAT0 , TEGRA_PUPD_NORMAL , TEGRA_PIN_OUTPUT);
 	return 0;
 }
 
