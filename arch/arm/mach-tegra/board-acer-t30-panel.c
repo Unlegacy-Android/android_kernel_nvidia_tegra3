@@ -34,20 +34,13 @@ static struct regulator *acer_hdmi_pll = NULL;
 
 static atomic_t sd_brightness = ATOMIC_INIT(255);
 static struct board_info board_info;
-static struct delayed_work bl_en_gpio;
 
 extern int acer_board_type;
-
-static void acer_backlight_work_queue(struct work_struct *work)
-{
-	gpio_set_value(BL_ENABLE, 1);
-}
 
 static int acer_backlight_init(struct device *dev)
 {
 	/* TBR: disable gpio to  change function pin */
 	tegra_gpio_disable(BL_PWM);
-	INIT_DELAYED_WORK(&bl_en_gpio,acer_backlight_work_queue);
 	return 1;
 }
 
@@ -63,12 +56,7 @@ static int acer_backlight_notify(struct device *unused, int brightness)
 	int cur_sd_brightness = atomic_read(&sd_brightness);
 	static int ori_brightness = 0;
 
-	if (ori_brightness != !!brightness) {
-		if (!ori_brightness){
-			cancel_delayed_work_sync(&bl_en_gpio);
-			schedule_delayed_work(&bl_en_gpio,msecs_to_jiffies(220));
-		}
-	}
+	gpio_set_value(BL_ENABLE, !!brightness);
 
 	ori_brightness = !!brightness;
 
