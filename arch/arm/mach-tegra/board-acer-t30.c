@@ -85,7 +85,6 @@
 #include "pm.h"
 #include "wdt-recovery.h"
 
-#if defined(CONFIG_ACER_VIBRATOR)
 #include "../../../drivers/staging/android/timed_output.h"
 #include "../../../drivers/staging/android/timed_gpio.h"
 
@@ -94,7 +93,6 @@
 #endif
 
 #define VIB_GPIO TEGRA_GPIO_PJ7
-#endif
 
 #define DOCK_DEBUG_UART_GPIO TEGRA_GPIO_PU5
 
@@ -531,7 +529,6 @@ static void __init cardhu_uart_init(void)
 				ARRAY_SIZE(cardhu_uart_devices));
 }
 
-#if defined(CONFIG_ACER_VIBRATOR)
 static struct timed_gpio vib_timed_gpios[] = {
 	{
 		.name = "vibrator",
@@ -554,11 +551,10 @@ static struct platform_device vib_timed_gpio_device = {
 	},
 };
 
-static void vib_init(void)
+static void acer_vibrator_init(void)
 {
 	tegra_gpio_enable(VIB_GPIO);
 }
-#endif
 
 #ifdef CONFIG_ROTATELOCK
 static struct gpio_switch_platform_data rotationlock_switch_platform_data = {
@@ -688,9 +684,7 @@ static struct platform_device *cardhu_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
 	&tegra_udc_device,
-#if defined(CONFIG_ACER_VIBRATOR)
 	&vib_timed_gpio_device,
-#endif
 	&tegra_wdt0_device,
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
@@ -1167,9 +1161,7 @@ static void __init tegra_cardhu_init(void)
 	rotationlock_init();
 #endif
 	cardhu_emc_init();
-#if defined(CONFIG_ACER_VIBRATOR)
-	vib_init();
-#endif
+	acer_vibrator_init();
 #ifdef CONFIG_ACER_LEDS
 	acer_led_init();
 #endif

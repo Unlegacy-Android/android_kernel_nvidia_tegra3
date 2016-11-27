@@ -361,6 +361,7 @@ comment "Acer Tegra Platform options"
 config ARCH_ACER_T30
 	depends on ARCH_TEGRA_3x_SOC
 	bool "Acer T30 platform"
+	select ANDROID_TIMED_GPIO
 
 comment "Acer board type"
 
