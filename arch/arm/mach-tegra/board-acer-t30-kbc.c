@@ -76,12 +76,7 @@ static struct platform_device acer_keys_device = {
 
 int __init acer_keys_init(void)
 {
-	int i;
-
 	pr_info("Registering gpio keys\n");
-
-	for (i = 0; i < ARRAY_SIZE(acer_keys); i++)
-		tegra_gpio_enable(acer_keys[i].gpio);
 
 	platform_device_register(&acer_keys_device);
 

@@ -169,8 +169,6 @@ static int disable_bt_uart_func(void)
 			return rc;
 		}
 
-		tegra_gpio_enable(bt_uart_gpio[i]);
-
 		rc = gpio_direction_output(bt_uart_gpio[i], 0);
 		if (rc) {
 			printk(KERN_INFO "%s, direction gpio %d failed !!!\n", __func__, bt_uart_gpio[i]);
@@ -185,8 +183,6 @@ static void bt_ext_gpio_init(void)
 	int ret;
 
 	pr_info("%s: \n", __func__);
-
-	tegra_gpio_enable(TEGRA_GPIO_PP0);
 
 	ret = gpio_request(TEGRA_GPIO_PP0, "bt_ext_wake");
 	if (ret)
@@ -283,8 +279,6 @@ static noinline void __init cardhu_setup_bluesleep(void)
 	cardhu_bluesleep_device.resource[2].end = gpio_to_irq(TEGRA_GPIO_PS7);
 	platform_device_register(&cardhu_bluesleep_device);
 	bt_ext_gpio_init();
-	tegra_gpio_enable(TEGRA_GPIO_PS7);
-	tegra_gpio_enable(TEGRA_GPIO_PP0);
 
 	return;
 }
@@ -408,9 +402,6 @@ static struct i2c_board_info __initdata a1026_board_info = {
 
 static void a1026_init(void)
 {
-	tegra_gpio_enable(TEGRA_GPIO_PX0);
-	tegra_gpio_enable(TEGRA_GPIO_PN0);
-
 	i2c_register_board_info(4, &a1026_board_info, 1);
 }
 #endif
@@ -494,7 +485,6 @@ static void __init cardhu_uart_init(void)
 					__func__, DOCK_DEBUG_UART_GPIO);
 	}
 	else {
-		tegra_gpio_enable(DOCK_DEBUG_UART_GPIO);
 		gpio_direction_input(DOCK_DEBUG_UART_GPIO);
 	}
 
@@ -551,11 +541,6 @@ static struct platform_device vib_timed_gpio_device = {
 	},
 };
 
-static void acer_vibrator_init(void)
-{
-	tegra_gpio_enable(VIB_GPIO);
-}
-
 #ifdef CONFIG_ROTATELOCK
 static struct gpio_switch_platform_data rotationlock_switch_platform_data = {
 	.gpio = TEGRA_GPIO_PQ0,
@@ -568,11 +553,6 @@ static struct platform_device rotationlock_switch = {
 		.platform_data = &rotationlock_switch_platform_data,
 	},
 };
-
-static void rotationlock_init(void)
-{
-	tegra_gpio_enable(TEGRA_GPIO_PQ0);
-}
 #endif
 
 static struct platform_device *cardhu_spi_devices[] __initdata = {
@@ -832,10 +812,6 @@ void hsic_platform_open(void)
 		gpio_direction_output(hsic_enable_gpio, 0 /* deasserted */);
 	if (!reset_gpio)
 		gpio_direction_output(hsic_reset_gpio, 0 /* asserted */);
-	if (!enable_gpio)
-		tegra_gpio_enable(hsic_enable_gpio);
-	if (!reset_gpio)
-		tegra_gpio_enable(hsic_reset_gpio);
 	/* keep hsic reset asserted for 1 ms */
 	udelay(1000);
 	/* enable (power on) hsic */
@@ -978,16 +954,6 @@ static void cardhu_usb_init(void)
 static void cardhu_usb_init(void) { }
 #endif
 
-static void cardhu_gps_uart_init(void)
-{
-	pr_err("------------------------cardhu_gps_uart_init start-----------------------\n");
-	tegra_gpio_disable(TEGRA_GPIO_PC3);//RX
-	tegra_gpio_disable(TEGRA_GPIO_PC2);//TX
-	tegra_gpio_disable(TEGRA_GPIO_PJ5);//CTS
-	tegra_gpio_disable(TEGRA_GPIO_PJ6);//RTS
-        pr_err("------------------------cardhu_gps_uart_init end-----------------------\n");
-}
-
 static void cardhu_gps_init(void)
 {
 	int rc;
@@ -995,9 +961,6 @@ static void cardhu_gps_init(void)
 	rc = gpio_request(TEGRA_GPIO_PY2, "EN_VDD_GPS");
 	if (rc)
 		pr_err("EN_VDD_GPS request failed:%d\n", rc);
-	tegra_gpio_enable(TEGRA_GPIO_PU2);
-	tegra_gpio_enable(TEGRA_GPIO_PU3);
-	tegra_gpio_enable(TEGRA_GPIO_PY2);
 	rc = gpio_direction_output(TEGRA_GPIO_PY2, 1);
 	if (rc)
 		pr_err("EN_VDD_GPS direction configuration failed:%d\n", rc);
@@ -1047,17 +1010,14 @@ static void simdet_init(void)
 		// GPIO_PC7(23)(Input) -> 3G_WAKE
 		gpio_request(TEGRA_GPIO_PC7,"3G_WAKE");
 		gpio_direction_output(TEGRA_GPIO_PC7, 0);
-		tegra_gpio_enable(TEGRA_GPIO_PC7);
 
 		// GPIO_PI7(71)(Output) -> 3G_DISABLE
 		gpio_request(TEGRA_GPIO_PI7,"3G_DISABLE");
 		gpio_direction_output(TEGRA_GPIO_PI7, 0);
-		tegra_gpio_enable(TEGRA_GPIO_PI7);
 
 		// GPIO_PO5(117)(Input) -> SIM_DETECT
 		gpio_request(TEGRA_GPIO_PO5,"SIM_DETECT");
 		gpio_direction_output(TEGRA_GPIO_PO5, 0);
-		tegra_gpio_enable(TEGRA_GPIO_PO5);
 	}
 }
 #endif
@@ -1141,7 +1101,6 @@ static void __init tegra_cardhu_init(void)
 #if defined(CONFIG_TOUCHSCREEN_ATMEL_MXT1386E) || defined(CONFIG_TOUCHSCREEN_ATMEL_MXT)
 	acer_touch_init();
 #endif
-	cardhu_gps_uart_init();
 	cardhu_gps_init();
 	cardhu_scroll_init();
 	acer_keys_init();
@@ -1156,11 +1115,7 @@ static void __init tegra_cardhu_init(void)
 	a1026_init();
 #endif
 	cardhu_pins_state_init();
-#ifdef CONFIG_ROTATELOCK
-	rotationlock_init();
-#endif
 	cardhu_emc_init();
-	acer_vibrator_init();
 #ifdef CONFIG_ACER_LEDS
 	acer_led_init();
 #endif

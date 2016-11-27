@@ -463,6 +463,14 @@ static struct gpio_init_pin_info acer_t30_init_gpio_mode[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR2, false, 0),
 };
 
+static struct tegra_gpio_table gpio_table[] = {
+	{ .gpio = TEGRA_GPIO_PC3,	.enable = false	}, // UART2 RX
+	{ .gpio = TEGRA_GPIO_PC2,	.enable = false	}, // UART2 TX
+	{ .gpio = TEGRA_GPIO_PJ5,	.enable = false	}, // UART2 CTS
+	{ .gpio = TEGRA_GPIO_PJ6,	.enable = false	}, // UART2 RTS
+	{ .gpio = TEGRA_GPIO_PH0,	.enable = false	}, // PWM0
+};
+
 static void __init acer_t30_gpio_init_configure(void)
 {
 	int len;
@@ -476,6 +484,8 @@ static void __init acer_t30_gpio_init_configure(void)
 			pins_info->is_input, pins_info->value);
 		pins_info++;
 	}
+
+	tegra_gpio_config(gpio_table, ARRAY_SIZE(gpio_table));
 }
 
 int __init cardhu_gpio_init(void)

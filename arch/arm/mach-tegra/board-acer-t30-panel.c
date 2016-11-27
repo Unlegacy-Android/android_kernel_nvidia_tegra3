@@ -23,7 +23,6 @@
 #define LCD_VDD            TEGRA_GPIO_PB1    /* (N9/GMI_A18/EN_VDDLCD_T30S)   */
 #define LCD_CABC           TEGRA_GPIO_PH3    /* (J1/GMI_AD11/LCD_DCR)         */
 #define BL_ENABLE          TEGRA_GPIO_PH1    /* (E1/GMI_AD9/DISPOFF#)         */
-#define BL_PWM             TEGRA_GPIO_PH0    /* (G3/GMI_AD8/LCD_PWM_OUT )     */
 
 #define HDMI_HPD           TEGRA_GPIO_PN7    /* (AN23/HDMI_INT/HDMI_DET_T30S) */
 #define HDMI_5V            TEGRA_GPIO_PI4    /* (L5/GMI_RST_N/EN_HDMI_5V0)    */
@@ -36,13 +35,6 @@ static atomic_t sd_brightness = ATOMIC_INIT(255);
 static struct board_info board_info;
 
 extern int acer_board_type;
-
-static int acer_backlight_init(struct device *dev)
-{
-	/* TBR: disable gpio to  change function pin */
-	tegra_gpio_disable(BL_PWM);
-	return 1;
-}
 
 static void acer_backlight_exit(struct device *dev)
 {
@@ -79,7 +71,6 @@ static struct platform_pwm_backlight_data acer_backlight_data = {
 	.dft_brightness = 224,
 	.lth_brightness = 30,
 	.pwm_period_ns  = 100000,
-	.init           = acer_backlight_init,
 	.exit           = acer_backlight_exit,
 	.notify         = acer_backlight_notify,
 };
@@ -541,12 +532,6 @@ int __init acer_panel_init(void)
 	acer_carveouts[1].size = tegra_carveout_size;
 #endif
 
-	tegra_gpio_enable(LVDS_SHUTDOWN);
-	tegra_gpio_enable(LCD_VDD);
-	tegra_gpio_enable(LCD_CABC);
-	tegra_gpio_enable(BL_ENABLE);
-	tegra_gpio_enable(HDMI_HPD);
-
 	gpio_request(LVDS_SHUTDOWN, "lvds_shutdown");
 	gpio_request(LCD_VDD, "lcd_vdd");
 	gpio_request(LCD_CABC, "lcd_cabc");
@@ -559,7 +544,6 @@ int __init acer_panel_init(void)
 	gpio_direction_output(LCD_CABC,0);
 	gpio_direction_output(BL_ENABLE,1);
 
-	tegra_gpio_enable(HDMI_5V);
 	err = gpio_request(HDMI_5V, "hdmi_5V_enable");
 	if (err) {
 		pr_err("[HDMI] request 5V_enable failed\n");

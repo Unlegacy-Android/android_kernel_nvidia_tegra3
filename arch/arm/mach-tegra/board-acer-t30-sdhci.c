@@ -257,7 +257,6 @@ static int enable_wifi_sdio_func(void)
 	int i = 0;
 
 	for (i = 0; i < ARRAY_SIZE(wifi_sdio_gpio); i++) {
-		tegra_gpio_disable(wifi_sdio_gpio[i]);
 		gpio_free(wifi_sdio_gpio[i]);
 	}
 
@@ -282,8 +281,6 @@ static int disable_wifi_sdio_func(void)
 			printk(KERN_INFO "%s, request gpio %d failed !!!\n", __func__, wifi_sdio_gpio[i]);
 			return rc;
 		}
-
-		tegra_gpio_enable(wifi_sdio_gpio[i]);
 
 		rc = gpio_direction_output(wifi_sdio_gpio[i], 0);
 		if (rc) {
@@ -375,10 +372,6 @@ static int __init cardhu_wifi_init(void)
 	rc = gpio_request(CARDHU_WLAN_WOW, "bcmsdh_sdmmc");
 	if (rc)
 		pr_err("WLAN_WOW gpio request failed:%d\n", rc);
-
-	tegra_gpio_enable(CARDHU_WLAN_VDD);
-	tegra_gpio_enable(CARDHU_WLAN_RST);
-	tegra_gpio_enable(CARDHU_WLAN_WOW);
 
 	rc = gpio_direction_output(CARDHU_WLAN_VDD, 0);
 	if (rc)

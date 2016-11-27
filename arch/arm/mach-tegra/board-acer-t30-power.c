@@ -317,7 +317,6 @@ static struct i2c_board_info __initdata tps62361_boardinfo[] = {
 
 static void bq27541_gpio_init(void)
 {
-	tegra_gpio_enable(AC_DETECT_GPIO);
 	gpio_request(AC_DETECT_GPIO, "ac_present");
 	gpio_direction_input(AC_DETECT_GPIO);
 }

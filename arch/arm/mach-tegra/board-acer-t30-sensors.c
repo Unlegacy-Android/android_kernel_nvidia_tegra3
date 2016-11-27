@@ -114,7 +114,6 @@ static int cardhu_camera_init(void)
 
 	// initialize camera GPIOs
 	for (i=0; i<ARRAY_SIZE(camera_gpio_table); i++) {
-		tegra_gpio_enable(camera_gpio_table[i].gpio);
 		ret = gpio_request(camera_gpio_table[i].gpio, camera_gpio_table[i].name);
 		if (ret < 0) {
 			pr_err("%s: gpio_request failed for gpio %s\n",
@@ -278,7 +277,6 @@ static void cardhu_stk2203_init(void)
 	if (ret < 0)
 		pr_err("%s: gpio_request failed for gpio %s\n",
 		__func__, "TEGRA_GPIO_PX3");
-	tegra_gpio_enable(STK_INTR);
 
 	ret = gpio_direction_input(STK_INTR);
 	if (ret < 0)
@@ -379,8 +377,6 @@ static int cardhu_nct1008_init(void)
 		ret = gpio_direction_input(nct1008_port);
 		if (ret < 0)
 			gpio_free(nct1008_port);
-		else
-			tegra_gpio_enable(nct1008_port);
 	}
 	
 	i2c_register_board_info(4, cardhu_i2c4_nct1008_board_info,
@@ -518,7 +514,6 @@ static void cardhu_mpu_power_on(void)
 {
 	int ret;
 
-	tegra_gpio_enable(SENSOR_3V3_2);//3.3
 	ret = gpio_request(SENSOR_3V3_2, "sensor_vdd_power_en");
 	if (ret < 0)
 		pr_err("%s: gpio_request failed for gpio %s\n",
@@ -528,7 +523,6 @@ static void cardhu_mpu_power_on(void)
 		pr_err("%s: gpio_direction_output failed for gpio %s\n",
 		__func__, "EN_SENSOR_VDD");
 	mdelay(5);
-	tegra_gpio_enable(EN_SENSOR_VLOGIC);//1.8
 	ret = gpio_request(EN_SENSOR_VLOGIC, "sensor_vlogic_power_en");
 	if (ret < 0)
 		pr_err("%s: gpio_request failed for gpio %s\n",
@@ -545,7 +539,6 @@ static void cardhu_mpuirq_init(void)
 
 	pr_info("*** MPU START *** cardhu_mpuirq_init...\n");
 
-	tegra_gpio_enable(GYRO_INT_R);
 	ret = gpio_request(GYRO_INT_R, SENSOR_MPU_NAME);
 	if (ret < 0)
 		pr_err("%s: gpio_request failed for gpio %s\n",
@@ -555,7 +548,6 @@ static void cardhu_mpuirq_init(void)
 		pr_err("%s: gpio_direction_input failed for gpio %s\n",
 		__func__, "GYRO_INT_R");
 
-	tegra_gpio_enable(G_ACC_INT);
 	ret = gpio_request(G_ACC_INT, "MPU_KXTF9");
 	if (ret < 0)
 		pr_err("%s: gpio_request failed for gpio %s\n",
@@ -565,7 +557,6 @@ static void cardhu_mpuirq_init(void)
 		pr_err("%s: gpio_direction_input failed for gpio %s\n",
 		__func__, "G_ACC_INT");
 
-	tegra_gpio_enable(COMPASS_DRDY);
 	ret = gpio_request(COMPASS_DRDY, "MPU_AKM8975");
 	if (ret < 0)
 		pr_err("%s: gpio_request failed for gpio %s\n",
