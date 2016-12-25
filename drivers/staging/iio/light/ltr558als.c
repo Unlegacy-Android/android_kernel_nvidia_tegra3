@@ -9,7 +9,9 @@
  */
 
 #include <linux/delay.h>
+#ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
+#endif
 #include <linux/fs.h>
 #include <linux/i2c.h>
 #include <linux/init.h>
