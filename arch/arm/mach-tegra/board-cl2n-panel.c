@@ -445,6 +445,7 @@ static struct tegra_dc_sd_settings kai_sd_settings = {
 	.hw_update_delay = 0,
 	.bin_width = -1,
 	.aggressiveness = 1,
+	.panel_min_brightness = 0,
 	.phase_in_adjustments = true,
 	.use_vid_luma = false,
 	/* Default video coefficients */
@@ -684,6 +685,14 @@ int __init kai_panel_init(void)
 	struct platform_device *phost1x;
 
 	tegra_get_board_info(&board_info);
+
+        panel_board_id = cl2n_get_board_strap();
+
+	if (panel_board_id == CL2N_BOARD_VER_B00){
+		kai_sd_settings.panel_min_brightness = 12;
+	}else{
+		kai_sd_settings.panel_min_brightness = 6;
+	}
 
 #if defined(CONFIG_TEGRA_NVMAP)
 	kai_carveouts[1].base = tegra_carveout_start;
