@@ -782,7 +782,7 @@ static int get_repeater_info(struct tegra_nvhdcp *nvhdcp)
 {
 	int e, retries;
 	u8 b_caps;
-	u16 b_status;
+	u16 b_status = 0;
 
 	nvhdcp_vdbg("repeater found:fetching repeater info\n");
 
