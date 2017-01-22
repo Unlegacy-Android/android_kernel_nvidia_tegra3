@@ -38,10 +38,6 @@
 #include <mach/pinmux.h>
 #include <mach/edp.h>
 
-#ifdef CONFIG_BATTERY_BQ27541
-#include <linux/bq27541.h>
-#endif
-
 #include "gpio-names.h"
 #include "board.h"
 #include "board-acer-t30.h"
@@ -312,26 +308,33 @@ static struct i2c_board_info __initdata tps62361_boardinfo[] = {
 	},
 };
 
-#ifdef CONFIG_BATTERY_BQ27541
 #define AC_DETECT_GPIO TEGRA_GPIO_PO4
 
-static void bq27541_gpio_init(void)
-{
-	gpio_request(AC_DETECT_GPIO, "ac_present");
-	gpio_direction_input(AC_DETECT_GPIO);
-}
+static char *battery[] = {
+	"bq27541-0",
+};
 
-static struct bq27541_platform_data bq27541_pdata = {
-	.ac_present_gpio = AC_DETECT_GPIO,
+static struct gpio_charger_platform_data gpio_charger_pdata = {
+	.name = "ac",
+	.type = POWER_SUPPLY_TYPE_MAINS,
+	.gpio = AC_DETECT_GPIO,
+	.gpio_active_low = 0,
+	.supplied_to = battery,
+	.num_supplicants = ARRAY_SIZE(battery),
+};
+
+static struct platform_device gpio_charger_device = {
+	.name = "gpio-charger",
+	.dev = {
+		.platform_data = &gpio_charger_pdata,
+	},
 };
 
 static struct i2c_board_info __initdata bq27541_boardinfo[] = {
 	{
-		I2C_BOARD_INFO("bq27541-battery", 0x55),
-		.platform_data = &bq27541_pdata,
+		I2C_BOARD_INFO("bq27541", 0x55),
 	},
 };
-#endif
 
 int __init cardhu_regulator_init(void)
 {
@@ -372,11 +375,8 @@ int __init cardhu_regulator_init(void)
 		i2c_register_board_info(4, tps62361_boardinfo, 1);
 	}
 
-#ifdef CONFIG_BATTERY_BQ27541
-	bq27541_gpio_init();
-	bq27541_boardinfo[0].irq = gpio_to_irq(AC_DETECT_GPIO);
 	i2c_register_board_info(4, bq27541_boardinfo, 1);
-#endif
+	platform_device_register(&gpio_charger_device);
 
 	return 0;
 }

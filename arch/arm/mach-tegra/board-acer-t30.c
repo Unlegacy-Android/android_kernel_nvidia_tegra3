@@ -971,6 +971,7 @@ static void cardhu_gps_init(void)
 #ifdef CONFIG_ACER_LEDS
 static struct gpio_led_data led_pdata = {
         .gpio = TEGRA_GPIO_PR0,
+        .psy_name = "bq27541-0",
 };
 
 static struct platform_device gpio_led_device = {
