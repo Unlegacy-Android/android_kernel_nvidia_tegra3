@@ -1425,6 +1425,7 @@ release:
 static int mxt_set_power_cfg(struct mxt_data *data, u8 mode)
 {
 	struct device *dev = &data->client->dev;
+	struct mxt_info *info = &data->info;
 	int error = 0;
 	int i, cnt;
 
@@ -1438,15 +1439,17 @@ static int mxt_set_power_cfg(struct mxt_data *data, u8 mode)
 		/* Touch disable */
 		cnt = ARRAY_SIZE(mxt_save);
 		for (i = 0; i < cnt; i++) {
-			if (mxt_save[i].suspend_flags == MXT_SUSPEND_DYNAMIC)
-				error |= mxt_read_object(data,
-					mxt_save[i].suspend_obj,
-					mxt_save[i].suspend_reg,
-					&mxt_save[i].restore_val);
+			if (mxt_save[i].suspend_obj <= info->object_num) {
+				if (mxt_save[i].suspend_flags == MXT_SUSPEND_DYNAMIC)
+					error |= mxt_read_object(data,
+						mxt_save[i].suspend_obj,
+						mxt_save[i].suspend_reg,
+						&mxt_save[i].restore_val);
 				error |= mxt_write_object(data,
 					mxt_save[i].suspend_obj,
 					mxt_save[i].suspend_reg,
 					mxt_save[i].suspend_val);
+			}
 		}
 		break;
 
@@ -1454,11 +1457,14 @@ static int mxt_set_power_cfg(struct mxt_data *data, u8 mode)
 	default:
 		/* Touch enable */
 		cnt = ARRAY_SIZE(mxt_save);
-		while (cnt--)
-			error |= mxt_write_object(data,
+		while (cnt--) {
+			if (mxt_save[cnt].suspend_obj <= info->object_num)
+				error |= mxt_write_object(data,
 						mxt_save[cnt].suspend_obj,
 						mxt_save[cnt].suspend_reg,
 						mxt_save[cnt].restore_val);
+		}
+
 		break;
 	}
 
