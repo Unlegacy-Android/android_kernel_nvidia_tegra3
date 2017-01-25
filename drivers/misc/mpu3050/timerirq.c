@@ -1,6 +1,6 @@
 /*
  $License:
-    Copyright (C) 2010 InvenSense Corporation, All Rights Reserved.
+    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@
 #include <linux/timer.h>
 #include <linux/slab.h>
 
-#include "mpu.h"
+#include "mpu_3050.h"
 #include "mltypes.h"
 #include "timerirq.h"
 
@@ -68,7 +68,7 @@ static void timerirq_handler(unsigned long arg)
 	data->data_ready = 1;
 
 	do_gettimeofday(&irqtime);
-	data->data.irqtime = (((long long) irqtime.tv_sec) << 32);
+	data->data.irqtime = (((long long)irqtime.tv_sec) << 32);
 	data->data.irqtime += irqtime.tv_usec;
 	data->data.data_type |= 1;
 
@@ -80,7 +80,7 @@ static void timerirq_handler(unsigned long arg)
 
 	if (data->run)
 		mod_timer(&data->timer,
-			jiffies + msecs_to_jiffies(data->period));
+			  jiffies + msecs_to_jiffies(data->period));
 	else
 		complete(&data->timer_done);
 }
@@ -105,7 +105,7 @@ static int start_timerirq(struct timerirq_data *data)
 	setup_timer(&data->timer, timerirq_handler, (unsigned long)data);
 
 	return mod_timer(&data->timer,
-			jiffies + msecs_to_jiffies(data->period));
+			 jiffies + msecs_to_jiffies(data->period));
 }
 
 static int stop_timerirq(struct timerirq_data *data)
@@ -155,21 +155,19 @@ static int timerirq_release(struct inode *inode, struct file *file)
 
 /* read function called when from /dev/timerirq is read */
 static ssize_t timerirq_read(struct file *file,
-			   char *buf, size_t count, loff_t *ppos)
+			     char *buf, size_t count, loff_t *ppos)
 {
 	int len, err;
 	struct timerirq_data *data = file->private_data;
 
-	if (!data->data_ready &&
-		data->timeout &&
-		!(file->f_flags & O_NONBLOCK)) {
+	if (!data->data_ready && data->timeout &&
+	    !(file->f_flags & O_NONBLOCK)) {
 		wait_event_interruptible_timeout(data->timerirq_wait,
 						 data->data_ready,
 						 data->timeout);
 	}
 
-	if (data->data_ready && NULL != buf
-	    && count >= sizeof(data->data)) {
+	if (data->data_ready && NULL != buf && count >= sizeof(data->data)) {
 		err = copy_to_user(buf, &data->data, sizeof(data->data));
 		data->data.data_type = 0;
 	} else {
@@ -186,7 +184,7 @@ static ssize_t timerirq_read(struct file *file,
 }
 
 static unsigned int timerirq_poll(struct file *file,
-				struct poll_table_struct *poll)
+				  struct poll_table_struct *poll)
 {
 	int mask = 0;
 	struct timerirq_data *data = file->private_data;
@@ -221,7 +219,7 @@ static long timerirq_ioctl(struct file *file,
 		if (data->data.interruptcount > 1)
 			data->data.interruptcount = 1;
 
-		if (copy_to_user((int *) arg, &tmp, sizeof(int)))
+		if (copy_to_user((int *)arg, &tmp, sizeof(int)))
 			return -EFAULT;
 		break;
 	case TIMERIRQ_START:
@@ -269,28 +267,27 @@ static int __init timerirq_init(void)
 
 	res = misc_register(data);
 	if (res < 0) {
-		dev_err(data->this_device,
-			"misc_register returned %d\n",
-			res);
+		dev_err(data->this_device, "misc_register returned %d\n", res);
 		return res;
 	}
 
 	return res;
 }
+
 module_init(timerirq_init);
 
 static void __exit timerirq_exit(void)
 {
 	struct miscdevice *data = timerirq_dev_data;
 
-	dev_info(data->this_device, "Unregistering %s\n",
-		 data->name);
+	dev_info(data->this_device, "Unregistering %s\n", data->name);
 
 	misc_deregister(data);
 	kfree(data);
 
 	timerirq_dev_data = NULL;
 }
+
 module_exit(timerirq_exit);
 
 MODULE_AUTHOR("Invensense Corporation");

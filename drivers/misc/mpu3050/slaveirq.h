@@ -1,6 +1,6 @@
 /*
  $License:
-    Copyright (C) 2010 InvenSense Corporation, All Rights Reserved.
+    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 #include <linux/i2c-dev.h>
 #endif
 
-#include "mpu.h"
+#include "mpu_3050.h"
 #include "mpuirq.h"
 
 #define SLAVEIRQ_SET_TIMEOUT           _IOW(MPU_IOCTL, 0x50, unsigned long)
@@ -35,8 +35,7 @@
 
 void slaveirq_exit(struct ext_slave_platform_data *pdata);
 int slaveirq_init(struct i2c_adapter *slave_adapter,
-		struct ext_slave_platform_data *pdata,
-		char *name);
+		  struct ext_slave_platform_data *pdata, char *name);
 
 #endif
 

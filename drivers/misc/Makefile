@@ -70,3 +70,4 @@ obj-$(CONFIG_BLUEDROID_PM)      += bluedroid_pm.o
 obj-$(CONFIG_CPULOAD_MONITOR)	+= cpuload.o
 obj-$(CONFIG_UID_CPUTIME)	+= uid_cputime.o
 obj-$(CONFIG_STK2203_LIGHT_SENSOR)	+= stk2203.o
+obj-$(CONFIG_MPU_SENSORS_MPU3050)	+= mpu3050/

@@ -1,5 +1,27 @@
 /*
- * Copyright (C) 2010 InvenSense Inc
+ $License:
+    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  $
+ */
+
+/*
+ * This file incorporates work covered by the following copyright and
+ * permission notice:
+ *
+ * Copyright (C) 2005 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +53,11 @@
 #include <stdarg.h>
 
 #ifdef ANDROID
+#ifdef NDK_BUILD
+#include "log_macros.h"
+#else
 #include <utils/Log.h>		/* For the LOG macro */
+#endif
 #endif
 
 #ifdef __KERNEL__

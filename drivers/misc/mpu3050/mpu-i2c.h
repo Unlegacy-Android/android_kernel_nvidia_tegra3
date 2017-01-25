@@ -1,6 +1,6 @@
 /*
  $License:
-    Copyright (C) 2010 InvenSense Corporation, All Rights Reserved.
+    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,8 +41,7 @@ int sensor_i2c_write_register(struct i2c_adapter *i2c_adap,
 			      unsigned char reg, unsigned char value);
 
 int sensor_i2c_read(struct i2c_adapter *i2c_adap,
-		    unsigned char address,
-		    unsigned char reg,
+		    unsigned char address, unsigned char reg,
 		    unsigned int len, unsigned char *data);
 
 int mpu_memory_read(struct i2c_adapter *i2c_adap,
@@ -55,4 +54,4 @@ int mpu_memory_write(struct i2c_adapter *i2c_adap,
 		     unsigned short mem_addr,
 		     unsigned int len, unsigned char const *data);
 
-#endif	/* __MPU_I2C_H__ */
+#endif				/* __MPU_I2C_H__ */

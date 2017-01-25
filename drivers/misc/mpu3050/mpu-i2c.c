@@ -1,6 +1,6 @@
 /*
  $License:
-    Copyright (C) 2010 InvenSense Corporation, All Rights Reserved.
+    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +28,9 @@
  */
 
 #include <linux/i2c.h>
-#include "mpu.h"
+#include "mpu_3050.h"
+
+#define MPU3050_RETRY_COUNT 3
 
 int sensor_i2c_write(struct i2c_adapter *i2c_adap,
 		     unsigned char address,
@@ -36,16 +38,24 @@ int sensor_i2c_write(struct i2c_adapter *i2c_adap,
 {
 	struct i2c_msg msgs[1];
 	int res;
+	int i;
 
 	if (NULL == data || NULL == i2c_adap)
 		return -EINVAL;
 
 	msgs[0].addr = address;
 	msgs[0].flags = 0;	/* write */
-	msgs[0].buf = (unsigned char *) data;
+	msgs[0].buf = (unsigned char *)data;
 	msgs[0].len = len;
 
-	res = i2c_transfer(i2c_adap, msgs, 1);
+	for (i = 0; i < MPU3050_RETRY_COUNT; i++) {
+		res = i2c_transfer(i2c_adap, msgs, 1);
+		if(res == 1)
+			break;
+		else
+			pr_info("sensor_i2c_write count = %d",i);
+	}
+
 	if (res < 1)
 		return res;
 	else
@@ -64,12 +74,12 @@ int sensor_i2c_write_register(struct i2c_adapter *i2c_adap,
 }
 
 int sensor_i2c_read(struct i2c_adapter *i2c_adap,
-		    unsigned char address,
-		    unsigned char reg,
+		    unsigned char address, unsigned char reg,
 		    unsigned int len, unsigned char *data)
 {
 	struct i2c_msg msgs[2];
 	int res;
+	int i;
 
 	if (NULL == data || NULL == i2c_adap)
 		return -EINVAL;
@@ -84,7 +94,14 @@ int sensor_i2c_read(struct i2c_adapter *i2c_adap,
 	msgs[1].buf = data;
 	msgs[1].len = len;
 
-	res = i2c_transfer(i2c_adap, msgs, 2);
+	for (i = 0; i < MPU3050_RETRY_COUNT; i++) {
+		res = i2c_transfer(i2c_adap, msgs, 2);
+		if(res == 2)
+			break;
+		else
+			pr_info("sensor_i2c_read count = %d",i);
+	}
+
 	if (res < 2)
 		return res;
 	else
@@ -99,6 +116,7 @@ int mpu_memory_read(struct i2c_adapter *i2c_adap,
 	unsigned char bank[2];
 	unsigned char addr[2];
 	unsigned char buf;
+	int i;
 
 	struct i2c_msg msgs[4];
 	int ret;
@@ -135,7 +153,14 @@ int mpu_memory_read(struct i2c_adapter *i2c_adap,
 	msgs[3].buf = data;
 	msgs[3].len = len;
 
-	ret = i2c_transfer(i2c_adap, msgs, 4);
+	for (i = 0; i < MPU3050_RETRY_COUNT; i++) {
+		ret = i2c_transfer(i2c_adap, msgs, 4);
+		if(ret == 4)
+			break;
+		else
+			pr_info("mpu_memory_read count = %d",i);
+	}
+
 	if (ret != 4)
 		return ret;
 	else
@@ -150,6 +175,7 @@ int mpu_memory_write(struct i2c_adapter *i2c_adap,
 	unsigned char bank[2];
 	unsigned char addr[2];
 	unsigned char buf[513];
+	int i;
 
 	struct i2c_msg msgs[3];
 	int ret;
@@ -181,10 +207,17 @@ int mpu_memory_write(struct i2c_adapter *i2c_adap,
 
 	msgs[2].addr = mpu_addr;
 	msgs[2].flags = 0;
-	msgs[2].buf = (unsigned char *) buf;
+	msgs[2].buf = (unsigned char *)buf;
 	msgs[2].len = len + 1;
 
-	ret = i2c_transfer(i2c_adap, msgs, 3);
+	for (i = 0; i < MPU3050_RETRY_COUNT; i++) {
+		ret = i2c_transfer(i2c_adap, msgs, 3);
+		if(ret == 3)
+			break;
+		else
+			pr_info("mpu_memory_write count = %d",i);
+	}
+
 	if (ret != 3)
 		return ret;
 	else

@@ -1,6 +1,6 @@
 /*
  $License:
-    Copyright (C) 2010 InvenSense Corporation, All Rights Reserved.
+    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #else
 #include <sys/time.h>
 #endif
+#include "mldl_cfg.h"
 
 #define MPUIRQ_SET_TIMEOUT           _IOW(MPU_IOCTL, 0x40, unsigned long)
 #define MPUIRQ_GET_INTERRUPT_CNT     _IOR(MPU_IOCTL, 0x41, unsigned long)
@@ -35,7 +36,7 @@
 #ifdef __KERNEL__
 
 void mpuirq_exit(void);
-int mpuirq_init(struct i2c_client *mpu_client);
+int mpuirq_init(struct i2c_client *mpu_client, struct mldl_cfg *mldl_cfg);
 
 #endif
 

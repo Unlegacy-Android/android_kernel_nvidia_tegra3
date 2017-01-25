@@ -44,7 +44,7 @@
 #include <generated/mach-types.h>
 #include "gpio-names.h"
 #include "board.h"
-#include <linux/mpu.h>
+#include <linux/mpu_3050.h>
 #include <media/sh532u.h>
 #include <media/ad5816.h>
 #include <mach/edp.h>

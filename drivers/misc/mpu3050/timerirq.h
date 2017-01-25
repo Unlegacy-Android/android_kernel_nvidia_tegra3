@@ -1,6 +1,6 @@
 /*
  $License:
-    Copyright (C) 2010 InvenSense Corporation, All Rights Reserved.
+    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 #ifndef __TIMERIRQ__
 #define __TIMERIRQ__
 
-#include "mpu.h"
+#include "mpu_3050.h"
 
 #define TIMERIRQ_SET_TIMEOUT           _IOW(MPU_IOCTL, 0x60, unsigned long)
 #define TIMERIRQ_GET_INTERRUPT_CNT     _IOW(MPU_IOCTL, 0x61, unsigned long)

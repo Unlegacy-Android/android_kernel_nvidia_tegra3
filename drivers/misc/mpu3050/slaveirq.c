@@ -1,6 +1,6 @@
 /*
  $License:
-    Copyright (C) 2010 InvenSense Corporation, All Rights Reserved.
+    Copyright (C) 2011 InvenSense Corporation, All Rights Reserved.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@
 #include <linux/wait.h>
 #include <linux/slab.h>
 
-#include "mpu.h"
+#include "mpu_3050.h"
 #include "slaveirq.h"
 #include "mldl_cfg.h"
 #include "mpu-i2c.h"
@@ -65,7 +65,7 @@ static int slaveirq_open(struct inode *inode, struct file *file)
 	/* Device node is availabe in the file->private_data, this is
 	 * exactly what we want so we leave it there */
 	struct slaveirq_dev_data *data =
-		container_of(file->private_data, struct slaveirq_dev_data, dev);
+	    container_of(file->private_data, struct slaveirq_dev_data, dev);
 
 	dev_dbg(data->dev.this_device,
 		"%s current->pid %d\n", __func__, current->pid);
@@ -76,29 +76,27 @@ static int slaveirq_open(struct inode *inode, struct file *file)
 static int slaveirq_release(struct inode *inode, struct file *file)
 {
 	struct slaveirq_dev_data *data =
-		container_of(file->private_data, struct slaveirq_dev_data, dev);
+	    container_of(file->private_data, struct slaveirq_dev_data, dev);
 	dev_dbg(data->dev.this_device, "slaveirq_release\n");
 	return 0;
 }
 
 /* read function called when from /dev/slaveirq is read */
 static ssize_t slaveirq_read(struct file *file,
-			   char *buf, size_t count, loff_t *ppos)
+			     char *buf, size_t count, loff_t *ppos)
 {
 	int len, err;
 	struct slaveirq_dev_data *data =
-		container_of(file->private_data, struct slaveirq_dev_data, dev);
+	    container_of(file->private_data, struct slaveirq_dev_data, dev);
 
-	if (!data->data_ready &&
-		data->timeout &&
-		!(file->f_flags & O_NONBLOCK)) {
+	if (!data->data_ready && data->timeout &&
+	    !(file->f_flags & O_NONBLOCK)) {
 		wait_event_interruptible_timeout(data->slaveirq_wait,
 						 data->data_ready,
 						 data->timeout);
 	}
 
-	if (data->data_ready && NULL != buf
-	    && count >= sizeof(data->data)) {
+	if (data->data_ready && NULL != buf && count >= sizeof(data->data)) {
 		err = copy_to_user(buf, &data->data, sizeof(data->data));
 		data->data.data_type = 0;
 	} else {
@@ -115,11 +113,11 @@ static ssize_t slaveirq_read(struct file *file,
 }
 
 static unsigned int slaveirq_poll(struct file *file,
-				struct poll_table_struct *poll)
+				  struct poll_table_struct *poll)
 {
 	int mask = 0;
 	struct slaveirq_dev_data *data =
-		container_of(file->private_data, struct slaveirq_dev_data, dev);
+	    container_of(file->private_data, struct slaveirq_dev_data, dev);
 
 	poll_wait(file, &data->slaveirq_wait, poll);
 	if (data->data_ready)
@@ -134,7 +132,7 @@ static long slaveirq_ioctl(struct file *file,
 	int retval = 0;
 	int tmp;
 	struct slaveirq_dev_data *data =
-		container_of(file->private_data, struct slaveirq_dev_data, dev);
+	    container_of(file->private_data, struct slaveirq_dev_data, dev);
 
 	switch (cmd) {
 	case SLAVEIRQ_SET_TIMEOUT:
@@ -146,11 +144,11 @@ static long slaveirq_ioctl(struct file *file,
 		if (data->data.interruptcount > 1)
 			data->data.interruptcount = 1;
 
-		if (copy_to_user((int *) arg, &tmp, sizeof(int)))
+		if (copy_to_user((int *)arg, &tmp, sizeof(int)))
 			return -EFAULT;
 		break;
 	case SLAVEIRQ_GET_IRQ_TIME:
-		if (copy_to_user((int *) arg, &data->data.irqtime,
+		if (copy_to_user((int *)arg, &data->data.irqtime,
 				 sizeof(data->data.irqtime)))
 			return -EFAULT;
 		data->data.irqtime = 0;
@@ -174,7 +172,7 @@ static irqreturn_t slaveirq_handler(int irq, void *dev_id)
 	data->data_ready = 1;
 
 	do_gettimeofday(&irqtime);
-	data->data.irqtime = (((long long) irqtime.tv_sec) << 32);
+	data->data.irqtime = (((long long)irqtime.tv_sec) << 32);
 	data->data.irqtime += irqtime.tv_usec;
 	data->data.data_type |= 1;
 
@@ -201,8 +199,7 @@ static const struct file_operations slaveirq_fops = {
 };
 
 int slaveirq_init(struct i2c_adapter *slave_adapter,
-		  struct ext_slave_platform_data *pdata,
-		  char *name)
+		  struct ext_slave_platform_data *pdata, char *name)
 {
 
 	int res;
@@ -211,9 +208,8 @@ int slaveirq_init(struct i2c_adapter *slave_adapter,
 	if (!pdata->irq)
 		return -EINVAL;
 
-	pdata->irq_data = kzalloc(sizeof(*data),
-				GFP_KERNEL);
-	data = (struct slaveirq_dev_data *) pdata->irq_data;
+	pdata->irq_data = kzalloc(sizeof(*data), GFP_KERNEL);
+	data = (struct slaveirq_dev_data *)pdata->irq_data;
 	if (!data)
 		return -ENOMEM;
 
@@ -232,24 +228,22 @@ int slaveirq_init(struct i2c_adapter *slave_adapter,
 
 	if (res) {
 		dev_err(&slave_adapter->dev,
-			"myirqtest: cannot register IRQ %d\n",
-			data->irq);
+			"myirqtest: cannot register IRQ %d\n", data->irq);
 		goto out_request_irq;
 	}
 
 	res = misc_register(&data->dev);
 	if (res < 0) {
 		dev_err(&slave_adapter->dev,
-			"misc_register returned %d\n",
-			res);
+			"misc_register returned %d\n", res);
 		goto out_misc_register;
 	}
 
 	return res;
 
-out_misc_register:
+ out_misc_register:
 	free_irq(data->irq, data);
-out_request_irq:
+ out_request_irq:
 	kfree(pdata->irq_data);
 	pdata->irq_data = NULL;
 
@@ -263,8 +257,7 @@ void slaveirq_exit(struct ext_slave_platform_data *pdata)
 	if (!pdata->irq_data || data->irq <= 0)
 		return;
 
-	dev_info(data->dev.this_device, "Unregistering %s\n",
-		 data->dev.name);
+	dev_info(data->dev.this_device, "Unregistering %s\n", data->dev.name);
 
 	free_irq(data->irq, data);
 	misc_deregister(&data->dev);
