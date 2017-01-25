@@ -150,34 +150,6 @@ early_param("hw_ver", hw_ver_arg);
 
 void gpio_unused_init(void);
 
-static int bt_uart_gpio[] = {
-	TEGRA_GPIO_PW7,
-	TEGRA_GPIO_PW6,
-	TEGRA_GPIO_PA1,
-	TEGRA_GPIO_PC0,
-};
-
-static int disable_bt_uart_func(void)
-{
-	unsigned int rc = 0;
-	int i = 0;
-
-	for (i = 0; i < ARRAY_SIZE(bt_uart_gpio); i++) {
-		rc = gpio_request(bt_uart_gpio[i], NULL);
-		if (rc) {
-			printk(KERN_INFO "%s, request gpio %d failed !!!\n", __func__, bt_uart_gpio[i]);
-			return rc;
-		}
-
-		rc = gpio_direction_output(bt_uart_gpio[i], 0);
-		if (rc) {
-			printk(KERN_INFO "%s, direction gpio %d failed !!!\n", __func__, bt_uart_gpio[i]);
-			return rc;
-		}
-	}
-	return 0;
-}
-
 static void bt_ext_gpio_init(void)
 {
 	int ret;
@@ -199,8 +171,6 @@ static void bt_ext_gpio_init(void)
 	gpio_set_value(TEGRA_GPIO_PP0, 0);
 	gpio_free(TEGRA_GPIO_PP0);
 }
-
-#ifdef CONFIG_BCM4329_RFKILL
 
 static struct resource cardhu_bcm4329_rfkill_resources[] = {
 	{
@@ -235,17 +205,6 @@ static struct platform_device cardhu_bcm4329_rfkill_device = {
 	.num_resources  = ARRAY_SIZE(cardhu_bcm4329_rfkill_resources),
 	.resource       = cardhu_bcm4329_rfkill_resources,
 };
-
-static noinline void __init cardhu_bcm4329_bt_rfkill(void)
-{
-	/*Add Clock Resource*/
-	clk_add_alias("bcm4329_32k_clk", cardhu_bcm4329_rfkill_device.name, \
-				"blink", NULL);
-	disable_bt_uart_func();
-}
-#else
-static inline void cardhu_bcm4329_bt_rfkill(void) { }
-#endif
 
 static struct resource cardhu_bluesleep_resources[] = {
 	[0] = {
@@ -1107,9 +1066,6 @@ static void __init tegra_cardhu_init(void)
 	acer_keys_init();
 	acer_panel_init();
 	cardhu_sensors_init();
-#ifdef CONFIG_BCM4329_RFKILL
-        cardhu_bcm4329_bt_rfkill();
-#endif
 	cardhu_setup_bluesleep();
 	//audio_wired_jack_init();
 #if defined(CONFIG_ACER_ES305)

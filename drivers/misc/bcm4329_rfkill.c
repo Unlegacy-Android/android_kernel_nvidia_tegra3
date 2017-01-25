@@ -39,6 +39,10 @@ struct bcm4329_rfkill_data {
 	int gpio_shutdown;
 	int delay;
 	struct clk *bt_32k_clk;
+#ifdef CONFIG_ARCH_ACER_T30
+	int gpio_wifi_reset;
+	int gpio_bcm_vdd;
+#endif
 };
 
 static struct bcm4329_rfkill_data *bcm4329_rfkill;
@@ -55,11 +59,24 @@ static int bcm4329_bt_rfkill_set_power(void *data, bool blocked)
 	if (blocked) {
 		if (bcm4329_rfkill->gpio_shutdown)
 			gpio_direction_output(bcm4329_rfkill->gpio_shutdown, 0);
-		if (bcm4329_rfkill->gpio_reset)
+		if (bcm4329_rfkill->gpio_reset
+#ifdef CONFIG_ARCH_ACER_T30
+			&& !gpio_get_value(bcm4329_rfkill->gpio_wifi_reset)
+#endif
+			)
 			gpio_direction_output(bcm4329_rfkill->gpio_reset, 0);
 		if (bcm4329_rfkill->bt_32k_clk)
 			clk_disable_unprepare(bcm4329_rfkill->bt_32k_clk);
+
+#ifdef CONFIG_ARCH_ACER_T30
+		if (!gpio_get_value(bcm4329_rfkill->gpio_wifi_reset))
+			gpio_direction_output(bcm4329_rfkill->gpio_bcm_vdd, 0);
+#endif
 	} else {
+#ifdef CONFIG_ARCH_ACER_T30
+		gpio_direction_output(bcm4329_rfkill->gpio_bcm_vdd, 1);
+		mdelay(50);
+#endif
 		if (bcm4329_rfkill->bt_32k_clk)
 			clk_prepare_enable(bcm4329_rfkill->bt_32k_clk);
 		if (bcm4329_rfkill->gpio_shutdown)
@@ -130,6 +147,21 @@ static int bcm4329_rfkill_probe(struct platform_device *pdev)
 		bcm4329_rfkill->gpio_shutdown = 0;
 	}
 
+#ifdef CONFIG_ARCH_ACER_T30
+	res = platform_get_resource_byname(pdev, IORESOURCE_IO,
+					"bcm4329_wifi_reset_gpio");
+	if (res)
+		bcm4329_rfkill->gpio_wifi_reset = res->start;
+	else
+		bcm4329_rfkill->gpio_wifi_reset = 0;
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_IO,
+			"bcm4329_vdd_gpio");
+	if (res)
+		bcm4329_rfkill->gpio_bcm_vdd = res->start;
+	else
+		bcm4329_rfkill->gpio_bcm_vdd = 0;
+#endif
 	/* make sure at-least one of the GPIO is defined */
 	if (!bcm4329_rfkill->gpio_reset && !bcm4329_rfkill->gpio_shutdown)
 		goto free_bcm_res;

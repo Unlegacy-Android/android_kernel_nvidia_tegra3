@@ -40,6 +40,7 @@
 #define CARDHU_WLAN_RST        TEGRA_GPIO_PP2
 #define CARDHU_WLAN_WOW        TEGRA_GPIO_PS2
 #define CARDHU_BT_RST TEGRA_GPIO_PU0
+#define CARDHU_BT_SHUTDOWN     TEGRA_GPIO_PU6
 #define CARDHU_SD_CD TEGRA_GPIO_PS4
 #define CARDHU_SD_WP -1
 #define PM269_SD_WP -1
@@ -301,6 +302,7 @@ static int disable_wifi_sdio_func(void)
 static int cardhu_wifi_power(int on)
 {
 	struct tegra_io_dpd *sd_dpd;
+	struct clk *bcm4329_32k_clk;
 
 	pr_debug("%s: %d\n", __func__, on);
 
@@ -316,6 +318,11 @@ static int cardhu_wifi_power(int on)
 		tegra_io_dpd_disable(sd_dpd);
 		mutex_unlock(&sd_dpd->delay_lock);
 	}
+
+	bcm4329_32k_clk = clk_get(NULL, "bcm4329_32k_clk");
+	if (IS_ERR(bcm4329_32k_clk))
+		pr_err("%s: failed to get bcm4329_32k_clk\n", __func__);
+
 	if (on)
 	    gpio_direction_input(CARDHU_WLAN_WOW);
 	else
@@ -323,10 +330,12 @@ static int cardhu_wifi_power(int on)
 
 	/* Set VDD high at first before turning on*/
 	if (on) {
+		if (!IS_ERR(bcm4329_32k_clk))
+			clk_enable(bcm4329_32k_clk);
+		gpio_direction_output(CARDHU_BT_RST, 1);
 		enable_wifi_sdio_func();
 		if (!gpio_get_value(CARDHU_WLAN_VDD)) {
 			gpio_set_value(CARDHU_WLAN_VDD, 1);
-			pr_err("%s: VDD=1\n", __func__);
 		}
 	}
 	mdelay(100);
@@ -343,12 +352,15 @@ static int cardhu_wifi_power(int on)
 	 * So BT/WI-FI must check the other's status in order to set VDD low at last.
 	 */
 	if (!on) {
-		if (!gpio_get_value(CARDHU_BT_RST)) {
+		if (!IS_ERR(bcm4329_32k_clk))
+			clk_disable(bcm4329_32k_clk);
+		if (!gpio_get_value(CARDHU_BT_SHUTDOWN)) {
+			gpio_direction_output(CARDHU_BT_RST, 0);
 			gpio_set_value(CARDHU_WLAN_VDD, 0);
-			pr_err("%s: VDD=0\n", __func__);
 		}
 		disable_wifi_sdio_func();
 	}
+
 	return 0;
 }
 
@@ -388,6 +400,7 @@ static int __init cardhu_wifi_init(void)
 	else {
 		cardhu_wifi_device.resource[0].start = gpio_to_irq(CARDHU_WLAN_WOW);
 		cardhu_wifi_device.resource[0].end = gpio_to_irq(CARDHU_WLAN_WOW);
+		clk_add_alias("bcm4329_32k_clk", NULL, "blink", NULL);
 		platform_device_register(&cardhu_wifi_device);
 	}
 

@@ -468,6 +468,10 @@ static struct tegra_gpio_table gpio_table[] = {
 	{ .gpio = TEGRA_GPIO_PC2,	.enable = false	}, // UART2 TX
 	{ .gpio = TEGRA_GPIO_PJ5,	.enable = false	}, // UART2 CTS
 	{ .gpio = TEGRA_GPIO_PJ6,	.enable = false	}, // UART2 RTS
+	{ .gpio = TEGRA_GPIO_PW7,	.enable = false	}, // UART3 RX
+	{ .gpio = TEGRA_GPIO_PW6,	.enable = false	}, // UART3 TX
+	{ .gpio = TEGRA_GPIO_PA1,	.enable = false	}, // UART3 CTS
+	{ .gpio = TEGRA_GPIO_PC0,	.enable = false	}, // UART3 RTS
 	{ .gpio = TEGRA_GPIO_PH0,	.enable = false	}, // PWM0
 };
 
