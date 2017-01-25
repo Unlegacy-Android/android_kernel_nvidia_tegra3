@@ -28,7 +28,6 @@
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/sdhci.h>
-#include <mach/io_dpd.h>
 #include <mach/pinmux.h>
 #include <mach/pinmux-tegra30.h>
 
@@ -301,23 +300,9 @@ static int disable_wifi_sdio_func(void)
 
 static int cardhu_wifi_power(int on)
 {
-	struct tegra_io_dpd *sd_dpd;
 	struct clk *bcm4329_32k_clk;
 
 	pr_debug("%s: %d\n", __func__, on);
-
-	/*
-	 * FIXME : we need to revisit IO DPD code
-	 * on how should multiple pins under DPD get controlled
-	 *
-	 * cardhu GPIO WLAN enable is part of SDMMC3 pin group
-	 */
-	sd_dpd = tegra_io_dpd_get(&tegra_sdhci_device2.dev);
-	if (sd_dpd) {
-		mutex_lock(&sd_dpd->delay_lock);
-		tegra_io_dpd_disable(sd_dpd);
-		mutex_unlock(&sd_dpd->delay_lock);
-	}
 
 	bcm4329_32k_clk = clk_get(NULL, "bcm4329_32k_clk");
 	if (IS_ERR(bcm4329_32k_clk))
@@ -341,11 +326,6 @@ static int cardhu_wifi_power(int on)
 	mdelay(100);
 	gpio_set_value(CARDHU_WLAN_RST, on);
 	mdelay(200);
-	if (sd_dpd) {
-		mutex_lock(&sd_dpd->delay_lock);
-		tegra_io_dpd_enable(sd_dpd);
-		mutex_unlock(&sd_dpd->delay_lock);
-	}
 
 	/*
 	 * When BT and Wi-Fi turn off at the same time, the last one must do the VDD off action.
