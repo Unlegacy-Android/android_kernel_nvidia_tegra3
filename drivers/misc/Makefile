@@ -69,3 +69,4 @@ obj-$(CONFIG_FAN_THERM_EST)	+= therm_fan_est.o
 obj-$(CONFIG_BLUEDROID_PM)      += bluedroid_pm.o
 obj-$(CONFIG_CPULOAD_MONITOR)	+= cpuload.o
 obj-$(CONFIG_UID_CPUTIME)	+= uid_cputime.o
+obj-$(CONFIG_STK2203_LIGHT_SENSOR)	+= stk2203.o

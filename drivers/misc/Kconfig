@@ -612,6 +612,12 @@ config UID_CPUTIME
 	help
 	  Per UID based cpu time statistics exported to /proc/uid_cputime
 
+config STK2203_LIGHT_SENSOR
+	bool "STK2203 light sensor driver"
+	depends on I2C
+	help
+	Adds STK2203 light sensor driver
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
