@@ -403,7 +403,7 @@ static int tegra_otg_set_peripheral(struct usb_otg *otg,
 	tegra = (struct tegra_otg_data *)container_of(otg->phy, struct tegra_otg_data, phy);
 	otg->gadget = gadget;
 
-#ifdef CONFIG_MACH_GROUPER
+#if defined(CONFIG_MACH_GROUPER) || defined(CONFIG_MACH_CL2N)
 	msleep(10);
 #endif
 
