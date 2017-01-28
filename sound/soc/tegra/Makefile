@@ -49,3 +49,7 @@ obj-$(CONFIG_SND_SOC_TEGRA_P1852) += snd-soc-tegra-vcm.o
 obj-$(CONFIG_SND_SOC_TEGRA_P852) += snd-soc-tegra-vcm.o
 obj-$(CONFIG_SND_SOC_TEGRA_CS42L73) += snd-soc-tegra-cs42l73.o
 obj-$(CONFIG_HEADSET_FUNCTION)	+= headset.o
+
+obj-$(CONFIG_ARCH_ACER_T30) += acer_audio_common.o
+obj-$(CONFIG_ARCH_ACER_T30) += acer_audio_control_t30.o
+obj-$(CONFIG_ACER_ES305)    += acer_a1026.o

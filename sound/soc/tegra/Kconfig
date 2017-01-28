@@ -76,6 +76,10 @@ config SND_SOC_TEGRA_WM8903
 	  boards using the WM8093 codec. Currently, the supported boards are
 	  Harmony, Ventana, Seaboard, Kaen, and Aebl.
 
+config ACER_ES305
+	tristate "Audience ES305 Driver for Acer"
+	depends on I2C && ARCH_ACER_T30
+
 config SND_SOC_TEGRA_TRIMSLICE
 	tristate "SoC Audio support for TrimSlice board"
 	depends on SND_SOC_TEGRA && MACH_TRIMSLICE && I2C
