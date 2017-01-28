@@ -656,6 +656,13 @@ SOC_SINGLE("Right Input PGA Volume", WM8903_ANALOGUE_RIGHT_INPUT_0,
 SOC_SINGLE("Right Input PGA Common Mode Switch", WM8903_ANALOGUE_RIGHT_INPUT_1,
 	   6, 1, 0),
 
+#ifdef CONFIG_ARCH_ACER_T30
+SOC_SINGLE("Mic Bias Switch", WM8903_MIC_BIAS_CONTROL_0,
+	   0, 3, 0),
+SOC_SINGLE("DAC Boost Switch", WM8903_AUDIO_INTERFACE_0,
+	   9, 3, 0),
+#endif
+
 /* ADCs */
 SOC_ENUM("ADC OSR", adc_osr),
 SOC_SINGLE("HPF Switch", WM8903_ADC_DIGITAL_0, 4, 1, 0),
