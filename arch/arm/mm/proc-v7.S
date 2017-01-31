@@ -134,7 +134,11 @@ ENDPROC(cpu_v7_dcache_clean_area)
 .equ	cpu_v7_suspend_size, (4 * 17) + cpu_v7_debug_suspend_size
 #ifdef CONFIG_ARM_CPU_SUSPEND
 ENTRY(cpu_v7_do_suspend)
+<<<<<<< HEAD   (e9589f grouper: defconfig: enable NF_MATCH_RPFILTER)
 	stmfd	sp!, {r3 - r10, lr}
+=======
+	stmfd	sp!, {r4 - r11, lr}
+>>>>>>> BRANCH (8d1988 Linux 3.4.113)
 	mrc	p15, 0, r4, c13, c0, 0	@ FCSE/PID
 	mrc	p15, 0, r5, c13, c0, 3	@ User r/o thread ID
 	mrc	p15, 0, r6, c15, c0, 1	@ diag
@@ -156,6 +160,7 @@ ENTRY(cpu_v7_do_suspend)
 	mrc	p15, 0, r8, c1, c0, 0	@ Control register
 	mrc	p15, 0, r9, c1, c0, 1	@ Auxiliary control register
 	mrc	p15, 0, r10, c1, c0, 2	@ Co-processor access control
+<<<<<<< HEAD   (e9589f grouper: defconfig: enable NF_MATCH_RPFILTER)
 	stmia	r0!, {r6 - r11}
 
 #ifdef CONFIG_ARM_SAVE_DEBUG_CONTEXT
@@ -245,6 +250,10 @@ ENTRY(cpu_v7_do_suspend)
 	save_wpt	c0
 #endif
 	ldmfd	sp!, {r3 - r10, pc}
+=======
+	stmia	r0, {r6 - r11}
+	ldmfd	sp!, {r4 - r11, pc}
+>>>>>>> BRANCH (8d1988 Linux 3.4.113)
 ENDPROC(cpu_v7_do_suspend)
 
 ENTRY(cpu_v7_do_resume)
@@ -560,8 +569,11 @@ __v7_setup:
 
 3:	mov	r10, #0
 	mcr	p15, 0, r10, c7, c5, 0		@ I+BTB cache invalidate
+<<<<<<< HEAD   (e9589f grouper: defconfig: enable NF_MATCH_RPFILTER)
 	dsb
 4:
+=======
+>>>>>>> BRANCH (8d1988 Linux 3.4.113)
 #ifdef CONFIG_MMU
 	mcr	p15, 0, r10, c8, c7, 0		@ invalidate I + D TLBs
 	v7_ttb_setup r10, r4, r8, r5		@ TTBCR, TTBRx setup
@@ -570,6 +582,7 @@ __v7_setup:
 	mcr	p15, 0, r5, c10, c2, 0		@ write PRRR
 	mcr	p15, 0, r6, c10, c2, 1		@ write NMRR
 #endif
+	dsb					@ Complete invalidations
 #ifndef CONFIG_ARM_THUMBEE
 	mrc	p15, 0, r0, c0, c1, 0		@ read ID_PFR0 for ThumbEE
 	and	r0, r0, #(0xf << 12)		@ ThumbEE enabled field

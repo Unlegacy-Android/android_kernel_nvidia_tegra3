@@ -1080,7 +1080,12 @@ out:
 
 static int pagemap_open(struct inode *inode, struct file *file)
 {
+<<<<<<< HEAD   (e9589f grouper: defconfig: enable NF_MATCH_RPFILTER)
 	/* do not disclose physical addresses: attack vector */
+=======
+	/* do not disclose physical addresses to unprivileged
+	   userspace (closes a rowhammer attack vector) */
+>>>>>>> BRANCH (8d1988 Linux 3.4.113)
 	if (!capable(CAP_SYS_ADMIN))
 		return -EPERM;
 	return 0;

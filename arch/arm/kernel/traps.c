@@ -35,7 +35,19 @@
 #include <asm/tls.h>
 #include <asm/system_misc.h>
 
+<<<<<<< HEAD   (e9589f grouper: defconfig: enable NF_MATCH_RPFILTER)
 static const char *handler[]= { "prefetch abort", "data abort", "address exception", "interrupt" };
+=======
+#include "signal.h"
+
+static const char *handler[]= {
+	"prefetch abort",
+	"data abort",
+	"address exception",
+	"interrupt",
+	"undefined instruction",
+};
+>>>>>>> BRANCH (8d1988 Linux 3.4.113)
 
 void *vectors_page;
 

@@ -118,8 +118,12 @@ struct acm {
 	unsigned int throttle_req:1;			/* throttle requested */
 	unsigned int no_hangup_in_reset_resume:1;	/* do not call tty_hangup in acm_reset_resume */
 	u8 bInterval;
+<<<<<<< HEAD   (e9589f grouper: defconfig: enable NF_MATCH_RPFILTER)
 	struct acm_wb *delayed_wb;			/* write queued for a device about to be woken */
 	struct usb_anchor	deferred;
+=======
+	struct usb_anchor delayed;			/* writes queued for a device about to be woken */
+>>>>>>> BRANCH (8d1988 Linux 3.4.113)
 };
 
 #define CDC_DATA_INTERFACE_TYPE	0x0a

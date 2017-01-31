@@ -515,7 +515,15 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 	int err = 0;
 	u32 clk_divisor = 0;
 
+<<<<<<< HEAD   (e9589f grouper: defconfig: enable NF_MATCH_RPFILTER)
 	tegra_i2c_clock_enable(i2c_dev);
+=======
+	err = clk_enable(i2c_dev->clk);
+	if (err < 0) {
+		dev_err(i2c_dev->dev, "Clock enable failed %d\n", err);
+		return err;
+	}
+>>>>>>> BRANCH (8d1988 Linux 3.4.113)
 
 	tegra_periph_reset_assert(i2c_dev->div_clk);
 	udelay(2);
@@ -979,6 +987,21 @@ static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	if (i2c_dev->is_suspended) {
 		rt_mutex_unlock(&i2c_dev->dev_lock);
 		return -EBUSY;
+<<<<<<< HEAD   (e9589f grouper: defconfig: enable NF_MATCH_RPFILTER)
+=======
+
+	ret = clk_enable(i2c_dev->clk);
+	if (ret < 0) {
+		dev_err(i2c_dev->dev, "Clock enable failed %d\n", ret);
+		return ret;
+	}
+
+	for (i = 0; i < num; i++) {
+		int stop = (i == (num - 1)) ? 1  : 0;
+		ret = tegra_i2c_xfer_msg(i2c_dev, &msgs[i], stop);
+		if (ret)
+			break;
+>>>>>>> BRANCH (8d1988 Linux 3.4.113)
 	}
 
 	/* Support I2C_M_NOSTART only if HW support continue xfer. */

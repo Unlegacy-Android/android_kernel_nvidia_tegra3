@@ -12,6 +12,7 @@
  */
 
 
+<<<<<<< HEAD   (e9589f grouper: defconfig: enable NF_MATCH_RPFILTER)
 #if 1 && defined(__arm__) && ((__LINUX_ARM_ARCH__ >= 6) || defined(__ARM_FEATURE_UNALIGNED))
 #define CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS 1
 #define COPY4(dst, src)	\
@@ -20,6 +21,10 @@
 #define COPY4(dst, src)	\
 		put_unaligned(get_unaligned((const u32 *)(src)), (u32 *)(dst))
 #endif
+=======
+#define COPY4(dst, src)	\
+		put_unaligned(get_unaligned((const u32 *)(src)), (u32 *)(dst))
+>>>>>>> BRANCH (8d1988 Linux 3.4.113)
 #if defined(__x86_64__)
 #define COPY8(dst, src)	\
 		put_unaligned(get_unaligned((const u64 *)(src)), (u64 *)(dst))

@@ -69,7 +69,11 @@ struct serial8250_config {
 #define UART_CAP_AFE	(1 << 11)	/* MCR-based hw flow control */
 #define UART_CAP_UUE	(1 << 12)	/* UART needs IER bit 6 set (Xscale) */
 #define UART_CAP_RTOIE	(1 << 13)	/* UART needs IER bit 4 set (Xscale, Tegra) */
+<<<<<<< HEAD   (e9589f grouper: defconfig: enable NF_MATCH_RPFILTER)
 #define UART_CAP_HW_CTSRTS	(1 << 14)	/* UART core support hw control of RTS and CTS */
+=======
+#define UART_CAP_HFIFO	(1 << 14)	/* UART has a "hidden" FIFO */
+>>>>>>> BRANCH (8d1988 Linux 3.4.113)
 
 #define UART_BUG_QUOT	(1 << 0)	/* UART has buggy quot LSB */
 #define UART_BUG_TXEN	(1 << 1)	/* UART has buggy TX IIR status */

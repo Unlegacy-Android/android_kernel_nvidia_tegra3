@@ -720,6 +720,12 @@ static int __devinit ad799x_probe(struct i2c_client *client,
 
 	return 0;
 
+<<<<<<< HEAD   (e9589f grouper: defconfig: enable NF_MATCH_RPFILTER)
+=======
+error_free_irq:
+	if (client->irq > 0)
+		free_irq(client->irq, indio_dev);
+>>>>>>> BRANCH (8d1988 Linux 3.4.113)
 error_cleanup_ring:
 	ad799x_ring_cleanup(indio_dev);
 error_disable_reg:

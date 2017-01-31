@@ -104,7 +104,11 @@ static int ade7758_ring_preenable(struct iio_dev *indio_dev)
 	size_t d_size;
 	unsigned channel;
 
+<<<<<<< HEAD   (e9589f grouper: defconfig: enable NF_MATCH_RPFILTER)
 	if (!ring->scan_count)
+=======
+	if (bitmap_empty(indio_dev->active_scan_mask, indio_dev->masklength))
+>>>>>>> BRANCH (8d1988 Linux 3.4.113)
 		return -EINVAL;
 
 	channel = __ffs(ring->scan_mask);

@@ -174,6 +174,12 @@ static noinline void key_gc_unused_key(struct key *key)
 {
 	key_check(key);
 
+	/* Throw away the key data if the key is instantiated */
+	if (test_bit(KEY_FLAG_INSTANTIATED, &key->flags) &&
+	    !test_bit(KEY_FLAG_NEGATIVE, &key->flags) &&
+	    key->type->destroy)
+		key->type->destroy(key);
+
 	security_key_free(key);
 
 	/* deal with the user's key tracking and quota */
@@ -188,9 +194,13 @@ static noinline void key_gc_unused_key(struct key *key)
 	if (test_bit(KEY_FLAG_INSTANTIATED, &key->flags))
 		atomic_dec(&key->user->nikeys);
 
+<<<<<<< HEAD   (e9589f grouper: defconfig: enable NF_MATCH_RPFILTER)
 	/* now throw away the key memory */
 	if (key->type->destroy)
 		key->type->destroy(key);
+=======
+	key_user_put(key->user);
+>>>>>>> BRANCH (8d1988 Linux 3.4.113)
 
 	key_user_put(key->user);
 

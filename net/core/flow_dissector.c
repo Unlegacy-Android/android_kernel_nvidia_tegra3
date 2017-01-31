@@ -35,8 +35,11 @@ again:
 		struct iphdr _iph;
 ip:
 		iph = skb_header_pointer(skb, nhoff, sizeof(_iph), &_iph);
+<<<<<<< HEAD   (e9589f grouper: defconfig: enable NF_MATCH_RPFILTER)
 
 		/* CVE-2013-4348 issue : make sure iph->ihl is not zero ... */
+=======
+>>>>>>> BRANCH (8d1988 Linux 3.4.113)
 		if (!iph || iph->ihl < 5)
 			return false;
 
