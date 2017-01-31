@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9fb28ff4_17bb54e5",
+        "filename": "drivers/base/regmap/regmap.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 875,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-01-31T00:35:03Z",
+      "side": 1,
+      "message": "Weird typo?",
+      "range": {
+        "startLine": 875,
+        "startChar": 53,
+        "endLine": 875,
+        "endChar": 54
+      },
+      "revId": "6cea7e922457bbba2ec25d864d9a16b6f32d9f4c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
