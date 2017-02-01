@@ -60,7 +60,7 @@
 #define STK_INTR TEGRA_GPIO_PX3
 #endif
 
-#ifdef CONFIG_VIDEO_OV5640
+#ifdef CONFIG_VIDEO_OV5640_ACER
 #include <media/ov5640.h>
 #endif
 #ifdef CONFIG_VIDEO_OV9740
@@ -154,7 +154,7 @@ fail:
 	return ret;
 }
 
-#if defined(CONFIG_VIDEO_OV5640)
+#if defined(CONFIG_VIDEO_OV5640_ACER)
 static int cardhu_ov5640_power_on(struct device *dev)
 {
 	pr_info("%s\n", __func__);
@@ -242,7 +242,7 @@ struct yuv_sensor_platform_data cardhu_mt9d115_data = {
 #endif  // CONFIG_VIDEO_YUV
 
 static const struct i2c_board_info cardhu_camera_i2c3_board_info[] = {
-#if defined(CONFIG_VIDEO_OV5640)
+#if defined(CONFIG_VIDEO_OV5640_ACER)
 	{
 		I2C_BOARD_INFO("ov5640", 0x3C),
 		.platform_data = &cardhu_ov5640_data,
