@@ -190,6 +190,10 @@ static int tegra_camera_clk_get(struct platform_device *ndev, const char *name,
 	return 0;
 }
 
+#ifdef CONFIG_ARCH_ACER_T30
+struct tegra_camera *t30_dev = NULL;
+#endif
+
 struct tegra_camera *tegra_camera_register(struct platform_device *ndev)
 {
 	struct tegra_camera *camera = NULL;
@@ -203,6 +207,10 @@ struct tegra_camera *tegra_camera_register(struct platform_device *ndev)
 		dev_err(&ndev->dev, "can't allocate memory for tegra_camera\n");
 		return camera;
 	}
+
+#ifdef CONFIG_ARCH_ACER_T30
+	t30_dev = camera;
+#endif
 
 	mutex_init(&camera->tegra_camera_lock);
 
@@ -339,5 +347,42 @@ int tegra_camera_resume(struct tegra_camera *camera)
 {
 	dev_info(camera->dev, "%s: ++\n", __func__);
 	return 0;
+}
+#endif
+
+#ifdef CONFIG_ARCH_ACER_T30
+// these functions should be used after tegra_camera.c finishes probing
+void extern_tegra_camera_enable_clk(void)
+{
+	int ret;
+
+	if (t30_dev) {
+		ret = tegra_camera_enable_clk(t30_dev);
+		if (ret)
+			pr_err("%s: failed (%d)", __func__, ret);
+	}
+}
+
+void extern_tegra_camera_disable_clk(void)
+{
+	int ret;
+
+	if (t30_dev) {
+		ret = tegra_camera_disable_clk(t30_dev);
+		if (ret)
+			pr_err("%s: failed (%d)", __func__, ret);
+	}
+}
+
+void extern_tegra_camera_clk_set_rate(struct tegra_camera_clk_info *clk_info)
+{
+	int ret;
+
+	if (t30_dev) {
+		memcpy(&t30_dev->info, clk_info, sizeof(struct tegra_camera_clk_info));
+		ret = tegra_camera_clk_set_rate(t30_dev);
+		if (ret)
+			pr_err("%s: failed (%d)", __func__, ret);
+	}
 }
 #endif
