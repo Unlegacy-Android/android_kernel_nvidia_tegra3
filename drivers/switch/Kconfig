@@ -12,4 +12,7 @@ config SWITCH_GPIO
 	help
 	  Say Y here to enable GPIO based switch support.
 
+config SIMDETECT
+	tristate "SIM Hot-swap detection support"
+
 endif # SWITCH
