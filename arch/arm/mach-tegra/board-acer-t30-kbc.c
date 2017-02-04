@@ -55,10 +55,22 @@ int __init cardhu_scroll_init(void)
 		.debounce_interval = 10,	\
 	}
 
+#define GPIO_SWITCH(_id, _gpio, _iswake)	\
+	{					\
+		.code = _id,			\
+		.gpio = TEGRA_GPIO_##_gpio,	\
+		.active_low = 0,		\
+		.desc = #_id,			\
+		.type = EV_SW,			\
+		.wakeup = _iswake,		\
+		.debounce_interval = 10,	\
+	}
+
 static struct gpio_keys_button acer_keys[] = {
 	[0] = GPIO_KEY(KEY_VOLUMEDOWN, PQ1, 0),
 	[1] = GPIO_KEY(KEY_VOLUMEUP, PQ2, 0),
 	[2] = GPIO_KEY(KEY_POWER, PV0, 1),
+	[3] = GPIO_SWITCH(SW_ROTATE_LOCK, PQ0, 0),
 };
 
 static struct gpio_keys_platform_data acer_keys_platform_data = {

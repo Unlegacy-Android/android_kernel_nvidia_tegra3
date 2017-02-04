@@ -500,20 +500,6 @@ static struct platform_device vib_timed_gpio_device = {
 	},
 };
 
-#ifdef CONFIG_ROTATELOCK
-static struct gpio_switch_platform_data rotationlock_switch_platform_data = {
-	.gpio = TEGRA_GPIO_PQ0,
-};
-
-static struct platform_device rotationlock_switch = {
-	.name   = "rotationlock",
-	.id     = -1,
-	.dev    = {
-		.platform_data = &rotationlock_switch_platform_data,
-	},
-};
-#endif
-
 static struct platform_device *cardhu_spi_devices[] __initdata = {
 	&tegra_spi_device4,
 };
@@ -627,9 +613,6 @@ static struct platform_device *cardhu_devices[] __initdata = {
 	&tegra_wdt0_device,
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
-#endif
-#ifdef CONFIG_ROTATELOCK
-	&rotationlock_switch,
 #endif
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
 	&tegra_se_device,
