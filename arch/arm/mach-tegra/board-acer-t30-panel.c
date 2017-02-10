@@ -202,7 +202,7 @@ static struct resource acer_disp1_resources[] = {
 };
 
 static struct tegra_dc_sd_settings acer_sd_settings = {
-	.enable = 1, /* Disabled by default. */
+	.enable = 0, /* Disabled by default. */
 	.use_auto_pwm = false,
 	.hw_update_delay = 0,
 	.bin_width = -1,
