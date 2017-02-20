@@ -123,7 +123,7 @@ static const struct tegra30_emc_table cardhu_emc_tables_picasso2_elpida_1gb[] =
 			0x00000000, /* EMC_CTT_DURATION */
 			0x800001c5, /* EMC_DYN_SELF_REF_CONTROL */
 			0x00030003, /* MC_EMEM_ARB_CFG */
-			0xc0000010, /* MC_EMEM_ARB_OUTSTANDING_REQ */
+			0xc0000020, /* MC_EMEM_ARB_OUTSTANDING_REQ */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RCD */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RP */
 			0x00000002, /* MC_EMEM_ARB_TIMING_RC */
@@ -242,7 +242,7 @@ static const struct tegra30_emc_table cardhu_emc_tables_picasso2_elpida_1gb[] =
 			0x00000000, /* EMC_CTT_DURATION */
 			0x80000287, /* EMC_DYN_SELF_REF_CONTROL */
 			0x00010003, /* MC_EMEM_ARB_CFG */
-			0xc0000010, /* MC_EMEM_ARB_OUTSTANDING_REQ */
+			0xc0000020, /* MC_EMEM_ARB_OUTSTANDING_REQ */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RCD */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RP */
 			0x00000002, /* MC_EMEM_ARB_TIMING_RC */
@@ -361,7 +361,7 @@ static const struct tegra30_emc_table cardhu_emc_tables_picasso2_elpida_1gb[] =
 			0x00000000, /* EMC_CTT_DURATION */
 			0x8000040b, /* EMC_DYN_SELF_REF_CONTROL */
 			0x00000003, /* MC_EMEM_ARB_CFG */
-			0xc0000018, /* MC_EMEM_ARB_OUTSTANDING_REQ */
+			0xc0000030, /* MC_EMEM_ARB_OUTSTANDING_REQ */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RCD */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RP */
 			0x00000003, /* MC_EMEM_ARB_TIMING_RC */
@@ -722,7 +722,7 @@ static const struct tegra30_emc_table cardhu_emc_tables_picasso2_samsung_1gb[] =
 			0x00000000, /* EMC_CTT_DURATION */
 			0x800001c5, /* EMC_DYN_SELF_REF_CONTROL */
 			0x00030003, /* MC_EMEM_ARB_CFG */
-			0xc0000010, /* MC_EMEM_ARB_OUTSTANDING_REQ */
+			0xc0000020, /* MC_EMEM_ARB_OUTSTANDING_REQ */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RCD */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RP */
 			0x00000002, /* MC_EMEM_ARB_TIMING_RC */
@@ -841,7 +841,7 @@ static const struct tegra30_emc_table cardhu_emc_tables_picasso2_samsung_1gb[] =
 			0x00000000, /* EMC_CTT_DURATION */
 			0x80000287, /* EMC_DYN_SELF_REF_CONTROL */
 			0x00010003, /* MC_EMEM_ARB_CFG */
-			0xc0000010, /* MC_EMEM_ARB_OUTSTANDING_REQ */
+			0xc0000020, /* MC_EMEM_ARB_OUTSTANDING_REQ */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RCD */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RP */
 			0x00000002, /* MC_EMEM_ARB_TIMING_RC */
@@ -960,7 +960,7 @@ static const struct tegra30_emc_table cardhu_emc_tables_picasso2_samsung_1gb[] =
 			0x00000000, /* EMC_CTT_DURATION */
 			0x8000040b, /* EMC_DYN_SELF_REF_CONTROL */
 			0x00000003, /* MC_EMEM_ARB_CFG */
-			0xc0000018, /* MC_EMEM_ARB_OUTSTANDING_REQ */
+			0xc0000030, /* MC_EMEM_ARB_OUTSTANDING_REQ */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RCD */
 			0x00000001, /* MC_EMEM_ARB_TIMING_RP */
 			0x00000003, /* MC_EMEM_ARB_TIMING_RC */
