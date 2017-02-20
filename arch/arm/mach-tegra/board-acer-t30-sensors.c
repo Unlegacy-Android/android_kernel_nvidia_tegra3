@@ -44,7 +44,6 @@
 #include <generated/mach-types.h>
 #include "gpio-names.h"
 #include "board.h"
-#include <linux/mpu_3050.h>
 #include <media/sh532u.h>
 #include <media/ad5816.h>
 #include <mach/edp.h>
@@ -55,6 +54,10 @@
 #include "board-acer-t30.h"
 #include "cpu-tegra.h"
 #include "devices.h"
+
+#ifdef CONFIG_MPU_SENSORS_MPU3050
+#include <linux/mpu_3050.h>
+#endif
 
 #ifdef CONFIG_STK2203_LIGHT_SENSOR
 #define STK_INTR TEGRA_GPIO_PX3
