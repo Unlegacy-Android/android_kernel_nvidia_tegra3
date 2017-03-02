@@ -351,7 +351,9 @@ static void dr_controller_run(struct tegra_udc *udc)
 	if (!udc->stopped)
 		return;
 
-	pm_stay_awake(&udc->pdev->dev);
+	if ((udc->connect_type == CONNECT_TYPE_SDP) ||
+		(udc->connect_type == CONNECT_TYPE_CDP))
+		pm_stay_awake(&udc->pdev->dev);
 
 	/* Clear stopped bit */
 	udc->stopped = 0;
@@ -1551,9 +1553,6 @@ static int tegra_pullup(struct usb_gadget *gadget, int is_on)
 
 	udc = container_of(gadget, struct tegra_udc, gadget);
 
-	if (udc->stopped)
-		dr_controller_run(udc);
-
 	udc->softconnect = (is_on != 0);
 	if (udc->transceiver && udc->transceiver->state !=
 			OTG_STATE_B_PERIPHERAL)
@@ -1562,6 +1561,9 @@ static int tegra_pullup(struct usb_gadget *gadget, int is_on)
 	/* set charger type to SDP type if recognize as non standard charger before */
 	if (udc->connect_type == CONNECT_TYPE_NON_STANDARD_CHARGER)
 		tegra_udc_set_charger_type(udc, CONNECT_TYPE_SDP);
+
+	if (udc->stopped && can_pullup(udc))
+		dr_controller_run(udc);
 
 	/* set interrupt latency to 125 uS (1 uFrame) */
 	tmp = udc_readl(udc, USB_CMD_REG_OFFSET);
