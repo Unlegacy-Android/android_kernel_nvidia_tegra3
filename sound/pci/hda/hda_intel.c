@@ -3202,7 +3202,7 @@ static int __devinit azx_create(struct snd_card *card, struct pci_dev *pci,
 	snd_printdd(SFX "chipset global capabilities = 0x%x\n", gcap);
 
 	/* AMD devices support 40 or 48bit DMA, take the safe one */
-	if (chip->pci->vendor == PCI_VENDOR_ID_AMD)
+	if (chip->pci && chip->pci->vendor == PCI_VENDOR_ID_AMD)
 		dma_bits = 40;
 
 	/* disable SB600 64bit support for safety */
