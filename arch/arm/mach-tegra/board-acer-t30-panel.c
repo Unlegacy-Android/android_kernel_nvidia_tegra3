@@ -94,10 +94,10 @@ static int acer_panel_enable(struct device *dev)
 
 static int acer_panel_disable(void)
 {
-#if defined(CONFIG_MACH_PICASSO_MF)
-	gpio_set_value(BL_ENABLE, 0);
-	msleep(210);
-#endif
+	if (acer_board_type == BOARD_PICASSO_MF) {
+		gpio_set_value(BL_ENABLE, 0);
+		msleep(210);
+	}
 	gpio_set_value(LCD_VDD, 0);
 	udelay(160);
 	gpio_set_value(LVDS_SHUTDOWN, 0);

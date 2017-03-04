@@ -100,17 +100,32 @@
 #include "../../../sound/soc/tegra/acer_a1026.h"
 #endif
 
-int acer_board_type;
+int acer_board_type = 0;
 int acer_board_id;
 int acer_sku;
 int acer_wifi_module;
+
+static int __init target_product_arg(char *options)
+{
+	if (strstr(options, "a51")) {
+		acer_board_type = BOARD_PICASSO_M;
+	} else if (strstr(options, "a70")) {
+		acer_board_type = BOARD_PICASSO_MF;
+	} else {
+		pr_err("*****************************\n");
+		pr_err("Could not identify board type\n");
+		pr_err("*****************************\n");
+	}
+
+	return 0;
+}
+early_param("target_product", target_product_arg);
 
 static int __init hw_ver_arg(char *options)
 {
 	int hw_ver = 0;
 	int sku_type = 0;
 	int sku_lte  = 0;
-	acer_board_type = 0;
 	acer_board_id = 0;
 	acer_sku = 0;
 	acer_wifi_module = 0;
@@ -121,12 +136,9 @@ static int __init hw_ver_arg(char *options)
 	 * | sku # | board type | board id | empty | LTE | wifi | 3G |
 	 */
 
-	acer_board_type  = (hw_ver & 0xf00) >> 8;
+	if (!acer_board_type) // in case we failed to identify earlier
+		acer_board_type = (hw_ver & 0xf00) >> 8;
 
-	/* dirty hack to force Picasso M board */
-#ifdef CONFIG_MACH_PICASSO_M
-	acer_board_type  = BOARD_PICASSO_M;
-#endif
 	acer_board_id    = (hw_ver & 0xf0) >> 4;
 	sku_type         = (hw_ver & 0x1);
 	acer_wifi_module = (hw_ver & 0x2) >> 1;
@@ -1081,20 +1093,7 @@ static void __init tegra_cardhu_reserve(void)
 #endif
 }
 
-MACHINE_START(PICASSO_M, "picasso_m")
-	.atag_offset    = 0x100,
-	.soc            = &tegra_soc_desc,
-	.map_io         = tegra_map_common_io,
-	.reserve        = tegra_cardhu_reserve,
-	.init_early     = tegra30_init_early,
-	.init_irq       = tegra_init_irq,
-	.handle_irq     = gic_handle_irq,
-	.timer          = &tegra_timer,
-	.init_machine   = tegra_cardhu_init,
-	.restart        = tegra_assert_system_reset,
-MACHINE_END
-
-MACHINE_START(PICASSO_MF, "picasso_mf")
+MACHINE_START(PICASSO, "picasso")
 	.atag_offset    = 0x100,
 	.soc            = &tegra_soc_desc,
 	.map_io         = tegra_map_common_io,

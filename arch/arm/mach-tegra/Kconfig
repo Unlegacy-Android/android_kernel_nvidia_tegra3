@@ -365,19 +365,12 @@ config ARCH_ACER_T30
 
 comment "Acer board type"
 
-config MACH_PICASSO_M
+config MACH_PICASSO
 	bool "Picasso M"
 	depends on ARCH_ACER_T30
 	select MACH_HAS_SND_SOC_TEGRA_WM8903 if SND_SOC
 	help
-	  Support for Acer Picasso M Tablet
-
-config MACH_PICASSO_MF
-	bool "Picasso MF"
-	depends on ARCH_ACER_T30
-	select MACH_HAS_SND_SOC_TEGRA_WM8903 if SND_SOC
-	help
-	  Support for Acer Picasso MF Tablet
+	  Support for Acer Picasso M/MF Tablet
 
 choice
        prompt "Tegra platform type"
