@@ -41,6 +41,7 @@
 #include <linux/i2c/at24.h>
 
 extern int acer_board_id;
+extern int acer_board_type;
 
 #define STK_DRIVER_VER	"1.6.2"
 #define ALS_NAME	"lightsensor-level"
@@ -82,33 +83,33 @@ inline int32_t get_reading(void)
 
 inline int32_t alscode2lux(int32_t alscode)
 {
-#ifdef CONFIG_MACH_PICASSO_M
-	if (acer_board_id == BOARD_PVT1) {
-		if ((buff[1]-48) == 1) {
-			if ((buff[6]-48) >= 2 && (buff[7]-48) >= 4) {
-				alscode<<=11;
-			} else if ((buff[6]-48) == 0 && (buff[7]-48) <= 5) {
-				alscode<<=9;
+	if (acer_board_type == BOARD_PICASSO_M) {
+		if (acer_board_id == BOARD_PVT1) {
+			if ((buff[1]-48) == 1) {
+				if ((buff[6]-48) >= 2 && (buff[7]-48) >= 4) {
+					alscode<<=11;
+				} else if ((buff[6]-48) == 0 && (buff[7]-48) <= 5) {
+					alscode<<=9;
+				} else {
+					alscode<<=10;
+				}
 			} else {
 				alscode<<=10;
 			}
 		} else {
+			alscode<<=9;
+		}
+	} else if (acer_board_type == BOARD_PICASSO_MF) {
+		if ((buff[1]-48) == 1 && (buff[6]-48) >= 2 && (buff[7]-48) >= 4) {
+			alscode<<=11;
+		} else if ((buff[1]-48) == 1 && (buff[6]-48) == 0 && (buff[7]-48) <= 5) {
+			alscode<<=9;
+		} else {
 			alscode<<=10;
 		}
 	} else {
-		alscode<<=9;
-	}
-#elif defined(CONFIG_MACH_PICASSO_MF)
-	if ((buff[1]-48) == 1 && (buff[6]-48) >= 2 && (buff[7]-48) >= 4) {
-		alscode<<=11;
-	} else if ((buff[1]-48) == 1 && (buff[6]-48) == 0 && (buff[7]-48) <= 5) {
-		alscode<<=9;
-	} else {
 		alscode<<=10;
 	}
-#else
-	alscode<<=10;
-#endif
 	return alscode/als_transmittance;
 }
 
@@ -174,33 +175,33 @@ static int32_t init_all_setting()
 	uint32_t val;
 
 	enable_als(0);
-#ifdef CONFIG_MACH_PICASSO_M
-	if (acer_board_id == BOARD_PVT1) {
-		if ((buff[1]-48) == 1) {
-			if ((buff[6]-48) >= 2 && (buff[7]-48) >= 4) {
-				set_gain(0);
-			} else if ((buff[6]-48) == 0 && (buff[7]-48) <= 5) {
-				set_gain(2);
+	if (acer_board_type == BOARD_PICASSO_M) {
+		if (acer_board_id == BOARD_PVT1) {
+			if ((buff[1]-48) == 1) {
+				if ((buff[6]-48) >= 2 && (buff[7]-48) >= 4) {
+					set_gain(0);
+				} else if ((buff[6]-48) == 0 && (buff[7]-48) <= 5) {
+					set_gain(2);
+				} else {
+					set_gain(1);
+				}
 			} else {
 				set_gain(1);
 			}
 		} else {
+			set_gain(2);
+		}
+	} else if (acer_board_type == BOARD_PICASSO_MF) {
+		if ((buff[1]-48) == 1 && (buff[6]-48) >= 2 && (buff[7]-48) >= 4) {
+			set_gain(0);
+		} else if ((buff[1]-48) == 1 && (buff[6]-48) == 0 && (buff[7]-48) <= 5) {
+			set_gain(2);
+		} else {
 			set_gain(1);
 		}
 	} else {
-		set_gain(2);
-	}
-#elif defined(CONFIG_MACH_PICASSO_MF)
-	if ((buff[1]-48) == 1 && (buff[6]-48) >= 2 && (buff[7]-48) >= 4) {
-		set_gain(0);
-	} else if ((buff[1]-48) == 1 && (buff[6]-48) == 0 && (buff[7]-48) <= 5) {
-		set_gain(2);
-	} else {
 		set_gain(1);
 	}
-#else
-	set_gain(1);
-#endif
 	set_it(1);
 	val = stk_readb(STK_ALS_CMD_REG);
 	INFO("Init ALS Setting --> CMDREG = 0x%x\n",val);
