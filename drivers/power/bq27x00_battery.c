@@ -39,6 +39,10 @@
 
 #include <linux/power/bq27x00_battery.h>
 
+#ifdef CONFIG_CHARGER_SMB349
+#include <linux/smb349-charger.h>
+#endif
+
 #define DRIVER_VERSION			"1.2.0"
 
 #define BQ27x00_MANUFACTURER	"Texas Instruments"
@@ -827,6 +831,14 @@ static int bq27x00_ctrl_read_i2c(struct bq27x00_device_info *di,
 	return ret;
 }
 
+#ifdef CONFIG_CHARGER_SMB349
+static void bq27541_charger_status(enum charging_states status, enum charger_type chrg_type, void *data)
+{
+        struct bq27x00_device_info *di = (struct bq27x00_device_info *)data;
+        power_supply_changed(&di->bat);
+}
+#endif
+
 static int bq27x00_battery_probe(struct i2c_client *client,
 				 const struct i2c_device_id *id)
 {
@@ -879,12 +891,18 @@ static int bq27x00_battery_probe(struct i2c_client *client,
 
 	read_data = bq27x00_read(di, BQ27x00_REG_FLAGS, false);
 
-	
+
 	if (read_data < 0) {
 		dev_err(&client->dev, "no battery present\n");
 		retval = -ENODEV;
 		goto batt_failed_3;
 	}
+
+#ifdef CONFIG_CHARGER_SMB349
+	retval = register_callback(bq27541_charger_status, di);
+        if (retval < 0)
+                dev_info(&client->dev, "register smb349 callback error\n");
+#endif
 
 	retval = bq27x00_powersupply_init(di);
 	if (retval < 0)
