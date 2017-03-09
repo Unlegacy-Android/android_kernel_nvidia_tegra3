@@ -60,7 +60,7 @@
 
 #define SMB349_CMD_REG		0x30
 #define SMB349_CMD_REG_B	0x31
-#define SMB349_CMD_REG_c	0x33
+#define SMB349_CMD_REG_C	0x33
 
 #define SMB349_INTR_STS_A	0x35
 #define SMB349_INTR_STS_B	0x36
@@ -90,6 +90,16 @@
 
 static struct smb349_charger *charger;
 static int smb349_configure_charger(struct i2c_client *client, int value, int max_uA);
+
+static enum power_supply_property smb349_ac_props[] = {
+        POWER_SUPPLY_PROP_ONLINE,
+};
+
+static enum power_supply_property smb349_usb_props[] = {
+        POWER_SUPPLY_PROP_ONLINE,
+};
+
+
 
 static int smb349_read(struct i2c_client *client, int reg)
 {
@@ -238,6 +248,48 @@ error:
 	return ret;
 }
 
+static int smb349_ac_get_property(struct power_supply *psy,
+					enum power_supply_property psp,
+					union power_supply_propval *val)
+{
+	int ret = 0;
+	struct smb349_charger *charger_data = charger;
+
+	switch (psp) {
+	case POWER_SUPPLY_PROP_ONLINE:
+	if(charger_data->ac_online)
+			val->intval = 1;
+		else
+			val->intval = 0;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return ret;
+}
+
+static int smb349_usb_get_property(struct power_supply *psy,
+					enum power_supply_property psp,
+					union power_supply_propval *val)
+{
+	int ret = 0;
+	struct smb349_charger *charger_data = charger;
+
+	switch (psp) {
+	case POWER_SUPPLY_PROP_ONLINE:
+	if(charger_data->usb_online)
+			val->intval = 1;
+		else
+			val->intval = 0;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return ret;
+}
+
 static int smb349_configure_charger(struct i2c_client *client, int value, int max_uA)
 {
 	int ret = 0;
@@ -331,7 +383,6 @@ static void smb349_reconfigure_charger(void)
 	for(i=0; i<ARRAYSIZE(pdata->configuration_data); i++)
 	{
 		if(pdata->configuration_data[i] == 0xFF) {
-			printk("[smb349 charger] Register 0x%02x skipped\n", i);
 			continue;
 		}
 		printk("[smb349 charger] Register 0x%02x value 0x%02x\n", i, pdata->configuration_data[i]);
@@ -482,6 +533,8 @@ static int smb349_enable_charging(struct regulator_dev *rdev,
 
 		charger->state = stopped;
 		charger->chrg_type = NONE;
+		charger->ac_online = false;
+		charger->usb_online = false;
 
 		smb349_reconfigure_charger();
 
@@ -501,6 +554,7 @@ static int smb349_enable_charging(struct regulator_dev *rdev,
 			if (max_uA == 1800 * 1000) {
 				printk("smb349-charger.c: AC charger type detected...\n");
 				charger->chrg_type = AC;
+				charger->ac_online = true;
 				ret = smb349_configure_charger(client, 1, max_uA);
 				if (ret < 0) {
 					dev_err(&client->dev, "%s() error in configuring charger..\n", __func__);
@@ -509,13 +563,13 @@ static int smb349_enable_charging(struct regulator_dev *rdev,
 			} else {
 				printk("smb349-charger.c: USB charger type detected...\n");
 				charger->chrg_type = USB;
+				charger->usb_online = true;
 			}
 
 			/* configure charger */
 			ret = smb349_configure_charger(client, 1, 0);
 			if (ret < 0) {
-				dev_err(&client->dev, "%s() error in"
-					"configuring charger..\n", __func__);
+				dev_err(&client->dev, "%s() error in configuring charger..\n", __func__);
 				return ret;
 			}
 			charger->state = progress;
@@ -620,6 +674,42 @@ static void smb349_debugfs_exit(struct i2c_client *client)
 static void smb349_debugfs_init(struct i2c_client *client){}
 static void smb349_debugfs_exit(struct i2c_client *client){}
 #endif /* CONFIG_DEBUG_FS */
+
+static int smb349_powersupply_init(struct smb349_charger *charger)
+{
+	int retval;
+	struct power_supply *ac, *usb;
+
+	ac = &charger->ac;
+	ac->type = POWER_SUPPLY_TYPE_MAINS;
+	ac->get_property = smb349_ac_get_property;
+	ac->properties = smb349_ac_props;
+	ac->num_properties = ARRAY_SIZE(smb349_ac_props);
+	retval = power_supply_register(&charger->client->dev, ac);
+	if (retval) {
+		dev_err(&charger->client->dev, "failed to register ac\n");
+		goto ac_failed;
+	}
+
+	usb = &charger->usb;
+	usb->type = POWER_SUPPLY_TYPE_USB;
+	usb->get_property = smb349_usb_get_property;
+	usb->properties = smb349_usb_props;
+	usb->num_properties = ARRAY_SIZE(smb349_usb_props);
+	retval = power_supply_register(&charger->client->dev, usb);
+	if (retval) {
+		dev_err(&charger->client->dev, "failed to register usb\n");
+		goto usb_failed;
+	}
+
+	return 0;
+
+usb_failed:
+        power_supply_unregister(&charger->ac);
+ac_failed:
+        return retval;
+}
+
 
 static int __devinit smb349_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
@@ -754,6 +844,14 @@ static int __devinit smb349_probe(struct i2c_client *client,
 			goto error;
 		}
 	}
+
+        charger->ac.name = "smb349-ac";
+        charger->usb.name = "smb349-usb";
+
+        ret = smb349_powersupply_init(charger);
+        if (ret) {
+                dev_err(&client->dev, "failed to register power_supply\n");
+        }
 
 	smb349_reconfigure_charger();
 
