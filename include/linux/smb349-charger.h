@@ -27,6 +27,7 @@
 #include <linux/platform_device.h>
 #include <linux/regulator/driver.h>
 #include <linux/usb/otg.h>
+#include <linux/power_supply.h>
 
 struct smb349_charger_platform_data {
 	int regulator_id;
@@ -58,20 +59,25 @@ typedef void (*charging_callback_t)(enum charging_states state,
 enum charger_type chrg_type, void *args);
 
 struct smb349_charger {
-	struct i2c_client	*client;
-	struct device	*dev;
-	void	*charger_cb_data;
-	enum charging_states state;
-	enum charger_type chrg_type;
-	charging_callback_t	charger_cb;
+	struct i2c_client		*client;
+	struct device			*dev;
+	void *charger_cb_data;
+	enum charging_states 		state;
+	enum charger_type 		chrg_type;
+	charging_callback_t		charger_cb;
 
 	int is_otg_enabled;
-	struct regulator_dev    *rdev;
-	struct regulator_desc   reg_desc;
+	struct regulator_dev    	*rdev;
+	struct regulator_desc   	reg_desc;
 	struct regulator_init_data      reg_init_data;
-	struct regulator_dev    *otg_rdev;
-	struct regulator_desc   otg_reg_desc;
+	struct regulator_dev    	*otg_rdev;
+	struct regulator_desc   	otg_reg_desc;
 	struct regulator_init_data      otg_reg_init_data;
+
+	struct power_supply     	ac;
+	struct power_supply     	usb;
+	bool                    	ac_online;
+	bool                    	usb_online;
 };
 
 int smb349_battery_online(void);
