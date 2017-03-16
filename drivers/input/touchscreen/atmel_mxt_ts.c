@@ -27,6 +27,8 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/touchscreen_atmel.h>
 
+#define I2C_RETRY_COUNT		10
+
 /* Version */
 #define MXT_VER_20		20
 #define MXT_VER_21		21
@@ -595,7 +597,7 @@ static int mxt_read_reg(struct i2c_client *client,
 	struct i2c_msg xfer[2];
 	u8 buf[2];
 	int ret;
-	u8 retry = 0;
+	u8 retry;
 
 	buf[0] = reg & 0xff;
 	buf[1] = (reg >> 8) & 0xff;
@@ -612,48 +614,41 @@ static int mxt_read_reg(struct i2c_client *client,
 	xfer[1].len = len;
 	xfer[1].buf = val;
 
-retry_read:
-	ret = i2c_transfer(client->adapter, xfer, ARRAY_SIZE(xfer));
-	if (ret != ARRAY_SIZE(xfer)) {
-		if (!retry) {
+	for (retry = 0; retry < I2C_RETRY_COUNT; retry++) {
+		ret = i2c_transfer(client->adapter, xfer, ARRAY_SIZE(xfer));
+		if (ret == ARRAY_SIZE(xfer)) {
+			return 0;
+		} else if (retry < I2C_RETRY_COUNT) {
 			dev_dbg(dev, "%s: i2c retry\n", __func__);
 			msleep(MXT_WAKEUP_TIME);
-			retry = 1;
-			goto retry_read;
-		} else {
-			dev_err(dev, "%s: i2c transfer failed (%d)\n",
-				__func__, ret);
-			return -EIO;
 		}
 	}
 
-	return 0;
+	dev_err(dev, "%s: i2c transfer failed (%d)\n", __func__, ret);
+	return -EIO;
 }
 
 static int mxt_write_reg(struct i2c_client *client, u16 reg, u8 val)
 {
 	struct device *dev = &client->dev;
-	u8 retry = 0;
+	u8 retry;
 	u8 buf[3];
 
 	buf[0] = reg & 0xff;
 	buf[1] = (reg >> 8) & 0xff;
 	buf[2] = val;
 
-retry_write:
-	if (i2c_master_send(client, buf, 3) != 3) {
-		if (!retry) {
+	for (retry = 0; retry < I2C_RETRY_COUNT; retry++) {
+		if (i2c_master_send(client, buf, 3) == 3) {
+			return 0;
+		} else if (retry < I2C_RETRY_COUNT) {
 			dev_dbg(dev, "%s: i2c retry\n", __func__);
 			msleep(MXT_WAKEUP_TIME);
-			retry = 1;
-			goto retry_write;
-		} else {
-			dev_err(dev, "%s: i2c send failed\n", __func__);
-			return -EIO;
 		}
 	}
 
-	return 0;
+	dev_err(dev, "%s: i2c send failed\n", __func__);
+	return -EIO;
 }
 
 int mxt_write_block(struct i2c_client *client, u16 addr, u16 length, u8 *value)
@@ -2668,6 +2663,7 @@ static int mxt_resume(struct device *dev)
 			dev_err(dev,
 			"Atmel regulator enable for avdd failed: %d\n", ret);
 		}
+		msleep(MXT_WAKEUP_TIME);
 	}
 
 	mutex_lock(&input_dev->mutex);
