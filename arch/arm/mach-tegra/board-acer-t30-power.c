@@ -118,7 +118,7 @@ static struct regulator_consumer_supply tps6591x_ldo2_supply_0[] = {
 };
 
 static struct regulator_consumer_supply tps6591x_ldo3_supply_0[] = {
-	REGULATOR_SUPPLY("vddio_sdmmc1", NULL),
+	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.0"),
 	REGULATOR_SUPPLY("pwrdet_sdmmc1", NULL),
 };
 
