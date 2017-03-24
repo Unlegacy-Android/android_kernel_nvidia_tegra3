@@ -64,7 +64,7 @@ struct tegra_ehci_hcd {
 	bool bus_suspended_fail;
 	bool unaligned_dma_buf_supported;
 	bool has_hostpc;
-#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
+#if defined(CONFIG_TEGRA_BOOST_CPU) && defined(CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ)
 	bool cpu_boost_in_work;
 	struct delayed_work boost_cpu_freq_work;
 	struct pm_qos_request boost_cpu_freq_req;
@@ -166,7 +166,7 @@ static void tegra_ehci_unmap_urb_for_dma(struct usb_hcd *hcd,
 	free_align_buffer(urb, hcd);
 }
 
-#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
+#if defined(CONFIG_TEGRA_BOOST_CPU) && defined(CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ)
 static void tegra_ehci_boost_cpu_frequency_work(struct work_struct *work)
 {
 	struct tegra_ehci_hcd *tegra = container_of(work,
@@ -392,7 +392,7 @@ static int tegra_ehci_bus_suspend(struct usb_hcd *hcd)
 	int err = 0;
 	EHCI_DBG("%s() BEGIN\n", __func__);
 
-#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
+#if defined(CONFIG_TEGRA_BOOST_CPU) && defined(CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ)
 	pm_qos_update_request(&tegra->boost_cpu_freq_req,
 			PM_QOS_DEFAULT_VALUE);
 	tegra->cpu_boost_in_work = false;
@@ -417,7 +417,7 @@ static int tegra_ehci_bus_resume(struct usb_hcd *hcd)
 	int err = 0;
 	EHCI_DBG("%s() BEGIN\n", __func__);
 
-#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
+#if defined(CONFIG_TEGRA_BOOST_CPU) && defined(CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ)
 	pm_qos_update_request(&tegra->boost_cpu_freq_req,
 			(s32)CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ * 1000);
 	tegra->cpu_boost_in_work = false;
@@ -624,7 +624,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	}
 #endif
 
-#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
+#if defined(CONFIG_TEGRA_BOOST_CPU) && defined(CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ)
 	INIT_DELAYED_WORK(&tegra->boost_cpu_freq_work,
 					tegra_ehci_boost_cpu_frequency_work);
 	pm_qos_add_request(&tegra->boost_cpu_freq_req, PM_QOS_CPU_FREQ_MIN,
@@ -697,7 +697,7 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 	if (hcd == NULL)
 		return -EINVAL;
 
-#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
+#if defined(CONFIG_TEGRA_BOOST_CPU) && defined(CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ)
 	cancel_delayed_work(&tegra->boost_cpu_freq_work);
 	pm_qos_update_request(&tegra->boost_cpu_freq_req,
 				PM_QOS_DEFAULT_VALUE);
