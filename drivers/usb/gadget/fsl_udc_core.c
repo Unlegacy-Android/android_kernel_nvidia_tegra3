@@ -86,7 +86,7 @@ static struct usb_sys_interface *usb_sys_regs;
 /* it is initialized in probe()  */
 static struct fsl_udc *udc_controller = NULL;
 
-#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
+#if defined(CONFIG_TEGRA_BOOST_CPU) && defined(CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ)
 static struct pm_qos_request_list boost_cpu_freq_req;
 static u32 ep_queue_request_count;
 static u8 boost_cpufreq_work_flag;
@@ -268,7 +268,7 @@ static void done(struct fsl_ep *ep, struct fsl_req *req, int status)
 			req->req.actual, req->req.length);
 
 	ep->stopped = 1;
-#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
+#if defined(CONFIG_TEGRA_BOOST_CPU) && defined(CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ)
 	if (req->req.complete && req->req.length >= BOOST_TRIGGER_SIZE) {
 		ep_queue_request_count--;
 		if (!ep_queue_request_count)
@@ -1055,7 +1055,7 @@ fsl_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 			return -EMSGSIZE;
 		}
 	}
-#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
+#if defined(CONFIG_TEGRA_BOOST_CPU) && defined(CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ)
 	if (req->req.length >= BOOST_TRIGGER_SIZE) {
 		ep_queue_request_count++;
 		if (ep_queue_request_count && boost_cpufreq_work_flag)
@@ -2252,7 +2252,7 @@ static void fsl_udc_set_current_limit_work(struct work_struct* work)
 	}
 }
 
-#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
+#if defined(CONFIG_TEGRA_BOOST_CPU) && defined(CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ)
 static void fsl_udc_boost_cpu_frequency_work(struct work_struct* work)
 {
 	if (ep_queue_request_count && boost_cpufreq_work_flag) {
@@ -3090,14 +3090,14 @@ static int __init fsl_udc_probe(struct platform_device *pdev)
 		goto err_del_udc;
 
 	create_proc_file();
-#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
+#if defined(CONFIG_TEGRA_BOOST_CPU) && defined(CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ)
 	boost_cpufreq_work_flag = 1;
 	ep_queue_request_count = 0;
 #endif
 	/* create a delayed work for detecting the USB charger */
 	INIT_DELAYED_WORK(&udc_controller->work, fsl_udc_charger_detect_work);
 	INIT_WORK(&udc_controller->charger_work, fsl_udc_set_current_limit_work);
-#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
+#if defined(CONFIG_TEGRA_BOOST_CPU) && defined(CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ)
 	INIT_WORK(&udc_controller->boost_cpufreq_work, fsl_udc_boost_cpu_frequency_work);
 	pm_qos_add_request(&boost_cpu_freq_req, PM_QOS_CPU_FREQ_MIN, PM_QOS_DEFAULT_VALUE);
 #endif
@@ -3174,7 +3174,7 @@ static int __exit fsl_udc_remove(struct platform_device *pdev)
 	udc_controller->done = &done;
 
 	cancel_delayed_work(&udc_controller->work);
-#ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
+#if defined(CONFIG_TEGRA_BOOST_CPU) && defined(CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ)
 	cancel_work_sync(&udc_controller->boost_cpufreq_work);
 #endif
 	if (udc_controller->vbus_regulator)
