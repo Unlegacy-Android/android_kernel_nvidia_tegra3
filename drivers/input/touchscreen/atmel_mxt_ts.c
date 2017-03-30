@@ -2390,7 +2390,7 @@ static void mxt_start(struct mxt_data *data)
 
 	error = mxt_set_power_cfg(data, MXT_POWER_CFG_RUN);
 	if (error)
-		return;
+	        return;
 
 	/* At this point, it may be necessary to clear state
 	 * by disabling/re-enabling the noise suppression object */
@@ -2406,8 +2406,10 @@ static void mxt_start(struct mxt_data *data)
 static void mxt_stop(struct mxt_data *data)
 {
 	int error;
+	int retry = 0;
 	struct device *dev = &data->client->dev;
 
+reset_retry:
 	if (data->is_stopped)
 		return;
 
@@ -2415,6 +2417,11 @@ static void mxt_stop(struct mxt_data *data)
 
 	if (!error)
 		dev_dbg(dev, "MXT suspended\n");
+	else if (!retry) {
+	        mxt_soft_reset(data, MXT_RESET_VALUE);
+	        retry = 1;
+	        goto reset_retry;
+	}
 }
 
 static int mxt_input_open(struct input_dev *dev)
