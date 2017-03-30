@@ -2390,6 +2390,7 @@ static void mxt_start(struct mxt_data *data)
 
 	error = mxt_set_power_cfg(data, MXT_POWER_CFG_RUN);
 	if (error)
+	        mxt_soft_reset(data, MXT_RESET_VALUE);
 		return;
 
 	/* At this point, it may be necessary to clear state
@@ -2415,6 +2416,8 @@ static void mxt_stop(struct mxt_data *data)
 
 	if (!error)
 		dev_dbg(dev, "MXT suspended\n");
+	else
+	        mxt_soft_reset(data, MXT_RESET_VALUE);
 }
 
 static int mxt_input_open(struct input_dev *dev)
