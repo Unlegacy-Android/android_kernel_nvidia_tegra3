@@ -2406,8 +2406,10 @@ static void mxt_start(struct mxt_data *data)
 static void mxt_stop(struct mxt_data *data)
 {
 	int error;
+	int retry = 0;
 	struct device *dev = &data->client->dev;
 
+reset_retry:
 	if (data->is_stopped)
 		return;
 
@@ -2415,6 +2417,11 @@ static void mxt_stop(struct mxt_data *data)
 
 	if (!error)
 		dev_dbg(dev, "MXT suspended\n");
+	else if (!retry) {
+	        mxt_soft_reset(data, MXT_RESET_VALUE);
+	        retry = 1;
+	        goto reset_retry;
+	}
 }
 
 static int mxt_input_open(struct input_dev *dev)
