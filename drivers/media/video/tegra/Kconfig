@@ -210,3 +210,9 @@ config VIDEO_S5K5CAG
         depends on I2C && ARCH_TEGRA
         ---help---
           This is a driver for the S5K5CAG camera sensor
+
+config VIDEO_MT9M114_CL2N
+        tristate "MT9M114 camera sensor support (Lenovo A2109 variant)"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is the Lenovo A2109 variant for the MT9M114 camera sensor
