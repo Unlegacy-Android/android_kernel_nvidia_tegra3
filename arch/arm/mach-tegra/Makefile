@@ -272,6 +272,17 @@ obj-${CONFIG_MACH_TEGRA_ENTERPRISE}     += board-enterprise-baseband.o
 obj-${CONFIG_MACH_TEGRA_ENTERPRISE}     += board-enterprise-kbc.o
 obj-${CONFIG_MACH_TEGRA_ENTERPRISE}     += board-enterprise-sensors.o
 
+ifeq ($(CONFIG_MACH_CL2N),y)
+obj-${CONFIG_MACH_KAI}                  += board-cl2n.o
+obj-${CONFIG_MACH_KAI}                  += board-cl2n-kbc.o
+obj-${CONFIG_MACH_KAI}                  += board-cl2n-memory.o
+obj-${CONFIG_MACH_KAI}                  += board-cl2n-misc.o
+obj-${CONFIG_MACH_KAI}                  += board-cl2n-panel.o
+obj-${CONFIG_MACH_KAI}                  += board-cl2n-pinmux.o
+obj-${CONFIG_MACH_KAI}                  += board-cl2n-power.o
+obj-${CONFIG_MACH_KAI}                  += board-cl2n-sdhci.o
+obj-${CONFIG_MACH_KAI}                  += board-cl2n-sensors.o
+else
 obj-${CONFIG_MACH_KAI}                  += board-kai.o
 obj-${CONFIG_MACH_KAI}                  += board-kai-kbc.o
 obj-${CONFIG_MACH_KAI}                  += board-kai-memory.o
@@ -281,6 +292,7 @@ obj-${CONFIG_MACH_KAI}                  += board-kai-power.o
 obj-${CONFIG_MACH_KAI}                  += board-kai-sdhci.o
 obj-${CONFIG_MACH_KAI}                  += board-kai-sensors.o
 obj-${CONFIG_MACH_KAI}                  += board-touch-raydium_spi.o
+endif
 obj-${CONFIG_MACH_KAI}                  += eeprom-wifi-mac.o
 
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore.o
