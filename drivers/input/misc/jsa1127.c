@@ -25,6 +25,10 @@
 
 #include <linux/jsa1127.h>
 
+#ifdef CONFIG_MACH_CL2N
+#include <mach/board-cl2n-misc.h>
+#endif
+
 /* debug level */
 #define DEBUG_MASK 0
 #if DEBUG_MASK
@@ -56,9 +60,9 @@
 
 /* Kernel has no float point, it would convert it by this*/
 /* RINT = 100, specification page 12, lux/count = 1.67 */
-#define DEFAULT_RESOLUTION_R100K 	1670 //evt/dvt
-#define DEFAULT_RESOLUTION_R800K 	210 //dvt2
-#define BASE_VALUE 			1000
+#define DEFAULT_RESOLUTION_R100K	1670 //evt/dvt
+#define DEFAULT_RESOLUTION_R800K	210 //dvt2
+#define BASE_VALUE			1000
 #define INVALID_COUNT	0xFFFFFFFF
 
 /* jsa1127 driver data struct */
@@ -87,9 +91,9 @@ static struct jsa1127_drv_data jsa1127_data = {
 };
 
 /* CMD definition */
-#define CMD_SHUTDOWN_MODE 			0x8C
-#define CMD_ACTIVATE_MODE 			0x0C
-#define CMD_ACTIVATE_MODE_ONE_TIME 		0x04
+#define CMD_SHUTDOWN_MODE			0x8C
+#define CMD_ACTIVATE_MODE			0x0C
+#define CMD_ACTIVATE_MODE_ONE_TIME		0x04
 #define CMD_START_INTEGRATION_ONE_TIME		0x08
 #define CMD_STOP_INTEGRATION_ONE_TIME		0x30
 
@@ -326,11 +330,88 @@ static ssize_t sensor_enable_show(struct device *dev,
 	return snprintf(buf, sizeof(buf), "%d\n", jsa1127_data.enabled);
 }
 
+#ifdef CONFIG_MACH_CL2N
+static int cl2n_get_attribut(const char *filename,  unsigned char *buf)
+{
+	struct file *pfile = NULL;
+	struct inode *inode;
+	unsigned long magic;
+	off_t fsize;
+	loff_t pos;
+	mm_segment_t old_fs;
+	ssize_t			nread;
+
+	pfile = filp_open(filename, O_RDONLY, 0);
+
+	if (IS_ERR(pfile)) {
+		pr_err("[%s]error occured while opening file %s.\n", __FUNCTION__,filename);
+		return -EIO;
+	}
+
+	inode = pfile->f_dentry->d_inode;
+	magic = inode->i_sb->s_magic;
+	fsize = inode->i_size;
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+	pos = 0;
+	nread = vfs_read(pfile, buf, fsize, &pos);
+	filp_close(pfile, NULL);
+	set_fs(old_fs);
+	buf[nread-1] = '\0';
+
+	return 0;
+}
+#endif
+
 static ssize_t sensor_enable_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	int value = simple_strtoul(buf, NULL, 10);
 	unsigned long delay = delay_to_jiffies(jsa1127_data.delay);
+
+#ifdef CONFIG_MACH_CL2N
+	if(jsa1127_data.first_boot)
+	{
+		/* Check board ID*/
+		int cl2n_board_id = cl2n_get_board_strap();
+		printk("cl2n_board_id = %d\n", cl2n_board_id);
+
+		if(cl2n_board_id==CL2N_BOARD_VER_A00)//EVT
+		{
+			jsa1127_data.compensate_rate = 50;
+			jsa1127_data.resolution = DEFAULT_RESOLUTION_R100K ;
+			printk("(%s)Check board ID:EVT \n",__FUNCTION__);
+		}
+		else if(cl2n_board_id==CL2N_BOARD_VER_B00)//DVT1/DVT2
+		{
+			char buf[10];
+			cl2n_get_attribut("/sys/block/mmcblk0/device/name",buf);
+
+			if(!strcmp(buf,"SEM16G"))
+			{
+				//DVT1
+				jsa1127_data.compensate_rate = 50;
+				jsa1127_data.resolution = DEFAULT_RESOLUTION_R100K ;
+				printk("(%s)Check board ID:DVT1, %s \n",__FUNCTION__,buf);
+			}
+			else
+			{
+				//DVT2
+				jsa1127_data.compensate_rate = 40;
+				jsa1127_data.resolution = DEFAULT_RESOLUTION_R800K ;
+				printk("(%s)Check board ID:DVT2, %s \n",__FUNCTION__,buf);
+			}
+		}
+		else//PVT/MP
+		{
+			jsa1127_data.compensate_rate = 40;
+			jsa1127_data.resolution = DEFAULT_RESOLUTION_R800K ;
+			printk("(%s)Check board ID:PVT/MP \n",__FUNCTION__);
+		}
+
+		jsa1127_data.first_boot = 0;
+	}
+#endif
 
 	mutex_lock(&jsa1127_data.mutex);
 
@@ -405,35 +486,35 @@ static ssize_t sensor_test_store(struct device *dev,
 
   switch(value)
   {
-  	case 0:
+	case 0:
 				ret = jsa1127_cmd_send(CMD_ACTIVATE_MODE_ONE_TIME);
 				if (ret < 0)
 				{
 					printk("Send CMD activiate one time failed!");
 				}
-  		break;
-  	case 1:
+		break;
+	case 1:
 				ret = jsa1127_cmd_send(CMD_START_INTEGRATION_ONE_TIME);
 				if (ret < 0)
 				{
 					printk("Send CMD start command failed!");
 				}
-  		break;
-  	case 2:
+		break;
+	case 2:
 				ret = jsa1127_cmd_send(CMD_STOP_INTEGRATION_ONE_TIME);
 				if (ret < 0)
 				{
 					printk("Send CMD stop command failed!");
 				}
-  		break;
-  	case 3:
+		break;
+	case 3:
 				ret = jsa1127_cmd_send(CMD_SHUTDOWN_MODE);
 				if (ret < 0)
 				{
 					printk("Send CMD shutdown failed!");
 				}
-  		break;
-  	case 4:
+		break;
+	case 4:
 				lux = jsa1127_read_lux();
 				if (lux != INVALID_COUNT)
 				{
@@ -445,9 +526,9 @@ static ssize_t sensor_test_store(struct device *dev,
 					printk("Send CMD shutdown failed!");
 				}
 
-  		break;
-  	default:
-  		break;
+		break;
+	default:
+		break;
   }
 
 	return count;
