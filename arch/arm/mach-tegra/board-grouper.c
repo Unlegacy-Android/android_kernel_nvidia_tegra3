@@ -903,11 +903,11 @@ static void __init tegra_grouper_init(void)
 {
 	tegra_clk_init_from_table(grouper_clk_init_table);
 	tegra_enable_pinmux();
+	grouper_pinmux_init();
 	tegra_smmu_init();
 	tegra_soc_device_init("grouper");
 	grouper_misc_init();
 	grouper_misc_reset();
-	grouper_pinmux_init();
 	grouper_booting_info();
 	grouper_i2c_init();
 	grouper_spi_init();
