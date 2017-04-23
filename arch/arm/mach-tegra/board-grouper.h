@@ -67,6 +67,7 @@
 int __init grouper_charge_init(void);
 int __init grouper_sdhci_init(void);
 int __init grouper_pinmux_init(void);
+void __init grouper_pinmux_init_early(void);
 int __init grouper_panel_init(void);
 int __init grouper_sensors_init(void);
 int __init grouper_keys_init(void);

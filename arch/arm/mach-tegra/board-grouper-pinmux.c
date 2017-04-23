@@ -582,12 +582,7 @@ static void __init grouper_gpio_init_configure(void)
 
 int __init grouper_pinmux_init(void)
 {
-	tegra30_default_pinmux();
-
 	grouper_gpio_init_configure();
-
-	tegra_pinmux_config_table(grouper_pcbid_pinmux,
-					ARRAY_SIZE(grouper_pcbid_pinmux));
 
 	tegra_pinmux_config_table(grouper_pinmux_common, ARRAY_SIZE(grouper_pinmux_common));
 	tegra_drive_pinmux_config_table(grouper_drive_pinmux,
@@ -603,6 +598,13 @@ int __init grouper_pinmux_init(void)
 	grouper_pinmux_audio_init();
 
 	return 0;
+}
+
+void __init grouper_pinmux_init_early(void)
+{
+	tegra30_default_pinmux();
+	tegra_pinmux_config_table(grouper_pcbid_pinmux,
+			ARRAY_SIZE(grouper_pcbid_pinmux));
 }
 
 #define PIN_GPIO_LPM(_name, _gpio, _is_input, _value)	\
