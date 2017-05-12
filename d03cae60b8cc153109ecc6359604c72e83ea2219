@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "51d1d78e_306d99b2",
+        "filename": "sound/soc/tegra/tegra_aic326x.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 796,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-05-12T07:03:20Z",
+      "side": 0,
+      "message": "Don\u0027t remove this line to keep the commit as small as possible.",
+      "revId": "d03cae60b8cc153109ecc6359604c72e83ea2219",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c52d1037_6c848c67",
+        "filename": "sound/soc/tegra/tegra_aic326x.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1346,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-05-12T07:03:20Z",
+      "side": 0,
+      "message": "The same here",
+      "revId": "d03cae60b8cc153109ecc6359604c72e83ea2219",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}

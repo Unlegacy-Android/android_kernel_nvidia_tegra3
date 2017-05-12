@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "32e33c15_6dc21d24",
+        "filename": "sound/soc/codecs/base_main_Rate48_pps_driver_srs.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-05-12T07:03:20Z",
+      "side": 1,
+      "message": "Do some clean up on this file, it have a lot of white spaces... :P",
+      "revId": "5f4e9dca51a5b914abe80140294f974354931b0a",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a1d55bdc_9bdd4d2f",
+        "filename": "sound/soc/codecs/tlv320aic326x_cl2n.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 3372,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-05-12T07:03:20Z",
+      "side": 1,
+      "message": "ws",
+      "revId": "5f4e9dca51a5b914abe80140294f974354931b0a",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
