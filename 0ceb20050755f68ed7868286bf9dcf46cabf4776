@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c8720da1_9c5316eb",
+        "filename": "drivers/usb/gadget/tegra_udc.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1464,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-05-22T20:16:55Z",
+      "side": 1,
+      "message": "I really don\u0027t know if this mode\u003dcharger is passed by picasso and grouper bootloaders, we have to confirme this.",
+      "revId": "0ceb20050755f68ed7868286bf9dcf46cabf4776",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
