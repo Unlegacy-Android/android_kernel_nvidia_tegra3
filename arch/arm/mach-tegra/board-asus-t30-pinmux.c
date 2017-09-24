@@ -747,8 +747,17 @@ static __initdata struct tegra_pingroup_config pinmux_P1801[] = {
 
 static void __init cardhu_pinmux_audio_init(void)
 {
-	gpio_request(TEGRA_GPIO_CDC_IRQ, "wm8903");
-	gpio_direction_input(TEGRA_GPIO_CDC_IRQ);
+	int ret = gpio_request(TEGRA_GPIO_CDC_IRQ, "wm8903");
+	if (ret < 0)
+		pr_err("%s: error %d requesting gpio %d\n",
+			__func__, ret, TEGRA_GPIO_CDC_IRQ);
+
+	ret = gpio_direction_input(TEGRA_GPIO_CDC_IRQ);
+	if (ret < 0) {
+		pr_err("%s: error %d setting gpio %d to input\n",
+			__func__, ret, TEGRA_GPIO_CDC_IRQ);
+		gpio_free(TEGRA_GPIO_CDC_IRQ);
+	}
 }
 
 #define GPIO_INIT_PIN_MODE(_gpio, _is_input, _value)	\
