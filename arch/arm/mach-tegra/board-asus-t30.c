@@ -49,6 +49,7 @@
 #include <sound/wm8903.h>
 #include <sound/max98095.h>
 #include <media/tegra_dtv.h>
+#include <asm/hardware/gic.h>
 
 #include <mach/edp.h>
 #include <mach/clk.h>
@@ -72,6 +73,7 @@
 
 #include "board.h"
 #include "clock.h"
+#include "common.h"
 #include "board-asus-t30.h"
 #include "board-touch.h"
 #include "devices.h"
@@ -1814,13 +1816,16 @@ static const char *cardhu_dt_board_compat[] = {
 	NULL
 };
 
-MACHINE_START(CARDHU, "cardhu")
-	.boot_params    = 0x80000100,
+MACHINE_START(TRANSFORMER, "transformer")
+	.atag_offset    = 0x100,
+	.soc            = &tegra_soc_desc,
 	.map_io         = tegra_map_common_io,
 	.reserve        = tegra_cardhu_reserve,
-	.init_early	= tegra_init_early,
+	.init_early	= tegra30_init_early,
 	.init_irq       = tegra_init_irq,
+	.handle_irq     = gic_handle_irq,
 	.timer          = &tegra_timer,
 	.init_machine   = tegra_cardhu_init,
 	.dt_compat	= cardhu_dt_board_compat,
+	.restart        = tegra_assert_system_reset,
 MACHINE_END
