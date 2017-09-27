@@ -132,8 +132,6 @@ static noinline void __init cardhu_setup_bluesleep(void)
 	cardhu_bluesleep_device.resource[2].end = gpio_to_irq(TEGRA_GPIO_PU6);
         platform_device_register(&cardhu_bluesleep_device);
         bluesleep_setup_uart_port(&tegra_uartc_device);
-        tegra_gpio_enable(TEGRA_GPIO_PU6);
-        tegra_gpio_enable(TEGRA_GPIO_PU1);
         return;
 }
 #elif defined CONFIG_BLUEDROID_PM
