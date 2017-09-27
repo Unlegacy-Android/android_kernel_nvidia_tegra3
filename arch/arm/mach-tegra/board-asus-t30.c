@@ -1302,7 +1302,7 @@ void tegra_cardhu_usb_utmip_host_unregister(struct platform_device *pdev)
 struct platform_device *tegra_usb3_utmip_host_register(void)
 {
 	struct platform_device *pdev;
-	void *platform_data;
+//	void *platform_data;
 	int val;
 
 	pdev = platform_device_alloc(tegra_ehci3_device.name, tegra_ehci3_device.id);
@@ -1415,6 +1415,7 @@ static void cardhu_audio_init(void)
 	}
 }
 
+#if 0
 static struct baseband_power_platform_data tegra_baseband_power_data = {
 	.baseband_type = BASEBAND_XMM,
 	.modem = {
@@ -1452,7 +1453,7 @@ static struct platform_device tegra_baseband_power2_device = {
 		.platform_data = &tegra_baseband_power_data,
 	},
 };
-
+#endif
 
 static struct tegra_pci_platform_data cardhu_pci_platform_data = {
 	.port_status[0]	= 1,
@@ -1482,6 +1483,7 @@ static void cardhu_pci_init(void)
 	}
 }
 
+#if 0
 static void cardhu_modem_init(void)
 {
 	struct board_info board_info;
@@ -1560,8 +1562,8 @@ static void cardhu_modem_init(void)
 		tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
 		platform_device_register(&tegra_ehci2_device);
 	}
-
 }
+#endif
 
 #ifdef CONFIG_SATA_AHCI_TEGRA
 static void cardhu_sata_init(void)
@@ -1615,8 +1617,8 @@ static void __init tegra_cardhu_init(void)
 	cardhu_suspend_init();
 	cardhu_touch_init();
 	cardhu_audio_init();
-	if (project_info == TEGRA3_PROJECT_TF300TG)
-		cardhu_modem_init();
+//	if (project_info == TEGRA3_PROJECT_TF300TG)
+//		cardhu_modem_init();
 	cardhu_keys_init();
 	cardhu_panel_init();
 	cardhu_pmon_init();
