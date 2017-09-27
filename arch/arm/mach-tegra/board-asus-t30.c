@@ -1219,7 +1219,7 @@ static struct tegra_usb_otg_data tegra_otg_pdata = {
 };
 #endif
 
-struct platform_device *tegra_cardhu_usb_hsic_host_register(void)
+struct platform_device *tegra_cardhu_usb_hsic_host_register(struct platform_device *ehci_dev)
 {
 	struct platform_device *pdev;
 	int val;
@@ -1254,12 +1254,14 @@ error:
 	return NULL;
 }
 
-void tegra_cardhu_usb_hsic_host_unregister(struct platform_device *pdev)
+void tegra_cardhu_usb_hsic_host_unregister(struct platform_device **platdev)
 {
+    struct platform_device *pdev = *platdev;
+
 	platform_device_unregister(pdev);
 }
 
-struct platform_device *tegra_cardhu_usb_utmip_host_register(void)
+struct platform_device *tegra_cardhu_usb_utmip_host_register(struct platform_device *ehci_dev)
 {
 	struct platform_device *pdev;
 	int val;
@@ -1302,7 +1304,7 @@ void tegra_cardhu_usb_utmip_host_unregister(struct platform_device *pdev)
 struct platform_device *tegra_usb3_utmip_host_register(void)
 {
 	struct platform_device *pdev;
-	void *platform_data;
+//	void *platform_data;
 	int val;
 
 	pdev = platform_device_alloc(tegra_ehci3_device.name, tegra_ehci3_device.id);

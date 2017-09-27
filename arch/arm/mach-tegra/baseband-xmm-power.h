@@ -40,6 +40,10 @@ struct baseband_power_platform_data {
 	enum baseband_type baseband_type;
 	struct platform_device* (*hsic_register)(struct platform_device *);
 	void (*hsic_unregister)(struct platform_device **);
+#ifdef CONFIG_MACH_TRANSFORMER
+    struct platform_device* (*utmip_register)(struct platform_device *);
+	void (*utmip_unregister)(struct platform_device *);
+#endif
 	struct platform_device *ehci_device;
 	union {
 		struct {
@@ -64,6 +68,15 @@ struct baseband_power_platform_data {
 			int bb_sw_sel;
 			int sim_card_det;
 			int ipc_bb_rst_ind;
+			int ipc_bb_force_crash;
+#endif
+#ifdef CONFIG_MACH_TRANSFORMER
+			int bb_vbat;
+			int bb_rst_ind;
+			int bb_vbus;
+			int bb_sw_sel;
+			int bb_sim_cd;
+			int bb_sar_det;
 			int ipc_bb_force_crash;
 #endif
 			struct platform_device *hsic_device;

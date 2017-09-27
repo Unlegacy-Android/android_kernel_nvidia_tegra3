@@ -236,7 +236,7 @@ int cardhu_pm298_gpio_switch_regulator_init(void);
 int cardhu_pm298_regulator_init(void);
 int cardhu_pm299_gpio_switch_regulator_init(void);
 int cardhu_pm299_regulator_init(void);
-struct platform_device *tegra_cardhu_usb_utmip_host_register(void);
+struct platform_device *tegra_cardhu_usb_utmip_host_register(struct platform_device *ehci_dev);
 void tegra_cardhu_usb_utmip_host_unregister(struct platform_device *pdev);
 struct platform_device *tegra_usb3_utmip_host_register(void);
 void tegra_usb3_utmip_host_unregister(struct platform_device *pdev);

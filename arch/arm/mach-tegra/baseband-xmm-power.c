@@ -92,6 +92,11 @@ static struct gpio tegra_baseband_gpios[] = {
 	{ -1, GPIOF_IN,            "IPC_BB_RST_IND" },
 	{ -1, GPIOF_OUT_INIT_LOW,  "IPC_BB_FORCE_CRASH" },
 #endif
+#ifdef CONFIG_MACH_TRANSFORMER
+	{ -1, GPIOF_OUT_INIT_LOW,  "BB_VBAT" },
+	{ -1, GPIOF_IN,            "BB_RESET_IND" },
+	{ -1, GPIOF_OUT_INIT_LOW,  "IPC_BB_FORCE_CRASH" },
+#endif
 };
 
 static enum baseband_xmm_powerstate_t baseband_xmm_powerstate;
