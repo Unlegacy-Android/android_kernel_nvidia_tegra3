@@ -56,6 +56,7 @@ obj-$(CONFIG_WL127X_RFKILL)	+= wl127x-rfkill.o
 obj-$(CONFIG_SENSORS_AK8975)	+= akm8975.o
 obj-$(CONFIG_SENSORS_NCT1008)	+= nct1008.o
 obj-$(CONFIG_BCM4329_RFKILL)	+= bcm4329_rfkill.o
+obj-$(CONFIG_BCM4330_RFKILL)    += bcm4330_rfkill.o
 CFLAGS_tegra-cryptodev.o	 = -Werror
 obj-$(CONFIG_TEGRA_CRYPTO_DEV)	+= tegra-cryptodev.o
 obj-$(CONFIG_TEGRA_BB_SUPPORT)	+= tegra-baseband/
