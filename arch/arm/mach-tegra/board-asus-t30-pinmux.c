@@ -1039,6 +1039,7 @@ struct gpio_init_pin_info vddio_gmi_pins_pm269_e1506[] = {
 	PIN_GPIO_LPM("GMI_CS2",   TEGRA_GPIO_PK3, 1, 0),
 };
 
+#if 0       /* Unused */
 static struct gpio_init_pin_info cardhu_unused_gpio_pins_e1506[] = {
 	PIN_GPIO_LPM("LCD_D0",     TEGRA_GPIO_PE0,  0, 0),
 	PIN_GPIO_LPM("LCD_D1",     TEGRA_GPIO_PE1,  0, 0),
@@ -1078,6 +1079,7 @@ static struct gpio_init_pin_info cardhu_unused_gpio_pins_e1506[] = {
 	PIN_GPIO_LPM("LCD_SDOUT",   TEGRA_GPIO_PN5,  0, 0),
 	PIN_GPIO_LPM("LCD_SDIN",    TEGRA_GPIO_PZ2,  0, 0),
 };
+#endif
 
 static void set_unused_pin_gpio(struct gpio_init_pin_info *lpm_pin_info,
 		int list_count)

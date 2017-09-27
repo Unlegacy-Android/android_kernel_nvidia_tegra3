@@ -109,6 +109,7 @@ struct tegra_usb_dev_mode_data {
  * defines structure for platform dependent host parameters
  */
 struct tegra_usb_host_mode_data {
+	int enable_gpio;
 	int vbus_gpio;
 	bool hot_plug;
 	bool remote_wakeup_supported;
