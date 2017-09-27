@@ -26,7 +26,6 @@
 #include <linux/resource.h>
 #include <asm/mach-types.h>
 #include <linux/platform_device.h>
-#include <linux/earlysuspend.h>
 #include <linux/pwm_backlight.h>
 #include <asm/atomic.h>
 #include <linux/nvhost.h>
@@ -300,12 +299,12 @@ static struct platform_device cardhu_backlight_device = {
 	},
 };
 
-static int cardhu_panel_enable(void)
+static int cardhu_panel_enable(struct device *dev)
 {
 	//printk("Check cardhu_panel_enable \n");
 
 	if (cardhu_lvds_vdd_panel == NULL) {
-		cardhu_lvds_vdd_panel = regulator_get(NULL, "vdd_lcd_panel");
+		cardhu_lvds_vdd_panel = regulator_get(dev, "vdd_lcd_panel");
 		if (WARN_ON(IS_ERR(cardhu_lvds_vdd_panel)))
 			pr_err("%s: couldn't get regulator vdd_lcd_panel: %ld\n",
 				__func__, PTR_ERR(cardhu_lvds_vdd_panel));
@@ -317,7 +316,7 @@ static int cardhu_panel_enable(void)
 	return 0;
 }
 
-static int cardhu_panel_enable_tf700t(void)
+static int cardhu_panel_enable_tf700t(struct device *dev)
 {
 	int ret;
 	//printk("Check cardhu_panel_enable_tf700t \n");
@@ -325,7 +324,7 @@ static int cardhu_panel_enable_tf700t(void)
 	if (gpio_get_value(TEGRA_GPIO_PI6)==0){	//Panel is Panasonic
 		//printk("Check panel is panasonic \n");
 		if (cardhu_lvds_vdd_bl == NULL) {
-			cardhu_lvds_vdd_bl = regulator_get(NULL, "vdd_backlight");
+			cardhu_lvds_vdd_bl = regulator_get(dev, "vdd_backlight");
 			if (WARN_ON(IS_ERR(cardhu_lvds_vdd_bl)))
 				pr_err("%s: couldn't get regulator vdd_backlight: %ld\n",
 						__func__, PTR_ERR(cardhu_lvds_vdd_bl));
@@ -353,7 +352,7 @@ static int cardhu_panel_enable_tf700t(void)
 	mdelay(5);
 
 	if (cardhu_lvds_reg == NULL) {
-		cardhu_lvds_reg = regulator_get(NULL, "vdd_lvds");
+		cardhu_lvds_reg = regulator_get(dev, "vdd_lvds");
 		if (WARN_ON(IS_ERR(cardhu_lvds_reg)))
 			pr_err("%s: couldn't get regulator vdd_lvds: %ld\n",
 					__func__, PTR_ERR(cardhu_lvds_reg));
@@ -362,7 +361,7 @@ static int cardhu_panel_enable_tf700t(void)
 	}
 
 	if (cardhu_lvds_vdd_panel == NULL) {
-		cardhu_lvds_vdd_panel = regulator_get(NULL, "vdd_lcd_panel");
+		cardhu_lvds_vdd_panel = regulator_get(dev, "vdd_lcd_panel");
 		if (WARN_ON(IS_ERR(cardhu_lvds_vdd_panel)))
 			pr_err("%s: couldn't get regulator vdd_lcd_panel: %ld\n",
 					__func__, PTR_ERR(cardhu_lvds_vdd_panel));
@@ -538,11 +537,11 @@ static int cardhu_panel_prepoweroff(void)
 }
 
 #ifdef CONFIG_TEGRA_DC
-static int cardhu_hdmi_vddio_enable(void)
+static int cardhu_hdmi_vddio_enable(struct device *dev)
 {
 	int ret;
 	if (!cardhu_hdmi_vddio) {
-		cardhu_hdmi_vddio = regulator_get(NULL, "vdd_hdmi_con");
+		cardhu_hdmi_vddio = regulator_get(dev, "vdd_hdmi_con");
 		if (IS_ERR_OR_NULL(cardhu_hdmi_vddio)) {
 			ret = PTR_ERR(cardhu_hdmi_vddio);
 			pr_err("hdmi: couldn't get regulator vdd_hdmi_con\n");
@@ -570,11 +569,11 @@ static int cardhu_hdmi_vddio_disable(void)
 	return 0;
 }
 
-static int cardhu_hdmi_enable(void)
+static int cardhu_hdmi_enable(struct device *dev)
 {
 	int ret;
 	if (!cardhu_hdmi_reg) {
-		cardhu_hdmi_reg = regulator_get(NULL, "avdd_hdmi");
+		cardhu_hdmi_reg = regulator_get(dev, "avdd_hdmi");
 		if (IS_ERR_OR_NULL(cardhu_hdmi_reg)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
 			cardhu_hdmi_reg = NULL;
@@ -587,7 +586,7 @@ static int cardhu_hdmi_enable(void)
 		return ret;
 	}
 	if (!cardhu_hdmi_pll) {
-		cardhu_hdmi_pll = regulator_get(NULL, "avdd_hdmi_pll");
+		cardhu_hdmi_pll = regulator_get(dev, "avdd_hdmi_pll");
 		if (IS_ERR_OR_NULL(cardhu_hdmi_pll)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
 			cardhu_hdmi_pll = NULL;
@@ -843,17 +842,6 @@ static struct tegra_dc_sd_settings cardhu_sd_settings = {
 	.bin_width = -1,
 	.aggressiveness = 1,
 	.phase_in_adjustments = true,
-#ifdef CONFIG_TEGRA_SD_GEN2
-	.k_limit_enable = true,
-	.k_limit = 180,
-	.sd_window_enable = false,
-	.soft_clipping_enable = true,
-	/* Low soft clipping threshold to compensate for aggressive k_limit */
-	.soft_clipping_threshold = 128,
-	.smooth_k_enable = true,
-	.smooth_k_incr = 4,
-#endif
-
 	.use_vid_luma = false,
 	/* Default video coefficients */
 	.coeff = {5, 9, 2},
@@ -936,7 +924,7 @@ static struct tegra_dc_sd_settings cardhu_sd_settings = {
 			},
 		},
 	.sd_brightness = &sd_brightness,
-	.bl_device = &cardhu_backlight_device,
+	.bl_device_name = "pwm-backlight",
 };
 
 #ifdef CONFIG_TEGRA_DC
@@ -1008,12 +996,12 @@ static struct tegra_dc_platform_data cardhu_disp2_pdata = {
 };
 #endif
 
-static int cardhu_dsi_panel_enable(void)
+static int cardhu_dsi_panel_enable(struct device *dev)
 {
 	int ret;
 
 	if (cardhu_dsi_reg == NULL) {
-		cardhu_dsi_reg = regulator_get(NULL, "avdd_dsi_csi");
+		cardhu_dsi_reg = regulator_get(dev, "avdd_dsi_csi");
 		if (IS_ERR_OR_NULL(cardhu_dsi_reg)) {
 			pr_err("dsi: Could not get regulator avdd_dsi_csi\n");
 			cardhu_dsi_reg = NULL;
@@ -1386,7 +1374,7 @@ static struct tegra_dc_platform_data cardhu_disp1_pdata = {
 	.emc_clk_rate	= 300000000,
 };
 
-static struct nvhost_device cardhu_disp1_device = {
+static struct platform_device cardhu_disp1_device = {
 	.name		= "tegradc",
 	.id		= 0,
 	.resource	= cardhu_disp1_resources,
@@ -1401,7 +1389,7 @@ static int cardhu_disp1_check_fb(struct device *dev, struct fb_info *info)
 	return info->device == &cardhu_disp1_device.dev;
 }
 
-static struct nvhost_device cardhu_disp2_device = {
+static struct platform_device cardhu_disp2_device = {
 	.name		= "tegradc",
 	.id		= 1,
 	.resource	= cardhu_disp2_resources,
@@ -1508,38 +1496,6 @@ static struct platform_device *cardhu_gfx_devices[] __initdata = {
 	&cardhu_backlight_device,
 };
 
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-/* put early_suspend/late_resume handlers here for the display in order
- * to keep the code out of the display driver, keeping it closer to upstream
- */
-struct early_suspend cardhu_panel_early_suspender;
-
-static void cardhu_panel_early_suspend(struct early_suspend *h)
-{
-	/* power down LCD, add use a black screen for HDMI */
-	if (num_registered_fb > 0)
-		fb_blank(registered_fb[0], FB_BLANK_POWERDOWN);
-	if (num_registered_fb > 1)
-		fb_blank(registered_fb[1], FB_BLANK_NORMAL);
-
-#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_store_default_gov();
-	cpufreq_change_gov(cpufreq_conservative_gov);
-#endif
-}
-
-static void cardhu_panel_late_resume(struct early_suspend *h)
-{
-	unsigned i;
-#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_restore_default_gov();
-#endif
-	for (i = 0; i < num_registered_fb; i++)
-		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
-}
-#endif
-
 static void cardhu_panel_preinit(void)
 {
 	if (display_board_info.board_id == BOARD_DISPLAY_E1213)
@@ -1638,6 +1594,7 @@ int __init cardhu_panel_init(void)
 {
 	int err;
 	struct resource __maybe_unused *res;
+	struct platform_device *phost1x;
 
 	tegra_get_board_info(&board_info);
 	tegra_get_display_board_info(&display_board_info);
@@ -1796,24 +1753,17 @@ skip_lvds:
 	gpio_direction_input(e1506_lcd_te);
 #endif
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	cardhu_panel_early_suspender.suspend = cardhu_panel_early_suspend;
-	cardhu_panel_early_suspender.resume = cardhu_panel_late_resume;
-	cardhu_panel_early_suspender.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
-	register_early_suspend(&cardhu_panel_early_suspender);
-#endif
-
-#ifdef CONFIG_TEGRA_GRHOST
-	err = tegra3_register_host1x_devices();
-	if (err)
-		return err;
-#endif
-
 	err = platform_add_devices(cardhu_gfx_devices,
 				ARRAY_SIZE(cardhu_gfx_devices));
 
+#ifdef CONFIG_TEGRA_GRHOST
+	phost1x = tegra3_register_host1x_devices();
+	if (!phost1x)
+		return -EINVAL;
+#endif
+
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	res = nvhost_get_resource_byname(&cardhu_disp1_device,
+	res = platform_get_resource_byname(&cardhu_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
@@ -1824,12 +1774,14 @@ skip_lvds:
 				min(tegra_fb_size, tegra_bootloader_fb_size));
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	if (!err)
-		err = nvhost_device_register(&cardhu_disp1_device);
-
+	if (!err) {
+		cardhu_disp1_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&cardhu_disp1_device);
+	}
+	
 	if ( tegra3_get_project_id() != TEGRA3_PROJECT_P1801 ){
 
-		res = nvhost_get_resource_byname(&cardhu_disp2_device,
+		res = platform_get_resource_byname(&cardhu_disp2_device,
 						 IORESOURCE_MEM, "fbmem");
 		res->start = tegra_fb2_start;
 		res->end = tegra_fb2_start + tegra_fb2_size - 1;
@@ -1838,15 +1790,19 @@ skip_lvds:
 		tegra_move_framebuffer(tegra_fb2_start, tegra_bootloader_fb_start,
 					min(tegra_fb2_size, tegra_bootloader_fb_size));
 
-		if (!err)
-			err = nvhost_device_register(&cardhu_disp2_device);
+		if (!err) {
+		cardhu_disp2_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&cardhu_disp2_device);
+		}
 	}
 
 #endif
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_NVAVP)
-	if (!err)
-		err = nvhost_device_register(&nvavp_device);
+	if (!err) {
+		nvavp_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&nvavp_device);
+	}
 #endif
 	return err;
 }
