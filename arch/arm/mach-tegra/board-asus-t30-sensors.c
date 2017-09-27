@@ -60,7 +60,7 @@
 
 /* KIONIX KXT_9 Digital Tri-axis Accelerometer */
 //#include <plat/mux.h>
-#include <linux/kxt_9.h>
+//#include <linux/kxt_9.h>
 
 #ifdef CONFIG_VIDEO_SH532U
 #include <media/sh532u.h>
@@ -76,7 +76,7 @@
 #include "devices.h"
 
 #include <mach/board-asus-t30-misc.h>
-#include <linux/smb347-charger.h>
+//#include <linux/smb347-charger.h>
 
 #if 0 //WK: Disable NV's camera code
 static struct regulator *cardhu_1v8_cam1 = NULL;
@@ -88,6 +88,7 @@ static struct regulator *cardhu_vdd_cam3 = NULL;
 #endif
 
 static struct board_info board_info;
+#ifdef CONFIG_VIDEO_YUV
 static struct regulator *reg_cardhu_cam;	/* LDO6 */
 static struct regulator *reg_cardhu_1v8_cam;	/* VDDIO_CAM 1.8V PBB4 */
 static struct regulator *reg_cardhu_2v85_cam;	/* Front Camera 2.85V power */
@@ -96,6 +97,7 @@ static struct regulator *reg_cardhu_af_pwr_en;	/* ICATCH7002A_AF_PWR_EN_GPIO PS0
 static struct regulator *reg_cardhu_vdda_en;	/* ICATCH7002A_VDDA_EN_GPIO GPIO_PR6*/
 static struct regulator *reg_cardhu_vddio_cam;	/* LDO5 It's only for ME301T */
 static bool camera_busy = false;
+#endif /* CONFIG_VIDEO_YUV */
 
 #ifdef CONFIG_I2C_MUX_PCA954x
 static struct pca954x_platform_mode cardhu_pca954x_modes[] = {
@@ -1526,6 +1528,7 @@ static struct i2c_board_info __initdata inv_mpu6050_i2c2_board_info[] = {
 	},
 };
 
+#if 0       /* TODO: remove when KXTJ9 is ported */
 //CONFIG_SENSORS_KXTJ9
 static struct KXT_9_platform_data kxt_9_data = {
 	.min_interval	= 1,
@@ -1566,6 +1569,7 @@ static const struct i2c_board_info  kxt_9_i2c2_board_info[] = {
 		.platform_data = &kxt_9_data,
 	},
 };
+#endif
 
 /*Sensors orientation definition*/
 struct mpu_orientation_def{
@@ -1722,12 +1726,13 @@ static void mpuirq_init(void)
 		ARRAY_SIZE(inv_mpu_i2c2_board_info));
 }
 
-static const struct i2c_board_info cardhu_i2c1_board_info_al3010[] = {
+static struct i2c_board_info cardhu_i2c1_board_info_al3010[] = {
     {
         I2C_BOARD_INFO("al3010",0x1C),
     },
 };
 
+#if 0       /* TODO: remove when kxtj9 is ported */
 static void kxtj9_init(void)
 {
 	pr_info("*** kxtj9 START *** \n");
@@ -1746,12 +1751,13 @@ static void kxtj9_init(void)
 		gpio_free(KIONIX_ACCEL_IRQ_GPIO);
 		return;
 	}
-	
+
 	kxt_9_i2c2_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PO5);
 	i2c_register_board_info(KIONIX_ACCEL_BUS_NUM, kxt_9_i2c2_board_info,
 		ARRAY_SIZE(kxt_9_i2c2_board_info));
 	pr_info("*** kxtj9 END *** \n");
 }
+#endif
 
 int __init cardhu_sensors_init(void)
 {
@@ -1861,7 +1867,7 @@ int __init cardhu_sensors_init(void)
 	}
 	else if (project_info == TEGRA3_PROJECT_P1801)
 	{
-		kxtj9_init();
+//		kxtj9_init();
 	}
 	else
 	{
