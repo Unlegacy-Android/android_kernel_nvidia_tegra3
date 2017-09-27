@@ -36,6 +36,8 @@
 #define PMC_SCRATCH1		0x54
 #define PMC_SCRATCH4		0x60
 
+#define CPU_WAKE_FREQ_LOW	102000
+
 enum tegra_suspend_mode {
 	TEGRA_SUSPEND_NONE = 0,
 	TEGRA_SUSPEND_LP2,	/* CPU voltage off */
@@ -86,6 +88,8 @@ struct tegra_suspend_platform_data {
 #endif
 	bool usb_vbus_internal_wake; /* support for internal vbus wake */
 	bool usb_id_internal_wake; /* support for internal id wake */
+
+    int cpu_wake_freq;
 };
 
 /* clears io dpd settings before kernel code */

@@ -301,6 +301,8 @@ static struct i2c_board_info __initdata rt5642_board_info = {
 	I2C_BOARD_INFO("rt5640", 0x1c),
 };
 
+
+#if 0
 /* Equalizer filter coefs generated from the MAXIM MAX98095
  * evkit software tool */
 static struct max98095_eq_cfg max98095_eq_cfg[] = {
@@ -405,6 +407,8 @@ static struct i2c_board_info __initdata cardhu_codec_max98095_info = {
 	I2C_BOARD_INFO("max98095", 0x10),
 	.platform_data = &cardhu_max98095_pdata,
 };
+#endif
+
 
 static struct i2c_board_info __initdata cardhu_i2c_asuspec_info[] = {
 	{
@@ -625,7 +629,7 @@ static void __init cardhu_uart_init(void)
 #endif
 
 	tegra_serial_debug_init(debug_uart_port_base, debug_uart_port_irq,
-				debug_uart_clk, -1, -1, false);
+				debug_uart_clk, -1, -1);
 
 	platform_add_devices(cardhu_uart_devices,
 				ARRAY_SIZE(cardhu_uart_devices));
@@ -751,6 +755,8 @@ static struct platform_device cardhu_audio_device = {
                 .platform_data = &cardhu_audio_wm8903_pdata,
         },
 };
+
+#if 0
 static struct tegra_asoc_platform_data cardhu_audio_max98095_pdata = {
 	.gpio_spkr_en		= -1,
 	.gpio_hp_det		= TEGRA_GPIO_HP_DET,
@@ -816,6 +822,7 @@ static struct platform_device cardhu_audio_aic326x_device = {
 		.platform_data  = &cardhu_audio_aic326x_pdata,
 	},
 };
+#endif
 
 static struct platform_device *cardhu_devices[] __initdata = {
 	&tegra_pmu_device,
@@ -923,7 +930,9 @@ static int __init cardhu_touch_init(void)
 {
 	struct board_info BoardInfo, DisplayBoardInfo;
     unsigned int project_id;
+#if defined(CONFIG_TOUCHSCREEN_ELAN_TF_3K)
 	struct elan_ktf3k_i2c_platform_data *platform;
+#endif
 
 	tegra_get_board_info(&BoardInfo);
 	tegra_get_display_board_info(&DisplayBoardInfo);
@@ -1406,8 +1415,6 @@ static void cardhu_usb_init(void) { }
 
 static void cardhu_audio_init(void)
 {
-	struct board_info board_info;
-
 	unsigned int project_id = tegra3_get_project_id();
 
 	if (project_id == TEGRA3_PROJECT_ME301T) {
