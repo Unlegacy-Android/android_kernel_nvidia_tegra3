@@ -68,7 +68,7 @@
 #include <linux/bq27x00.h>
 #include <mach/gpio.h>
 #include <mach/edp.h>
-#include <mach/thermal.h>
+#include "devices.h"
 #include <linux/therm_est.h>
 
 #include "gpio-names.h"
@@ -1165,100 +1165,63 @@ static struct i2c_board_info cardhu_i2c8_board_info[] = {
 };
 #endif
 
-static int nct_get_temp(void *_data, long *temp)
+static struct throttle_table tj_throttle_table[] = {
+		  /* CPU_THROT_LOW cannot be used by other than CPU */
+		  /* NO_CAP cannot be used by CPU */
+	      /*      CPU,    CBUS,    SCLK,     EMC */
+	      { { 1000000,  NO_CAP,  NO_CAP,  NO_CAP } },
+	      { {  760000,  NO_CAP,  NO_CAP,  NO_CAP } },
+	      { {  760000,  NO_CAP,  NO_CAP,  NO_CAP } },
+	      { {  620000,  NO_CAP,  NO_CAP,  NO_CAP } },
+	      { {  620000,  NO_CAP,  NO_CAP,  NO_CAP } },
+	      { {  620000,  437000,  NO_CAP,  NO_CAP } },
+	      { {  620000,  352000,  NO_CAP,  NO_CAP } },
+	      { {  475000,  352000,  NO_CAP,  NO_CAP } },
+	      { {  475000,  352000,  NO_CAP,  NO_CAP } },
+	      { {  475000,  352000,  250000,  375000 } },
+	      { {  475000,  352000,  250000,  375000 } },
+	      { {  475000,  247000,  204000,  375000 } },
+	      { {  475000,  247000,  204000,  204000 } },
+	      { {  475000,  247000,  204000,  204000 } },
+	{ { CPU_THROT_LOW,  247000,  204000,  102000 } },
+};
+
+static struct balanced_throttle tj_throttle = {
+	.throt_tab_size = ARRAY_SIZE(tj_throttle_table),
+	.throt_tab = tj_throttle_table,
+};
+
+static int __init cardhu_throttle_init(void)
 {
-	struct nct1008_data *data = _data;
-	return nct1008_thermal_get_temp(data, temp);
-}
-
-static int nct_get_temp_low(void *_data, long *temp)
-{
-	struct nct1008_data *data = _data;
-	return nct1008_thermal_get_temp_low(data, temp);
-}
-
-static int nct_set_limits(void *_data,
-			long lo_limit_milli,
-			long hi_limit_milli)
-{
-	struct nct1008_data *data = _data;
-	return nct1008_thermal_set_limits(data,
-					lo_limit_milli,
-					hi_limit_milli);
-}
-
-static int nct_set_alert(void *_data,
-				void (*alert_func)(void *),
-				void *alert_data)
-{
-	struct nct1008_data *data = _data;
-	return nct1008_thermal_set_alert(data, alert_func, alert_data);
-}
-
-static int nct_set_shutdown_temp(void *_data, long shutdown_temp)
-{
-	struct nct1008_data *data = _data;
-	return nct1008_thermal_set_shutdown_temp(data, shutdown_temp);
-}
-
-#ifdef CONFIG_TEGRA_SKIN_THROTTLE
-static int nct_get_itemp(void *dev_data, long *temp)
-{
-	struct nct1008_data *data = dev_data;
-	return nct1008_thermal_get_temps(data, NULL, temp);
-}
-#endif
-
-static void nct1008_probe_callback(struct nct1008_data *data)
-{
-	struct tegra_thermal_device *ext_nct;
-
-	ext_nct = kzalloc(sizeof(struct tegra_thermal_device),
-					GFP_KERNEL);
-	if (!ext_nct) {
-		pr_err("unable to allocate thermal device\n");
-		return;
-	}
-
-	ext_nct->name = "nct_ext";
-	ext_nct->id = THERMAL_DEVICE_ID_NCT_EXT;
-	ext_nct->data = data;
-	ext_nct->offset = TDIODE_OFFSET;
-	ext_nct->get_temp = nct_get_temp;
-	ext_nct->get_temp_low = nct_get_temp_low;
-	ext_nct->set_limits = nct_set_limits;
-	ext_nct->set_alert = nct_set_alert;
-	ext_nct->set_shutdown_temp = nct_set_shutdown_temp;
-
-	tegra_thermal_device_register(ext_nct);
-
-#ifdef CONFIG_TEGRA_SKIN_THROTTLE
-	{
-		struct tegra_thermal_device *int_nct;
-		int_nct = kzalloc(sizeof(struct tegra_thermal_device),
-						GFP_KERNEL);
-		if (!int_nct) {
-			kfree(int_nct);
-			pr_err("unable to allocate thermal device\n");
-			return;
-		}
-
-		int_nct->name = "nct_int";
-		int_nct->id = THERMAL_DEVICE_ID_NCT_INT;
-		int_nct->data = data;
-		int_nct->get_temp = nct_get_itemp;
-
-		tegra_thermal_device_register(int_nct);
-	}
-#endif
-}
+	//if (machine_is_cardhu())
+		balanced_throttle_register(&tj_throttle, "tegra-balanced");
+		
+	return 0;
+  }
+module_init(cardhu_throttle_init);
 
 static struct nct1008_platform_data cardhu_nct1008_pdata = {
 	.supported_hwrev = true,
 	.ext_range = true,
 	.conv_rate = 0x08,
 	.offset = 8, /* 4 * 2C. Bug 844025 - 1C for device accuracies */
-	.probe_callback = nct1008_probe_callback,
+	.shutdown_ext_limit = 90,
+  	.shutdown_local_limit = 90,
+
+	.passive_delay = 2000,
+
+	.num_trips = 1,
+	.trips = {
+		/* Thermal Throttling */
+		[0] = {
+			.cdev_type = "tegra-balanced",
+			.trip_temp = 80000,
+			.trip_type = THERMAL_TRIP_PASSIVE,
+			.upper = THERMAL_NO_LIMIT,
+			.lower = THERMAL_NO_LIMIT,
+			.hysteresis = 0,
+		},
+	},
 };
 
 static struct i2c_board_info cardhu_i2c4_bq27510_board_info[] = {
@@ -1344,8 +1307,11 @@ static int cardhu_nct1008_init(void)
 	}
 
 	if (nct1008_port >= 0) {
-		/* FIXME: enable irq when throttling is supported */
-		cardhu_i2c4_nct1008_board_info[0].irq = TEGRA_GPIO_TO_IRQ(nct1008_port);
+		tegra_platform_edp_init(cardhu_nct1008_pdata.trips,
+								&cardhu_nct1008_pdata.num_trips,
+								0); /* edp temperature margin */
+		cardhu_i2c4_nct1008_board_info[0].irq =
+									gpio_to_irq(nct1008_port);
 
 		ret = gpio_request(nct1008_port, "temp_alert");
 		if (ret < 0)
@@ -1356,8 +1322,85 @@ static int cardhu_nct1008_init(void)
 			gpio_free(nct1008_port);
 	}
 
+	i2c_register_board_info(4, cardhu_i2c4_nct1008_board_info,
+			ARRAY_SIZE(cardhu_i2c4_nct1008_board_info));
+
 	return ret;
 }
+
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+static struct thermal_trip_info skin_trips[] = {
+	{
+		.cdev_type = "skin-balanced",
+		.trip_temp = 45000,
+		.trip_type = THERMAL_TRIP_PASSIVE,
+		.upper = THERMAL_NO_LIMIT,
+		.lower = THERMAL_NO_LIMIT,
+		.hysteresis = 0,
+	},
+};
+
+static struct therm_est_subdevice skin_devs[] = {
+	{
+		.dev_data = "nct_ext",
+		.coeffs = {
+			2, 1, 1, 1,
+			1, 1, 1, 1,
+			1, 1, 1, 0,
+			1, 1, 0, 0,
+			0, 0, -1, -7
+		},
+	},
+	{
+		.dev_data = "nct_int",
+		.coeffs = {
+			-11, -7, -5, -3,
+			-3, -2, -1, 0,
+			0, 0, 1, 1,
+			1, 2, 2, 3,
+			4, 6, 11, 18
+		},
+	},
+};
+
+static struct therm_est_data skin_data = {
+	.num_trips = ARRAY_SIZE(skin_trips),
+	.trips = skin_trips,
+	.toffset = 9793,
+	.polling_period = 1100,
+	.passive_delay = 30000,
+	.tc1 = 5,
+	.tc2 = 1,
+	.ndevs = ARRAY_SIZE(skin_devs),
+	.devs = skin_devs,
+};
+
+static struct balanced_throttle skin_throttle = {
+	.throt_tab_size = 10,
+	.throt_tab = {
+		{ 0, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 760000, 1000 },
+		{ 760000, 1050 },
+		{1000000, 1050 },
+		{1000000, 1100 },
+	},
+};
+
+static int __init cardhu_skin_init(void)
+{
+	balanced_throttle_register(&skin_throttle, "skin-balanced");
+	tegra_skin_therm_est_device.dev.platform_data = &skin_data;
+	platform_device_register(&tegra_skin_therm_est_device);
+
+	return 0;
+}
+late_initcall(cardhu_skin_init);
+#endif
 
 #if defined(CONFIG_GPIO_PCA953X)
 static struct pca953x_platform_data cardhu_pmu_tca6416_data = {
@@ -1812,9 +1855,6 @@ int __init cardhu_sensors_init(void)
 	err = cardhu_nct1008_init();
 	if (err)
 		return err;
-
-	i2c_register_board_info(4, cardhu_i2c4_nct1008_board_info,
-		ARRAY_SIZE(cardhu_i2c4_nct1008_board_info));
 
 	if ((project_info == TEGRA3_PROJECT_TF500T) ||
 		(project_info == TEGRA3_PROJECT_ME301T) ||
