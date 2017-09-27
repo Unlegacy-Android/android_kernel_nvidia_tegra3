@@ -379,6 +379,23 @@ config MACH_PICASSO
 	help
 	  Support for Acer Picasso M/MF Tablet
 
+comment "Asus Tegra Platform options"
+
+config ARCH_ASUS_T30
+	depends on ARCH_TEGRA_3x_SOC
+	bool "Asus T30 platform"
+
+comment "Asus board type"
+
+config MACH_TRANSFORMER
+	bool "TRANSFORMER"
+	depends on ARCH_ASUS_T30
+	depends on !MACH_CARDHU
+	select MACH_HAS_SND_SOC_TEGRA_RT5631 if SND_SOC
+	select MACH_HAS_SND_SOC_TEGRA_WM8903 if SND_SOC
+	help
+	  Support for Asus Transformer Tablets (TF201/TF300T/TF700T)
+
 choice
        prompt "Tegra platform type"
        default TEGRA_SILICON_PLATFORM
