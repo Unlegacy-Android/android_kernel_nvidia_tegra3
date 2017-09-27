@@ -333,9 +333,6 @@ extern struct tegra_uart_platform_data cardhu_irda_pdata;
 #define BB_GPIO_SAR_DET			TEGRA_GPIO_PR3  //SAR_DET#_3G
 #define BB_GPIO_SIM_DET			TEGRA_GPIO_PW3  //n_SIM_CD
 
-
-#define TDIODE_OFFSET	(10000)	/* in millicelsius */
-
 enum tegra_bb_type {
 	TEGRA_BB_TANGO = 1,
 };
