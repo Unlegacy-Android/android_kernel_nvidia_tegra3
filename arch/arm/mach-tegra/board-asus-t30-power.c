@@ -626,12 +626,14 @@ static struct regulator_consumer_supply fixed_reg_cam1_ldo_en_supply[] = {
 	REGULATOR_SUPPLY("vdd", "6-000e"),
 };
 
+#if 0       /* Unused */
 /* CAM2_LDO_EN from AP GPIO KB_ROW7 R07*/
 static struct regulator_consumer_supply fixed_reg_cam2_ldo_en_supply[] = {
 	REGULATOR_SUPPLY("vdd_2v8_cam2", NULL),
 	REGULATOR_SUPPLY("avdd", "7-0072"),
 	REGULATOR_SUPPLY("vdd", "7-000e"),
 };
+#endif
 
 /* CAM3_LDO_EN from AP GPIO KB_ROW8 S00*/
 static struct regulator_consumer_supply fixed_reg_cam3_ldo_en_supply[] = {
@@ -777,10 +779,11 @@ FIXED_REG(22, en_vbrtr,		en_vbrtr,	FIXED_SUPPLY(en_3v3_sys),	0,      0,      PMU
 FIXED_REG(4, en_vdd_bl_pm313,   en_vdd_bl,      NULL,				0,      0,      TEGRA_GPIO_PK3,		true,  1, 5000);
 FIXED_REG(6, en_vdd_pnl1_pm313, en_vdd_pnl1,    FIXED_SUPPLY(en_3v3_sys),	0,      0,      TEGRA_GPIO_PH3,		true,  1, 3300);
 
-
+#if 0       /* Unused */
 /****************** Open collector Load switches *******/
 /*Specific to pm269*/
 FIXED_REG_OD(17, en_vddio_vid_oc_pm269,	en_vddio_vid_oc,	FIXED_SUPPLY(dis_5v_switch),	0,      0,	TEGRA_GPIO_PP2,		true,	0, 5000, true);
+#endif
 
 /* Specific to pm311 */
 FIXED_REG_OD(15, en_usb1_vbus_oc_pm311,	en_usb1_vbus_oc,	FIXED_SUPPLY(dis_5v_switch), 	0,      0,      TEGRA_GPIO_PCC7,	true,	0, 5000, true);
