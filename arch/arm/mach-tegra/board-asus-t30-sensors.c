@@ -1681,7 +1681,6 @@ static void mpuirq_init(void)
 
 #if	MPU_ACCEL_IRQ_GPIO
 	/* ACCEL-IRQ assignment */
-	// tegra_gpio_enable(MPU_ACCEL_IRQ_GPIO);
 	ret = gpio_request(MPU_ACCEL_IRQ_GPIO, MPU_ACCEL_NAME);
 	if (ret < 0) {
 		pr_err("%s: gpio_request failed %d\n", __func__, ret);
@@ -1697,8 +1696,7 @@ static void mpuirq_init(void)
 #endif
 
 	/* MPU-IRQ assignment */
-    /*	tegra_gpio_enable(MPU_GYRO_IRQ_GPIO);
-	ret = gpio_request(MPU_GYRO_IRQ_GPIO, MPU_GYRO_NAME);
+	/*ret = gpio_request(MPU_GYRO_IRQ_GPIO, MPU_GYRO_NAME);
 	if (ret < 0) {
 		pr_err("%s: gpio_request failed %d\n", __func__, ret);
 		return;
@@ -1736,7 +1734,6 @@ static void kxtj9_init(void)
 	int ret = 0;
 
 	/* ACCEL-IRQ assignment */
-	// tegra_gpio_enable(KIONIX_ACCEL_IRQ_GPIO);
 	ret = gpio_request(KIONIX_ACCEL_IRQ_GPIO, KIONIX_ACCEL_NAME);
 	if (ret < 0) {
 		pr_err("%s: gpio_request failed %d\n", __func__, ret);
