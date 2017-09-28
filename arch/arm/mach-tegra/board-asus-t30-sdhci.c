@@ -29,6 +29,8 @@
 #include <mach/iomap.h>
 #include <mach/sdhci.h>
 #include <mach/io_dpd.h>
+#include <mach/pinmux.h>
+#include <mach/pinmux-tegra30.h>
 
 #include "gpio-names.h"
 #include "board.h"
@@ -58,8 +60,6 @@ static struct wifi_platform_data cardhu_wifi_control = {
 static struct resource wifi_resource[] = {
 	[0] = {
 		.name	= "bcm4329_wlan_irq",
-		.start	= TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PO4),
-		.end	= TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PO4),
 		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL | IORESOURCE_IRQ_SHAREABLE,
 	},
 };
@@ -311,8 +311,11 @@ static int __init cardhu_wifi_init(void)
 
 	if (commchip_id == COMMCHIP_MARVELL_SD8797)
 		platform_device_register(&marvell_wifi_device);
-	else
+	else {
+		broadcom_wifi_device.resource[0].start = gpio_to_irq(TEGRA_GPIO_PO4);
+		broadcom_wifi_device.resource[0].end = gpio_to_irq(TEGRA_GPIO_PO4);
 		platform_device_register(&broadcom_wifi_device);
+	}
 
 	return 0;
 }
