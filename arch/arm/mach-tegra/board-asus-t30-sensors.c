@@ -66,9 +66,9 @@
 #include <media/sh532u.h>
 #endif
 #include <linux/bq27x00.h>
-#include <mach/gpio.h>
 #include <mach/edp.h>
 #include <linux/therm_est.h>
+#include <linux/gpio.h>
 
 #include "gpio-names.h"
 #include "board-asus-t30.h"
@@ -1487,21 +1487,14 @@ static struct ext_slave_platform_data mpu3050_compass_data = {
 static struct i2c_board_info __initdata inv_mpu_i2c2_board_info[] = {
 	{
 		I2C_BOARD_INFO(MPU3050_GYRO_NAME, MPU3050_GYRO_ADDR),
-		.irq = TEGRA_GPIO_TO_IRQ(MPU_GYRO_IRQ_GPIO),
 		.platform_data = &mpu3050_data,
 	},
 	{
 		I2C_BOARD_INFO(MPU_ACCEL_NAME, MPU_ACCEL_ADDR),
-#if	MPU_ACCEL_IRQ_GPIO
-		.irq = TEGRA_GPIO_TO_IRQ(MPU_ACCEL_IRQ_GPIO),
-#endif
 		.platform_data = &mpu3050_accel_data,
 	},
 	{
 		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
-#if	MPU_COMPASS_IRQ_GPIO
-		.irq = TEGRA_GPIO_TO_IRQ(MPU_COMPASS_IRQ_GPIO),
-#endif
 		.platform_data = &mpu3050_compass_data,
 	},
 };
@@ -1525,14 +1518,10 @@ static struct ext_slave_platform_data mpu6050_compass_data = {
 static struct i2c_board_info __initdata inv_mpu6050_i2c2_board_info[] = {
 	{
 		I2C_BOARD_INFO(MPU6050_GYRO_NAME, MPU6050_TF500T_GYRO_ADDR),
-		.irq = TEGRA_GPIO_TO_IRQ(MPU_GYRO_IRQ_GPIO),
 		.platform_data = &mpu6050_data,
 	},
 	{
 		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
-#if	0
-		.irq = TEGRA_GPIO_TO_IRQ(MPU_COMPASS_IRQ_GPIO),
-#endif
 		.platform_data = &mpu6050_compass_data,
 	},
 };
@@ -1574,7 +1563,6 @@ static struct KXT_9_platform_data kxt_9_data = {
 static const struct i2c_board_info  kxt_9_i2c2_board_info[] = {
 	{
 		I2C_BOARD_INFO(KIONIX_ACCEL_NAME, KIONIX_ACCEL_ADDR),
-		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PO5),
 		.platform_data = &kxt_9_data,
 	},
 };
@@ -1620,6 +1608,7 @@ static void mpuirq6050_init(void)
 
 	pr_info("*** MPU6050 END *** mpuirq_init...\n");
 
+	inv_mpu6050_i2c2_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
 	i2c_register_board_info(MPU_GYRO_BUS_NUM, inv_mpu6050_i2c2_board_info,
 		ARRAY_SIZE(inv_mpu6050_i2c2_board_info));
 }
@@ -1628,6 +1617,7 @@ static void mpuirq_init(void)
 {
 	u32 project_info;
 	int ret = 0;
+	int i = 0;
 	pr_info("*** MPU START *** cardhu_mpuirq_init...\n");
 
 	project_info = tegra3_get_project_id();
@@ -1722,6 +1712,14 @@ static void mpuirq_init(void)
 	}*/
 	pr_info("*** MPU END *** mpuirq_init...\n");
 
+	inv_mpu_i2c2_board_info[i++].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
+#if MPU_ACCEL_IRQ_GPIO
+	inv_mpu_i2c2_board_info[i].irq = gpio_to_irq(MPU_ACCEL_IRQ_GPIO);
+#endif
+	i++;
+#if MPU_COMPASS_IRQ_GPIO
+	inv_mpu_i2c2_board_info[i++].irq = gpio_to_irq(MPU_COMPASS_IRQ_GPIO);
+#endif
 	i2c_register_board_info(MPU_GYRO_BUS_NUM, inv_mpu_i2c2_board_info,
 		ARRAY_SIZE(inv_mpu_i2c2_board_info));
 }
@@ -1729,7 +1727,6 @@ static void mpuirq_init(void)
 static const struct i2c_board_info cardhu_i2c1_board_info_al3010[] = {
     {
         I2C_BOARD_INFO("al3010",0x1C),
-        .irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PZ2),
     },
 };
 
@@ -1752,6 +1749,8 @@ static void kxtj9_init(void)
 		gpio_free(KIONIX_ACCEL_IRQ_GPIO);
 		return;
 	}
+	
+	kxt_9_i2c2_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PO5);
 	i2c_register_board_info(KIONIX_ACCEL_BUS_NUM, kxt_9_i2c2_board_info,
 		ARRAY_SIZE(kxt_9_i2c2_board_info));
 	pr_info("*** kxtj9 END *** \n");
@@ -1769,6 +1768,7 @@ int __init cardhu_sensors_init(void)
 	cam_tca6416_init();
 
     if(tegra3_get_project_id() != TEGRA3_PROJECT_P1801){
+		cardhu_i2c1_board_info_al3010[0].irq = gpio_to_irq(TEGRA_GPIO_PZ2);
         i2c_register_board_info(2, cardhu_i2c1_board_info_al3010,
             ARRAY_SIZE(cardhu_i2c1_board_info_al3010));
 	}

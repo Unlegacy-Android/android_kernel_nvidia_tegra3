@@ -65,6 +65,7 @@
 #include <mach/board-asus-t30-misc.h>
 #include <mach/pci.h>
 #include <mach/tegra_fiq_debugger.h>
+#include <mach/gpio-tegra.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -114,9 +115,7 @@ static struct resource cardhu_bluesleep_resources[] = {
 	},
 	[2] = {
 		.name = "host_wake",
-			.start  = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6),
-			.end    = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6),
-			.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
+		.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
 	},
 };
 
@@ -130,6 +129,8 @@ static struct platform_device cardhu_bluesleep_device = {
 extern void bluesleep_setup_uart_port(struct platform_device *uart_dev);
 static noinline void __init cardhu_setup_bluesleep(void)
 {
+	cardhu_bluesleep_device.resource[2].start = gpio_to_irq(TEGRA_GPIO_PU6);
+	cardhu_bluesleep_device.resource[2].end = gpio_to_irq(TEGRA_GPIO_PU6);
         platform_device_register(&cardhu_bluesleep_device);
         bluesleep_setup_uart_port(&tegra_uartc_device);
         tegra_gpio_enable(TEGRA_GPIO_PU6);
@@ -171,9 +172,8 @@ static struct platform_device cardhu_bluedroid_pm_device = {
 
 static noinline void __init cardhu_setup_bluedroid_pm(void)
 {
-	cardhu_bluedroid_pm_resources[1].start =
-		cardhu_bluedroid_pm_resources[1].end =
-				gpio_to_irq(TEGRA_GPIO_PU6);
+	cardhu_bluedroid_pm_device.resources[1].start = gpio_to_irq(TEGRA_GPIO_PU6);
+	cardhu_bluedroid_pm_device.resources[1].end = gpio_to_irq(TEGRA_GPIO_PU6);
 	platform_device_register(&cardhu_bluedroid_pm_device);
 	return;
 }
@@ -397,18 +397,15 @@ static struct max98095_pdata cardhu_max98095_pdata = {
 
 static struct i2c_board_info __initdata cardhu_codec_wm8903_info = {
 	I2C_BOARD_INFO("wm8903", 0x1a),
-	.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_CDC_IRQ),
 	.platform_data = &cardhu_wm8903_pdata,
 };
 
 static struct i2c_board_info __initdata cardhu_codec_aic326x_info = {
 	I2C_BOARD_INFO("aic3262-codec", 0x18),
-	.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_CDC_IRQ),
 };
 
 static struct i2c_board_info __initdata cardhu_codec_max98095_info = {
 	I2C_BOARD_INFO("max98095", 0x10),
-	.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_CDC_IRQ),
 	.platform_data = &cardhu_max98095_pdata,
 };
 
@@ -461,8 +458,11 @@ static void cardhu_i2c_init(void)
 	platform_device_register(&tegra_i2c_device2);
 	platform_device_register(&tegra_i2c_device1);
 
+	//cardhu_codec_wm8903_info.irq = gpio_to_irq(TEGRA_GPIO_CDC_IRQ);
 	//i2c_register_board_info(4, &cardhu_codec_wm8903_info, 1);
+	//cardhu_codec_max98095_info.irq = gpio_to_irq(TEGRA_GPIO_CDC_IRQ);
 	//i2c_register_board_info(4, &cardhu_codec_max98095_info, 1);
+	//cardhu_codec_aic326x_info.irq = gpio_to_irq(TEGRA_GPIO_CDC_IRQ);
 	//i2c_register_board_info(4, &cardhu_codec_aic326x_info, 1);
 
 	switch(project_info){
@@ -981,6 +981,7 @@ static struct i2c_board_info __initdata e1506_atmel_i2c_info[] = {
 	}
 };
 #endif
+
 #if defined(CONFIG_TOUCHSCREEN_RM31080A)
 static __initdata struct tegra_clk_init_table spi_clk_init_table[] = {
 	/* name         parent          rate            enabled */
@@ -988,6 +989,7 @@ static __initdata struct tegra_clk_init_table spi_clk_init_table[] = {
 	{ NULL,         NULL,           0,              0},
 };
 #endif
+
 #define TOUCH_GPIO_IRQ_ATMEL_T9	TEGRA_GPIO_PH4
 #define TOUCH_BUS_ATMEL_T9	1
 #if defined (CONFIG_TOUCHSCREEN_ATMEL_MT_T9)
@@ -1016,7 +1018,6 @@ static struct mxt_platform_data atmel_mxt_info = {
 static struct i2c_board_info __initdata atmel_i2c_info[] = {
 	{
 		I2C_BOARD_INFO("maXTouch", MXT_I2C_ADDRESS),
-		.irq = TEGRA_GPIO_TO_IRQ(TOUCH_GPIO_IRQ_ATMEL_T9),
 		.platform_data = &atmel_mxt_info,
 	}
 };
@@ -1100,6 +1101,7 @@ static int __init cardhu_touch_init(void)
         switch(project_id){
 	    case TEGRA3_PROJECT_TF201:
 #if defined (CONFIG_TOUCHSCREEN_ATMEL_MT_T9)
+			atmel_i2c_info[0].irq = gpio_to_irq(TOUCH_GPIO_IRQ_ATMEL_T9);
 	        i2c_register_board_info(1, atmel_i2c_info, 1);
 #endif
 	        break;
