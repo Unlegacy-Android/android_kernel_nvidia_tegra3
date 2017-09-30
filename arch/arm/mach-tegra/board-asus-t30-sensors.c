@@ -68,12 +68,12 @@
 #include <linux/bq27x00.h>
 #include <mach/gpio.h>
 #include <mach/edp.h>
-#include "devices.h"
 #include <linux/therm_est.h>
 
 #include "gpio-names.h"
 #include "board-asus-t30.h"
 #include "cpu-tegra.h"
+#include "devices.h"
 
 #include <mach/board-asus-t30-misc.h>
 #include <linux/smb347-charger.h>

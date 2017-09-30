@@ -224,6 +224,7 @@ int cardhu_regulator_init(void);
 int cardhu_suspend_init(void);
 int cardhu_sdhci_init(void);
 int cardhu_pinmux_init(void);
+int cardhu_gpio_init(void);
 int cardhu_panel_init(void);
 int cardhu_sensors_init(void);
 int cardhu_keys_init(void);

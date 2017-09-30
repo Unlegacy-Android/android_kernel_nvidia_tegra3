@@ -49,7 +49,6 @@
 #include <sound/wm8903.h>
 #include <sound/max98095.h>
 #include <media/tegra_dtv.h>
-#include <media/tegra_camera.h>
 
 #include <mach/edp.h>
 #include <mach/clk.h>
@@ -635,28 +634,6 @@ static void __init cardhu_uart_init(void)
 				ARRAY_SIZE(cardhu_uart_devices));
 }
 
-static struct tegra_camera_platform_data tegra_camera_pdata = {
-	.limit_3d_emc_clk = false,
-};
-
-static struct platform_device tegra_camera = {
-	.name = "tegra_camera",
-	.dev = {
-		.platform_data = &tegra_camera_pdata,
-	},
-	.id = -1,
-};
-
-static void tegra_camera_init(void)
-{
-	/* For AP37 platform, limit 3d and emc freq when camera is ON */
-	if (TEGRA_REVISION_A03 == tegra_get_revision() &&
-		0xA0 == tegra_sku_id())
-		tegra_camera_pdata.limit_3d_emc_clk = true;
-	else
-		tegra_camera_pdata.limit_3d_emc_clk = false;
-}
-
 static struct platform_device *cardhu_spi_devices[] __initdata = {
 	&tegra_spi_device4,
 };
@@ -847,16 +824,10 @@ static struct platform_device *cardhu_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
 	&tegra_udc_device,
-#if defined(CONFIG_TEGRA_IOVMM_SMMU) ||  defined(CONFIG_TEGRA_IOMMU_SMMU)
-	&tegra_smmu_device,
-#endif
 	&tegra_wdt0_device,
-	&tegra_wdt1_device,
-	&tegra_wdt2_device,
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
-	&tegra_camera,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
 	&tegra_se_device,
 #endif
@@ -1778,8 +1749,11 @@ static void __init tegra_cardhu_init(void)
 	/* input chip uid for initialization of kernel misc module */
 	cardhu_misc_init(tegra_chip_uid());
 	tegra_clk_init_from_table(cardhu_clk_init_table);
+	tegra_enable_pinmux();
+	tegra_smmu_init();
 	tegra_soc_device_init("cardhu");
 	cardhu_pinmux_init();
+	cardhu_gpio_init();
 	cardhu_misc_reset();
 	tegra_booting_info();
 	cardhu_i2c_init();
@@ -1789,7 +1763,6 @@ static void __init tegra_cardhu_init(void)
 	cardhu_edp_init();
 #endif
 	cardhu_uart_init();
-	tegra_camera_init();
 	platform_add_devices(cardhu_devices, ARRAY_SIZE(cardhu_devices));
 	tegra_ram_console_debug_init();
 	tegra_io_dpd_init();
@@ -1820,6 +1793,7 @@ static void __init tegra_cardhu_init(void)
 		ME301T_HWid_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
+	tegra_register_fuse();
 #endif
 }
 
@@ -1831,7 +1805,6 @@ static void __init tegra_cardhu_reserve(void)
 #else
 	tegra_reserve(SZ_128M, SZ_8M, SZ_8M);
 #endif
-	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
 static const char *cardhu_dt_board_compat[] = {
