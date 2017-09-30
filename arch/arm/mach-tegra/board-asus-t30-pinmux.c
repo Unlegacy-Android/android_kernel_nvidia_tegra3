@@ -16,10 +16,14 @@
 
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/gpio.h>
 #include <mach/pinmux.h>
+#include <mach/pinmux-tegra30.h>
+#include <mach/gpio-tegra.h>
 #include <mach/board-asus-t30-misc.h>
 #include "board.h"
 #include "board-asus-t30.h"
+#include "devices.h"
 #include "gpio-names.h"
 
 #define DEFAULT_DRIVE(_name)					\
@@ -745,7 +749,7 @@ static __initdata struct tegra_pingroup_config pinmux_P1801[] = {
 	DEFAULT_PINMUX(KB_ROW8,         KBC,             NORMAL,   NORMAL,     OUTPUT),
 };
 
-static void __init cardhu_pinmux_audio_init(void)
+static void __init cardhu_audio_gpio_init(void)
 {
 	int ret = gpio_request(TEGRA_GPIO_CDC_IRQ, "wm8903");
 	if (ret < 0)
@@ -869,13 +873,26 @@ static void __init cardhu_gpio_init_configure(void)
 	}
 }
 
+int __init cardhu_gpio_init(void)
+{
+	cardhu_gpio_init_configure();
+
+/* Asus: TEGRA_GPIO_PW3 is used in TF300TG/TL for SIM detection */
+	if (tegra3_get_project_id() != TEGRA3_PROJECT_TF300TG &&
+			tegra3_get_project_id() != TEGRA3_PROJECT_TF300TL) {
+	cardhu_audio_gpio_init();
+	}
+	
+	return 0;
+}
+
 int __init cardhu_pinmux_init(void)
 {
 	struct board_info board_info;
 	struct board_info display_board_info;
 	u32 project_info = tegra3_get_project_id();
 
-	cardhu_gpio_init_configure();
+	tegra30_default_pinmux();
 
 	tegra_pinmux_config_table(cardhu_pinmux_common, ARRAY_SIZE(cardhu_pinmux_common));
 	tegra_drive_pinmux_config_table(cardhu_drive_pinmux,
@@ -972,12 +989,6 @@ int __init cardhu_pinmux_init(void)
 		tegra_pinmux_config_table(cardhu_pinmux_e118x,
 					ARRAY_SIZE(cardhu_pinmux_e118x));
 		break;
-	}
-
-	/* Asus: TEGRA_GPIO_PW3 is used in TF300TG/TL for SIM detection */
-	if (project_info != TEGRA3_PROJECT_TF300TG &&
-			project_info != TEGRA3_PROJECT_TF300TL) {
-		cardhu_pinmux_audio_init();
 	}
 
 	return 0;
