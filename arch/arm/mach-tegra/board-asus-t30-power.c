@@ -37,6 +37,9 @@
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
 #include <mach/edp.h>
+#include <mach/gpio-tegra.h>
+#include <mach/pinmux-tegra30.h>
+#include <mach/hardware.h>
 #include <mach/board-asus-t30-misc.h>
 
 #include "gpio-names.h"
@@ -1337,33 +1340,4 @@ void tegra_booting_info(void )
 		boot_reason=0;
 		printk("tegra_booting_info-normal\n");
 	}
-}
-
-int cpufreq_stats_platform_cpu_power_read_tables(int cpunum, u32 *out_values, size_t num)
-{
-	static const u32 powerVals[] = {100000, 107000, 116000, 123000, 135000, 138000, 142000, 148000, 150000, 153000, 156000, 160000, 163000, 166000, 170000};
-	static const u32 cpuWeights[4] = {16384, 6717, 7700, 8847};
-	int i, numVals = sizeof(powerVals) / sizeof(*powerVals), numCpus = sizeof(cpuWeights) / sizeof(*cpuWeights);
-
-	/*
-	 * Our data source (power_profile.xml) only gives us values for 1st core,
-	 * and not per core as requested, so we weigh these. With weights: 100%, 54%.
-    	 * This is the same thing as what hammerhead does (for 1st and last core), for
-	 * better or worse.
-	 */
-
-	if (num > numVals) {
-		pr_err("cpufreq_stats_platform_cpu_power_read_tables asked for too many values (wanted %u have %u)\n", (int)num, numVals);
-		return -1;
-	}
-
-	if (cpunum > numCpus) {
-		pr_err("cpufreq_stats_platform_cpu_power_read_tables asked for too many CPUs (wanted %u have %u)\n", cpunum, numCpus);
-		return -2;
-	}
-
-	for (i = 0; i < num; i++)
-		*out_values++ = powerVals[i] * cpuWeights[cpunum] >> 14;
-
-	return 0;
 }

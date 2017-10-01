@@ -32,7 +32,9 @@
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
+#include <mach/pinmux-tegra30.h>
 #include <mach/edp.h>
+#include <mach/gpio-tegra.h>
 
 #include "gpio-names.h"
 #include "board.h"
