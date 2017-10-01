@@ -749,6 +749,43 @@ static __initdata struct tegra_pingroup_config pinmux_P1801[] = {
 	DEFAULT_PINMUX(KB_ROW8,         KBC,             NORMAL,   NORMAL,     OUTPUT),
 };
 
+static __initdata struct tegra_pingroup_config cardhu_pcbid_pinmux[] = {
+	//PCB_ID0
+	DEFAULT_PINMUX(KB_ROW4, KBC, NORMAL, TRISTATE, INPUT),
+	//PCB_ID1
+	DEFAULT_PINMUX(KB_ROW5, KBC, NORMAL, TRISTATE, INPUT),
+	//PCB_ID2
+	DEFAULT_PINMUX(KB_COL4, KBC, NORMAL, TRISTATE, INPUT),
+	//PCB_ID3
+	DEFAULT_PINMUX(KB_COL7, KBC, NORMAL, TRISTATE, INPUT),
+	//PCB_ID4
+	DEFAULT_PINMUX(KB_ROW2, KBC, NORMAL, TRISTATE, INPUT),
+	//PCB_ID5
+	DEFAULT_PINMUX(KB_COL5, KBC, NORMAL, TRISTATE, INPUT),
+	//PCB_ID6
+	DEFAULT_PINMUX(GMI_CS0_N, RSVD1, NORMAL, TRISTATE, INPUT),
+	//PCB_ID7
+	DEFAULT_PINMUX(GMI_CS1_N, RSVD1, NORMAL, TRISTATE, INPUT),
+	//PCB_ID8
+	DEFAULT_PINMUX(GMI_WAIT, RSVD1, NORMAL, TRISTATE, INPUT),
+	//PCB_ID9
+	DEFAULT_PINMUX(GMI_WP_N, RSVD1, NORMAL, TRISTATE, INPUT),
+	//PCB_ID10
+	DEFAULT_PINMUX(GMI_A16, SPI4, NORMAL, TRISTATE, INPUT),
+	//PCB_ID11
+	DEFAULT_PINMUX(GMI_A17, SPI4, NORMAL, TRISTATE, INPUT),
+	//PCB_ID12
+	DEFAULT_PINMUX(KB_ROW7, KBC, NORMAL, TRISTATE, INPUT),
+	//PROJECT_ID0 (aka PCB_ID13)
+	DEFAULT_PINMUX(GMI_CS4_N, RSVD1, NORMAL, TRISTATE, INPUT),
+	//PROJECT_ID1 (aka PCB_ID14)
+	DEFAULT_PINMUX(GMI_CS6_N, GMI, NORMAL, TRISTATE, INPUT),
+	//PROJECT_ID2 (aka PCB_ID15)
+	DEFAULT_PINMUX(GMI_CS2_N, RSVD1, NORMAL, TRISTATE, INPUT),
+	//PROJECT_ID3 (aka PCB_ID16)
+	DEFAULT_PINMUX(GMI_CS3_N, RSVD1, NORMAL, TRISTATE, INPUT),
+};
+
 static void __init cardhu_audio_gpio_init(void)
 {
 	int ret = gpio_request(TEGRA_GPIO_CDC_IRQ, "wm8903");
@@ -892,8 +929,6 @@ int __init cardhu_pinmux_init(void)
 	struct board_info display_board_info;
 	u32 project_info = tegra3_get_project_id();
 
-	tegra30_default_pinmux();
-
 	tegra_pinmux_config_table(cardhu_pinmux_common, ARRAY_SIZE(cardhu_pinmux_common));
 	tegra_drive_pinmux_config_table(cardhu_drive_pinmux,
 					ARRAY_SIZE(cardhu_drive_pinmux));
@@ -992,6 +1027,13 @@ int __init cardhu_pinmux_init(void)
 	}
 
 	return 0;
+}
+
+void __init cardhu_pinmux_init_early(void)
+{
+	tegra30_default_pinmux();
+	tegra_pinmux_config_table(cardhu_pcbid_pinmux,
+			ARRAY_SIZE(cardhu_pcbid_pinmux));
 }
 
 #define PIN_GPIO_LPM(_name, _gpio, _is_input, _value)	\
