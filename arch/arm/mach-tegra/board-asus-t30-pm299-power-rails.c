@@ -68,7 +68,10 @@ static struct regulator_consumer_supply ricoh583_dc0_supply_0[] = {
 static struct regulator_consumer_supply ricoh583_dc2_supply_0[] = {
 	REGULATOR_SUPPLY("vdd_gen1v8", NULL),
 	REGULATOR_SUPPLY("avdd_hdmi_pll", NULL),
-	REGULATOR_SUPPLY("avdd_usb_pll", NULL),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("avdd_osc", NULL),
 	REGULATOR_SUPPLY("vddio_sys", NULL),
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.3"),
