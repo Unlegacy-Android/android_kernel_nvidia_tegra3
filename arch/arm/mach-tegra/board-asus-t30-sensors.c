@@ -1234,7 +1234,7 @@ static struct i2c_board_info cardhu_i2c4_bq27510_board_info[] = {
 
 static struct i2c_board_info cardhu_i2c4_bq27541_board_info[] = {
 	{
-		I2C_BOARD_INFO("bq27541-battery", 0x55),
+		I2C_BOARD_INFO("bq27541", 0x55),
 	},
 };
 
