@@ -1595,15 +1595,17 @@ static void ME301T_HWid_init(void)
         printk("%s: HW_ID[2:0] = (%d, %d, %d)\n", __func__, gpio_get_value(TEGRA_GPIO_PS5), \
                 gpio_get_value(TEGRA_GPIO_PQ6), gpio_get_value(TEGRA_GPIO_PQ1));
 }
+
 static void __init tegra_cardhu_init(void)
 {
         u32 project_info = tegra3_get_project_id();
 	/* input chip uid for initialization of kernel misc module */
-	cardhu_misc_init(tegra_chip_uid());
 	tegra_clk_init_from_table(cardhu_clk_init_table);
 	tegra_enable_pinmux();
 	tegra_smmu_init();
 	tegra_soc_device_init("cardhu");
+	cardhu_pinmux_init_early();
+	cardhu_misc_init(tegra_chip_uid());
 	cardhu_pinmux_init();
 	cardhu_gpio_init();
 	cardhu_misc_reset();
