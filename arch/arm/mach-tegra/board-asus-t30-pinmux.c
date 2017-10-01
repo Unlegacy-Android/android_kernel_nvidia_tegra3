@@ -897,6 +897,9 @@ static void __init cardhu_gpio_init_configure(void)
 			len = ARRAY_SIZE(init_gpio_mode_pm269_TF300TG);
 			pins_info = init_gpio_mode_pm269_TF300TG;
 			printk("TF300TG GPIOs set to low with PM269\n");
+		} else {
+			printk("%s: unknown project_info %u", __func__, project_info);
+			return;
 		}
 		break;
 	default:
