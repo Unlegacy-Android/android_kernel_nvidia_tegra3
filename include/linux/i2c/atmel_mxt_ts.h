@@ -21,6 +21,9 @@
 #define MXT1386_I2C_ADDR2       0x4D
 #define MXT1386_I2C_ADDR3       0x5A
 #define MXT1386_I2C_ADDR4       0x5B
+// additional for MXT768E
+#define	MXT768E_I2C_ADDR1		0x4C
+#define	MXT768E_I2C_ADDR2		0x4D
 
 /* Orient */
 #define MXT_NORMAL		0x0
