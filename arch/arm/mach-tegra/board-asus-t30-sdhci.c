@@ -303,9 +303,6 @@ static int __init cardhu_wifi_init(void)
 #ifdef CONFIG_TEGRA_PREPOWER_WIFI
 static int __init cardhu_wifi_prepower(void)
 {
-	if (!machine_is_cardhu())
-		return 0;
-
 	cardhu_wifi_power(1);
 
 	return 0;

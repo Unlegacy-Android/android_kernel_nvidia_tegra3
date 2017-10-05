@@ -1046,9 +1046,6 @@ int __init cardhu_fixed_regulator_init(void)
 	int    nfixreg_devs;
 	unsigned int project_id = tegra3_get_project_id();
 
-	if (!machine_is_cardhu())
-		return 0;
-
 	tegra_get_board_info(&board_info);
 	tegra_get_pmu_board_info(&pmu_board_info);
 	tegra_get_display_board_info(&display_board_info);
@@ -1310,9 +1307,6 @@ static struct platform_device cardhu_charger_device = {
 
 static int __init cardhu_charger_late_init(void)
 {
-	if (!machine_is_cardhu())
-		return 0;
-
 	platform_device_register(&cardhu_charger_device);
 	return 0;
 }

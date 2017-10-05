@@ -1195,11 +1195,10 @@ static struct balanced_throttle tj_throttle = {
 
 static int __init cardhu_throttle_init(void)
 {
-	//if (machine_is_cardhu())
-		balanced_throttle_register(&tj_throttle, "tegra-balanced");
-		
+	balanced_throttle_register(&tj_throttle, "tegra-balanced");
+
 	return 0;
-  }
+}
 module_init(cardhu_throttle_init);
 
 static struct nct1008_platform_data cardhu_nct1008_pdata = {
@@ -1913,9 +1912,6 @@ int __init cardhu_ov5650_late_init(void)
 {
 	int ret;
 	int i;
-
-	if (!machine_is_cardhu())
-		return 0;
 
 	if ((board_info.board_id == BOARD_E1198) ||
 		(board_info.board_id == BOARD_E1291))
