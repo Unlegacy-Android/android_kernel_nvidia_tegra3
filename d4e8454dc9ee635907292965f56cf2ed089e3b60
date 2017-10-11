@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "344ad82e_8e9e49ad",
+        "filename": "arch/arm/mach-tegra/board-asus-t30.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1608,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T15:32:39Z",
+      "side": 1,
+      "message": "tab",
+      "range": {
+        "startLine": 1608,
+        "startChar": 0,
+        "endLine": 1608,
+        "endChar": 4
+      },
+      "revId": "d4e8454dc9ee635907292965f56cf2ed089e3b60",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
