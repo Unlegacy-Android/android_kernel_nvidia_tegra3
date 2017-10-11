@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1e1fc50b_0223bcd4",
+        "filename": "arch/arm/mach-tegra/board-asus-t30-sensors.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1754,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T17:51:21Z",
+      "side": 1,
+      "message": "trailing tab",
+      "range": {
+        "startLine": 1754,
+        "startChar": 0,
+        "endLine": 1754,
+        "endChar": 1
+      },
+      "revId": "65eabfa87847308ee4cc24dae988c91f08203548",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8084979c_e413ee9c",
+        "filename": "arch/arm/mach-tegra/board-asus-t30.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 940,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T17:51:21Z",
+      "side": 1,
+      "message": "space",
+      "range": {
+        "startLine": 940,
+        "startChar": 0,
+        "endLine": 940,
+        "endChar": 1
+      },
+      "revId": "65eabfa87847308ee4cc24dae988c91f08203548",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0e830042_3cbc75d4",
+        "filename": "arch/arm/mach-tegra/include/mach/dc.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 678,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T17:51:21Z",
+      "side": 1,
+      "message": "Why do you need this?",
+      "range": {
+        "startLine": 675,
+        "startChar": 0,
+        "endLine": 678,
+        "endChar": 46
+      },
+      "revId": "65eabfa87847308ee4cc24dae988c91f08203548",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "82b648ed_259685ef",
+        "filename": "arch/arm/mach-tegra/pm.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T17:51:21Z",
+      "side": 1,
+      "message": "Why do you need this?",
+      "range": {
+        "startLine": 39,
+        "startChar": 0,
+        "endLine": 39,
+        "endChar": 32
+      },
+      "revId": "65eabfa87847308ee4cc24dae988c91f08203548",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "14cc04c7_c82b2b49",
+        "filename": "arch/arm/mach-tegra/pm.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T17:51:21Z",
+      "side": 1,
+      "message": "Why do you need this?",
+      "range": {
+        "startLine": 92,
+        "startChar": 0,
+        "endLine": 92,
+        "endChar": 22
+      },
+      "revId": "65eabfa87847308ee4cc24dae988c91f08203548",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "39267925_c07a6f51",
+        "filename": "include/linux/platform_data/tegra_usb.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T17:51:21Z",
+      "side": 1,
+      "message": "Two things:\n* Why do you need this;\n* If you really need it, a tab is missing.",
+      "range": {
+        "startLine": 112,
+        "startChar": 0,
+        "endLine": 112,
+        "endChar": 20
+      },
+      "revId": "65eabfa87847308ee4cc24dae988c91f08203548",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
