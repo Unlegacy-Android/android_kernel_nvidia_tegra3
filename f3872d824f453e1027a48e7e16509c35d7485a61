@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "43fca2b4_629cf49b",
+        "filename": "arch/arm/mach-tegra/Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 406,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T14:41:59Z",
+      "side": 1,
+      "message": "What happened here 😂",
+      "range": {
+        "startLine": 406,
+        "startChar": 52,
+        "endLine": 406,
+        "endChar": 53
+      },
+      "revId": "f3872d824f453e1027a48e7e16509c35d7485a61",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": true
+    }
+  ]
+}
