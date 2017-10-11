@@ -137,6 +137,30 @@
       "revId": "65eabfa87847308ee4cc24dae988c91f08203548",
       "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c3b84869_927c9e60",
+        "filename": "include/linux/platform_data/tegra_usb.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T20:37:11Z",
+      "side": 1,
+      "message": "Still dint know why you need this...",
+      "parentUuid": "39267925_c07a6f51",
+      "range": {
+        "startLine": 112,
+        "startChar": 0,
+        "endLine": 112,
+        "endChar": 20
+      },
+      "revId": "65eabfa87847308ee4cc24dae988c91f08203548",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
     }
   ]
 }
