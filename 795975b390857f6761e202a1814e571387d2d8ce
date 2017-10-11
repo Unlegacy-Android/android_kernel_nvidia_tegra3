@@ -1,0 +1,211 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4f451ad0_c9a74164",
+        "filename": "arch/arm/mach-tegra/baseband-xmm-power.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T18:18:42Z",
+      "side": 1,
+      "message": "#ifdef CONFIG_MACH_GROUPER || CONFIG_MACH_TRANSFORMER",
+      "range": {
+        "startLine": 90,
+        "startChar": 0,
+        "endLine": 90,
+        "endChar": 26
+      },
+      "revId": "795975b390857f6761e202a1814e571387d2d8ce",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ea3a68fa_f8b5e0b3",
+        "filename": "arch/arm/mach-tegra/baseband-xmm-power.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T18:18:42Z",
+      "side": 1,
+      "message": "Remove this for now, lets try to use grouper xmm implementation",
+      "range": {
+        "startLine": 95,
+        "startChar": 0,
+        "endLine": 99,
+        "endChar": 6
+      },
+      "revId": "795975b390857f6761e202a1814e571387d2d8ce",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4de271fc_1e860334",
+        "filename": "arch/arm/mach-tegra/baseband-xmm-power.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T18:18:42Z",
+      "side": 1,
+      "message": "remove this for now",
+      "range": {
+        "startLine": 43,
+        "startChar": 0,
+        "endLine": 46,
+        "endChar": 6
+      },
+      "revId": "795975b390857f6761e202a1814e571387d2d8ce",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dd643b52_a37a7d2b",
+        "filename": "arch/arm/mach-tegra/baseband-xmm-power.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T18:18:42Z",
+      "side": 1,
+      "message": "|| CONFIG_MACH_TRANSFORMER",
+      "range": {
+        "startLine": 65,
+        "startChar": 0,
+        "endLine": 65,
+        "endChar": 26
+      },
+      "revId": "795975b390857f6761e202a1814e571387d2d8ce",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "361cf75d_7cf7f562",
+        "filename": "arch/arm/mach-tegra/baseband-xmm-power.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T18:18:42Z",
+      "side": 1,
+      "message": "remove it for now",
+      "range": {
+        "startLine": 73,
+        "startChar": 0,
+        "endLine": 81,
+        "endChar": 6
+      },
+      "revId": "795975b390857f6761e202a1814e571387d2d8ce",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d6961760_cf7f05a0",
+        "filename": "arch/arm/mach-tegra/board-asus-t30.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1222,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T18:18:42Z",
+      "side": 1,
+      "message": "as well return to original void",
+      "range": {
+        "startLine": 1222,
+        "startChar": 60,
+        "endLine": 1222,
+        "endChar": 92
+      },
+      "revId": "795975b390857f6761e202a1814e571387d2d8ce",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bb36d766_7eb5f803",
+        "filename": "arch/arm/mach-tegra/board-asus-t30.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1264,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T18:18:42Z",
+      "side": 1,
+      "message": "return to original def.",
+      "range": {
+        "startLine": 1257,
+        "startChar": 0,
+        "endLine": 1264,
+        "endChar": 94
+      },
+      "revId": "795975b390857f6761e202a1814e571387d2d8ce",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a87eae6b_117cc60a",
+        "filename": "arch/arm/mach-tegra/board-asus-t30.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1307,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T18:18:42Z",
+      "side": 1,
+      "message": "remove it, it\u0027s not used.",
+      "range": {
+        "startLine": 1307,
+        "startChar": 0,
+        "endLine": 1307,
+        "endChar": 23
+      },
+      "revId": "795975b390857f6761e202a1814e571387d2d8ce",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "deebd3eb_9ae00b0b",
+        "filename": "arch/arm/mach-tegra/board-asus-t30.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T18:18:42Z",
+      "side": 1,
+      "message": "return it to original definition",
+      "range": {
+        "startLine": 239,
+        "startChar": 0,
+        "endLine": 239,
+        "endChar": 95
+      },
+      "revId": "795975b390857f6761e202a1814e571387d2d8ce",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
