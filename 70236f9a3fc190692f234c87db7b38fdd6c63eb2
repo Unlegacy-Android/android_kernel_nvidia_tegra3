@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d8838e1c_b7374957",
+        "filename": "arch/arm/mach-tegra/board-asus-t30.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 871,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T14:55:24Z",
+      "side": 1,
+      "message": "Use MXT1386_I2C_ADDR2",
+      "range": {
+        "startLine": 871,
+        "startChar": 33,
+        "endLine": 871,
+        "endChar": 50
+      },
+      "revId": "70236f9a3fc190692f234c87db7b38fdd6c63eb2",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ff844758_722835f5",
+        "filename": "include/linux/i2c/atmel_mxt_ts.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T14:55:24Z",
+      "side": 1,
+      "message": "Are those really needed?\nMXT768E_I2C_ADDR1 and MXT768E_I2C_ADDR2 define the same as MXT1386_I2C_ADDR1 and MXT1386_I2C_ADDR2...\nI suggest you to grep for MXT768E_I2C_ADDR1 and MXT768E_I2C_ADDR2 and replace them by MXT1386_I2C_ADDR1 and MXT1386_I2C_ADDR2 respectively.",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 26,
+        "endChar": 31
+      },
+      "revId": "70236f9a3fc190692f234c87db7b38fdd6c63eb2",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
