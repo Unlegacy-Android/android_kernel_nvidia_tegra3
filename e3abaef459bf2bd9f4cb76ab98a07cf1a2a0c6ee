@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d501d072_e0b7e5a8",
+        "filename": "arch/arm/kernel/setup.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 575,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-11T15:26:42Z",
+      "side": 1,
+      "message": "put this between ifdef (#ifdef CONFIG_MACH_TRANSFORMER / #endif)",
+      "range": {
+        "startLine": 557,
+        "startChar": 0,
+        "endLine": 575,
+        "endChar": 30
+      },
+      "revId": "e3abaef459bf2bd9f4cb76ab98a07cf1a2a0c6ee",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
