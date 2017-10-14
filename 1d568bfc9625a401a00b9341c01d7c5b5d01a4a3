@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "751177af_41ea00aa",
+        "filename": "arch/arm/mach-tegra/board-asus-t30-panel.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1698,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-14T08:23:35Z",
+      "side": 1,
+      "message": "You may delete this",
+      "range": {
+        "startLine": 1698,
+        "startChar": 0,
+        "endLine": 1698,
+        "endChar": 52
+      },
+      "revId": "1d568bfc9625a401a00b9341c01d7c5b5d01a4a3",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7fd4d98e_d262f636",
+        "filename": "arch/arm/mach-tegra/board-asus-t30-power.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1223,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2017-10-14T08:23:35Z",
+      "side": 1,
+      "message": "...and this",
+      "range": {
+        "startLine": 1222,
+        "startChar": 1,
+        "endLine": 1223,
+        "endChar": 59
+      },
+      "revId": "1d568bfc9625a401a00b9341c01d7c5b5d01a4a3",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
