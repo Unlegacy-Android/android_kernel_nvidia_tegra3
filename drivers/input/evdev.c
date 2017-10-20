@@ -109,11 +109,6 @@ static void evdev_event(struct input_handle *handle,
 	struct evdev *evdev = handle->private;
 	struct evdev_client *client;
 	struct input_event event;
-	struct timespec ts;
-
-	ktime_get_ts(&ts);
-	event.time.tv_sec = ts.tv_sec;
-	event.time.tv_usec = ts.tv_nsec / NSEC_PER_USEC;
 	ktime_t time_mono, time_real;
 
 	if (type == EV_SYN && code == SYN_TIME_SEC) {
@@ -670,6 +665,28 @@ static int evdev_handle_set_keycode_v2(struct input_dev *dev, void __user *p)
 	return input_set_keycode(dev, &ke);
 }
 
+static int evdev_handle_mt_request(struct input_dev *dev,
+				   unsigned int size,
+				   int __user *ip)
+{
+	const struct input_mt_slot *mt = dev->mt;
+	unsigned int code;
+	int max_slots;
+	int i;
+
+	if (get_user(code, &ip[0]))
+		return -EFAULT;
+	if (!input_is_mt_value(code))
+		return -EINVAL;
+
+	max_slots = (size - sizeof(__u32)) / sizeof(__s32);
+	for (i = 0; i < dev->mtsize && i < max_slots; i++)
+		if (put_user(input_mt_get_value(&mt[i], code), &ip[1 + i]))
+			return -EFAULT;
+
+	return 0;
+}
+
 static int evdev_enable_suspend_block(struct evdev *evdev,
 				      struct evdev_client *client)
 {
@@ -695,27 +712,6 @@ static int evdev_disable_suspend_block(struct evdev *evdev,
 	client->use_wake_lock = false;
 	wake_lock_destroy(&client->wake_lock);
 	spin_unlock_irq(&client->buffer_lock);
-	return 0;
-}
-
-static int evdev_handle_mt_request(struct input_dev *dev,
-				   unsigned int size,
-				   int __user *ip)
-{
-	const struct input_mt_slot *mt = dev->mt;
-	unsigned int code;
-	int max_slots;
-	int i;
-
-	if (get_user(code, &ip[0]))
-		return -EFAULT;
-	if (!input_is_mt_value(code))
-		return -EINVAL;
-
-	max_slots = (size - sizeof(__u32)) / sizeof(__s32);
-	for (i = 0; i < dev->mtsize && i < max_slots; i++)
-		if (put_user(input_mt_get_value(&mt[i], code), &ip[1 + i]))
-			return -EFAULT;
 
 	return 0;
 }
