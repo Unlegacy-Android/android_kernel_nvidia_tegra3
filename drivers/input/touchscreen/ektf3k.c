@@ -48,9 +48,15 @@
 
 #define ABS_MT_POSITION		0x2a /* Group a set of X and Y */
 
+#ifdef CONFIG_MACH_TRANSFORMER
+#define FIRMWARE_UPDATE_WITH_HEADER 0 
+#define FIRMWARE_NAME "elan/02-3011-4820.ekt"
+MODULE_FIRMWARE(FIRMWARE_NAME);
+#else
 #define FIRMWARE_UPDATE_WITH_HEADER 1 
 #define FIRMWARE_NAME "elan/ektf3k.fw"
 MODULE_FIRMWARE(FIRMWARE_NAME);
+#endif
 
 static uint8_t firmware_recovery = 0x00;
 static uint8_t work_lock = 0;
@@ -478,14 +484,23 @@ static void ektf3k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 				input_mt_report_slot_state(ts->input_dev, MT_TOOL_FINGER, active);
 				if (active) {
 					ektf3k_ts_parse_xy(&buf[idx], &x, &y);
+#ifdef CONFIG_MACH_TRANSFORMER
+					y = ts->abs_y_max - y;
+#else
 					x = x > ts->abs_x_max ? 0 : ts->abs_x_max - x;
 					y = y > ts->abs_y_max ? ts->abs_y_max : y; 
+#endif
 					touch_size = ((i & 0x01) ? buf[size_index[i]] : (buf[size_index[i]] >> 4)) & 0x0F;
 					pressure_size = touch_size << 4; // max pressure value is 255
 					input_report_abs(idev, ABS_MT_TOUCH_MAJOR, touch_size);
 					input_report_abs(idev, ABS_MT_PRESSURE, pressure_size);
+#ifdef CONFIG_MACH_TRANSFORMER
+					input_report_abs(idev, ABS_MT_POSITION_X, x);
+					input_report_abs(idev, ABS_MT_POSITION_Y, y);
+#else
 					input_report_abs(idev, ABS_MT_POSITION_X, y);
 					input_report_abs(idev, ABS_MT_POSITION_Y, x);
+#endif
 				}
 			}
 			mTouchStatus[i] = active;
@@ -904,8 +919,13 @@ static int ektf3k_ts_probe(struct i2c_client *client,
 	ts->abs_y_max = pdata->abs_y_max;
 
 	input_mt_init_slots(ts->input_dev, FINGER_NUM);
-	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, pdata->abs_y_min,pdata->abs_y_max, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, pdata->abs_x_min,pdata->abs_x_max, 0, 0);
+#ifdef CONFIG_MACH_TRANSFORMER
+	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, pdata->abs_x_min, pdata->abs_x_max, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, pdata->abs_y_min, pdata->abs_y_max, 0, 0);
+#else
+	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, pdata->abs_y_min, pdata->abs_y_max, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, pdata->abs_x_min, pdata->abs_x_max, 0, 0);
+#endif
 	input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0, MAX_FINGER_SIZE, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_PRESSURE, 0, MAX_FINGER_PRESSURE, 0, 0);
 
