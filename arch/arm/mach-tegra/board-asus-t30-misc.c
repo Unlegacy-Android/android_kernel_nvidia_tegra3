@@ -19,7 +19,6 @@
 #include <linux/export.h>
 
 #include <mach/board-asus-t30-misc.h>
-#include <mach/pinmux.h>
 #include <mach/pinmux-tegra30.h>
 #include "gpio-names.h"
 #include "fuse.h"
@@ -111,7 +110,6 @@ const char *tegra3_get_project_name(void)
 
 	if (tegra3_misc_enabled) {
 		project_id = HW_DRF_VAL(TEGRA3_DEVKIT, MISC_HW,
-
 						PROJECT, cardhu_pcbid);
 		if (project_id == TEGRA3_PROJECT_EXTENSION)
 			project_id = 8 + HW_DRF_VAL(TEGRA3_DEVKIT, MISC_HW,
@@ -121,8 +119,7 @@ const char *tegra3_get_project_name(void)
 		WARN_ONCE(project_id != tegra3_project_name_index,
 			"[MISC]: project ID in kernel cmdline was not matched"
 			"with PCBID\n");
-	}
-	else {
+	} else {
 		pr_info("[MISC]: adopt kernel cmdline prior to %s ready.\n",
 				__func__);
 	}
@@ -148,8 +145,7 @@ unsigned int tegra3_get_project_id(void)
 		WARN_ONCE(project_id != tegra3_project_name_index,
 			"[MISC]: project ID in kernel cmdline was not matched"
 			"with PCBID\n");
-	}
-	else {
+	} else {
 		pr_info("[MISC]: adopt kernel cmdline prior to %s ready.\n",
 				__func__);
 	}
@@ -258,23 +254,6 @@ unsigned int tegra3_query_wifi_module_pcbid(void)
 }
 EXPORT_SYMBOL(tegra3_query_wifi_module_pcbid);
 
-unsigned int tegra3_query_nfc_module(void)
-{
-	unsigned int nfc_pcbid = 0;
-	unsigned int project = tegra3_get_project_id();
-	unsigned int ret = TEGRA3_NFC_NONE;
-
-	/* Check if running target platform is valid */
-	if (project == TEGRA3_PROJECT_ME570T) {
-		nfc_pcbid = HW_DRF_VAL(TEGRA3_DEVKIT, MISC_HW, NFC,
-			cardhu_extended_pcbid);
-		ret = nfc_pcbid;
-	}
-
-	return ret;
-}
-EXPORT_SYMBOL(tegra3_query_nfc_module);
-
 static ssize_t cardhu_chipid_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
@@ -313,42 +292,31 @@ static ssize_t cardhu_pcbid_show(struct kobject *kobj,
 static ssize_t cardhu_projectid_show(struct kobject *kobj,
         struct kobj_attribute *attr, char *buf)
 {
-        char *s = buf;
+    char *s = buf;
 
-        s += sprintf(s, "%02x\n", tegra3_get_project_id());
-        return (s - buf);
+	s += sprintf(s, "%02x\n", tegra3_get_project_id());
+    return (s - buf);
 }
 
 static ssize_t cardhu_projectname_show(struct kobject *kobj,
         struct kobj_attribute *attr, char *buf)
 {
-        char *s = buf;
+    char *s = buf;
 
-        s += sprintf(s, "%s\n", tegra3_get_project_name());
-        return (s - buf);
-}
-
-static ssize_t cardhu_nfc_show(struct kobject *kobj,
-        struct kobj_attribute *attr, char *buf)
-{
-        char *s = buf;
-
-        s += sprintf(s, "%x\n", tegra3_query_nfc_module());
-        return (s - buf);
+    s += sprintf(s, "%s\n", tegra3_get_project_name());
+    return (s - buf);
 }
 
 CARDHU_MISC_ATTR(cardhu_chipid);
 CARDHU_MISC_ATTR(cardhu_pcbid);
 CARDHU_MISC_ATTR(cardhu_projectid);
 CARDHU_MISC_ATTR(cardhu_projectname);
-CARDHU_MISC_ATTR(cardhu_nfc);
 
 static struct attribute *attr_list[] = {
 	&cardhu_chipid_attr.attr,
 	&cardhu_pcbid_attr.attr,
 	&cardhu_projectid_attr.attr,
 	&cardhu_projectname_attr.attr,
-	&cardhu_nfc_attr.attr,
 	NULL,
 };
 
