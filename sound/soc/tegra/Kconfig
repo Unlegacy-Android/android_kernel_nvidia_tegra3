@@ -294,8 +294,8 @@ config SND_SOC_TEGRA_CS42L73
 	  Pluto.
 
 config HEADSET_FUNCTION
-    tristate "Headset detection function"
-    default n
+	tristate "Headset detection function"
+	default n
 
 config AUDIO_DOCK
     bool
