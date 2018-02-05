@@ -156,6 +156,10 @@ config SND_SOC_TEGRA_MAX98088
 	  boards using the MAX98088 codec. Currently, only supported board is
 	  Enterprise.
 
+config DSP_FM34
+    tristate "DSP FM34 driver"
+    default n
+	
 config MACH_HAS_SND_SOC_TEGRA_TLV320AIC326X
 	bool
 	help
