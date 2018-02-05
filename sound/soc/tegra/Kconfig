@@ -294,3 +294,7 @@ config SND_SOC_TEGRA_CS42L73
 config HEADSET_FUNCTION
     tristate "Headset detection function"
     default n
+
+config AUDIO_DOCK
+	tristate "Accessory audio dock support"
+	default n
