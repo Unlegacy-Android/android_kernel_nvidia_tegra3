@@ -38,6 +38,11 @@
 
 #include "wm8903.h"
 
+#ifdef CONFIG_AUDIO_DOCK
+struct snd_soc_codec *wm8903_codec;
+EXPORT_SYMBOL(wm8903_codec);
+#endif
+
 /* Register defaults at reset */
 static const struct reg_default wm8903_reg_defaults[] = {
 	{ 4,  0x0018 },     /* R4   - Bias Control 0 */
@@ -1907,6 +1912,9 @@ static int wm8903_probe(struct snd_soc_codec *codec)
 	bool mic_gpio = false;
 
 	wm8903->codec = codec;
+#ifdef CONFIG_AUDIO_DOCK
+    wm8903_codec = codec;
+#endif
 	codec->control_data = wm8903->regmap;
 
 	ret = snd_soc_codec_set_cache_io(codec, 8, 16, SND_SOC_REGMAP);
