@@ -37,7 +37,7 @@
 #include <linux/uaccess.h>
 #include <linux/io.h>
 
-#include <linux/mpu.h>
+#include <linux/mpu_inv.h>
 #include "mpuirq.h"
 #include "mldl_cfg.h"
 

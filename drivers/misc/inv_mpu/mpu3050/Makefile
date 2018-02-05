@@ -3,7 +3,7 @@
 #
 #
 
-obj-$(CONFIG_MPU_SENSORS_MPU3050) += mpu3050.o
+obj-$(CONFIG_INV_SENSORS_MPU3050) += mpu3050.o
 
 ccflags-y := -DMPU_CURRENT_BUILD_MPU3050
 
