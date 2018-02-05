@@ -368,8 +368,10 @@ struct mxt_data {
 static struct mxt_suspend mxt_save[] = {
 	{MXT_TOUCH_MULTI_T9, MXT_TOUCH_CTRL,
 		MXT_T9_DISABLE, MXT_SUSPEND_DYNAMIC, 0},
+#ifndef CONFIG_MACH_TRANSFORMER
 	{MXT_PROCG_NOISE_T22, MXT_NOISE_CTRL,
 		MXT_T22_DISABLE, MXT_SUSPEND_DYNAMIC, 0},
+#endif
 	{MXT_GEN_POWER_T7, MXT_POWER_IDLEACQINT,
 		MXT_T7_IDLEACQ_DISABLE, MXT_SUSPEND_DYNAMIC, 0},
 	{MXT_GEN_POWER_T7, MXT_POWER_ACTVACQINT,
@@ -837,6 +839,10 @@ static void mxt_proc_t9_messages(struct mxt_data *data, u8 *message)
 	}
 
 	if (status & MXT_T9_DETECT) {
+#ifdef CONFIG_MACH_TRANSFORMER
+		if (!amplitude)
+			amplitude = 1;
+#endif
 		/* Touch in detect, report X/Y position */
 		input_mt_report_slot_state(input_dev, MT_TOOL_FINGER, 1);
 
