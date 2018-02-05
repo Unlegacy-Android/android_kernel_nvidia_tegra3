@@ -9,7 +9,7 @@ menuconfig INV_SENSORS_COMPASS
 
 if INV_SENSORS_COMPASS
 
-config MPU_SENSORS_AK8963
+config INV_SENSORS_AK8963
         tristate "AKM ak8963"
         help
           This enables support for the AKM ak8963 compass
@@ -18,7 +18,7 @@ config MPU_SENSORS_AK8963
           Specifying more that one compass in the board file will result
           in runtime errors.
 
-config MPU_SENSORS_AK8975
+config INV_SENSORS_AK8975
 	tristate "AKM ak8975"
 	help
 	  This enables support for the AKM ak8975 compass
@@ -27,7 +27,7 @@ config MPU_SENSORS_AK8975
 	  Specifying more that one compass in the board file will result
 	  in runtime errors.
 
-config MPU_SENSORS_AK8972
+config INV_SENSORS_AK8972
 	tristate "AKM ak8972"
 	help
 	  This enables support for the AKM ak8972 compass
@@ -36,7 +36,7 @@ config MPU_SENSORS_AK8972
 	  Specifying more that one compass in the board file will result
 	  in runtime errors.
 
-config MPU_SENSORS_MMC314X
+config INV_SENSORS_MMC314X
 	tristate "MEMSIC mmc314x"
 	help
 	  This enables support for the MEMSIC mmc314x compass
@@ -45,7 +45,7 @@ config MPU_SENSORS_MMC314X
 	  Specifying more that one compass in the board file will result
 	  in runtime errors.
 
-config MPU_SENSORS_AMI30X
+config INV_SENSORS_AMI30X
 	tristate "Aichi Steel ami30X"
 	help
 	  This enables support for the Aichi Steel ami304/ami305 compass
@@ -54,7 +54,7 @@ config MPU_SENSORS_AMI30X
 	  Specifying more that one compass in the board file will result
 	  in runtime errors.
 
-config MPU_SENSORS_AMI306
+config INV_SENSORS_AMI306
 	tristate "Aichi Steel ami306"
 	help
 	  This enables support for the Aichi Steel ami306 compass
@@ -63,7 +63,7 @@ config MPU_SENSORS_AMI306
 	  Specifying more that one compass in the board file will result
 	  in runtime errors.
 
-config MPU_SENSORS_HMC5883
+config INV_SENSORS_HMC5883
 	tristate "Honeywell hmc5883"
 	help
 	  This enables support for the Honeywell hmc5883 compass
@@ -72,7 +72,7 @@ config MPU_SENSORS_HMC5883
 	  Specifying more that one compass in the board file will result
 	  in runtime errors.
 
-config MPU_SENSORS_LSM303DLX_M
+config INV_SENSORS_LSM303DLX_M
 	tristate "ST lsm303dlx"
 	help
 	  This enables support for the ST lsm303dlh and lsm303dlm compasses
@@ -81,7 +81,7 @@ config MPU_SENSORS_LSM303DLX_M
 	  Specifying more that one compass in the board file will result
 	  in runtime errors.
 
-config MPU_SENSORS_MMC314XMS
+config INV_SENSORS_MMC314XMS
 	tristate "MEMSIC mmc314xMS"
 	help
 	  This enables support for the MEMSIC mmc314xMS compass
@@ -90,7 +90,7 @@ config MPU_SENSORS_MMC314XMS
 	  Specifying more that one compass in the board file will result
 	  in runtime errors.
 
-config MPU_SENSORS_YAS529
+config INV_SENSORS_YAS529
 	tristate "Yamaha yas529"
 	depends on INPUT_YAS_MAGNETOMETER
 	help
@@ -100,7 +100,7 @@ config MPU_SENSORS_YAS529
 	  Specifying more that one compass in the board file will result
 	  in runtime errors.
 
-config MPU_SENSORS_YAS530
+config INV_SENSORS_YAS530
 	tristate "Yamaha yas530"
 	help
 	  This enables support for the Yamaha yas530 compass
@@ -109,7 +109,7 @@ config MPU_SENSORS_YAS530
 	  Specifying more that one compass in the board file will result
 	  in runtime errors.
 
-config MPU_SENSORS_HSCDTD002B
+config INV_SENSORS_HSCDTD002B
 	tristate "Alps hscdtd002b"
 	help
 	  This enables support for the Alps hscdtd002b compass
@@ -118,7 +118,7 @@ config MPU_SENSORS_HSCDTD002B
 	  Specifying more that one compass in the board file will result
 	  in runtime errors.
 
-config MPU_SENSORS_HSCDTD004A
+config INV_SENSORS_HSCDTD004A
 	tristate "Alps hscdtd004a"
 	help
 	  This enables support for the Alps hscdtd004a compass
