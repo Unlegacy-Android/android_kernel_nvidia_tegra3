@@ -71,6 +71,7 @@ config SND_SOC_TEGRA_WM8903
 	select SND_SOC_WM8903
 	select SND_SOC_SPDIF
 	select SND_SOC_TEGRA30_DAM if !ARCH_TEGRA_2x_SOC
+	select AUDIO_DOCK
 	help
 	  Say Y or M here if you want to add support for SoC audio on Tegra
 	  boards using the WM8093 codec. Currently, the supported boards are
@@ -199,6 +200,7 @@ config SND_SOC_TEGRA_RT5631
 	select SND_SOC_RT5631
 	select SND_SOC_SPDIF
 	select SND_SOC_TEGRA30_DAM if ARCH_TEGRA_3x_SOC
+	select AUDIO_DOCK
 	help
 	  Say Y or M here if you want to add support for SoC audio on Tegra
 	  boards using the RT5631 codec. Currently, the supported boards are
@@ -294,3 +296,10 @@ config SND_SOC_TEGRA_CS42L73
 config HEADSET_FUNCTION
     tristate "Headset detection function"
     default n
+
+config AUDIO_DOCK
+    bool
+    default n
+    help
+      Say Y or N here if you want to add support for accessory audio dock.
+
