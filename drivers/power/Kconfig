@@ -356,6 +356,12 @@ config CHARGER_MAX8998
 	  Say Y to enable support for the battery charger control sysfs and
 	  platform data of MAX8998/LP3974 PMICs.
 
+config BATTERY_PAD
+	tristate "PAD battery driver"
+	depends on I2C
+	help
+	  Say Y here to enable support for batteries with BQ20Z45 chip.
+
 config CHARGER_SMB347
 	tristate "Summit Microelectronics SMB347 Battery Charger"
 	depends on I2C
