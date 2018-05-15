@@ -54,6 +54,10 @@
 #include <linux/jiffies.h>
 #endif
 
+#ifdef CONFIG_MACH_TRANSFORMER
+#include <mach/board-transformer-misc.h>
+#endif
+
 #define htod32(i) (i)
 #define htod16(i) (i)
 #define dtoh32(i) (i)
@@ -187,8 +191,23 @@ dhd_common_init(osl_t *osh)
 #else /* CONFIG_BCMDHD_FW_PATH */
 	fw_path[0] = '\0';
 #endif /* CONFIG_BCMDHD_FW_PATH */
+
 #ifdef CONFIG_BCMDHD_NVRAM_PATH
+#ifdef CONFIG_MACH_TRANSFORMER
+	switch (tegra3_get_project_id()) {
+		case TEGRA3_PROJECT_TF201:
+		case TEGRA3_PROJECT_TF300T:
+		case TEGRA3_PROJECT_TF300TG:
+		case TEGRA3_PROJECT_TF300TL:
+			snprintf(nv_path, MOD_PARAM_PATHLEN-1, "%s/nvram_nh615.txt", CONFIG_BCMDHD_NVRAM_PATH);
+			break;
+		case TEGRA3_PROJECT_TF700T:
+			snprintf(nv_path, MOD_PARAM_PATHLEN-1, "%s/nvram_nh665.txt", CONFIG_BCMDHD_NVRAM_PATH);
+			break;
+    }
+#else
 	bcm_strncpy_s(nv_path, sizeof(nv_path), CONFIG_BCMDHD_NVRAM_PATH, MOD_PARAM_PATHLEN-1);
+#endif /* CONFIG_MACH_TRANSFORMER */
 #else /* CONFIG_BCMDHD_NVRAM_PATH */
 	nv_path[0] = '\0';
 #endif /* CONFIG_BCMDHD_NVRAM_PATH */
