@@ -22,7 +22,7 @@
 
 #include <linux/i2c-dev.h>
 
-#include <linux/mpu.h>
+#include <linux/mpu_inv.h>
 #include "mpuirq.h"
 
 #define SLAVEIRQ_SET_TIMEOUT           _IOW(MPU_IOCTL, 0x50, unsigned long)

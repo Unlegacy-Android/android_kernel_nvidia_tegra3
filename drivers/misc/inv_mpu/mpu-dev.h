@@ -23,7 +23,7 @@
 
 #include <linux/i2c.h>
 #include <linux/module.h>
-#include <linux/mpu.h>
+#include <linux/mpu_inv.h>
 
 int inv_mpu_register_slave(struct module *slave_module,
 			struct i2c_client *client,

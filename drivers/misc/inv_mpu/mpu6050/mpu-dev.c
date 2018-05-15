@@ -47,7 +47,7 @@
 #include "slaveirq.h"
 #include "mlsl.h"
 #include "mldl_cfg.h"
-#include <linux/mpu.h>
+#include <linux/mpu_inv.h>
 
 #include "accel/mpu6050.h"
 

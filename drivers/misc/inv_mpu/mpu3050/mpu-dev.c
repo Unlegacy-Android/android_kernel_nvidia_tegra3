@@ -47,8 +47,11 @@
 #include "slaveirq.h"
 #include "mlsl.h"
 #include "mldl_cfg.h"
-#include <linux/mpu.h>
+#include <linux/mpu_inv.h>
 
+#ifdef CONFIG_MACH_TRANSFORMER
+#include <mach/board-transformer-misc.h>
+#endif
 
 /* Platform data for the MPU */
 struct mpu_private_data {
@@ -812,8 +815,10 @@ void mpu_shutdown(struct i2c_client *client)
 	dev_dbg(&client->adapter->dev, "%s\n", __func__);
 }
 
-int mpu_dev_suspend(struct i2c_client *client, pm_message_t mesg)
+int mpu_dev_suspend(struct device *dev)
 {
+    pm_message_t mesg;
+	struct i2c_client *client = i2c_verify_client(dev);
 	struct mpu_private_data *mpu =
 	    (struct mpu_private_data *)i2c_get_clientdata(client);
 	struct mldl_cfg *mldl_cfg = &mpu->mldl_cfg;
@@ -848,8 +853,9 @@ int mpu_dev_suspend(struct i2c_client *client, pm_message_t mesg)
 	return 0;
 }
 
-int mpu_dev_resume(struct i2c_client *client)
+int mpu_dev_resume(struct device *dev)
 {
+	struct i2c_client *client = i2c_verify_client(dev);
 	struct mpu_private_data *mpu =
 	    (struct mpu_private_data *)i2c_get_clientdata(client);
 	struct mldl_cfg *mldl_cfg = &mpu->mldl_cfg;
@@ -1210,6 +1216,11 @@ static int mpu_remove(struct i2c_client *client)
 	return 0;
 }
 
+static const struct dev_pm_ops mpu_dev_pm_ops={
+	.suspend = mpu_dev_suspend,
+	.resume = mpu_dev_resume,
+};
+
 static struct i2c_driver mpu_driver = {
 	.class = I2C_CLASS_HWMON,
 	.probe = mpu_probe,
@@ -1218,16 +1229,25 @@ static struct i2c_driver mpu_driver = {
 	.driver = {
 		   .owner = THIS_MODULE,
 		   .name = MPU_NAME,
+		   .pm = &mpu_dev_pm_ops,
 		   },
 	.address_list = normal_i2c,
 	.shutdown = mpu_shutdown,	/* optional */
-	.suspend = mpu_dev_suspend,	/* optional */
-	.resume = mpu_dev_resume,	/* optional */
-
 };
 
 static int __init mpu_init(void)
 {
+#ifdef CONFIG_MACH_TRANSFORMER
+	if (tegra3_get_project_id() == TEGRA3_PROJECT_TF201)
+	{
+        // nv hided this
+		// tegra_gpio_enable(143);
+		gpio_request(143, "gpio_pr7");
+		gpio_direction_output(143, 1);
+		pr_info("gpio 2.85V %d set to %d\n",143, gpio_get_value(143));
+		gpio_free(143);
+	}
+#endif
 	int res = i2c_add_driver(&mpu_driver);
 	pr_info("%s: Probe name %s\n", __func__, MPU_NAME);
 	if (res)
