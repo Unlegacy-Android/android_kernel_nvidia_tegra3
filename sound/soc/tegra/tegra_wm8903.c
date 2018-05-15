@@ -66,7 +66,14 @@
 #include "acer_audio_control_t30.h"
 #endif
 
+#ifdef CONFIG_MACH_TRANSFORMER
+#include <mach/board-transformer-misc.h>
+#include "../drivers/input/asusec/asusdec.h"
+#define DRV_NAME "tegra-snd-codec"
+extern void audio_dock_init(void);
+#else
 #define DRV_NAME "tegra-snd-wm8903"
+#endif
 
 #define GPIO_SPKR_EN    BIT(0)
 #define GPIO_HP_MUTE    BIT(1)
@@ -1184,6 +1191,40 @@ static int __devexit tegra_wm8903_driver_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_MACH_TRANSFORMER
+static struct platform_driver tegra_wm8903_driver = {
+	.driver = {
+		.name = DRV_NAME,
+		.owner = THIS_MODULE,
+		.pm = &snd_soc_pm_ops,
+	},
+	.probe = tegra_wm8903_driver_probe,
+	.remove = __devexit_p(tegra_wm8903_driver_remove),
+};
+
+static int __init tegra_wm8903_modinit(void)
+{
+	if(tegra3_get_project_id() == TEGRA3_PROJECT_TF300T) {
+		printk("tegra_wm8903: codec is supported\n");
+		audio_dock_init();
+		return platform_driver_register(&tegra_wm8903_driver);
+	} else {
+		return 0;
+	}
+}
+module_init(tegra_wm8903_modinit);
+
+static void __exit tegra_wm8903_modexit(void)
+{
+	platform_driver_unregister(&tegra_wm8903_driver);
+}
+module_exit(tegra_wm8903_modexit);
+
+MODULE_AUTHOR("Stephen Warren <swarren@nvidia.com>");
+MODULE_DESCRIPTION("Tegra+WM8903 machine ASoC driver");
+MODULE_LICENSE("GPL");
+MODULE_ALIAS("platform:" DRV_NAME);
+#else
 static const struct of_device_id tegra_wm8903_of_match[] __devinitconst = {
 	{ .compatible = "nvidia,tegra-audio-wm8903", },
 	{},
@@ -1206,3 +1247,4 @@ MODULE_DESCRIPTION("Tegra+WM8903 machine ASoC driver");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:" DRV_NAME);
 MODULE_DEVICE_TABLE(of, tegra_wm8903_of_match);
+#endif
