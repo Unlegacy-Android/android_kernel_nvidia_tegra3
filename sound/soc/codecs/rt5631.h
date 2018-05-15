@@ -267,8 +267,10 @@
 /* DMIC_DIS: ADC mixer to ADC Digital filter */
 #define RT5631_DMIC_DIS					(0x0 << 15)
 #define RT5631_DMIC_L_CH_MUTE				(0x1 << 13)
+#define RT5631_DMIC_L_CH_UNMUTE				(0x0 << 13)
 #define RT5631_DMIC_L_CH_MUTE_SHIFT			13
 #define RT5631_DMIC_R_CH_MUTE				(0x1 << 12)
+#define RT5631_DMIC_R_CH_UNMUTE				(0x0 << 12)
 #define RT5631_DMIC_R_CH_MUTE_SHIFT			12
 #define RT5631_DMIC_L_CH_LATCH_MASK			(0x1 << 9)
 #define RT5631_DMIC_L_CH_LATCH_RISING			(0x1 << 9)
