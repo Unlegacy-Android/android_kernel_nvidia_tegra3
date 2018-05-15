@@ -223,10 +223,11 @@ void nvhost_scale3d_suspend(struct platform_device *dev)
 		mutex_unlock(&df->lock);
 		return;
 	}
-	cancel_delayed_work(&podgov->idle_timer);
-	mutex_unlock(&df->lock);
 
 	cancel_work_sync(&podgov->work);
+	cancel_delayed_work(&podgov->idle_timer);
+
+	mutex_unlock(&df->lock);
 }
 
 /*******************************************************************************
@@ -268,7 +269,6 @@ static void podgov_enable(struct device *dev, int enable)
 	struct nvhost_device_data *pdata = platform_get_drvdata(d);
 	struct devfreq *df = pdata->power_manager;
 	struct podgov_info_rec *podgov;
-	bool cancel = false;
 
 	if (!df)
 		return;
@@ -281,7 +281,7 @@ static void podgov_enable(struct device *dev, int enable)
 	if (enable && df->min_freq != df->max_freq) {
 		podgov->enable = 1;
 	} else {
-		cancel = true;
+		cancel_work_sync(&podgov->work);
 		cancel_delayed_work(&podgov->idle_timer);
 		podgov->enable = 0;
 		podgov->adjustment_frequency = df->max_freq;
@@ -289,9 +289,6 @@ static void podgov_enable(struct device *dev, int enable)
 		update_devfreq(df);
 	}
 	mutex_unlock(&df->lock);
-
-	if (cancel)
-		cancel_work_sync(&podgov->work);
 }
 
 /*******************************************************************************
@@ -355,7 +352,6 @@ static void podgov_set_user_ctl(struct device *dev, int user)
 	podgov->p_user = user;
 
 	mutex_unlock(&df->lock);
-
 	if (cancel)
 		cancel_work_sync(&podgov->work);
 }
