@@ -4,14 +4,14 @@
 #
 
 # MPU
-obj-$(CONFIG_INV_SENSORS)+=
+obj-$(CONFIG_MPU_SENSORS)+=
 ifdef CONFIG_MPU_SENSORS_MPU3050
-INV_MODULE_NAME := mpu3050
+MPU_MODULE_NAME := mpu3050
 endif
 
-obj-$(CONFIG_INV_SENSORS)	+= $(INV_MODULE_NAME).o
+obj-$(CONFIG_MPU_SENSORS)	+= $(MPU_MODULE_NAME).o
 
-$(INV_MODULE_NAME)-objs += mpuirq.o \
+$(MPU_MODULE_NAME)-objs += mpuirq.o \
 	slaveirq.o \
 	mpu-dev.o \
 	mpu-i2c.o \
@@ -23,14 +23,14 @@ $(INV_MODULE_NAME)-objs += mpuirq.o \
 # Accel options
 #
 ifdef CONFIG_MPU_SENSORS_KXTF9
-$(INV_MODULE_NAME)-objs += $(MLLITE_DIR)accel/kxtf9.o
+$(MPU_MODULE_NAME)-objs += $(MLLITE_DIR)accel/kxtf9.o
 endif
 
 #
 # Compass options
 #
 ifdef CONFIG_MPU_SENSORS_AK8975
-$(INV_MODULE_NAME)-objs += $(MLLITE_DIR)compass/ak8975.o
+$(MPU_MODULE_NAME)-objs += $(MLLITE_DIR)compass/ak8975.o
 endif
 
 EXTRA_CFLAGS += -I$(M)/$(MLLITE_DIR) \

@@ -40,7 +40,7 @@
 
 #include <log.h>
 
-#include <linux/mpu.h>
+#include <linux/mpu_inv.h>
 #include "mlsl.h"
 #include "mldl_cfg.h"
 
