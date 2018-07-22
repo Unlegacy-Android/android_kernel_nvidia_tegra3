@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b17a9279_3ee0965f",
+        "filename": "drivers/video/tegra/nvmap/nvmap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 762,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-07-22T10:33:33Z",
+      "side": 1,
+      "message": "This should be placed *before* `nvmap_usecount_inc`.",
+      "revId": "56af17f2c01abc6edc221b3878cfb91a195b669c",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
