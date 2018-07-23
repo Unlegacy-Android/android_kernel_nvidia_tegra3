@@ -39,7 +39,7 @@
 #include <linux/wait.h>
 #include <linux/slab.h>
 
-#include <linux/mpu.h>
+#include <linux/mpu_inv.h>
 #include "slaveirq.h"
 #include "mldl_cfg.h"
 

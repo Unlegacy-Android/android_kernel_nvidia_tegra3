@@ -21,7 +21,7 @@
 #ifndef __MPU6050_H__
 #define __MPU6050_H__
 
-#include <linux/mpu.h>
+#include <linux/mpu_inv.h>
 
 struct ext_slave_descr *mpu6050_get_slave_descr(void);
 

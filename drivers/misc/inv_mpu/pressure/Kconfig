@@ -8,7 +8,7 @@ menuconfig: INV_SENSORS_PRESSURE
 
 if INV_SENSORS_PRESSURE
 
-config MPU_SENSORS_BMA085
+config INV_SENSORS_BMA085
 	tristate "Bosch BMA085"
 	help
 	  This enables support for the Bosch bma085 pressure sensor

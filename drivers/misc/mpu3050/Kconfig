@@ -8,15 +8,15 @@ config MPU_SENSORS_TIMERIRQ
       or timer threads.  Reading from this device returns the same type of
       information as reading from the MPU and slave IRQ's.
 
-menuconfig: INV_SENSORS
+menuconfig: MPU_SENSORS
     tristate "Motion Processing Unit"
     depends on I2C
 
-if INV_SENSORS
+if MPU_SENSORS
 
 choice
     prompt "MPU Master"
-    depends on I2C && INV_SENSORS
+    depends on I2C && MPU_SENSORS
     optional
 
 config MPU_SENSORS_MPU3050
@@ -31,7 +31,7 @@ endchoice
 
 choice
     prompt "Gyroscope Type"
-    depends on I2C && INV_SENSORS
+    depends on I2C && MPU_SENSORS
     optional
 
 config MPU_SENSORS_MPU3050_GYRO
@@ -63,6 +63,6 @@ config MPU_SENSORS_AK8975
       This enables support for the AKM ak8975 compass
 endchoice
 
-endif #INV_SENSORS
+endif #MPU_SENSORS
 
 endmenu
