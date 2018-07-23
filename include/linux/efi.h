@@ -40,6 +40,15 @@ typedef unsigned long efi_status_t;
 typedef u8 efi_bool_t;
 typedef u16 efi_char16_t;		/* UNICODE character */
 
+#ifdef CONFIG_TF_BOOTBLOCK_EXPOSE
+extern int tegra_bootblock_offset;
+
+/* Partition table uses 512-byte blocks */
+#define TF_BOOTBLOCK_SOS_OFFSET		23552 /* Number of first block in recovery partition*/
+#define TF_BOOTBLOCK_SOS_SIZE		16384 /* 16384 * 512 = 8388608 or 8 MB*/
+#define TF_BOOTBLOCK_LNX_OFFSET		39936 /* Number of first block in boot partition*/
+#define TF_BOOTBLOCK_LNX_SIZE		16384 /* 16384 * 512 = 8388608 or 8 MB*/
+#endif
 
 typedef struct {
 	u8 b[16];

@@ -388,6 +388,14 @@ config MACH_TRANSFORMER
        help
          Support for Asus Transformer Tablets (TF201/TF300T/TF700T)
 
+config TF_BOOTBLOCK_EXPOSE
+	bool "Expose boot/recovery partitions through GPT driver"
+	depends on MACH_TRANSFORMER
+	help
+	  This detects the size of boot of the internal emmc
+	  for determining the correct offsets for locating
+	  boot and recovery on Asus Transformer Tablets (TF201/TF300T/TF700T)
+
 choice
        prompt "Tegra platform type"
        default TEGRA_SILICON_PLATFORM
