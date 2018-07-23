@@ -21,6 +21,10 @@
 
 #include <mach/dc.h>
 
+#ifdef CONFIG_MACH_TRANSFORMER
+#include <mach/board-transformer-misc.h>
+#endif
+
 #include "dc_reg.h"
 #include "dc_priv.h"
 
@@ -92,6 +96,19 @@ static const u32 tegra_dc_rgb_disable_pintable[] = {
 	DC_COM_PIN_OUTPUT_SELECT6,	0x00000000,
 };
 
+#ifdef CONFIG_MACH_TRANSFORMER
+static struct tegra_dc_out_pin cardhu_dc_out_pins[] = {
+       {
+               .name   = TEGRA_DC_OUT_PIN_H_SYNC,
+               .pol    = TEGRA_DC_OUT_PIN_POL_LOW,
+       },
+       {
+               .name   = TEGRA_DC_OUT_PIN_V_SYNC,
+               .pol    = TEGRA_DC_OUT_PIN_POL_LOW,
+       },
+};
+#endif
+
 static void tegra_dc_rgb_enable(struct tegra_dc *dc)
 {
 	int i;
@@ -103,6 +120,14 @@ static void tegra_dc_rgb_enable(struct tegra_dc *dc)
 			DC_CMD_DISPLAY_POWER_CONTROL);
 
 	tegra_dc_writel(dc, DISP_CTRL_MODE_C_DISPLAY, DC_CMD_DISPLAY_COMMAND);
+
+#ifdef CONFIG_MACH_TRANSFORMER
+	if (tegra3_get_project_id() == TEGRA3_PROJECT_TF700T){
+		//printk("Check tegra_dc_rgb_enable \n");
+		dc->out->out_pins = cardhu_dc_out_pins;
+		dc->out->n_out_pins = ARRAY_SIZE(cardhu_dc_out_pins);
+	}
+#endif
 
 	if (dc->out->out_pins) {
 		tegra_dc_set_out_pin_polars(dc, dc->out->out_pins,
