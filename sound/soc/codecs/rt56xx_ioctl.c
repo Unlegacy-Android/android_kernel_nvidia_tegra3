@@ -9,6 +9,7 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/export.h>
 #include <linux/spi/spi.h>
 #include <sound/soc.h>
 #include "rt56xx_ioctl.h"
