@@ -44,8 +44,11 @@
 #include <mach/clk.h>
 
 #include "sdhci-pltfm.h"
-#ifdef CONFIG_MACH_GROUPER
+#if defined(CONFIG_MACH_GROUPER) || defined(CONFIG_MACH_TRANSFORMER)
 #include <../gpio-names.h>
+#endif
+#ifdef CONFIG_MACH_TRANSFORMER
+#include <mach/board-transformer-misc.h>
 #endif
 
 #define SDHCI_VNDR_CLK_CTRL	0x100
@@ -2106,7 +2109,12 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 		}
 	}
 
-#ifdef CONFIG_MACH_GROUPER
+#if defined(CONFIG_MACH_GROUPER) || defined(CONFIG_MACH_TRANSFORMER)
+#ifdef CONFIG_MACH_TRANSFORMER
+	if ((tegra3_get_project_id() == TEGRA3_PROJECT_TF300T ||
+		tegra3_get_project_id() == TEGRA3_PROJECT_TF300TL ||
+		tegra3_get_project_id() == TEGRA3_PROJECT_TF300TG))
+#endif /* CONFIG_MACH_TRANSFORMER */
 	if (!strcmp(mmc_hostname(sdhci->mmc), "mmc0")) {
 		pr_debug("%s: pull up data pin", mmc_hostname(sdhci->mmc));
 		gpio_request(TEGRA_GPIO_PAA0, "PAA0");
@@ -2125,7 +2133,7 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 		gpio_direction_output(TEGRA_GPIO_PAA5, 1);
 		gpio_direction_output(TEGRA_GPIO_PAA6, 1);
 		gpio_direction_output(TEGRA_GPIO_PAA7, 1);
-    }
+	}
 #endif
 
 	return 0;
@@ -2173,7 +2181,12 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 		sdhci->pwr = 0;
 	}
 
-#ifdef CONFIG_MACH_GROUPER
+#if defined (CONFIG_MACH_GROUPER) || defined (CONFIG_MACH_TRANSFORMER)
+#ifdef CONFIG_MACH_TRANSFORMER
+	if ((tegra3_get_project_id() == TEGRA3_PROJECT_TF300T ||
+		tegra3_get_project_id() == TEGRA3_PROJECT_TF300TL ||
+		tegra3_get_project_id() == TEGRA3_PROJECT_TF300TG))
+#endif /* CONFIG_MACH_TRANSFORMER */
 	if (!strcmp(mmc_hostname(sdhci->mmc), "mmc0")) {
 		pr_debug("%s: disable data pin", mmc_hostname(sdhci->mmc));
 		gpio_free(TEGRA_GPIO_PAA0);
@@ -2184,7 +2197,7 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 		gpio_free(TEGRA_GPIO_PAA5);
 		gpio_free(TEGRA_GPIO_PAA6);
 		gpio_free(TEGRA_GPIO_PAA7);
-    }
+	}
 #endif
 
 	return 0;
