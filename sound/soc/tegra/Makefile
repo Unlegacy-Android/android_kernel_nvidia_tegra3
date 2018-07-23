@@ -26,7 +26,11 @@ obj-$(CONFIG_SND_SOC_TEGRA20_SPDIF) += snd-soc-tegra20-spdif.o
 obj-$(CONFIG_SND_SOC_TEGRA30_SPDIF) += snd-soc-tegra30-spdif.o
 
 # Tegra machine Support
+ifdef CONFIG_MACH_TRANSFORMER
+snd-soc-tegra-wm8903-objs := tegra_wm8903_tf.o
+else
 snd-soc-tegra-wm8903-objs := tegra_wm8903.o
+endif
 snd-soc-tegra-trimslice-objs := trimslice.o
 snd-soc-tegra-alc5632-objs := tegra_alc5632.o
 snd-soc-tegra-wm8753-objs := tegra_wm8753.o
