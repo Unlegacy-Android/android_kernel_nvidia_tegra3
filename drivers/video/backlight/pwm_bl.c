@@ -110,6 +110,7 @@ static int pwm_backlight_check_fb(struct backlight_device *bl,
 	return !pb->check_fb || pb->check_fb(pb->dev, info);
 }
 
+#ifdef CONFIG_EDP_FRAMEWORK
 static void pwm_backlight_edpcb(unsigned int new_state, void *priv_data)
 {
 	struct backlight_device *bl = (struct backlight_device *) priv_data;
@@ -130,6 +131,7 @@ static void pwm_backlight_edpcb(unsigned int new_state, void *priv_data)
 	if (pb->notify_after)
 		pb->notify_after(pb->dev, brightness);
 }
+#endif
 
 static const struct backlight_ops pwm_backlight_ops = {
 	.update_status	= pwm_backlight_update_status,
@@ -143,7 +145,9 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 	struct platform_pwm_backlight_data *data = pdev->dev.platform_data;
 	struct backlight_device *bl;
 	struct pwm_bl_data *pb;
+#ifdef CONFIG_EDP_FRAMEWORK
 	struct edp_manager *battery_manager = NULL;
+#endif
 	int ret;
 
 	if (!data) {
