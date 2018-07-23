@@ -38,6 +38,11 @@
 
 #include "wm8903.h"
 
+#ifdef CONFIG_MACH_TRANSFORMER
+struct snd_soc_codec *wm8903_codec;
+EXPORT_SYMBOL(wm8903_codec);
+#endif
+
 /* Register defaults at reset */
 static const struct reg_default wm8903_reg_defaults[] = {
 	{ 4,  0x0018 },     /* R4   - Bias Control 0 */
@@ -474,6 +479,77 @@ static int wm8903_put_deemph(struct snd_kcontrol *kcontrol,
 	return ret;
 }
 
+#ifdef CONFIG_MACH_TRANSFORMER
+
+#define ADC_DIGITAL_VOL_0_DB 0x1C0
+#define ADC_DIGITAL_VOL_17_625_DB 0x1FF
+#define ADC_DIGITAL_VOL_15_DB 0x1E8
+#define ADC_ANALOG_VOLUME		0x1F
+
+/*
+ * Event for speaker power changes to enable amp.
+ */
+static int wm8903_spk_event(struct snd_soc_dapm_widget *w,
+			       struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+
+	if (event & SND_SOC_DAPM_POST_PMU) {
+		snd_soc_write(codec, WM8903_GPIO_CONTROL_3, 0x0033);
+		/* Set speaker gain = 3dB */
+		snd_soc_write(codec, WM8903_ANALOGUE_OUT3_LEFT, 0x00BC);
+		snd_soc_write(codec, WM8903_ANALOGUE_OUT3_RIGHT, 0x00BC);
+	}
+
+	if (event & SND_SOC_DAPM_PRE_PMD) {
+		snd_soc_write(codec, WM8903_GPIO_CONTROL_3, 0x0000);
+	}
+
+	return 0;
+}
+
+static int wm8903_get_gain(struct snd_kcontrol *kcontrol,
+			     struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+
+static int wm8903_set_gain(struct snd_kcontrol *kcontrol,
+			     struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+
+	mutex_lock(&codec->mutex);
+	if(ucontrol->value.enumerated.item[0]){
+		/* set heaset mic gain */
+		pr_info("%s(): headset gain = 0dB\n", __func__);
+		snd_soc_write(codec, WM8903_ADC_DIGITAL_VOLUME_LEFT,
+				ADC_DIGITAL_VOL_15_DB);
+		snd_soc_write(codec, WM8903_ADC_DIGITAL_VOLUME_RIGHT,
+				ADC_DIGITAL_VOL_15_DB);
+
+		/* set HPF to voice mode 1 */
+		snd_soc_write(codec, WM8903_ADC_DIGITAL_0, 0x0030);
+
+		/* set amic gain 28.3dB */
+		snd_soc_write(codec, WM8903_ANALOGUE_LEFT_INPUT_0, ADC_ANALOG_VOLUME);
+		snd_soc_write(codec, WM8903_ANALOGUE_RIGHT_INPUT_0,	ADC_ANALOG_VOLUME);
+	} else {
+		/* set dmic gain */
+		pr_info("%s(): dmic use codec for capture gain = 17.625dB\n", __func__);
+		/* set HPF to voice mode 1*/
+		snd_soc_write(codec, WM8903_ADC_DIGITAL_0, 0x0030);
+		snd_soc_write(codec, WM8903_ADC_DIGITAL_VOLUME_LEFT,
+				ADC_DIGITAL_VOL_17_625_DB);
+		snd_soc_write(codec, WM8903_ADC_DIGITAL_VOLUME_RIGHT,
+				ADC_DIGITAL_VOL_17_625_DB);
+	}
+	mutex_unlock(&codec->mutex);
+
+	return 0;
+}
+#endif /* CONFIG_MACH_TRANSFORMER */
+
 /* ALSA can only do steps of .01dB */
 static const DECLARE_TLV_DB_SCALE(digital_tlv, -7200, 75, 1);
 
@@ -737,6 +813,12 @@ SOC_DOUBLE_R("Speaker ZC Switch",
 SOC_DOUBLE_R_TLV("Speaker Volume",
 		 WM8903_ANALOGUE_OUT3_LEFT, WM8903_ANALOGUE_OUT3_RIGHT,
 		 0, 63, 0, out_tlv),
+
+#ifdef CONFIG_MACH_TRANSFORMER
+/* Set recording gain */
+SOC_SINGLE_BOOL_EXT("Recording Gain", 0,
+		 wm8903_get_gain, wm8903_set_gain),
+#endif
 };
 
 static const struct snd_kcontrol_new linput_mode_mux =
@@ -810,6 +892,9 @@ SOC_DAPM_SINGLE("Right Bypass Switch", WM8903_ANALOGUE_SPK_MIX_RIGHT_0,
 };
 
 static const struct snd_soc_dapm_widget wm8903_dapm_widgets[] = {
+#ifdef CONFIG_MACH_TRANSFORMER
+SND_SOC_DAPM_INPUT("DMIC"),
+#endif
 SND_SOC_DAPM_INPUT("IN1L"),
 SND_SOC_DAPM_INPUT("IN1R"),
 SND_SOC_DAPM_INPUT("IN2L"),
@@ -922,10 +1007,19 @@ SND_SOC_DAPM_PGA_S("LINEOUTL_DCS", 3, SND_SOC_NOPM, 1, 0, wm8903_dcs_event,
 SND_SOC_DAPM_PGA_S("LINEOUTR_DCS", 3, SND_SOC_NOPM, 0, 0, wm8903_dcs_event,
 		   SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
 
+#ifdef CONFIG_MACH_TRANSFORMER
+SND_SOC_DAPM_PGA_E("Left Speaker PGA", WM8903_POWER_MANAGEMENT_5, 1, 0,
+		 NULL, 0, wm8903_spk_event,
+		SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
+SND_SOC_DAPM_PGA_E("Right Speaker PGA", WM8903_POWER_MANAGEMENT_5, 0, 0,
+		 NULL, 0, wm8903_spk_event,
+		SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
+#else
 SND_SOC_DAPM_PGA("Left Speaker PGA", WM8903_POWER_MANAGEMENT_5, 1, 0,
 		 NULL, 0),
 SND_SOC_DAPM_PGA("Right Speaker PGA", WM8903_POWER_MANAGEMENT_5, 0, 0,
 		 NULL, 0),
+#endif
 
 SND_SOC_DAPM_SUPPLY("Charge Pump", WM8903_CHARGE_PUMP_0, 0, 0,
 		    wm8903_cp_event, SND_SOC_DAPM_POST_PMU),
@@ -995,6 +1089,11 @@ static const struct snd_soc_dapm_route wm8903_intercon[] = {
 
 	{ "AIFTXL", NULL, "Left Capture Mux" },
 	{ "AIFTXR", NULL, "Right Capture Mux" },
+
+#ifdef CONFIG_MACH_TRANSFORMER
+	{ "ADCL", NULL, "DMIC" },
+	{ "ADCR", NULL, "DMIC" },
+#endif
 
 	{ "ADCL", NULL, "Left ADC Input" },
 	{ "ADCL", NULL, "CLK_DSP" },
@@ -1907,6 +2006,7 @@ static int wm8903_probe(struct snd_soc_codec *codec)
 	bool mic_gpio = false;
 
 	wm8903->codec = codec;
+	wm8903_codec = codec;
 	codec->control_data = wm8903->regmap;
 
 	ret = snd_soc_codec_set_cache_io(codec, 8, 16, SND_SOC_REGMAP);
