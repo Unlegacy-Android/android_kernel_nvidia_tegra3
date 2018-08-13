@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2b552439_4f775715",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-13T20:45:45Z",
+      "side": 1,
+      "message": "\u0027avoid\u0027, or \u0027fix\u0027 if you prefer that",
+      "range": {
+        "startLine": 10,
+        "startChar": 2,
+        "endLine": 10,
+        "endChar": 9
+      },
+      "revId": "86a2e3d41223e483453190b0019d93512b1a8396",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "98a118b5_46a1c0a4",
+        "filename": "drivers/net/wireless/bcmdhd/dhd_common.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-13T20:45:45Z",
+      "side": 1,
+      "message": "Here you can just do:\nCONFIG_BCMDHD_NVRAM_PATH \"/nvram_nh615.txt\");",
+      "range": {
+        "startLine": 202,
+        "startChar": 42,
+        "endLine": 202,
+        "endChar": 88
+      },
+      "revId": "86a2e3d41223e483453190b0019d93512b1a8396",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "be74b9a1_6c19c343",
+        "filename": "drivers/net/wireless/bcmdhd/dhd_common.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-13T20:45:45Z",
+      "side": 1,
+      "message": "Alternatively, you could also keep this bcm_strncpy... line, add then instead of snprintf\u0027s, you could use strncat, like:\n\nswitch (..)\n...\n   strncat(nv_path, \"/nvram_nh665.txt\", MOD_PARAM_PATHLEN-1);\n...\n\nI think it would work, and look better?",
+      "revId": "86a2e3d41223e483453190b0019d93512b1a8396",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
