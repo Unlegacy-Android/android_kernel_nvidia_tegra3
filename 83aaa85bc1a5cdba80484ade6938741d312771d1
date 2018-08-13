@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e6a01979_92524ebf",
+        "filename": "drivers/mmc/host/sdhci-tegra.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2134,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-13T20:24:12Z",
+      "side": 1,
+      "message": "Grouper does more or less the same, just above; I think you should try applying that one for TF, instead of duplicating.",
+      "revId": "83aaa85bc1a5cdba80484ade6938741d312771d1",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
