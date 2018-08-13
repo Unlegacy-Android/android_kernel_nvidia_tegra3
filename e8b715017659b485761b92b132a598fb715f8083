@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "707a6c65_708d88de",
+        "filename": "drivers/video/backlight/pwm_bl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 326,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-13T21:03:03Z",
+      "side": 1,
+      "message": "These ifdefs, if needed, should be added in a separate change.",
+      "revId": "e8b715017659b485761b92b132a598fb715f8083",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
