@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3587fce3_459fdc58",
+        "filename": "arch/arm/configs/transformer_defconfig",
+        "patchSetId": 9
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-13T20:57:08Z",
+      "side": 1,
+      "message": "Don\u0027t set this here. If you need it, set it in your Android device tree (BoardConfig.mk).",
+      "range": {
+        "startLine": 56,
+        "startChar": 39,
+        "endLine": 56,
+        "endChar": 69
+      },
+      "revId": "04696b9d903d521364e636d52a19375f28007e99",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ff288069_b3d99d88",
+        "filename": "arch/arm/configs/transformer_defconfig",
+        "patchSetId": 9
+      },
+      "lineNbr": 301,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-13T20:57:08Z",
+      "side": 1,
+      "message": "What needs to be fixed? Do you have/need camera disabled at the moment?",
+      "range": {
+        "startLine": 301,
+        "startChar": 31,
+        "endLine": 301,
+        "endChar": 37
+      },
+      "revId": "04696b9d903d521364e636d52a19375f28007e99",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
