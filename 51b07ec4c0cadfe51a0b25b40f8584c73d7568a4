@@ -1,0 +1,130 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1eb80ede_ea4e61b9",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-13T20:21:14Z",
+      "side": 1,
+      "message": "Prefix with [TF].",
+      "revId": "51b07ec4c0cadfe51a0b25b40f8584c73d7568a4",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "63952e3f_ab911ba4",
+        "filename": "block/partitions/efi.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 686,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-13T20:21:14Z",
+      "side": 1,
+      "message": "Add spaces around \u0027+\u0027s, and generally follow:\nhttps://www.kernel.org/doc/html/latest/process/coding-style.html#spaces",
+      "range": {
+        "startLine": 686,
+        "startChar": 3,
+        "endLine": 686,
+        "endChar": 6
+      },
+      "revId": "51b07ec4c0cadfe51a0b25b40f8584c73d7568a4",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e8777314_8689b48f",
+        "filename": "block/partitions/efi.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 688,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-13T20:21:14Z",
+      "side": 1,
+      "message": "The outermost ( and )\u0027s aren\u0027t necessary.",
+      "range": {
+        "startLine": 688,
+        "startChar": 27,
+        "endLine": 688,
+        "endChar": 93
+      },
+      "revId": "51b07ec4c0cadfe51a0b25b40f8584c73d7568a4",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "85846e30_19608325",
+        "filename": "block/partitions/efi.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 691,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-13T20:21:14Z",
+      "side": 1,
+      "message": "Remove extra tabulators.",
+      "range": {
+        "startLine": 691,
+        "startChar": 2,
+        "endLine": 691,
+        "endChar": 3
+      },
+      "revId": "51b07ec4c0cadfe51a0b25b40f8584c73d7568a4",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "30938623_39fb5d1a",
+        "filename": "block/partitions/efi.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 693,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-13T20:21:14Z",
+      "side": 1,
+      "message": "Remove the whitespace at the end of lines.",
+      "revId": "51b07ec4c0cadfe51a0b25b40f8584c73d7568a4",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "25d8300c_79f4464d",
+        "filename": "include/linux/efi.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-13T20:21:14Z",
+      "side": 1,
+      "message": "Remove extra tab (keep indentation aligned).",
+      "range": {
+        "startLine": 48,
+        "startChar": 31,
+        "endLine": 48,
+        "endChar": 32
+      },
+      "revId": "51b07ec4c0cadfe51a0b25b40f8584c73d7568a4",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
