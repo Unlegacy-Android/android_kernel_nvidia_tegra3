@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-irda.c
+ * arch/arm/mach-tegra/board-transformer-irda.c
  *
  * Copyright (c) 2012, NVIDIA Corporation.
  *
@@ -26,7 +26,7 @@
 #include <linux/tegra_uart.h>
 
 #include "gpio-names.h"
-#include "board-asus-t30.h"
+#include "board-transformer.h"
 #include "board.h"
 #include "devices.h"
 

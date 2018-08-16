@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-sdhci.c
+ * arch/arm/mach-tegra/board-transformer-sdhci.c
  *
  * Copyright (C) 2010 Google, Inc.
  * Copyright (C) 2011-2012 NVIDIA Corporation.
@@ -32,7 +32,7 @@
 
 #include "gpio-names.h"
 #include "board.h"
-#include "board-asus-t30.h"
+#include "board-transformer.h"
 
 #define CARDHU_WLAN_PWR	TEGRA_GPIO_PD4
 #define CARDHU_WLAN_RST	TEGRA_GPIO_PD3

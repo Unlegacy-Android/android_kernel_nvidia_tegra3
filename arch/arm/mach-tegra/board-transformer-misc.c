@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-misc.c
+ * arch/arm/mach-tegra/board-transformer-misc.c
  *
  * Copyright (C) 2011-2012 ASUSTek Computer Incorporation
  * Author: Paris Yeh <paris_yeh@asus.com>
@@ -18,7 +18,7 @@
 #include <linux/gpio.h>
 #include <linux/export.h>
 
-#include <mach/board-asus-t30-misc.h>
+#include <mach/board-transformer-misc.h>
 #include <mach/pinmux.h>
 #include <mach/pinmux-tegra30.h>
 #include "gpio-names.h"

@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30.c
+ * arch/arm/mach-tegra/board-transformer.c
  *
  * Copyright (c) 2011-2012, NVIDIA Corporation.  All rights reserved.
  * Copyright (c) 2011-2012, NVIDIA Corporation.
@@ -62,7 +62,7 @@
 #include <mach/tegra_asoc_pdata.h>
 #include <mach/tegra_wm8903_pdata.h>
 #include <mach/usb_phy.h>
-#include <mach/board-asus-t30-misc.h>
+#include <mach/board-transformer-misc.h>
 #include <mach/thermal.h>
 #include <mach/pci.h>
 #include <mach/tegra_fiq_debugger.h>
@@ -72,7 +72,7 @@
 
 #include "board.h"
 #include "clock.h"
-#include "board-asus-t30.h"
+#include "board-transformer.h"
 #include "board-touch.h"
 #include "devices.h"
 #include "gpio-names.h"

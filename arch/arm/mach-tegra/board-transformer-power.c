@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-power.c
+ * arch/arm/mach-tegra/board-transformer-power.c
  *
  * Copyright (C) 2011-2012, NVIDIA Corporation.
  *
@@ -37,11 +37,11 @@
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
 #include <mach/edp.h>
-#include <mach/board-asus-t30-misc.h>
+#include <mach/board-transformer-misc.h>
 
 #include "gpio-names.h"
 #include "board.h"
-#include "board-asus-t30.h"
+#include "board-transformer.h"
 #include "pm.h"
 #include "tegra3_tsensor.h"
 #include "wakeups-t3.h"

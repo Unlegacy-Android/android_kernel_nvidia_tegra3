@@ -20,11 +20,11 @@
 #include <linux/init.h>
 
 #include "board.h"
-#include "board-asus-t30.h"
+#include "board-transformer.h"
 #include "tegra3_emc.h"
 #include "fuse.h"
 #include "gpio-names.h"
-#include <mach/board-asus-t30-misc.h>
+#include <mach/board-transformer-misc.h>
 
 static const struct tegra_emc_table cardhu_emc_tables_h5tc2g[] = {
 	{

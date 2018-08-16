@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-panel.c
+ * arch/arm/mach-tegra/board-transformer-panel.c
  *
  * Copyright (c) 2010-2012, NVIDIA Corporation.
  *
@@ -36,10 +36,10 @@
 #include <mach/dc.h>
 #include <mach/fb.h>
 #include <mach/smmu.h>
-#include <mach/board-asus-t30-misc.h>
+#include <mach/board-transformer-misc.h>
 
 #include "board.h"
-#include "board-asus-t30.h"
+#include "board-transformer.h"
 #include "devices.h"
 #include "gpio-names.h"
 #include "tegra3_host1x_devices.h"

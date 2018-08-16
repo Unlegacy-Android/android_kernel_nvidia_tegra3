@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-pinmux.c
+ * arch/arm/mach-tegra/board-transformer-pinmux.c
  *
  * Copyright (C) 2011-2012, NVIDIA Corporation
  *
@@ -17,9 +17,9 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <mach/pinmux.h>
-#include <mach/board-asus-t30-misc.h>
+#include <mach/board-transformer-misc.h>
 #include "board.h"
-#include "board-asus-t30.h"
+#include "board-transformer.h"
 #include "gpio-names.h"
 
 #define DEFAULT_DRIVE(_name)					\

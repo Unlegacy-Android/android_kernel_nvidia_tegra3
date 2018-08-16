@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-powermon.c
+ * arch/arm/mach-tegra/board-transformer-powermon.c
  *
  * Copyright (c) 2011, NVIDIA, All Rights Reserved.
  *
@@ -22,7 +22,7 @@
 #include <linux/ina219.h>
 
 #include "board.h"
-#include "board-asus-t30.h"
+#include "board-transformer.h"
 
 enum {
 	VDD_AC_BAT,

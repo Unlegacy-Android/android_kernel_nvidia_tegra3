@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-kbc.c
+ * arch/arm/mach-tegra/board-transformer-kbc.c
  * Keys configuration for Nvidia tegra3 cardhu platform.
  *
  * Copyright (C) 2011 NVIDIA, Inc.
@@ -31,11 +31,11 @@
 #include <mach/iomap.h>
 #include <mach/kbc.h>
 #include "board.h"
-#include "board-asus-t30.h"
+#include "board-transformer.h"
 
 #include "gpio-names.h"
 #include "devices.h"
-#include <mach/board-asus-t30-misc.h>
+#include <mach/board-transformer-misc.h>
 
 #define GPIO_KEY(_id, _gpio, _iswake)		\
 	{					\

@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-vibrator.c
+ * arch/arm/mach-tegra/board-transformer-vibrator.c
  *
  * Copyright (C) 2011-2012 ASUSTek Computer Incorporation
  *
@@ -18,7 +18,7 @@
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
 #include <linux/module.h>
-#include <mach/board-asus-t30-misc.h>
+#include <mach/board-transformer-misc.h>
 #include "gpio-names.h"
 #include "../../../drivers/staging/android/timed_output.h"
 #include <linux/timer.h>

@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-sensors.c
+ * arch/arm/mach-tegra/board-transformer-sensors.c
  *
  * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
  *
@@ -72,10 +72,10 @@
 #include <linux/therm_est.h>
 
 #include "gpio-names.h"
-#include "board-asus-t30.h"
+#include "board-transformer.h"
 #include "cpu-tegra.h"
 
-#include <mach/board-asus-t30-misc.h>
+#include <mach/board-transformer-misc.h>
 #include <linux/smb347-charger.h>
 
 #if 0 //WK: Disable NV's camera code
