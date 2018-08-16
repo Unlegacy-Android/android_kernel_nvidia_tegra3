@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-irda.c
+ * arch/arm/mach-tegra/board-transformer-irda.c
  *
  * Copyright (c) 2012, NVIDIA Corporation.
  *

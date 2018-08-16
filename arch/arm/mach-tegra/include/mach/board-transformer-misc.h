@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/include/mach/board-cardhu-misc.h
+ * arch/arm/mach-tegra/include/mach/board-transformer-misc.h
  *
  * Copyright (C) 2011-2012 ASUSTek Computer Incorporation
  * Author: Paris Yeh <paris_yeh@asus.com>

@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-misc.c
+ * arch/arm/mach-tegra/board-transformer-misc.c
  *
  * Copyright (C) 2011-2012 ASUSTek Computer Incorporation
  * Author: Paris Yeh <paris_yeh@asus.com>

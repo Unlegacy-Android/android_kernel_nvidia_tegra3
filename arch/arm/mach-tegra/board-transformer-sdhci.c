@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-sdhci.c
+ * arch/arm/mach-tegra/board-transformer-sdhci.c
  *
  * Copyright (C) 2010 Google, Inc.
  * Copyright (C) 2011-2012 NVIDIA Corporation.
