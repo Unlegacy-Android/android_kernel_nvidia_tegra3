@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-powermon.c
+ * arch/arm/mach-tegra/board-transformer-powermon.c
  *
  * Copyright (c) 2011, NVIDIA, All Rights Reserved.
  *

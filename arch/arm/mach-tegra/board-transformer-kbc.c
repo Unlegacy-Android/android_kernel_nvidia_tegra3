@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-kbc.c
+ * arch/arm/mach-tegra/board-transformer-kbc.c
  * Keys configuration for Nvidia tegra3 cardhu platform.
  *
  * Copyright (C) 2011 NVIDIA, Inc.

@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-vibrator.c
+ * arch/arm/mach-tegra/board-transformer-vibrator.c
  *
  * Copyright (C) 2011-2012 ASUSTek Computer Incorporation
  *

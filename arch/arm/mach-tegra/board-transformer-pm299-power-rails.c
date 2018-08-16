@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-pm299-power-rails.c
+ * arch/arm/mach-tegra/board-transformer-pm299-power-rails.c
  *
  * Copyright (C) 2011-2012, NVIDIA Corporation.
  *

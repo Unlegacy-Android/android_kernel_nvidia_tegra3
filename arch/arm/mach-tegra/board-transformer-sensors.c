@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-asus-t30-sensors.c
+ * arch/arm/mach-tegra/board-transformer-sensors.c
  *
  * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
  *
