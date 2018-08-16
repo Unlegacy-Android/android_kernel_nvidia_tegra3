@@ -19,23 +19,11 @@
  * 02111-1307, USA
  */
 
-#include <linux/kernel.h>
 #include <linux/platform_device.h>
-#include <linux/input.h>
-#include <linux/device.h>
-#include <linux/gpio.h>
 #include <linux/gpio_keys.h>
 
-#include <mach/irqs.h>
-#include <mach/io.h>
-#include <mach/iomap.h>
 #include <mach/kbc.h>
-#include "board.h"
-#include "board-asus-t30.h"
-
-#include "gpio-names.h"
-#include "devices.h"
-#include <mach/board-asus-t30-misc.h>
+#include "board-transformer.h"
 
 #define GPIO_KEY(_id, _gpio, _iswake)		\
 	{					\
@@ -55,50 +43,23 @@ static struct gpio_keys_button cardhu_int_keys[] = {
 };
 
 static struct gpio_keys_platform_data cardhu_int_keys_pdata = {
-	.buttons        = cardhu_int_keys,
-	.nbuttons       = ARRAY_SIZE(cardhu_int_keys),
+	.buttons	= cardhu_int_keys,
+	.nbuttons	= ARRAY_SIZE(cardhu_int_keys),
 };
 
 static struct platform_device cardhu_int_keys_device = {
-	.name   = "gpio-keys",
-	.id     = 0,
-	.dev    = {
+	.name	= "gpio-keys",
+	.id	= 0,
+	.dev	= {
 		.platform_data  = &cardhu_int_keys_pdata,
-	},
-};
-
-static struct gpio_keys_button cardhu_int_aw8ec_keys[] = {
-	[0] = GPIO_KEY(KEY_MODE, PK2, 1),
-};
-
-static struct gpio_keys_platform_data cardhu_int_aw8ec_keys_pdata = {
-	.buttons        = cardhu_int_aw8ec_keys,
-	.nbuttons       = ARRAY_SIZE(cardhu_int_aw8ec_keys),
-};
-
-static struct platform_device cardhu_int_aw8ec_keys_device = {
-	.name   = "gpio-keys",
-	.id     = 1,
-	.dev    = {
-		.platform_data  = &cardhu_int_aw8ec_keys_pdata,
 	},
 };
 
 int __init cardhu_keys_init(void)
 {
-	struct board_info board_info;
-	u32 project_info = tegra3_get_project_id();
-
-	tegra_get_board_info(&board_info);
-	BUG_ON(board_info.board_id != BOARD_PM269);
-
 	pr_info("Registering gpio keys\n");
 
 	platform_device_register(&cardhu_int_keys_device);
-
-	if(project_info == TEGRA3_PROJECT_P1801){
-		platform_device_register(&cardhu_int_aw8ec_keys_device);
-	}
 
 	return 0;
 }

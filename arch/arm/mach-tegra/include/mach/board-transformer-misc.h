@@ -165,15 +165,6 @@ extern "C"
 
 /* End of PCB_ID Bit Definition */
 
-/* Start of Extended PCB_ID Bit Definition */
-
-/* NFC module identification */
-#define TEGRA3_DEVKIT_MISC_HW_0_NFC_RANGE	1:1
-#define TEGRA3_DEVKIT_MISC_HW_0_NFC_DEFAULT	0x0UL //None
-#define TEGRA3_DEVKIT_MISC_HW_0_NFC_1		0x1UL //NFC Available
-
-/* End of Extended PCB_ID Bit Definition */
-
 /* Start of Extended PROJECT_ID Bit Definition */
 
 /* Extended project identifications on Tegra3 platform */
@@ -222,22 +213,9 @@ enum tegra3_project {
 	TEGRA3_PROJECT_MAX = 14,
 };
 
-enum tegra3_nfc_module {
-	TEGRA3_NFC_NONE = 0,
-	TEGRA3_NFC_PN65NET1 = 1,
-};
-
 int __init cardhu_misc_init(unsigned long long);
 
 void __init cardhu_misc_reset(void);
-
-/* Acquire project identification in string format
- *   @ret cont char *
- *      Project identification will be returned.
- *
- * Notes: Deprecated function
- */
-const char *tegra3_get_project_name(void);
 
 /* Acquire project identification in integer format
  *   @ret cont u32
@@ -272,13 +250,6 @@ unsigned int tegra3_query_pcba_revision_pcbid(void);
  *      Otherwise -1 (Not supported) will be returned.
  */
 unsigned int tegra3_query_wifi_module_pcbid(void);
-
-/* Query pin status of equipped nfc module defined in PCB pins.
- *   @ret bool
- *      Return unsigned integer to reflect enum type tegra3_nfc_module
- *      Otherwise -1 (Not supported) will be returned.
- */
-unsigned int tegra3_query_nfc_module(void);
 
 #if defined(__cplusplus)
 }
