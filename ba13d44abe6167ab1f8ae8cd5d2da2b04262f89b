@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2d511fdc_4fae8b35",
+        "filename": "drivers/input/touchscreen/atmel_mxt_ts.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-24T10:00:49Z",
+      "side": 1,
+      "message": "Without this, you got the failed to set power cfg error, right?",
+      "range": {
+        "startLine": 371,
+        "startChar": 0,
+        "endLine": 371,
+        "endChar": 31
+      },
+      "revId": "ba13d44abe6167ab1f8ae8cd5d2da2b04262f89b",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
