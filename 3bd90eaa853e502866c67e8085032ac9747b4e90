@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9746b1f8_742426c3",
+        "filename": "drivers/input/touchscreen/ektf3k.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 955,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-28T21:36:07Z",
+      "side": 1,
+      "message": "private_ts can be set on all devices; let\u0027s only ifdef the update_firmware call.",
+      "range": {
+        "startLine": 955,
+        "startChar": 0,
+        "endLine": 955,
+        "endChar": 26
+      },
+      "revId": "3bd90eaa853e502866c67e8085032ac9747b4e90",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
