@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eaf24280_06d377e0",
+        "filename": "drivers/input/Kconfig",
+        "patchSetId": 5
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-28T22:03:03Z",
+      "side": 1,
+      "message": "I think these should be moved to drivers/input/asusec/Kconfig (create and include it).",
+      "range": {
+        "startLine": 177,
+        "startChar": 0,
+        "endLine": 187,
+        "endChar": 24
+      },
+      "revId": "49a53859323a1e16f9faf49bf03044514cfa35b0",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
