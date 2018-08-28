@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "64cc0372_d9f60526",
+        "filename": "drivers/input/Kconfig",
+        "patchSetId": 4
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-28T21:37:21Z",
+      "side": 1,
+      "message": "Whitespace",
+      "range": {
+        "startLine": 188,
+        "startChar": 0,
+        "endLine": 188,
+        "endChar": 4
+      },
+      "revId": "edf66be3583e5836fb40a79a14e27d1d2e2afb73",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
