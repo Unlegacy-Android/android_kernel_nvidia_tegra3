@@ -1,0 +1,15 @@
+#
+# Asus input device configuration
+#
+
+config INPUT_ASUSEC
+	bool "ASUS embedded controller interface"
+	depends on I2C
+
+config ASUSPEC
+	bool "ASUS embedded controller interface"
+	depends on INPUT_ASUSEC
+
+config ASUSDEC
+	bool "ASUS embedded controller interface"
+	depends on INPUT_ASUSEC
