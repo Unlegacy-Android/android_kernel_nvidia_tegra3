@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e51d0278_cb080235",
+        "filename": "sound/soc/codecs/wm8903.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2009,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2018-08-30T08:48:01Z",
+      "side": 1,
+      "message": "This needs to be ifdef\u0027d as well then :)",
+      "range": {
+        "startLine": 2009,
+        "startChar": 0,
+        "endLine": 2009,
+        "endChar": 22
+      },
+      "revId": "3e2145897bece4036f3dfbd91e44c9c74003aa35",
+      "serverId": "d5e41ece-075f-43fb-b5a6-48951f3d7b1d",
+      "unresolved": false
+    }
+  ]
+}
