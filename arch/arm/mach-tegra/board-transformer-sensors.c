@@ -42,6 +42,10 @@
 #include <media/yuv_sensor.h>
 #endif /* CONFIG_VIDEO_YUV */
 
+#ifdef CONFIG_INPUT_LID
+#include <linux/input/lid.h>
+#endif
+
 #include <mach/edp.h>
 #include <mach/board-transformer-misc.h>
 
@@ -827,6 +831,24 @@ static struct i2c_board_info cardhu_i2c1_board_info_al3010[] = {
 	},
 };
 
+#ifdef CONFIG_INPUT_LID
+static struct lid_sensor_platform_data cardhu_lid_pdata = {
+	.irq_gpio = TEGRA_GPIO_PS6,
+};
+
+static struct platform_device lid_device = {
+	.name	= "lid-sensor",
+	.id		= -1,
+};
+
+static void lid_init(void)
+{
+	pr_info("%s\n", __func__);
+	lid_device.dev.platform_data = &cardhu_lid_pdata;
+	platform_device_register(&lid_device);
+}
+#endif
+
 int __init cardhu_sensors_init(void)
 {
 	int err;
@@ -863,6 +885,10 @@ int __init cardhu_sensors_init(void)
 
 	i2c_register_board_info(4, cardhu_i2c4_pad_bat_board_info,
 			ARRAY_SIZE(cardhu_i2c4_pad_bat_board_info));
+
+#ifdef CONFIG_INPUT_LID
+	lid_init();
+#endif
 
 	mpuirq_init();
 
