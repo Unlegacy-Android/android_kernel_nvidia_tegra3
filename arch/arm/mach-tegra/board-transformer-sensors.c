@@ -36,6 +36,7 @@
 #include <linux/nct1008.h>
 #include <linux/mpu_inv.h>
 #include <linux/regulator/consumer.h>
+#include <linux/platform_device.h>
 #include <linux/gpio.h>
 
 #ifdef CONFIG_VIDEO_YUV
