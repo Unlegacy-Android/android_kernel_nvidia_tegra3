@@ -43,10 +43,19 @@ struct kmsg_dumper {
 			const char *s2, unsigned long l2);
 	struct list_head list;
 	int registered;
+
+	/* private state of the kmsg iterator */
+	u32 cur_idx;
+	u32 next_idx;
+	u64 cur_seq;
+	u64 next_seq;
 };
 
 #ifdef CONFIG_PRINTK
 void kmsg_dump(enum kmsg_dump_reason reason);
+
+bool kmsg_dump_get_buffer(struct kmsg_dumper *dumper, bool syslog,
+	char *buf, size_t size, size_t *len);
 
 int kmsg_dump_register(struct kmsg_dumper *dumper);
 
@@ -64,6 +73,12 @@ static inline int kmsg_dump_register(struct kmsg_dumper *dumper)
 static inline int kmsg_dump_unregister(struct kmsg_dumper *dumper)
 {
 	return -EINVAL;
+}
+
+static inline bool kmsg_dump_get_buffer(struct kmsg_dumper *dumper, bool syslog,
+	char *buf, size_t size, size_t *len)
+{
+	return false;
 }
 #endif
 

@@ -1870,4 +1870,14 @@ void kmsg_dump(enum kmsg_dump_reason reason)
 		dumper->dump(dumper, reason, s1, l1, s2, l2);
 	rcu_read_unlock();
 }
+
+/**
+ * kmsg_dump_get_buffer proto
+ */
+bool kmsg_dump_get_buffer(struct kmsg_dumper *dumper, bool syslog,
+	      char *buf, size_t size, size_t *len)
+{
+	return false;
+}
+EXPORT_SYMBOL_GPL(kmsg_dump_get_buffer);
 #endif
