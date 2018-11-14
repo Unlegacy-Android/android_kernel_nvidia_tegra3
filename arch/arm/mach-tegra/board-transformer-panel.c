@@ -523,7 +523,7 @@ static struct tegra_dc_mode panel_19X12_modes[] = {
 static struct tegra_dc_mode cardhu_panel_modes[] = {
 	{
 		/* 1280x800@60Hz */
-		.pclk = 68000000,
+		.pclk = 70000000,
 		.h_ref_to_sync = 4,
 		.v_ref_to_sync = 2,
 		.h_sync_width = 30,
